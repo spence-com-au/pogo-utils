@@ -103,6 +103,14 @@ const THROWN = 3;
  */
 const SWITCHED_MS = 2_000;
 
+/**
+ * How long a battle must be off its field — the minigame, a prompt, a charged move playing — before it is told how long
+ * and what showed, in milliseconds, which the battle's line, written only as it changes, leaves unexplained otherwise:
+ * live, 10–20s went by without a line. Longer than a banner over the HUD, a second or two, and shorter than a charged
+ * move, whose minigame alone waits 2.5s for its first bubbles.
+ */
+const OFF_MS = 3_000;
+
 /** Frames kept for a run that gets lost, about the last three seconds of it at one frame in ten. */
 const KEPT_FRAMES = 10;
 
@@ -126,6 +134,9 @@ export interface Tally {
   won: number;
   lost: number;
 }
+
+/** `ms` milliseconds in seconds to a tenth, `11.2s`. */
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 export class Lost extends Error {
   readonly frames: readonly Image[];
@@ -295,6 +306,10 @@ export async function run(
   // no prompt and so goes uncounted, which costs nothing, there being no shield left to decide on.
   let stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES };
 
+  // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
+  // field is back, if it ran `OFF_MS`, and dropped with the battle's end, the menus after it being no stretch of it.
+  let off: { state: State | 'minigame'; what: string; from: number }[] = [];
+
   // What the screen was last recognised as, and the battle as last read, for `report.status`.
   let screen = 'other';
   let fight: Fight | undefined;
@@ -351,6 +366,45 @@ export async function run(
     }
 
     last = state;
+
+    if (battling) {
+      const now = clock.now();
+      const part = state === 'battle' || state === 'charged' ? (player.minigame ? 'minigame' : undefined) : state;
+      const [first] = off;
+
+      if (!part) {
+        if (first && now - first.from >= OFF_MS) {
+          // Each part's own time only where there is more than the one, whose time is the stretch's.
+          const parts = off.map(({ what, from }, i) =>
+            off.length > 1 ? `${what} (${seconds((off[i + 1]?.from ?? now) - from)})` : what,
+          );
+
+          log(`off the battle for ${seconds(now - first.from)}`, undefined, parts.join(', then '));
+        }
+
+        off = [];
+      } else if (part !== off.at(-1)?.state) {
+        // What the screen shows besides the battle and its prompts says nothing of itself, so is named by what came
+        // before it: with nothing before it and no shield of ours left, it is most likely the opponent's charged move,
+        // which puts up no prompt once there is no shield to answer it with.
+        const before = off.at(-1)?.state;
+        const what = {
+          minigame: `the minigame for our ${thrown ?? 'charged move'}`,
+          shield: 'the shield prompt',
+          switch: 'the switch prompt',
+          other:
+            before === 'switch'
+              ? 'the next of ours coming in'
+              : before
+                ? 'the charged move playing'
+                : ourShields === 0
+                  ? `likely ${theirName()}'s charged move, none of our shields left to prompt for`
+                  : 'neither the battle nor a prompt',
+        }[part];
+
+        off.push({ state: part, what, from: now });
+      }
+    }
 
     if (state !== 'shield' && prompted >= THROWN && matchup) {
       energy.threw(matchup, theirMoves.get(matchup.opponent.species ?? ''));
@@ -853,6 +907,7 @@ export async function run(
         if (menu.screen === 'result') {
           battles++;
           battling = false;
+          off = [];
 
           if (done.outcome) {
             outcomes[done.outcome]++;
