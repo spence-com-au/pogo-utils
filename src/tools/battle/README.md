@@ -98,7 +98,10 @@ for text and done every few seconds.
 6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
-   `--keep-frames`.
+   `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is
+   told once it comes back, how long and what showed:
+   `off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)`. A stretch
+   the battle never comes back from, its end, is not.
 
 `run` is driven through a `Phone` (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb` directly, so tests
 stand in a scripted phone that plays committed frames as scenes.

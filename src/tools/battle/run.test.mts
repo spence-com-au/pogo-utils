@@ -524,8 +524,59 @@ test('aims the minigame’s swipes at its bubbles', async () => {
   }
 });
 
+/**
+ * Each stretch off the field told once the battle is back, with what showed: our Shadow Sneak's minigame and the move
+ * playing after it, and, with our shields spent, a move of theirs that puts up no prompt. Shorter stretches and the
+ * result's, which the battle never comes back from, are not told.
+ */
+test.each([
+  [
+    'charged-shadow-sneak',
+    'run: off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)',
+  ],
+  [
+    'battle-shields-spent',
+    "run: off the battle for 5.0s: likely Quaquaval's charged move, none of our shields left to prompt for",
+  ],
+])('tells how long the battle was off its field from %s', async (fight, said) => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: {
+        frame: fixture(fight),
+        tap: { at: [0.499, 0.889], to: 'minigame' },
+        swipes: { count: 10, to: 'away' },
+      },
+      minigame: { frame: fixture('battle-minigame-giratina'), swipes: { count: 40, to: 'away' } },
+      away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'back' } },
+      back: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'blip' } },
+      blip: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'last' } },
+      last: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      colours: COLOURS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([said]);
+});
+
+// The menus between the battles are no stretch off a battle's field, nor is the first battle's end, never come back from.
 test('carries on into the next battle until the count is reached', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
+  const report = recorder();
 
   expect(
     await run(
@@ -538,9 +589,11 @@ test('carries on into the next battle until the count is reached', async () => {
         count: 2,
       },
       clock,
+      report,
     ),
   ).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(taps.filter((scene) => scene === 'result')).toHaveLength(2);
+  expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([]);
 });
 
 /**
