@@ -172,6 +172,14 @@ move would otherwise be wasted into. Once their shields are gone, it throws the 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already
 ready. ([What's next](#whats-next) covers when that should give way.)
 
+**Finishing.** The exception is a ready move that would finish the opponent once its shields are gone: it is thrown at
+once, whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). Its damage
+is judged as for shielding [below](#when-to-shield), with our attack and their defense stages, at the least it would
+take of any form either side could be. It must take nine tenths of that at least 2 points more than the opponent's bar
+shows, for the builds being guesses and the bar wandering a point or two frame to frame. Anything unknown leaves the
+move held for, the opponent's CP unread included. The throw is logged with the reason, such as
+`threw Hydro Cannon: would finish Giratina at 12%`.
+
 ### When to shield
 
 The shield prompt never names the move coming. It takes a shield only if the hardest move the opponent could be throwing

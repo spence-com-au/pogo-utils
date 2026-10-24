@@ -26,7 +26,7 @@ import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
 import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
 import { activeOf, bestButton, counterOf, nextOut, typesOf } from './strategy.mts';
-import { afterThrow, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
+import { afterThrow, finisher, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
 import { Energy, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
@@ -617,7 +617,33 @@ export async function run(
       // saying which it is.
       const bait = theirShields > 0;
       const lastHit = ourShields === 0 && verdict.faints;
-      const best = bestButton(data, seen.moves, typesOf(data, own), typesOf(data, seen.opponent), { bait, lastHit });
+      const ready = state === 'charged' ? readyButtons(frame) : [];
+
+      // A lit move that would finish the opponent goes now, whatever is held for: a turn waited is a hit taken. Live, a
+      // Swampert held for Earthquake while Hydro Cannon could have finished a Giratina at 12%, and fainted first. Not
+      // while the league's cap is unread, which would leave a CP misread over it to be built as if it were read.
+      const lit = new Map(
+        ready.flatMap(([x]) => {
+          const move = seen.moves.get(x);
+
+          return move === undefined ? [] : [[x, move] as const];
+        }),
+      );
+      const finish =
+        cap === undefined
+          ? undefined
+          : finisher(
+              data,
+              lit,
+              { species: own, cp: seen.ownCp },
+              { species: seen.opponent, cp: seen.opponentCp },
+              health.opponent,
+              theirShields,
+              cap,
+              stages,
+            );
+      const best =
+        finish?.x ?? bestButton(data, seen.moves, typesOf(data, own), typesOf(data, seen.opponent), { bait, lastHit });
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: verdict.why, taken: false };
@@ -672,7 +698,6 @@ export async function run(
         counter = chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame) };
       }
 
-      const ready = state === 'charged' ? readyButtons(frame) : [];
       const card = prompt?.card;
       const bubbles = player.minigame && bubbleColour ? bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
@@ -696,7 +721,7 @@ export async function run(
           thrown = seen.moves.get(action.at[0]);
           const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
           stages = { own: user, their: target };
-          log(`threw ${thrown ?? 'a charged move'}`, 'own');
+          log(`threw ${thrown ?? 'a charged move'}`, 'own', finish?.x === action.at[0] ? finish.why : undefined);
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!offered?.taken) {

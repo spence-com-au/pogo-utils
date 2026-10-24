@@ -319,3 +319,63 @@ export function wouldFaint(
     why: taken + afforded + staged(stages.their.attack, stages.own.defense) + assumed,
   };
 }
+
+/**
+ * How sure a lit move must be to finish the opponent before it is thrown over the one held for: the hit counted at
+ * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and 2
+ * points more, which a steady bar wanders from itself frame to frame (`health.mts`'s `JUMP`). Too sure costs no more
+ * than holding on as before; not sure enough leaves the opponent standing at a sliver with our energy spent.
+ */
+const FINISH = { hit: 0.9, slack: 0.02 } as const;
+
+/**
+ * Which lit button would finish the opponent, by its x, and why: one whose move takes at least the HP its bar shows,
+ * `hp` being the fraction of its maximum, by `FINISH`'s margin and against every form either side could be, the
+ * lowest of those hits deciding. The cheapest of several, keeping the most energy for the next opponent. `lit` is the
+ * move under each lit button, and `stages` each side's as `wouldFaint` takes them: our attack and their defense move
+ * the hit.
+ *
+ * Only with the opponent's `shields` all spent. With one left, a finishing hit is the one a player shields, and while
+ * it has one, baiting already holds for the cheapest move: the rule would decide nothing but which move is shielded.
+ *
+ * Undefined, leaving the move held for, where nothing lit finishes or where anything it rests on is unknown: either
+ * side's species or CP, a CP over `cap`, the opponent's HP or a move's numbers. Their CP unread is not taken as the
+ * cap, as `wouldFaint` takes it: a finish is thrown only on what was read.
+ */
+export function finisher(
+  data: GameData,
+  lit: ReadonlyMap<number, string>,
+  own: Side,
+  opponent: Side,
+  hp: number | null,
+  shields: number,
+  cap: number | null,
+  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+): { x: number; why: string } | undefined {
+  const ours = buildsOf(data, own, cap);
+  const theirs = buildsOf(data, opponent, cap);
+
+  if (shields > 0 || hp === null || ours.length === 0 || theirs.length === 0) {
+    return undefined;
+  }
+
+  const finishing = [...lit].flatMap(([x, name]) => {
+    const move = data.combat[name];
+
+    if (!move) {
+      return [];
+    }
+
+    const shares = ours.flatMap((attacker) =>
+      theirs.map(
+        (defender) => hit(data, move, attacker, defender, stages.own.attack, stages.their.defense) / defender.build.hp,
+      ),
+    );
+
+    return FINISH.hit * Math.min(...shares) >= hp + FINISH.slack ? [{ x, cost: -move.energy }] : [];
+  });
+
+  const [cheapest] = finishing.sort((a, b) => a.cost - b.cost);
+
+  return cheapest && { x: cheapest.x, why: `would finish ${opponent.species ?? 'the opponent'} at ${percent(hp)}` };
+}
