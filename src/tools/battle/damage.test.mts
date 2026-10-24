@@ -6,7 +6,17 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { cpOf, multiplierOf, type Form, type GameData } from '../inventory/game-master.mts';
-import { afterThrow, buildsOf, hit, NO_STAGES, rankOne, wouldFaint, type Side, type Stages } from './damage.mts';
+import {
+  afterThrow,
+  buildsOf,
+  finisher,
+  hit,
+  NO_STAGES,
+  rankOne,
+  wouldFaint,
+  type Side,
+  type Stages,
+} from './damage.mts';
 import { type Meta } from './meta.mts';
 
 const DATA = JSON.parse(
@@ -262,4 +272,56 @@ test('only a stat change that always happens moves a stage, and no further than 
   expect(afterThrow(undefined, NO_STAGES, NO_STAGES), 'a move not known').toEqual([NO_STAGES, NO_STAGES]);
   expect(after('Close Combat', { attack: 0, defense: -3 })).toEqual([{ attack: 0, defense: -4 }, NO_STAGES]);
   expect(after('Power-Up Punch', { attack: 4, defense: 0 })).toEqual([{ attack: 4, defense: 0 }, NO_STAGES]);
+});
+
+/**
+ * A CP 2500 Swampert holding Hydro Cannon and Earthquake against a CP 2242 Giratina, as in a live Ultra League battle
+ * that held for Earthquake while Hydro Cannon could have finished Giratina at 12%. Hydro Cannon takes 39 of an Altered
+ * Giratina's 199 HP, 20%, and 48 of an Origin one's 187, 26%; Earthquake 46% and 61%.
+ */
+const SWAMPERT = { species: 'Swampert', cp: 2500 };
+const GIRATINA = { species: 'Giratina', cp: 2242 };
+const HYDRO_CANNON = new Map([[0.31, 'Hydro Cannon']]);
+const BOTH = new Map([...HYDRO_CANNON, [0.69, 'Earthquake']]);
+
+test.each<[string, ReadonlyMap<number, string>, number, number, number | undefined]>([
+  ['at 12%, Hydro Cannon finishes', HYDRO_CANNON, 0.12, 0, 0.31],
+  ['at 17%, which only an Origin Giratina would surely go down from', HYDRO_CANNON, 0.17, 0, undefined],
+  ['at 12% with a shield left, which would stop it', HYDRO_CANNON, 0.12, 1, undefined],
+  ['at 5%, the cheaper of two that both finish', BOTH, 0.05, 0, 0.31],
+  ['at 30%, the one that finishes', BOTH, 0.3, 0, 0.69],
+  ['at 45%, neither surely', BOTH, 0.45, 0, undefined],
+  ['with nothing lit', new Map(), 0.02, 0, undefined],
+  ['with a move not known', new Map([[0.31, 'Not A Move']]), 0.02, 0, undefined],
+])('a lit move finishes Giratina %s', (_, lit, hp, shields, x) => {
+  expect(finisher(DATA, lit, SWAMPERT, GIRATINA, hp, shields, ULTRA)?.x).toBe(x);
+});
+
+test('says which opponent it would finish, and from how low', () => {
+  expect(finisher(DATA, HYDRO_CANNON, SWAMPERT, GIRATINA, 0.12, 0, ULTRA)).toEqual({
+    x: 0.31,
+    why: 'would finish Giratina at 12%',
+  });
+});
+
+test('anything unknown finishes nothing, the move held for being thrown as before', () => {
+  const finishes = (own: Side, opponent: Side, hp: number | null = 0.02) =>
+    finisher(DATA, BOTH, own, opponent, hp, 0, ULTRA);
+
+  expect(finishes(SWAMPERT, GIRATINA)?.x, 'all of it known').toBe(0.31);
+  expect(finishes({ species: null, cp: 2500 }, GIRATINA), 'our species').toBe(undefined);
+  expect(finishes({ species: 'Swampert', cp: null }, GIRATINA), 'our CP').toBe(undefined);
+  expect(finishes(SWAMPERT, { species: null, cp: 2242 }), 'theirs').toBe(undefined);
+  expect(finishes(SWAMPERT, { species: 'Giratina', cp: null }), 'their CP, not taken as the cap').toBe(undefined);
+  expect(finishes(SWAMPERT, { species: 'Giratina', cp: 2842 }), 'over the cap').toBe(undefined);
+  expect(finishes(SWAMPERT, GIRATINA, null), 'their HP').toBe(undefined);
+});
+
+test('our attack and their defense stages move the hit that finishes', () => {
+  const at = (hp: number, stages: ReturnType<typeof staged>) =>
+    finisher(DATA, HYDRO_CANNON, SWAMPERT, GIRATINA, hp, 0, ULTRA, stages)?.x;
+
+  expect(at(0.12, staged({}, { attack: -2 })), 'our attack down two').toBe(undefined);
+  expect(at(0.2, staged({ defense: -2 })), 'their defense down two').toBe(0.31);
+  expect(at(0.12, staged({ attack: 4 }, { defense: -4 })), 'their attack and our defense do not').toBe(0.31);
 });

@@ -577,6 +577,58 @@ test('baits with the cheaper move while the opponent has shields', async () => {
   expect(taps).toEqual(['fight', 'result']);
 });
 
+/** `image` with each box, as `[left, top, right, bottom]` in widths, filled with `colour`. */
+function painted(image: Image, colour: readonly number[], ...boxes: (readonly number[])[]): Image {
+  const data = image.data.slice();
+
+  for (const [left = 0, top = 0, right = 0, bottom = 0] of boxes) {
+    for (let y = Math.round(top * image.width); y < bottom * image.width; y++) {
+      for (let x = Math.round(left * image.width); x < right * image.width; x++) {
+        data.set([...colour, 255], (y * image.width + x) * 4);
+      }
+    }
+  }
+
+  return { ...image, data };
+}
+
+/**
+ * Giratina, CP 2392, with Shadow Sneak lit against a CP 2472 Mamoswine at 4%. With Mamoswine's shield hexagons painted
+ * a spent one's purple, its throw is told as the finish it would be; with them up, a shield could stop it, and it is
+ * thrown as the move held for. Our grey Poké Ball is painted red, as if Giratina, the party's third card, had led: read
+ * as a faint, it would be counted against Giratina, the one whose moves fit, leaving none of ours known to be out.
+ */
+test.each([
+  ['spent', [[0.7, 0.195, 0.78, 0.222]], 'own: threw Shadow Sneak: would finish Mamoswine at 4%'],
+  ['up', [], 'own: threw Shadow Sneak'],
+])('with the opponent’s shields %s, a throw that would finish it says so', async (_, spent, said) => {
+  const frame = painted(fixture('charged-shadow-sneak'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215]);
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: painted(frame, [111, 81, 118], ...spent), tap: { at: [0.499, 0.889], to: 'minigame' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      colours: COLOURS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).toContain('fight');
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual([said]);
+});
+
 /**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
