@@ -524,6 +524,42 @@ test('aims the minigame’s swipes at its bubbles', async () => {
   }
 });
 
+/**
+ * A throw waits for the fast move under way with its button lit, and a live run tapped it again a second on and told
+ * the one throw twice. Lit past the longest fast move, the first tap did not take and is retried, but told once still.
+ */
+test.each([
+  ['waits out a throw', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'result']],
+  ['retries a tap that did not take', undefined, ['fight', 'fight', 'result']],
+])('%s with the button still lit, telling the throw once', async (_, tap, tapped) => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('charged-shadow-sneak'), ...(tap && { tap }), lasts: { ms: 4000, to: 'minigame' } },
+      queued: { frame: fixture('charged-shadow-sneak'), lasts: { ms: 2000, to: 'minigame' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        colours: COLOURS,
+        count: 1,
+      },
+      clock,
+      report,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(taps).toEqual(tapped);
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(['own: threw Shadow Sneak']);
+});
+
 test('carries on into the next battle until the count is reached', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
 

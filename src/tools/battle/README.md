@@ -62,8 +62,9 @@ for text and done every few seconds.
 - **[`play.mts`](play.mts)**' `Player` turns a frame's state into an action: a swipe, a tap or a wait. A swipe across
   the field fires a fast move, about six a second. A charged move is tapped the moment the chosen button lights; with
   none chosen, whichever lit first. A state must hold for a few frames before it is answered, because a prompt sliding
-  in matches for a frame or two on its own. A tap isn't repeated within a second, and nothing is swiped for 0.7s after a
-  charged-move tap, since a swipe straight after one could cost the throw.
+  in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move's isn't repeated until
+  its throw plays or 3s pass, since the throw waits for the fast move under way, its button lit meanwhile. Nothing is
+  swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length. Where none are found, rows are swept instead.

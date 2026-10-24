@@ -675,6 +675,9 @@ export async function run(
       const ready = state === 'charged' ? readyButtons(frame) : [];
       const card = prompt?.card;
       const bubbles = player.minigame && bubbleColour ? bubbleSwipes(frame, bubbleColour) : undefined;
+
+      // A charged move tapped before the last one's throw has played is that throw retried, told and counted once.
+      const pending = player.minigame;
       const played = player.next(state, clock.now(), {
         ready,
         best,
@@ -692,7 +695,9 @@ export async function run(
       if (action.kind === 'swipe') {
         await phone.swipe(action.from, action.to, action.ms);
       } else if (action.kind === 'tap') {
-        if (action.what === 'charged') {
+        if (action.what === 'charged' && pending) {
+          log(`tap ${thrown ?? 'a charged move'} again`, 'own', 'its button still lit');
+        } else if (action.what === 'charged') {
           thrown = seen.moves.get(action.at[0]);
           const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
           stages = { own: user, their: target };
