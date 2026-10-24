@@ -167,10 +167,17 @@ Ancient Power's one-in-ten buff adds about 5%.
 stats count for nothing, since there's no next hit for them to matter on.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the strongest
-move would otherwise be wasted into. Once their shields are gone, it throws the move worth the most.
+move would otherwise be wasted into. Once their shields are gone, it throws the move worth the most. A bait costing no
+more than **10** energy less than the move worth the most isn't worth the shield it might not draw, so that move goes
+instead, logged as `threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already
-ready. ([What's next](#whats-next) covers when that should give way.)
+ready, except when it may not live that long: with no shield to take, and the opponent's counted energy (with the
+[one-hit allowance](#the-opponents-energy)) affording a move that would faint us, it throws whichever lit button is
+worth the most now, even while baiting. A shield drawn or damage dealt beats fainting with the energy stored. A lit
+button whose move wasn't read isn't weighed, and a faint feared only for something unread doesn't count, since only the
+count says a fainting move can come now. It is logged as
+`threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`.
 
 ### When to shield
 
@@ -260,9 +267,10 @@ The strategy still leaves some gaps:
 
 - **Our own energy.** Reading the fill on the unlit charged-move buttons would say how far off the best move is. That
   needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
-- **Throwing what's ready before fainting.** Throw a weaker move that's already ready if we would faint before the best
-  one fills, even while baiting, since drawing a shield is still something. This needs our own energy, and the
-  opponent's throws counted after our shields are gone, when no prompt shows; the banner can supply those.
+- **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
+  would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
+  fills, which needs our own energy to see coming, and the opponent's throws after our shields are gone, which show no
+  prompt and so go uncounted, leaving the count high; the banner can supply those.
 - **Out of scope for now:**
   - Getting a throw in before the opponent's.
   - Choosing who to send in by the opponent's energy.

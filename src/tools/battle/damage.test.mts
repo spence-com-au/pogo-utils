@@ -133,6 +133,25 @@ test('only the charged moves the opponent can afford are allowed for, where its 
   ).toMatch(/^Flamethrower would take ~\d+%, with 50% left, the hardest 60 energy affords$/);
 });
 
+test('the hardest move is named as afforded only where the counted energy affords it', () => {
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 80)).toMatchObject({
+    faints: true,
+    afforded: 'Fire Blast',
+  });
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 60),
+    'Flamethrower, short of faint',
+  ).toMatchObject({ faints: false, afforded: 'Flamethrower' });
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA).afforded, 'no energy counted').toBe(undefined);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 10).afforded,
+    'too little for anything, every move feared',
+  ).toBe(undefined);
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, null, ULTRA, null, undefined, 80).afforded, 'our HP unread').toBe(
+    undefined,
+  );
+});
+
 test('anything unknown counts as fainting', () => {
   expect(wouldFaint(DATA, { species: null, cp: 2495 }, MAGMAR, 0.9, ULTRA).faints, 'our species').toBe(true);
   expect(wouldFaint(DATA, CHARIZARD, { species: null, cp: 1826 }, 0.9, ULTRA).faints, 'theirs').toBe(true);

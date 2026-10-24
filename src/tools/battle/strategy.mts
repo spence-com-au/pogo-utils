@@ -291,10 +291,51 @@ export function shouldShield(data: GameData, own: string | null, opponent: strin
 }
 
 /**
- * Which button to throw, by its x, given the move read under each button: the one worth the most, or undefined where a
- * button of the pair has no move read under it yet and so could be either. While `bait`, the cheapest instead, to draw
- * a shield the strongest would otherwise be thrown into; the one worth more of two that cost the same. Worth as `worth`
- * prices it on our `lastHit` or otherwise.
+ * How much cheaper than the move worth the most a bait must be to be thrown in its place. A bait saves only the energy
+ * between the two, and ten is a fast move or two — Scizor's Bullet Punch gains 7 — where the shield it draws may never
+ * come. Togekiss baited a Scizor with Ancient Power, 45 energy, rather than throw Flamethrower, 55, which hits Scizor
+ * 2.56×: Scizor shielded the one Ancient Power, and Togekiss fainted seven seconds later without having thrown again.
+ */
+export const BAIT_SAVES = 10;
+
+/**
+ * The button to throw, by its x, and whether it is thrown as a bait. `why` says why not, where a bait was asked for and
+ * the bait was not thrown, its saving being too small for it.
+ */
+export interface Pick {
+  x: number;
+  bait: boolean;
+  why?: string;
+}
+
+/** A button's move as `bestButton` weighs it: what it costs, as a positive energy, and what it is worth. */
+interface Weighed {
+  x: number;
+  move: string;
+  cost: number;
+  worth: number;
+}
+
+const weigh = (
+  data: GameData,
+  x: number,
+  move: string,
+  own: readonly Typing[],
+  opponent: readonly Typing[],
+  lastHit: boolean,
+): Weighed => ({
+  x,
+  move,
+  cost: -(data.combat[move]?.energy ?? 0),
+  worth: worth(data, move, own, opponent, { lastHit }),
+});
+
+/**
+ * Which button to throw, given the move read under each button: the one worth the most, or undefined where a button of
+ * the pair has no move read under it yet and so could be either. While `bait`, the cheapest instead, to draw a shield
+ * the strongest would otherwise be thrown into, and the one worth more of two that cost the same; but only where it
+ * costs more than `BAIT_SAVES` less than the one worth the most, which is thrown instead as if there were no shields to
+ * bait. Worth as `worth` prices it on our `lastHit` or otherwise.
  */
 export function bestButton(
   data: GameData,
@@ -302,10 +343,11 @@ export function bestButton(
   own: readonly Typing[],
   opponent: readonly Typing[],
   { bait = false, lastHit = false } = {},
-): number | undefined {
+): Pick | undefined {
   const [left, centre, right] = BUTTON_XS;
   const buttons = moves.has(left) || moves.has(right) ? [left, right] : [centre];
-  let best: { x: number; cost: number; worth: number } | undefined;
+  let strongest: Weighed | undefined;
+  let cheapest: Weighed | undefined;
 
   for (const x of buttons) {
     const move = moves.get(x);
@@ -314,11 +356,53 @@ export function bestButton(
       return undefined;
     }
 
-    const hit = { x, cost: -(data.combat[move]?.energy ?? 0), worth: worth(data, move, own, opponent, { lastHit }) };
-    const better =
-      bait && best?.cost !== hit.cost ? hit.cost < (best?.cost ?? Infinity) : hit.worth > (best?.worth ?? -1);
+    const hit = weigh(data, x, move, own, opponent, lastHit);
 
-    if (!best || better) {
+    if (!strongest || hit.worth > strongest.worth) {
+      strongest = hit;
+    }
+
+    if (!cheapest || hit.cost < cheapest.cost || (hit.cost === cheapest.cost && hit.worth > cheapest.worth)) {
+      cheapest = hit;
+    }
+  }
+
+  if (!strongest || !cheapest || !bait || cheapest === strongest) {
+    return strongest && { x: strongest.x, bait };
+  }
+
+  const saves = strongest.cost - cheapest.cost;
+
+  return saves > BAIT_SAVES
+    ? { x: cheapest.x, bait }
+    : {
+        x: strongest.x,
+        bait: false,
+        why: `not baiting: ${cheapest.move} costs only ${saves} less than ${strongest.move}`,
+      };
+}
+
+/**
+ * Which of the `lit` buttons is worth the most to throw now, by its x, rather than hold for the one chosen: of those
+ * with a move read under them, a lit button whose move is not known having nothing to weigh. Undefined where none is.
+ * Worth as `worth` prices it on our `lastHit` or otherwise, and with no bait: a throw that may be our last is worth what
+ * it hits for.
+ */
+export function bestLit(
+  data: GameData,
+  moves: ReadonlyMap<number, string>,
+  lit: Iterable<number>,
+  own: readonly Typing[],
+  opponent: readonly Typing[],
+  { lastHit = false } = {},
+): number | undefined {
+  let best: Weighed | undefined;
+
+  for (const x of lit) {
+    const move = moves.get(x);
+    const hit = move === undefined ? undefined : weigh(data, x, move, own, opponent, lastHit);
+
+    if (hit && (!best || hit.worth > best.worth)) {
       best = hit;
     }
   }

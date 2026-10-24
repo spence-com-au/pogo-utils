@@ -25,7 +25,7 @@ import { bubbleSwipes, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
 import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
-import { activeOf, bestButton, counterOf, nextOut, typesOf } from './strategy.mts';
+import { activeOf, bestButton, bestLit, counterOf, nextOut, typesOf, type Pick } from './strategy.mts';
 import { afterThrow, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
 import { Energy, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
@@ -591,6 +591,7 @@ export async function run(
 
       // What the opponent can afford: the energy counted, and a fast move's more for a hit the count missed.
       const estimate = energy.estimate(facing);
+      const affordable = estimate ? estimate.energy + estimate.gain : undefined;
 
       // Taken only where the opponent's hardest charged move would faint us: a hit we survive is eaten, the shield kept
       // for one we would not. Hardest of those it can afford, where its energy is counted. A league whose cap went
@@ -606,7 +607,7 @@ export async function run(
               cap,
               meta,
               theirMoves.get(seen.opponent ?? ''),
-              estimate ? estimate.energy + estimate.gain : undefined,
+              affordable,
               stages,
             );
       const shield = ourShields > 0 && verdict.faints;
@@ -615,9 +616,31 @@ export async function run(
       // past mattering. The shield's verdict, unknowns and an unread cap counting as fainting here too: guessed wrong,
       // either way it costs no more than the stages of one move, where telling a guess from a read would take `Verdict`
       // saying which it is.
-      const bait = theirShields > 0;
       const lastHit = ourShields === 0 && verdict.faints;
-      const best = bestButton(data, seen.moves, typesOf(data, own), typesOf(data, seen.opponent), { bait, lastHit });
+      const ownTypes = typesOf(data, own);
+      const theirTypes = typesOf(data, seen.opponent);
+      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
+      const ready = state === 'charged' ? readyButtons(frame) : [];
+
+      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, and
+      // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
+      // drawn or damage dealt being better than fainting with the energy stored. Only on the count's word, a faint feared
+      // for something unknown being no sign that one is coming.
+      const lit = ready.map(([x]) => x);
+      const now =
+        pick && !shield && verdict.faints && verdict.afforded !== undefined
+          ? bestLit(data, seen.moves, lit, ownTypes, theirTypes, { lastHit })
+          : undefined;
+      const held = pick && seen.moves.get(pick.x);
+      const throwing: Pick | undefined =
+        pick && now !== undefined && now !== pick.x
+          ? {
+              x: now,
+              bait: false,
+              why: `${verdict.afforded} would faint us, ${affordable} energy affords it; not holding for ${held}`,
+            }
+          : pick;
+      const best = throwing?.x;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: verdict.why, taken: false };
@@ -634,7 +657,7 @@ export async function run(
         },
         moves: [...seen.moves.values()],
         throwing: (best !== undefined && seen.moves.get(best)) || undefined,
-        bait,
+        bait: throwing?.bait ?? theirShields > 0,
         shield,
         ...(estimate && { energy: { energy: estimate.energy, fast: estimate.fast } }),
       };
@@ -672,7 +695,6 @@ export async function run(
         counter = chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame) };
       }
 
-      const ready = state === 'charged' ? readyButtons(frame) : [];
       const card = prompt?.card;
       const bubbles = player.minigame && bubbleColour ? bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
@@ -696,7 +718,7 @@ export async function run(
           thrown = seen.moves.get(action.at[0]);
           const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
           stages = { own: user, their: target };
-          log(`threw ${thrown ?? 'a charged move'}`, 'own');
+          log(`threw ${thrown ?? 'a charged move'}`, 'own', action.at[0] === best ? throwing?.why : undefined);
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!offered?.taken) {

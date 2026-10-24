@@ -207,6 +207,12 @@ export const MOVES_HELD = 2;
 export interface Verdict {
   faints: boolean;
   why: string;
+
+  /**
+   * The hardest move, where it is one the opponent's counted energy affords. Undefined where the energy is not counted,
+   * or where the count affords nothing and so every move is allowed for.
+   */
+  afforded?: string;
 }
 
 /** Why `whose` side, as `our` or `their`, has no build: what of it went unread, or a CP over `cap` and so misread. */
@@ -284,14 +290,15 @@ export function wouldFaint(
 
   // The hardest hit of all, as a share of our maximum HP: past `FAINTS` of what is left on any of our forms is past it
   // on the form it hurts most.
-  let hardest = { name: '', share: 0 };
+  let hardest = { name: '', share: 0, afforded: false };
   let narrowed = false;
 
   for (const attacker of theirs) {
     const names = seen.size >= MOVES_HELD ? [...seen] : chargedOf(attacker.form, moveset);
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
     const afforded = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
-    const moves = afforded.length > 0 ? afforded : allowed;
+    const counted = affordable !== undefined && afforded.length > 0;
+    const moves = counted ? afforded : allowed;
 
     narrowed ||= moves.length < allowed.length;
 
@@ -304,7 +311,7 @@ export function wouldFaint(
         const share = hit(data, move, attacker, defender, stages.their.attack, stages.own.defense) / defender.build.hp;
 
         if (share > hardest.share) {
-          hardest = { name, share };
+          hardest = { name, share, afforded: counted };
         }
       }
     }
@@ -317,5 +324,6 @@ export function wouldFaint(
   return {
     faints: hardest.share >= FAINTS * hp,
     why: taken + afforded + staged(stages.their.attack, stages.own.defense) + assumed,
+    ...(hardest.afforded && { afforded: hardest.name }),
   };
 }
