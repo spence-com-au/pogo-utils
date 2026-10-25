@@ -43,8 +43,9 @@ Take from the session what the session already holds. Ask only for what is not t
 | Browser  | Which browser and version, phone or desktop. Ask — nothing in the session knows this.            |
 | Console  | What the browser console printed. Empty is a fair answer; a reader need not have looked.         |
 
-A failure in a `pnpm inventory` command is Page `Pokémon inventory`, with Link and Browser left empty. The command and
-the Node version it ran under go in `What happened instead`, and what it printed goes in Console.
+A failure in a `pnpm inventory` command is Page `Pokémon inventory`, and one in a `pnpm battle` command is Page
+`Trainer battles`, with Link and Browser left empty. The command and the Node version it ran under go in
+`What happened instead`, and what it printed goes in Console.
 
 Invoked cold, with no failure in scope, interview for each section in one round rather than one question at a time.
 

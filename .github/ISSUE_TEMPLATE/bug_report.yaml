@@ -1,6 +1,6 @@
 ---
 name: 'Bug report'
-description: 'Something the site or the inventory tool did that it should not have'
+description: 'Something the site, the inventory tool or the battle tool did that it should not have'
 labels:
   - 'bug'
 
@@ -9,7 +9,9 @@ body:
     id: 'page'
     attributes:
       label: 'Page'
-      description: 'The tab it happened on, or `Pokémon inventory` for a `pnpm inventory` command.'
+      description:
+        'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, or `Trainer battles` for a `pnpm
+        battle` command.'
       options:
         - 'Events'
         - 'Map'
@@ -18,6 +20,7 @@ body:
         - 'Integrations'
         - 'The whole site'
         - 'Pokémon inventory'
+        - 'Trainer battles'
     validations:
       required: true
 
@@ -27,7 +30,8 @@ body:
       label: 'Link'
       description:
         'The address bar, copied. The fragment carries the state a page was left in, so this is what reproduces it. The
-        inventory tool has no address, so leave this empty for it and give the command under What happened instead.'
+        inventory and battle tools have no address, so leave this empty for them and give the command under What
+        happened instead.'
       placeholder: 'https://spence.com.au/pogo-utils/#/pokedex?q=pika&n=25'
 
   - type: 'textarea'
