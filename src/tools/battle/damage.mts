@@ -13,7 +13,7 @@
 
 import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, STAB, stage, type Pick } from './strategy.mts';
+import { chargedOf, effectiveness, formsOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's
@@ -42,9 +42,8 @@ export interface Battler {
   build: Build;
 }
 
-/** One side as the HUD shows it, either half of which may not have been read. */
-export interface Side {
-  species: string | null;
+/** One side as the HUD shows it, any of which may not have been read. */
+export interface Side extends Shown {
   cp: number | null;
 }
 
@@ -142,18 +141,18 @@ export function rankOne(data: GameData, form: Form, cp: number): Build | null {
 }
 
 /**
- * Every form a species could be, as `typesOf` takes them, each built rank 1 for the CP read. None where the species or
+ * Every form a side could be, as `typesOf` takes them, each built rank 1 for the CP read. None where the species or
  * the CP is unknown, or where the CP is over the league's cap and so misread; no cap is Master League's.
  */
 export function buildsOf(data: GameData, side: Side, cap: number | null): Battler[] {
-  const { species, cp } = side;
+  const { cp } = side;
 
   if (cp === null || (cap !== null && cp > cap)) {
     return [];
   }
 
-  return data.forms
-    .filter((form) => form.species === species && !form.costume)
+  return formsOf(data, side)
+    .filter((form) => !form.costume)
     .flatMap((form) => {
       const build = rankOne(data, form, cp);
 

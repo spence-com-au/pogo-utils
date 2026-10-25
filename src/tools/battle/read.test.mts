@@ -38,12 +38,12 @@ test.each([
   // OCR runs the two CPs into one line, `cP 1387 ee CP 1487`, over the Pixel 8 Pro's darker sky.
   ['battle-pixel8', 'Combusken', [1387, 1487], { 0.499: 'Dark Pulse' }],
 ])('%s: against %s, at CPs %j, with %o', async (name, opponent, [ownCp, opponentCp], moves) => {
-  expect(await read(name)).toEqual({ own: null, opponent, ownCp, opponentCp, moves });
+  expect(await read(name)).toEqual({ ...unseen(), opponent, ownCp, opponentCp, moves });
 });
 
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
   expect(await read('battle-minigame-kyogre-great')).toEqual({
-    own: null,
+    ...unseen(),
     opponent: 'Entei',
     ownCp: 3813,
     opponentCp: 4163,
@@ -52,17 +52,24 @@ test('a frame with no labels reads none, rather than reading its artwork as move
 });
 
 test('the shield prompt, which hides the HUD, reads nothing', async () => {
-  expect(await read('shield-glaceon')).toEqual({ own: null, opponent: null, ownCp: null, opponentCp: null, moves: {} });
+  expect(await read('shield-glaceon')).toEqual({ ...unseen(), moves: {} });
 });
 
 test('a read keeps what earlier reads found, bar labels of the other layout', () => {
-  const seen = { ...unseen(), opponent: 'Entei', opponentCp: 4163, moves: new Map([[0.499, 'Crunch']]) };
+  const seen = {
+    ...unseen(),
+    opponent: 'Entei',
+    opponentCp: 4163,
+    opponentTypes: ['Fire'],
+    moves: new Map([[0.499, 'Crunch']]),
+  };
 
   expect(merge(seen, { ...unseen(), ownCp: 3796, moves: new Map([[0.31, 'Crunch']]) })).toEqual({
-    own: null,
+    ...unseen(),
     opponent: 'Entei',
     ownCp: 3796,
     opponentCp: 4163,
+    opponentTypes: ['Fire'],
     moves: new Map([[0.31, 'Crunch']]),
   });
   expect(merge(seen, { ...unseen(), opponent: 'Moltres' }).moves, 'a read of no labels').toEqual(seen.moves);

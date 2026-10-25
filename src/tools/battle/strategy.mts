@@ -5,8 +5,8 @@
  *
  * Whatever is not known counts as neutral rather than holding anything up: an opponent whose name was not read is hit
  * for 1×, and a Pokémon of ours whose species is not known gets no STAB. A name its forms give different types — a
- * Galarian Moltres is Dark and Flying where a Kantonian one is Fire — counts as whichever of them a move does worst
- * against, the HUD showing only the name.
+ * Galarian Moltres is Dark and Flying where a Kantonian one is Fire and Flying — is the form its type icons show, and
+ * counts as whichever of them a move does worst against where the icons were not read.
  *
  * And when to shield, which the prompt does not say: it never names the move coming, so a shield is spent unless every
  * charged move the opponent's species can have is known to be no better than neutral against ours. Which moves it can
@@ -29,9 +29,28 @@ export const SHADOW_AND_PURIFIED = new Set(['Frustration', 'Return']);
 /** The types of one form, the one or two of them. */
 export type Typing = readonly string[];
 
-/** Every typing a species' forms have, one where they agree, and none where nothing is called that. */
-export function typesOf(data: GameData, species: string | null): readonly Typing[] {
-  const forms = data.forms.filter((form) => form.species === species && !form.costume);
+/** A Pokémon as the HUD shows it: its species where named, and its types where the icons above its panel were read. */
+export interface Shown {
+  species: string | null;
+  types?: Typing | null;
+}
+
+/**
+ * Every form `shown` could be: those of its species with the types shown, or every one of its species where the types
+ * were not read or no form has them, as a misread or a species read wrong leaves them.
+ */
+export function formsOf(data: GameData, { species, types }: Shown): Form[] {
+  const forms = data.forms.filter((form) => form.species === species);
+  const shown = forms.filter(
+    (form) => types && form.types.length === types.length && form.types.every((type) => types.includes(type)),
+  );
+
+  return shown.length > 0 ? shown : forms;
+}
+
+/** Every typing `shown`'s forms have, one where they agree, and none where nothing is called that. */
+export function typesOf(data: GameData, shown: Shown): readonly Typing[] {
+  const forms = formsOf(data, shown).filter((form) => !form.costume);
 
   return [...new Set(forms.map((form) => [...form.types].sort().join('/')))].map((types) => types.split('/'));
 }
@@ -158,7 +177,7 @@ export function nextOut(
   data: GameData,
   party: readonly (string | null)[],
   fainted: ReadonlySet<number>,
-  opponent: string | null,
+  opponent: Shown,
   meta?: Meta | null,
 ): { slot: number; why: string } | undefined {
   const scored = party.flatMap((species, slot) =>
@@ -167,7 +186,7 @@ export function nextOut(
       : [
           {
             slot,
-            safe: species !== null && !shouldShield(data, species, opponent, meta),
+            safe: species !== null && !shouldShield(data, { species }, opponent, meta),
             ...hardest(data, species, opponent),
           },
         ],
@@ -182,7 +201,7 @@ export function nextOut(
   }
 
   // What set it before the next best, which the order of the sort says.
-  const safety = `safe from ${opponent ?? 'the opponent'}'s moves`;
+  const safety = `safe from ${opponent.species ?? 'the opponent'}'s moves`;
   const why = !next
     ? 'the last left'
     : best.safe !== next.safe
@@ -201,9 +220,9 @@ export function nextOut(
 function hardest(
   data: GameData,
   species: string | null,
-  opponent: string | null,
+  opponent: Shown,
 ): { hardest: number; move: string | undefined } {
-  const own = typesOf(data, species);
+  const own = typesOf(data, { species });
   const types = typesOf(data, opponent);
   const moves = species === null ? [] : [...chargedMoves(data, species)].filter((m) => !SHADOW_AND_PURIFIED.has(m));
   let best = { hardest: 0, move: undefined as string | undefined };
@@ -233,18 +252,18 @@ export function counterOf(
   data: GameData,
   party: readonly (string | null)[],
   out: number,
-  own: string | null,
+  own: Shown,
   fainted: ReadonlySet<number>,
-  opponent: string | null,
+  opponent: Shown,
   meta?: Meta | null,
 ): { slot: number; why: string } | undefined {
-  if (own === null || opponent === null || !shouldShield(data, own, opponent, meta)) {
+  if (own.species === null || opponent.species === null || !shouldShield(data, own, opponent, meta)) {
     return undefined;
   }
 
   const types = typesOf(data, opponent);
   const counters = party.flatMap((species, slot) => {
-    if (species === null || slot === out || fainted.has(slot) || shouldShield(data, species, opponent, meta)) {
+    if (species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)) {
       return [];
     }
 
@@ -263,7 +282,7 @@ export function counterOf(
   return (
     best && {
       slot: best.slot,
-      why: `${own} is hit super effectively; ${best.beats} is, and nothing of ${opponent}'s is`,
+      why: `${own.species} is hit super effectively; ${best.beats} is, and nothing of ${opponent.species}'s is`,
     }
   );
 }
@@ -274,16 +293,15 @@ export function counterOf(
  * allowed for by `chargedOf`, since which two this one has is never shown: legacy and elite ones among them, or in a
  * league PvPoke ranks, those its players run.
  */
-export function shouldShield(data: GameData, own: string | null, opponent: string | null, meta?: Meta | null): boolean {
+export function shouldShield(data: GameData, own: Shown, opponent: Shown, meta?: Meta | null): boolean {
   const typings = typesOf(data, own);
 
-  if (typings.length === 0 || opponent === null) {
+  if (typings.length === 0 || opponent.species === null) {
     return true;
   }
 
-  const moveset = meta?.movesets.get(opponent);
-  const forms = data.forms.filter((form) => form.species === opponent);
-  const moves = [...new Set(forms.flatMap((form) => chargedOf(form, moveset)))].flatMap(
+  const moveset = meta?.movesets.get(opponent.species);
+  const moves = [...new Set(formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset)))].flatMap(
     (name) => data.combat[name] ?? [],
   );
 

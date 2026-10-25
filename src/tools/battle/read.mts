@@ -13,6 +13,7 @@ import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
 import { crop, scale, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, TOP } from './layout.mts';
 import { BUTTON_XS } from './recognise.mts';
+import { type Typing } from './strategy.mts';
 
 export interface Sighting {
   /** Our species, or null where a nickname stands in its place. */
@@ -23,12 +24,24 @@ export interface Sighting {
   ownCp: number | null;
   opponentCp: number | null;
 
+  /** Each side's types, as `readTypes` reads the icons above its panel, or null where they were not read. */
+  ownTypes: Typing | null;
+  opponentTypes: Typing | null;
+
   /** The move under each button whose label was read, by the button's x. */
   moves: Map<number, string>;
 }
 
 /** A sighting of nothing yet, which a battle starts from. */
-export const unseen = (): Sighting => ({ own: null, opponent: null, ownCp: null, opponentCp: null, moves: new Map() });
+export const unseen = (): Sighting => ({
+  own: null,
+  opponent: null,
+  ownCp: null,
+  opponentCp: null,
+  ownTypes: null,
+  opponentTypes: null,
+  moves: new Map(),
+});
 
 /**
  * The HUD's line of names, pinned to the top, and the labels beneath the buttons, lit or not, pinned to the foot: across
@@ -206,6 +219,8 @@ export function merge(seen: Sighting, read: Sighting): Sighting {
     opponent: read.opponent ?? seen.opponent,
     ownCp: read.ownCp ?? seen.ownCp,
     opponentCp: read.opponentCp ?? seen.opponentCp,
+    ownTypes: read.ownTypes ?? seen.ownTypes,
+    opponentTypes: read.opponentTypes ?? seen.opponentTypes,
     moves: new Map([...kept, ...read.moves]),
   };
 }

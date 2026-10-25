@@ -8,10 +8,9 @@ import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
 import { useEngine } from '../inventory/ocr.mts';
 import { tesseractCli } from '../inventory/ocr-cli.mts';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, expect, test } from 'vitest';
-import { typeColour } from './minigame.mts';
 import { silhouetteOfIcon } from './party.mts';
 import { type Point } from './play.mts';
 import { type Fight, type Reporter } from './report.mts';
@@ -61,15 +60,9 @@ const ICONS = readdirSync(new URL('fixtures/icons/', import.meta.url)).map((icon
   silhouette: silhouetteOfIcon(fixture(`icons/${icon.replace(/[.]png$/, '')}`)),
 }));
 
-/** The bubble colours of the types `minigame.test.mts` has icons for, by the game master's type names. */
-const COLOURS = Object.fromEntries(
-  DATA.types.flatMap((type) => {
-    const name = `types/POKEMON_TYPE_${type.toUpperCase()}`;
-
-    return existsSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url)))
-      ? [[type, typeColour(fixture(name))]]
-      : [];
-  }),
+/** The game's icon for each type, by the game master's type names. */
+const TYPE_ICONS = Object.fromEntries(
+  DATA.types.map((type) => [type, fixture(`types/POKEMON_TYPE_${type.toUpperCase()}`)]),
 );
 
 interface Scene {
@@ -209,7 +202,7 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -238,7 +231,7 @@ test('finds its way to the leader from the map', async () => {
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 1,
       },
       clock,
@@ -285,7 +278,11 @@ test('swipes the party carousel to the party named before using it', async () =>
   const { phone, clock, taps, strokes } = scripted(parties(), 'party');
 
   expect(
-    await run(phone, { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, colours: COLOURS, count: 1 }, clock),
+    await run(
+      phone,
+      { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 },
+      clock,
+    ),
   ).toEqual({ battles: 1, won: 0, lost: 1 });
   expect(strokes.filter(({ scene }) => scene === 'party' || scene === 'test3')).toHaveLength(2);
   expect(taps.slice(0, 1)).toEqual(['gbl']);
@@ -303,7 +300,11 @@ test('searches a carousel for longer than the run takes to give up as lost', asy
   const { phone, clock, taps } = scripted({ ...parties(), ...walk }, 'card0');
 
   expect(
-    await run(phone, { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, colours: COLOURS, count: 1 }, clock),
+    await run(
+      phone,
+      { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 },
+      clock,
+    ),
   ).toEqual({ battles: 1, won: 0, lost: 1 });
   expect(taps[0]).toBe('gbl');
   expect(clock.now()).toBeGreaterThan(LOST_MS);
@@ -313,7 +314,7 @@ test('stops rather than battle where no party has the name', async () => {
   const { phone, clock, taps } = scripted(parties(), 'party');
 
   await expect(
-    run(phone, { mode: { ...GBL, party: 'Great' }, data: DATA, icons: ICONS, colours: COLOURS, count: 1 }, clock),
+    run(phone, { mode: { ...GBL, party: 'Great' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
   ).rejects.toThrow('no party named Great saved for this league: test 4, test 3, gbl');
   expect(taps).toEqual([]);
 });
@@ -321,7 +322,7 @@ test('stops rather than battle where no party has the name', async () => {
 test('plays GO Battle League battles from the map, waiting out matchmaking', async () => {
   const { phone, clock, taps } = scripted(league(), 'map');
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, count: 2 }, clock)).toEqual({
+  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock)).toEqual({
     battles: 2,
     won: 0,
     lost: 2,
@@ -340,7 +341,7 @@ test('taps no Poké Ball once a GO Battle League battle has been played', async 
   );
 
   await expect(
-    run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, count: 2 }, clock),
+    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
   ).rejects.toBeInstanceOf(Lost);
   expect(taps.filter((scene) => scene === 'map')).toEqual([]);
 });
@@ -355,7 +356,7 @@ test('stops at the end of a GO Battle League set, leaving its reward to be colle
     'party',
   );
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, count: 3 }, clock)).toEqual({
+  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 3 }, clock)).toEqual({
     battles: 1,
     won: 1,
     lost: 0,
@@ -370,7 +371,7 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
     'opening',
   );
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, count: 1 }, clock)).toEqual({
+  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
     battles: 1,
     won: 0,
     lost: 1,
@@ -414,7 +415,7 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 1,
         keep: (frame, at, event) => kept.push([sceneOf(frame), at, event]),
       },
@@ -455,7 +456,12 @@ test('plays on as soon as the battle is back, without waiting for a menu read', 
   await expect(
     run(
       phone,
-      { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, colours: COLOURS },
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+      },
       clock,
     ),
   ).rejects.toBeInstanceOf(Lost);
@@ -477,7 +483,7 @@ test('stops on a Battle tab whose Training card never shows, rather than scroll 
 
   const lost = await run(
     phone,
-    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, colours: COLOURS },
+    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS },
     clock,
   ).catch((error: unknown) => error);
 
@@ -506,7 +512,7 @@ test('aims the minigame’s swipes at its bubbles', async () => {
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 1,
       },
       clock,
@@ -549,7 +555,7 @@ test.each([
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 1,
       },
       clock,
@@ -599,7 +605,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -621,7 +627,7 @@ test('carries on into the next battle until the count is reached', async () => {
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 2,
       },
       clock,
@@ -657,7 +663,7 @@ test('baits with the cheaper move while the opponent has shields', async () => {
         mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
         data: DATA,
         icons: ICONS,
-        colours: COLOURS,
+        typeIcons: TYPE_ICONS,
         count: 1,
       },
       clock,
@@ -707,7 +713,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -740,7 +746,7 @@ test('reads the opponent again the moment a fuller bar says it was switched', as
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -783,7 +789,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -827,7 +833,7 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -843,10 +849,11 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
 });
 
 /**
- * The opponent switches Glaceon out for Golem, its three Poké Balls still red, whose Earthquake threatens the Pokémon we
- * have out. Latias, second of the party and so the bench's top card, is safe from either Golem's moves, and its Aura
- * Sphere hits both super effectively: it is switched in at once. Taken where the HUD's CP has changed by the next read,
- * and refused where it has not, the switch timer still running, which leaves the one tapped away from out.
+ * The opponent switches Glaceon out for Golem, its three Poké Balls still red, with no type icons to read its form by:
+ * either Golem it could be, and a Kantonian one's Earthquake threatens the Pokémon we have out. Latias, second of the
+ * party and so the bench's top card, is safe from either Golem's moves, and its Aura Sphere hits both super
+ * effectively: it is switched in at once. Taken where the HUD's CP has changed by the next read, and refused where it
+ * has not, the switch timer still running, which leaves the one tapped away from out.
  */
 test.each([
   ['taken', 'battle-crunch-entei', []],
@@ -876,7 +883,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: {},
       count: 1,
     },
     clock,
@@ -890,6 +897,34 @@ test.each([
     "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
     ...told,
   ]);
+});
+
+/** The same Golem read by its type icons, Rock and Electric: an Alolan one, nothing of which threatens Gengar. */
+test('stays in when the type icons show a form that does not threaten ours', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+      glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'golem' } },
+      golem: { frame: fixture('battle-gengar-label-short'), lasts: { ms: 6000, to: 'won' } },
+    },
+    'party',
+  );
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+  );
+
+  expect(taps.filter((scene) => scene === 'golem')).toEqual([]);
 });
 
 /** Glaceon gives way to Sneasel, which no card of ours counters, a Hisuian one's Close Combat beating Mamoswine. */
@@ -910,7 +945,7 @@ test('stays in when nothing benched counters the opponent switched in', async ()
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -941,7 +976,7 @@ test('names the lead from the party, and the next of it after a faint', async ()
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -986,7 +1021,7 @@ test('answers no switch prompt while all three of our Poké Balls are red', asyn
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1019,7 +1054,7 @@ test('counts a faint off our Poké Balls where no switch prompt is answered for 
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1057,7 +1092,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1091,7 +1126,7 @@ test.each([
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1134,7 +1169,7 @@ test('keeps the shield through a prompt whose bar flickers low', async () => {
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1166,7 +1201,7 @@ test('learns the move the banner after a shield prompt names', async () => {
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1193,7 +1228,7 @@ test('takes every shield in GO Battle League until the party screen has given th
     'fight',
   );
 
-  await run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, count: 1 }, clock);
+  await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(['prompt']);
 });
@@ -1218,7 +1253,7 @@ test('takes the cap from the league named until the party screen gives it', asyn
   const report = recorder();
   const meta = { cup: 'all', cap: 2500, movesets: new Map() };
 
-  await run(phone, { mode: GBL, data: DATA, icons: ICONS, colours: COLOURS, meta, count: 1 }, clock, report);
+  await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, meta, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
@@ -1250,7 +1285,7 @@ test('keeps the frames a second either side of a shield prompt', async () => {
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
       keep: (frame, at, event) => kept.push([sceneOf(frame), at, event]),
     },
@@ -1285,7 +1320,7 @@ test('says each side’s CP and HP, and how many shields we have left', async ()
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
       icons: ICONS,
-      colours: COLOURS,
+      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -1320,7 +1355,7 @@ test('stops, keeping its last frames, where nothing is recognised', async () => 
 
   const lost = await run(
     phone,
-    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, colours: COLOURS },
+    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS },
     clock,
   ).catch((error: unknown) => error);
 

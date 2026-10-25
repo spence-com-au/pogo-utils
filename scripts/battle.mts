@@ -39,7 +39,6 @@
 import { ICON_BASE, POGO_ASSETS } from '../src/pokedex/icons.ts';
 import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
-import { typeColour, type Colour } from '../src/tools/battle/minigame.mts';
 import { silhouetteOfIcon, type Icon } from '../src/tools/battle/party.mts';
 import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
@@ -105,10 +104,11 @@ if (ignored.length > 0) {
 }
 
 /**
- * The colour each type's minigame bubbles are drawn in, out of the game's own icon for the type: 18 small files, cached
- * beside the form icons. A type whose icon cannot be had is swiped at in rows, as before the bubbles were aimed at.
+ * The game's own icon for each type, which the minigame's bubbles and the HUD's type icons are told by: 18 small files,
+ * cached beside the form icons. A type whose icon cannot be had is swiped at in rows, as before the bubbles were aimed
+ * at, and its icon in the HUD is read as no type.
  */
-async function bubbleColours(data: GameData): Promise<Record<string, Colour>> {
+async function typeIcons(data: GameData): Promise<Record<string, Image>> {
   const read = await Promise.all(
     data.types.map(async (type) => {
       const file = `POKEMON_TYPE_${type.toUpperCase()}.png`;
@@ -116,7 +116,7 @@ async function bubbleColours(data: GameData): Promise<Record<string, Colour>> {
       try {
         const icon = await cachedAs(join(CACHE, 'types'), file, `${POGO_ASSETS}Images/Types/${file}`, false, decodePng);
 
-        return [[type, typeColour(icon)] as const];
+        return [[type, icon] as const];
       } catch {
         return [];
       }
@@ -212,7 +212,7 @@ if (command === 'run') {
   // Which move is worth the most, out of the game master `pnpm inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
   const icons = await silhouettes(data);
-  const colours = await bubbleColours(data);
+  const types = await typeIcons(data);
 
   // What GO Battle League's players run in the league, out of PvPoke's rankings; Training allows for every move.
   const meta = mode.mode === 'gbl' ? await loadMeta(CACHE, data, mode.league) : null;
@@ -338,7 +338,7 @@ if (command === 'run') {
 
     const { battles, won, lost } = await run(
       phone,
-      { mode, data, icons, colours, meta, count, ...(keep && { keep }) },
+      { mode, data, icons, typeIcons: types, meta, count, ...(keep && { keep }) },
       clock,
       report,
     ).finally(() => panel?.done());

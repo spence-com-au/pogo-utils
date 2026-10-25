@@ -18,7 +18,7 @@
 import { type GameData } from '../inventory/game-master.mts';
 import { buildsOf, capped, hit, MOVES_HELD, type Side } from './damage.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf } from './strategy.mts';
+import { chargedOf, formsOf, type Shown } from './strategy.mts';
 
 /** As much energy as a Pokémon can hold. */
 export const FULL = 100;
@@ -83,7 +83,8 @@ const median = (values: readonly number[]) => {
   return sorted[sorted.length >> 1] ?? 0;
 };
 
-const keyOf = ({ own, opponent }: Matchup) => `${own.species}|${own.cp}|${opponent.species}|${opponent.cp}`;
+const keyOf = ({ own, opponent }: Matchup) =>
+  [own, opponent].map(({ species, cp, types }) => `${species}|${cp}|${types?.join('/')}`).join('|');
 
 export class Energy {
   readonly #data: GameData;
@@ -166,9 +167,7 @@ export class Energy {
     const names =
       seen.size >= MOVES_HELD
         ? [...seen]
-        : this.#data.forms
-            .filter((form) => form.species === species)
-            .flatMap((form) => chargedOf(form, this.#meta?.movesets.get(species)));
+        : formsOf(this.#data, matchup.opponent).flatMap((form) => chargedOf(form, this.#meta?.movesets.get(species)));
     const cheapest = Math.min(...names.map((name) => this.#costOf(name)).filter((cost) => cost > 0));
 
     tally.had = had;
@@ -208,7 +207,7 @@ export class Energy {
     }
 
     const tally = this.#tallyOf(species);
-    const fast = this.#fastOf(species, tally);
+    const fast = this.#fastOf({ species, types: matchup.opponent.types }, tally);
 
     if (fast === undefined) {
       return null;
@@ -247,12 +246,13 @@ export class Energy {
   }
 
   /**
-   * Which fast move the steps are: of those the species is allowed for, the one whose hit the damage model puts nearest
+   * Which fast move the steps are: of those its forms are allowed for, the one whose hit the damage model puts nearest
    * the median step, by ratio, over every stretch that has one. Before any step, PvPoke's recommended one where it
    * ranks the species, and otherwise the one gaining energy fastest, which counts the most energy.
    */
-  #fastOf(species: string, tally: Tally): string | undefined {
-    const forms = this.#data.forms.filter((form) => form.species === species && !form.costume);
+  #fastOf(opponent: Shown & { species: string }, tally: Tally): string | undefined {
+    const { species } = opponent;
+    const forms = formsOf(this.#data, opponent).filter((form) => !form.costume);
     const pool = [...new Set(forms.flatMap((form) => form.moves.filter((m) => m.fast).map((m) => m.name)))].filter(
       (name) => name in this.#data.combat,
     );

@@ -50,6 +50,10 @@ for text and done every few seconds.
 - **[`health.mts`](health.mts)** finds each side's HP bar. The camera moves both bars around the screen, so they are
   searched for: a strip of the fill's green, yellow or red with the bar's outline around it. Where a strip starts across
   the screen says whose it is.
+- **[`typing.mts`](typing.mts)** reads each side's types from the round icons above its panel, one per type: ours from
+  the left edge, the opponent's from the right. Each icon is told by its colour against the game's own icon for each
+  type, and from the empty sky beside a single type by the white emblem on it. This is what tells a species' forms
+  apart, which the name alone can't.
 - **[`read.mts`](read.mts)** reads text with Tesseract:
   - **The HUD:** both names along the top and the CP beside each. Our name is the species unless the Pokémon has a
     nickname.
@@ -91,8 +95,8 @@ for text and done every few seconds.
 1. **Recognise the frame.** On the first non-`other` frame of a battle, everything about the last battle is reset.
 2. **Read cheap things every frame:** shields, Pokémon left and HP bars. A bar of the opponent's reading fuller than
    before means a new Pokémon, HP never coming back, so its name and CP are dropped and read again at once.
-3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels. After a shield prompt, the banner
-   is looked for for 8s, beside the battle rather than holding it up.
+3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels, and with them each side's type
+   icons. After a shield prompt, the banner is looked for for 8s, beside the battle rather than holding it up.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)).
 5. **Decide:** whether a shield would be taken, which button to throw, which card to send in after a faint, and whether
    to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
@@ -123,8 +127,9 @@ stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose`
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
   League. It matches `--league` to PvPoke's cup by title; a cup PvPoke doesn't list falls back to its league's open
   rankings. For each species it gives the moves its players run and the recommended fast move. A species' forms and
-  shadow are merged, since the HUD names only the species. If nothing matches, or PvPoke can't be reached, every move
-  stays allowed for. Training never uses it.
+  shadow are merged, since the HUD names only the species; the type icons narrow the forms afterwards, but nothing on
+  screen tells a shadow apart. If nothing matches, or PvPoke can't be reached, every move stays allowed for. Training
+  never uses it.
 
 ### Testing
 
@@ -141,7 +146,7 @@ gaps safely.
 
 **What it can see:**
 
-- **The HUD:** each side's species and CP, HP bar, shields and Pokémon left.
+- **The HUD:** each side's species and CP, its types, HP bar, shields and Pokémon left.
 - **Our side:** which of our charged-move buttons are lit, and the moves under them.
 - **Banners:** the opponent's charged moves as they land.
 
@@ -160,8 +165,9 @@ It swipes for fast moves continuously, about six a second, so no turn goes unuse
 
 **Worth.** A move's worth is its power × STAB × its effectiveness against the opponent ([`strategy.mts`](strategy.mts)).
 Stats, level and the trainer-battle bonus are the same for both of one Pokémon's moves against one opponent, so they
-cancel out. Where the opponent's forms differ in type, as a Galarian Moltres does from a Kantonian one, a move is valued
-against the typing it does worst against.
+cancel out. Where a species' forms differ in type, as a Galarian Moltres does from a Kantonian one, the type icons above
+each side's panel say which form it is ([`typing.mts`](typing.mts)). Where they weren't read, or show a typing no form
+of the species has, a move is valued against the typing it does worst against.
 
 **Stat changes.** Worth is adjusted for the stat stages a move may move, each priced as if it touched one more hit of
 the same size, and weighted by its chance. So Close Combat's certain −2 to its user's defense halves its worth, and

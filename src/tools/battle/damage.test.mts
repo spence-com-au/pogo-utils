@@ -67,6 +67,10 @@ test('every form of a species is built, none where the read cannot be one', () =
   expect(buildsOf(DATA, { species: 'Charizard', cp: 2501 }, null), 'Master League has none').toHaveLength(2);
   expect(buildsOf(DATA, { species: 'Charizard', cp: null }, ULTRA)).toEqual([]);
   expect(buildsOf(DATA, { species: null, cp: 2495 }, ULTRA)).toEqual([]);
+  expect(
+    buildsOf(DATA, { species: 'Moltres', cp: 2500, types: ['Dark', 'Flying'] }, ULTRA).map(({ form }) => form.form),
+    'the form its type icons show',
+  ).toEqual(['Galarian']);
 });
 
 test('Magmar’s Fire Blast takes 71 of a CP 2495 Charizard’s 149 HP', () => {

@@ -21,12 +21,13 @@ import {
 import { readParty, type Icon } from './party.mts';
 import { BOTTOM, place } from './layout.mts';
 import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS, type Point } from './play.mts';
-import { bubbleSwipes, type Colour } from './minigame.mts';
+import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
 import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
 import { activeOf, bestButton, bestLit, counterOf, nextOut, typesOf, type Pick } from './strategy.mts';
 import { afterThrow, finisher, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
+import { iconColour, readTypes } from './typing.mts';
 import { Energy, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
@@ -176,8 +177,12 @@ export interface Options {
   /** Every form's silhouette with its species, which the party screen's cards are read against. */
   icons: readonly Icon[];
 
-  /** The colour each type's minigame bubbles are drawn in, by type name, as `typeColour` reads the type's icon. */
-  colours: Readonly<Record<string, Colour>>;
+  /**
+   * The game's icon for each type, by type name: the colour the minigame's bubbles of the type are drawn in, as
+   * `typeColour` reads it, and the colour the HUD's icons of it are told by, as `iconColour` does. A type left out has
+   * its bubbles swiped at in rows, and its icon read as no type.
+   */
+  typeIcons: Readonly<Record<string, Image>>;
 
   /**
    * What GO Battle League's players run in the league being played, which narrows the opponent's charged moves to
@@ -201,11 +206,15 @@ export interface Options {
  */
 export async function run(
   phone: Phone,
-  { mode, data, icons, colours, meta, count = Infinity, keep }: Options,
+  { mode, data, icons, typeIcons, meta, count = Infinity, keep }: Options,
   clock: Clock,
   report: Reporter = { event: () => {}, status: () => {} },
 ): Promise<Tally> {
   const log = (line: string, side?: 'own' | 'opponent', why?: string) => report.event(line, side, why);
+  const coloursBy = (colour: (icon: Image) => Colour) =>
+    Object.fromEntries(Object.entries(typeIcons).map(([type, icon]) => [type, colour(icon)]));
+  const bubbleColours = coloursBy(typeColour);
+  const badges = coloursBy(iconColour);
   const reads = {
     recognise: perFrame(recognise),
     pokemonLeft: perFrame(pokemonLeft),
@@ -560,7 +569,7 @@ export async function run(
       // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved. A switch of
       // ours under way is overtaken by the faint, whatever the HUD shows next being the card sent in.
       if (state === 'switch') {
-        seen = { ...seen, own: null, ownCp: null, moves: new Map() };
+        seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
         steady.forget('own');
         stages = { ...stages, own: NO_STAGES };
         readAt = -Infinity;
@@ -584,7 +593,7 @@ export async function run(
       // being no HP for the next steady reading to rise from.
       if (theirs !== null && health.opponent !== null && health.opponent - theirs >= NEWCOMER) {
         departed = seen.opponent ?? departed;
-        seen = { ...seen, opponent: null, opponentCp: null };
+        seen = { ...seen, opponent: null, opponentCp: null, opponentTypes: null };
         readAt = -Infinity;
         energy.pause();
       }
@@ -596,7 +605,12 @@ export async function run(
 
         // Only a species the HUD has named narrows the labels: the party's guess at a nicknamed one is what the labels
         // correct, through `activeOf`, and narrowed to it they could never show it wrong.
-        const read = await readBattle(frame, data, undefined, seen.own);
+        const shown = readTypes(frame, badges);
+        const read = {
+          ...(await readBattle(frame, data, undefined, seen.own)),
+          ownTypes: shown.own,
+          opponentTypes: shown.opponent,
+        };
 
         seen = merge(seen, read);
 
@@ -604,7 +618,7 @@ export async function run(
           // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
           // standing: Gengar went on at Charizard's CP 2285 for fifteen reads. One read alongside the new name is its.
           if (named !== null) {
-            seen = { ...seen, opponentCp: read.opponentCp };
+            seen = { ...seen, opponentCp: read.opponentCp, opponentTypes: read.opponentTypes };
           }
 
           if (before !== null) {
@@ -664,9 +678,11 @@ export async function run(
       // A nickname in the HUD leaves the species to the party: whichever slot is out.
       const slot = activeOf(data, party, fainted, seen.moves.values(), sent);
       const own = seen.own ?? (slot === undefined ? null : (party[slot] ?? null));
+      const us = { species: own, types: seen.ownTypes };
+      const them = { species: seen.opponent, types: seen.opponentTypes };
       const facing: Matchup = {
-        own: { species: own, cp: seen.ownCp },
-        opponent: { species: seen.opponent, cp: seen.opponentCp },
+        own: { ...us, cp: seen.ownCp },
+        opponent: { ...them, cp: seen.opponentCp },
         cap: cap ?? null,
       };
 
@@ -695,8 +711,8 @@ export async function run(
           ? { faints: true, why: "the league's cap unread" }
           : wouldFaint(
               data,
-              { species: own, cp: seen.ownCp },
-              { species: seen.opponent, cp: seen.opponentCp },
+              facing.own,
+              facing.opponent,
               health.own,
               cap,
               meta,
@@ -711,8 +727,8 @@ export async function run(
       // either way it costs no more than the stages of one move, where telling a guess from a read would take `Verdict`
       // saying which it is.
       const lastHit = ourShields === 0 && verdict.faints;
-      const ownTypes = typesOf(data, own);
-      const theirTypes = typesOf(data, seen.opponent);
+      const ownTypes = typesOf(data, us);
+      const theirTypes = typesOf(data, them);
       const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
@@ -723,17 +739,7 @@ export async function run(
       const finish =
         cap === undefined
           ? undefined
-          : finisher(
-              data,
-              seen.moves,
-              lit,
-              { species: own, cp: seen.ownCp },
-              { species: seen.opponent, cp: seen.opponentCp },
-              health.opponent,
-              theirShields,
-              cap,
-              stages,
-            );
+          : finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, theirShields, cap, stages);
 
       // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, and
       // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
@@ -791,7 +797,7 @@ export async function run(
         promptedAt = left.own ?? promptedAt;
         const gone = caught?.slot ?? slot;
         const out = new Set([...fainted, ...(gone === undefined ? [] : [gone])]);
-        const chosen = nextOut(data, party, out, seen.opponent, meta);
+        const chosen = nextOut(data, party, out, them, meta);
         const next = chosen?.slot;
         const measured =
           next === undefined ? undefined : SWITCH_CARDS[[...party.keys()].filter((i) => !out.has(i)).indexOf(next)];
@@ -805,7 +811,7 @@ export async function run(
       // benched, the bench's cards being the slots not fainted bar the one out, in party order.
       if (answer && slot !== undefined && (state === 'battle' || state === 'charged') && !player.minigame) {
         answer = false;
-        const chosen = counterOf(data, party, slot, own, fainted, seen.opponent, meta);
+        const chosen = counterOf(data, party, slot, us, fainted, them, meta);
         const measured =
           chosen && BENCH[[...party.keys()].filter((i) => i !== slot && !fainted.has(i)).indexOf(chosen.slot)];
 
@@ -856,7 +862,7 @@ export async function run(
           switching = { from: slot, to, cp: seen.ownCp, at: clock.now(), stages: stages.own };
           sent = counter.slot;
           counter = undefined;
-          seen = { ...seen, own: null, ownCp: null, moves: new Map() };
+          seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
           steady.forget('own');
           stages = { ...stages, own: NO_STAGES };
           readAt = clock.now() - READ_MS + SWITCHED_MS;
@@ -868,7 +874,7 @@ export async function run(
 
         if (action.what === 'charged') {
           const type = data.combat[seen.moves.get(action.at[0]) ?? '']?.type;
-          bubbleColour = type === undefined ? undefined : colours[type];
+          bubbleColour = type === undefined ? undefined : bubbleColours[type];
         }
 
         // Once a prompt: a retap, a second later, is the same answer to it.

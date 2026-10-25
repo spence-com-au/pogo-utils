@@ -37,10 +37,24 @@ const KYOGRE = new Map([
 ]);
 
 test('a species has every typing its forms have', () => {
-  expect(typesOf(DATA, 'Kyogre')).toEqual([['Water']]);
-  expect(typesOf(DATA, 'Salamence')).toEqual([['Dragon', 'Flying']]);
-  expect(typesOf(DATA, 'Marowak'), 'an Alolan Marowak is Fire and Ghost').toEqual([['Fire', 'Ghost'], ['Ground']]);
-  expect(typesOf(DATA, null)).toEqual([]);
+  expect(typesOf(DATA, { species: 'Kyogre' })).toEqual([['Water']]);
+  expect(typesOf(DATA, { species: 'Salamence' })).toEqual([['Dragon', 'Flying']]);
+  expect(typesOf(DATA, { species: 'Marowak' }), 'an Alolan Marowak is Fire and Ghost').toEqual([
+    ['Fire', 'Ghost'],
+    ['Ground'],
+  ]);
+  expect(typesOf(DATA, { species: null })).toEqual([]);
+});
+
+test('the types its icons show narrow a species to its forms that have them', () => {
+  expect(typesOf(DATA, { species: 'Marowak', types: ['Ghost', 'Fire'] }), 'in either order').toEqual([
+    ['Fire', 'Ghost'],
+  ]);
+  expect(typesOf(DATA, { species: 'Marowak', types: ['Ground'] })).toEqual([['Ground']]);
+  expect(typesOf(DATA, { species: 'Marowak', types: ['Fire'] }), 'one of two read, which no form is').toEqual([
+    ['Fire', 'Ghost'],
+    ['Ground'],
+  ]);
 });
 
 test('damage is power, times STAB, times what each of the defender’s types makes of it', () => {
@@ -49,16 +63,18 @@ test('damage is power, times STAB, times what each of the defender’s types mak
   expect(damage(DATA, 'Avalanche', [], []), 'unknowns are neutral').toBe(90);
   expect(damage(DATA, 'Not A Move', [], [])).toBe(0);
   expect(
-    damage(DATA, 'Stone Edge', typesOf(DATA, 'Tyranitar'), typesOf(DATA, 'Moltres')),
+    damage(DATA, 'Stone Edge', typesOf(DATA, { species: 'Tyranitar' }), typesOf(DATA, { species: 'Moltres' })),
     'Rock into a Galarian Moltres, Dark and Flying, rather than 2.56× into a Kantonian one',
   ).toBeCloseTo(100 * 1.2 * 1.6);
 });
 
 test('the best button is the move that hits hardest against this opponent', () => {
-  const kyogre = typesOf(DATA, 'Kyogre');
+  const kyogre = typesOf(DATA, { species: 'Kyogre' });
 
-  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, 'Entei'))?.x, 'Hydro Pump into Entei').toBe(0.31);
-  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, 'Salamence'))?.x, 'Avalanche into Salamence').toBe(0.69);
+  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Entei' }))?.x, 'Hydro Pump into Entei').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Salamence' }))?.x, 'Avalanche into Salamence').toBe(
+    0.69,
+  );
   expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Hydro Pump on power alone').toBe(0.31);
 });
 
@@ -67,7 +83,9 @@ test('a move is worth its damage, moved by the stat stages it may change as if e
   expect(worth(DATA, 'Ancient Power', [], []), 'a tenth of a chance at +1 attack and defense').toBeCloseTo(60 * 1.045);
   expect(worth(DATA, 'Rock Tomb', [], []), 'their attack −1 every time').toBeCloseTo(75 * 1.2);
   expect(worth(DATA, 'Close Combat', [], []), 'our defense −2 every time').toBeCloseTo(100 * 0.5);
-  expect(worth(DATA, 'Close Combat', typesOf(DATA, 'Machamp'), []), 'on top of STAB').toBeCloseTo(100 * 1.2 * 0.5);
+  expect(worth(DATA, 'Close Combat', typesOf(DATA, { species: 'Machamp' }), []), 'on top of STAB').toBeCloseTo(
+    100 * 1.2 * 0.5,
+  );
   expect(worth(DATA, 'Not A Move', [], [])).toBe(0);
 });
 
@@ -83,7 +101,7 @@ test('the best button counts what a move does to either side’s stats as well a
 
   expect(bestButton(DATA, tomb, [], [])?.x, 'Rock Tomb, 75 and their attack −1, over Power Gem’s 85').toBe(0.31);
   expect(
-    bestButton(DATA, combat, typesOf(DATA, 'Machamp'), [])?.x,
+    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [])?.x,
     'Rock Slide over a Close Combat that leaves Machamp taking half again',
   ).toBe(0.69);
 });
@@ -98,7 +116,10 @@ test('on our last hit, a move’s stages on our side count for nothing, and thos
   expect(worth(DATA, 'Close Combat', [], [], lastHit), 'no next hit for our defense −2 to cost').toBe(100);
   expect(worth(DATA, 'Ancient Power', [], [], lastHit), 'nor a next throw for our attack +1 to help').toBe(60);
   expect(worth(DATA, 'Rock Tomb', [], [], lastHit), 'their attack −1 lasts on them').toBeCloseTo(75 * 1.2);
-  expect(bestButton(DATA, combat, typesOf(DATA, 'Machamp'), [], lastHit)?.x, 'Close Combat, 120 to 75').toBe(0.31);
+  expect(
+    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [], lastHit)?.x,
+    'Close Combat, 120 to 75',
+  ).toBe(0.31);
 });
 
 test('the slot out is the first not fainted whose species can hold the moves read', () => {
@@ -116,18 +137,31 @@ test('the slot out is the first not fainted whose species can hold the moves rea
 });
 
 test('a shield is taken unless none of the opponent’s charged moves is super effective', () => {
-  expect(shouldShield(DATA, 'Latias', 'Glaceon'), 'Avalanche into Dragon').toBe(true);
-  expect(shouldShield(DATA, 'Giratina', 'Sneasel'), 'Foul Play into Ghost').toBe(true);
-  expect(shouldShield(DATA, 'Kyogre', 'Entei'), 'nothing of Entei’s beats Water').toBe(false);
-  expect(shouldShield(DATA, 'Latias', 'Entei')).toBe(false);
-  expect(shouldShield(DATA, null, 'Entei'), 'our species unknown').toBe(true);
-  expect(shouldShield(DATA, 'Kyogre', null), 'theirs unknown').toBe(true);
-  expect(shouldShield(DATA, 'Marowak', 'Entei'), 'Solar Beam into a Kantonian Marowak').toBe(true);
+  expect(shouldShield(DATA, { species: 'Latias' }, { species: 'Glaceon' }), 'Avalanche into Dragon').toBe(true);
+  expect(shouldShield(DATA, { species: 'Giratina' }, { species: 'Sneasel' }), 'Foul Play into Ghost').toBe(true);
+  expect(shouldShield(DATA, { species: 'Kyogre' }, { species: 'Entei' }), 'nothing of Entei’s beats Water').toBe(false);
+  expect(shouldShield(DATA, { species: 'Latias' }, { species: 'Entei' })).toBe(false);
+  expect(shouldShield(DATA, { species: null }, { species: 'Entei' }), 'our species unknown').toBe(true);
+  expect(shouldShield(DATA, { species: 'Kyogre' }, { species: null }), 'theirs unknown').toBe(true);
+  expect(shouldShield(DATA, { species: 'Marowak' }, { species: 'Entei' }), 'Solar Beam into a Kantonian Marowak').toBe(
+    true,
+  );
+});
+
+test.each<[string, string[] | null, boolean, string]>([
+  ['Moltres', null, true, 'a Galarian one’s Payback into Psychic'],
+  ['Moltres', ['Dark', 'Flying'], true, 'a Galarian one’s Payback into Psychic'],
+  ['Moltres', ['Fire', 'Flying'], false, 'nothing of a Kantonian one’s beats Psychic'],
+  ['Marowak', ['Fire', 'Ghost'], true, 'an Alolan one’s Shadow Ball into Psychic'],
+  ['Marowak', ['Ground'], false, 'nothing of a Kantonian one’s beats Psychic'],
+  ['Moltres', ['Fire'], true, 'a typing no form has, which narrows nothing'],
+])('Mewtwo against %s shown as %j shields: %s, %s', (opponent, types, shield) => {
+  expect(shouldShield(DATA, { species: 'Mewtwo', types: ['Psychic'] }, { species: opponent, types })).toBe(shield);
 });
 
 test('while baiting, the cheapest move is best whatever it hits for', () => {
-  const kyogre = typesOf(DATA, 'Kyogre');
-  const entei = typesOf(DATA, 'Entei');
+  const kyogre = typesOf(DATA, { species: 'Kyogre' });
+  const entei = typesOf(DATA, { species: 'Entei' });
 
   expect(bestButton(DATA, KYOGRE, kyogre, entei)?.x, 'Hydro Pump into Entei once its shields are gone').toBe(0.31);
   expect(
@@ -151,7 +185,9 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
   ]);
 
   expect(
-    bestButton(DATA, togekiss, typesOf(DATA, 'Togekiss'), typesOf(DATA, 'Scizor'), { bait: true }),
+    bestButton(DATA, togekiss, typesOf(DATA, { species: 'Togekiss' }), typesOf(DATA, { species: 'Scizor' }), {
+      bait: true,
+    }),
     'Ancient Power, 45, saves only 10 on Flamethrower, 55 and 2.56× into Scizor',
   ).toEqual({ x: 0.69, bait: false, why: 'not baiting: Ancient Power costs only 10 less than Flamethrower' });
   expect(
@@ -168,7 +204,9 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
     'Night Slash, 35, saves 10 on Trailblaze, 45, too',
   ).toMatchObject({ x: 0.69, bait: false });
   expect(
-    bestButton(DATA, togekiss, typesOf(DATA, 'Togekiss'), typesOf(DATA, 'Charizard'), { bait: true }),
+    bestButton(DATA, togekiss, typesOf(DATA, { species: 'Togekiss' }), typesOf(DATA, { species: 'Charizard' }), {
+      bait: true,
+    }),
     'Ancient Power, 2.56× into Charizard, is the bait and the move worth the most',
   ).toEqual({ x: 0.31, bait: true });
 });
@@ -188,7 +226,7 @@ test.each<[(string | null)[], number[], string, number | undefined, string]>([
   ],
   [['Kyogre', 'Tyranitar', 'Giratina'], [0, 1, 2], 'Entei', undefined, 'nobody left'],
 ])('after a faint, %o less %o against %s sends in slot %s: %s', (party, fainted, opponent, slot) => {
-  expect(nextOut(DATA, party, new Set(fainted), opponent)?.slot).toBe(slot);
+  expect(nextOut(DATA, party, new Set(fainted), { species: opponent })?.slot).toBe(slot);
 });
 
 test.each<[(string | null)[], number[], string, string]>([
@@ -198,7 +236,7 @@ test.each<[(string | null)[], number[], string, string]>([
   [['Latias', 'Mamoswine', 'Giratina'], [0], 'Glaceon', "none safe from Glaceon's moves; hits hardest (Stone Edge)"],
   [['Tyranitar', 'Kyogre', 'Tyranitar'], [1], 'Moltres', 'first card, nothing to choose between them'],
 ])('after a faint, %o less %o against %s says why it sends in whom it does: %s', (party, fainted, opponent, why) => {
-  expect(nextOut(DATA, party, new Set(fainted), opponent)?.why).toBe(why);
+  expect(nextOut(DATA, party, new Set(fainted), { species: opponent })?.why).toBe(why);
 });
 
 test.each<[(string | null)[], number, number[], string | null, number | undefined, string]>([
@@ -220,13 +258,15 @@ test.each<[(string | null)[], number, number[], string | null, number | undefine
   [['Tyranitar', 'Kyogre'], 0, [], null, undefined, 'theirs not read'],
   [[null, 'Kyogre'], 0, [], 'Salamence', undefined, 'ours not read'],
 ])('with %o, slot %s out, less %o, against %s switches to slot %s: %s', (party, out, fainted, opponent, slot) => {
-  expect(counterOf(DATA, party, out, party[out] ?? null, new Set(fainted), opponent)?.slot).toBe(slot);
+  expect(
+    counterOf(DATA, party, out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
+  ).toBe(slot);
 });
 
 test('a counter says why it was switched to', () => {
-  expect(counterOf(DATA, ['Tyranitar', 'Kyogre'], 0, 'Tyranitar', new Set(), 'Salamence')?.why).toBe(
-    "Tyranitar is hit super effectively; Blizzard is, and nothing of Salamence's is",
-  );
+  expect(
+    counterOf(DATA, ['Tyranitar', 'Kyogre'], 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.why,
+  ).toBe("Tyranitar is hit super effectively; Blizzard is, and nothing of Salamence's is");
 });
 
 test('no button is best while one of a pair has no move read under it', () => {
@@ -236,8 +276,8 @@ test('no button is best while one of a pair has no move read under it', () => {
 });
 
 test('of the lit buttons, the one worth the most is thrown now', () => {
-  const kyogre = typesOf(DATA, 'Kyogre');
-  const entei = typesOf(DATA, 'Entei');
+  const kyogre = typesOf(DATA, { species: 'Kyogre' });
+  const entei = typesOf(DATA, { species: 'Entei' });
   const combat = new Map([
     [0.31, 'Close Combat'],
     [0.69, 'Rock Slide'],
@@ -249,9 +289,9 @@ test('of the lit buttons, the one worth the most is thrown now', () => {
   expect(bestLit(DATA, new Map([[0.31, 'Hydro Pump']]), [0.69], kyogre, entei), 'no move read under it').toBe(
     undefined,
   );
-  expect(bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, 'Machamp'), []), 'Rock Slide').toBe(0.69);
+  expect(bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), []), 'Rock Slide').toBe(0.69);
   expect(
-    bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, 'Machamp'), [], { lastHit: true }),
+    bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
     'Close Combat, on our last hit',
   ).toBe(0.31);
 });
@@ -292,11 +332,18 @@ test('a shield and who goes in allow for only what the opponent’s players run'
   const pulse = metaOf('Glaceon', ['Water Pulse']);
   const party = ['Latias', 'Mamoswine', 'Giratina'];
 
-  expect(shouldShield(DATA, 'Latias', 'Glaceon', pulse), 'Water Pulse into Dragon').toBe(false);
-  expect(shouldShield(DATA, 'Latias', 'Glaceon', metaOf('Glaceon', ['Avalanche']))).toBe(true);
-  expect(shouldShield(DATA, 'Latias', 'Glaceon', metaOf('Entei', [])), 'a meta without Glaceon').toBe(true);
+  expect(shouldShield(DATA, { species: 'Latias' }, { species: 'Glaceon' }, pulse), 'Water Pulse into Dragon').toBe(
+    false,
+  );
+  expect(shouldShield(DATA, { species: 'Latias' }, { species: 'Glaceon' }, metaOf('Glaceon', ['Avalanche']))).toBe(
+    true,
+  );
   expect(
-    nextOut(DATA, party, new Set([0]), 'Glaceon', pulse)?.slot,
+    shouldShield(DATA, { species: 'Latias' }, { species: 'Glaceon' }, metaOf('Entei', [])),
+    'a meta without Glaceon',
+  ).toBe(true);
+  expect(
+    nextOut(DATA, party, new Set([0]), { species: 'Glaceon' }, pulse)?.slot,
     'Giratina takes Water Pulse; Mamoswine does not',
   ).toBe(2);
 });
