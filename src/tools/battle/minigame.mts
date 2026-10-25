@@ -105,11 +105,13 @@ export function typeColour(icon: Image): Colour {
  * channels agrees over a range of it, and some light has to lie in every pair's range.
  */
 function agreesLit(pixel: Colour, colour: Colour): boolean {
-  let [least, most] = [1, 1 / DIMMEST];
+  let least = 1;
+  let most = 1 / DIMMEST;
 
   for (let i = 0; i < 3; i++) {
     for (let j = i + 1; j < 3; j++) {
-      const [from, other] = [255 - (colour[i] ?? 0), 255 - (colour[j] ?? 0)];
+      const from = 255 - (colour[i] ?? 0);
+      const other = 255 - (colour[j] ?? 0);
 
       if (from <= CHANNEL_FROM_WHITE || other <= CHANNEL_FROM_WHITE) {
         continue;
@@ -118,7 +120,8 @@ function agreesLit(pixel: Colour, colour: Colour): boolean {
       // The two shares differ by `apart - slope / light`.
       const apart = 255 / from - 255 / other;
       const slope = (pixel[i] ?? 0) / from - (pixel[j] ?? 0) / other;
-      const [a, b] = [(apart - SPREAD) / slope, (apart + SPREAD) / slope];
+      const a = (apart - SPREAD) / slope;
+      const b = (apart + SPREAD) / slope;
       least = Math.max(least, Math.min(a, b));
       most = Math.min(most, Math.max(a, b));
     }
@@ -132,20 +135,36 @@ function agreesLit(pixel: Colour, colour: Colour): boolean {
  * How much share there is, and how pale the channels that do not tell are, are judged under full white: dimmed, the
  * `PALE` guard let Mewtwo's lavender back in.
  */
-function washed([r, g, b]: Colour, colour: Colour): boolean {
-  const shares = [r, g, b].flatMap((c, i) => {
+function washed(pixel: Colour, colour: Colour): boolean {
+  // Run on every pixel of the field each frame, so written without the arrays a `map` would make, and with the tests
+  // that turn most pixels away before `agreesLit`, the dearest.
+  let sum = 0;
+  let told = 0;
+
+  for (let i = 0; i < 3; i++) {
     const from = 255 - (colour[i] ?? 0);
 
-    return from > CHANNEL_FROM_WHITE ? [(255 - c) / from] : [];
-  });
-  const mean = shares.reduce((sum, share) => sum + share, 0) / shares.length;
-  const pale = [r, g, b].every((c, i) => {
+    if (from > CHANNEL_FROM_WHITE) {
+      sum += (255 - (pixel[i] ?? 0)) / from;
+      told++;
+    }
+  }
+
+  const mean = sum / told;
+
+  if (told < 2 || mean < SHARE.least || mean > SHARE.most) {
+    return false;
+  }
+
+  for (let i = 0; i < 3; i++) {
     const from = 255 - (colour[i] ?? 0);
 
-    return from > CHANNEL_FROM_WHITE || 255 - mean * from - c <= PALE;
-  });
+    if (from <= CHANNEL_FROM_WHITE && 255 - mean * from - (pixel[i] ?? 0) > PALE) {
+      return false;
+    }
+  }
 
-  return pale && shares.length >= 2 && agreesLit([r, g, b], colour) && mean >= SHARE.least && mean <= SHARE.most;
+  return agreesLit(pixel, colour);
 }
 
 const white = ([r, g, b]: Colour) =>

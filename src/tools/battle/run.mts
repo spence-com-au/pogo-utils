@@ -142,6 +142,24 @@ export interface Tally {
 /** `ms` milliseconds in seconds to a tenth, `11.2s`. */
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
+/**
+ * `read` worked out once for each frame and whatever else it is handed, however many turns of the loop the frame stays
+ * the latest. The loop comes round every 20ms, faster than `screenrecord`'s 30 frames a second, and the screen standing
+ * still sends none at all, so the same frame was read again and again: a core of the computer's kept busy for nothing.
+ * What a read answers is never changed by those it is handed to, so the one answer serves each turn.
+ */
+function perFrame<Rest extends unknown[], T>(read: (frame: Image, ...rest: Rest) => T) {
+  let last: { frame: Image; rest: Rest; answer: T } | undefined;
+
+  return (frame: Image, ...rest: Rest): T => {
+    if (last?.frame !== frame || rest.some((arg, i) => arg !== last?.rest[i])) {
+      last = { frame, rest, answer: read(frame, ...rest) };
+    }
+
+    return last.answer;
+  };
+}
+
 export class Lost extends Error {
   readonly frames: readonly Image[];
 
@@ -188,6 +206,15 @@ export async function run(
   report: Reporter = { event: () => {}, status: () => {} },
 ): Promise<Tally> {
   const log = (line: string, side?: 'own' | 'opponent', why?: string) => report.event(line, side, why);
+  const reads = {
+    recognise: perFrame(recognise),
+    pokemonLeft: perFrame(pokemonLeft),
+    opponentShields: perFrame(opponentShields),
+    ownShields: perFrame(ownShields),
+    readHealth: perFrame(readHealth),
+    readyButtons: perFrame(readyButtons),
+    bubbleSwipes: perFrame(bubbleSwipes),
+  };
   let player: Player | undefined;
   let battles = 0;
   const outcomes: Record<Outcome, number> = { won: 0, lost: 0 };
@@ -364,8 +391,8 @@ export async function run(
     // tapped: a charged move's burst over a night field matched with all three red, and answering it had Mewtwo fainted
     // while it fought on for 26s. A frame whose balls go unread is judged by the count last read, which shows a faint by
     // then; with none read this battle, nothing has shown one.
-    const recognised = recognise(frame);
-    const ours = battling ? fewer(left.own, pokemonLeft(frame).own) : null;
+    const recognised = reads.recognise(frame);
+    const ours = battling ? fewer(left.own, reads.pokemonLeft(frame).own) : null;
     const owed = prompt !== undefined || (ours !== null && ours < promptedAt);
     const state = recognised === 'switch' && !owed ? 'other' : recognised;
     const theirName = () => seen.opponent ?? 'the opponent';
@@ -506,19 +533,19 @@ export async function run(
       // Never more than the last count, a shield once spent staying spent: a banner over the HUD reads as one of theirs
       // held, and leaves ours unread.
       if (state === 'battle' || state === 'charged') {
-        const held = Math.min(theirShields, opponentShields(frame));
+        const held = Math.min(theirShields, reads.opponentShields(frame));
 
         if (held < theirShields) {
           log(`${theirName()} shielded${thrown ? ` our ${thrown}` : ''}`, 'opponent');
         }
 
         theirShields = held;
-        ourShields = Math.min(ourShields, ownShields(frame) ?? ourShields);
+        ourShields = Math.min(ourShields, reads.ownShields(frame) ?? ourShields);
       }
 
       // The switch prompt leaves the Poké Balls in view, ours already showing the faint it follows.
       if (state !== 'shield') {
-        const balls = pokemonLeft(frame);
+        const balls = reads.pokemonLeft(frame);
         const counted = { own: fewer(left.own, balls.own), opponent: fewer(left.opponent, balls.opponent) };
 
         for (const side of ['own', 'opponent'] as const) {
@@ -542,7 +569,7 @@ export async function run(
       }
 
       // Read at the shield prompt as well as through the fight: the prompt hides the HUD, but not the bars.
-      const bars = state !== 'switch' && !player.minigame ? readHealth(frame) : undefined;
+      const bars = state !== 'switch' && !player.minigame ? reads.readHealth(frame) : undefined;
       const theirs = steady.health.opponent;
 
       if (bars) {
@@ -687,7 +714,7 @@ export async function run(
       const ownTypes = typesOf(data, own);
       const theirTypes = typesOf(data, seen.opponent);
       const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
-      const ready = state === 'charged' ? readyButtons(frame) : [];
+      const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
 
       // A lit move that would finish the opponent goes now, whatever is held for: a turn waited is a hit taken. Live, a
@@ -786,7 +813,7 @@ export async function run(
       }
 
       const card = prompt?.card;
-      const bubbles = player.minigame && bubbleColour ? bubbleSwipes(frame, bubbleColour) : undefined;
+      const bubbles = player.minigame && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
 
       // A charged move tapped before the last one's throw has played is that throw retried, told and counted once.
       const pending = player.minigame;

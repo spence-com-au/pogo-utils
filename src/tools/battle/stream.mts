@@ -101,15 +101,22 @@ export async function* decodeFrames(h264: Readable, { width, height }: Size): As
   h264.pipe(ffmpeg.stdin);
 
   const size = width * height * 4;
-  let pending: Buffer = Buffer.alloc(0);
+
+  // Gathered until a frame's worth has come and joined once, rather than joined chunk by chunk: a frame comes in some
+  // twenty of a pipe's 64 kB chunks, and joining each to what came before copied the frame ten times over.
+  let pending: Buffer[] = [];
+  let buffered = 0;
 
   try {
     for await (const chunk of ffmpeg.stdout as AsyncIterable<Buffer>) {
-      pending = pending.length === 0 ? chunk : Buffer.concat([pending, chunk]);
+      pending.push(chunk);
+      buffered += chunk.length;
 
-      while (pending.length >= size) {
-        yield { width, height, data: new Uint8Array(pending.subarray(0, size)) };
-        pending = pending.subarray(size);
+      while (buffered >= size) {
+        const joined = Buffer.concat(pending, buffered);
+        yield { width, height, data: new Uint8Array(joined.subarray(0, size)) };
+        pending = buffered > size ? [joined.subarray(size)] : [];
+        buffered -= size;
       }
     }
   } finally {
