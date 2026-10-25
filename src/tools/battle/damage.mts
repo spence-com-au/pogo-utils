@@ -13,7 +13,7 @@
 
 import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, formsOf, STAB, stage, type Shown } from './strategy.mts';
+import { chargedOf, effectiveness, formsOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's
@@ -206,6 +206,12 @@ export const MOVES_HELD = 2;
 export interface Verdict {
   faints: boolean;
   why: string;
+
+  /**
+   * The hardest move, where it is one the opponent's counted energy affords. Undefined where the energy is not counted,
+   * or where the count affords nothing and so every move is allowed for.
+   */
+  afforded?: string;
 }
 
 /** Why `whose` side, as `our` or `their`, has no build: what of it went unread, or a CP over `cap` and so misread. */
@@ -283,14 +289,15 @@ export function wouldFaint(
 
   // The hardest hit of all, as a share of our maximum HP: past `FAINTS` of what is left on any of our forms is past it
   // on the form it hurts most.
-  let hardest = { name: '', share: 0 };
+  let hardest = { name: '', share: 0, afforded: false };
   let narrowed = false;
 
   for (const attacker of theirs) {
     const names = seen.size >= MOVES_HELD ? [...seen] : chargedOf(attacker.form, moveset);
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
     const afforded = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
-    const moves = afforded.length > 0 ? afforded : allowed;
+    const counted = affordable !== undefined && afforded.length > 0;
+    const moves = counted ? afforded : allowed;
 
     narrowed ||= moves.length < allowed.length;
 
@@ -303,7 +310,7 @@ export function wouldFaint(
         const share = hit(data, move, attacker, defender, stages.their.attack, stages.own.defense) / defender.build.hp;
 
         if (share > hardest.share) {
-          hardest = { name, share };
+          hardest = { name, share, afforded: counted };
         }
       }
     }
@@ -316,5 +323,73 @@ export function wouldFaint(
   return {
     faints: hardest.share >= FAINTS * hp,
     why: taken + afforded + staged(stages.their.attack, stages.own.defense) + assumed,
+    ...(hardest.afforded && { afforded: hardest.name }),
   };
+}
+
+/**
+ * How sure a lit move must be to finish the opponent before it is thrown over the one held for: the hit counted at
+ * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and 2
+ * points more, which a steady bar wanders from itself frame to frame (`health.mts`'s `JUMP`). Too sure costs no more
+ * than holding on as before; not sure enough leaves the opponent standing at a sliver with our energy spent.
+ */
+const FINISH = { hit: 0.9, slack: 0.02 } as const;
+
+/**
+ * Which lit button would finish the opponent, by its x, and why: one whose move takes at least the HP its bar shows,
+ * `hp` being the fraction of its maximum, by `FINISH`'s margin and against every form either side could be, the
+ * lowest of those hits deciding. The cheapest of several, keeping the most energy for the next opponent. `lit` is the
+ * buttons lit, of which only those with a move read under them in `moves` are weighed, and `stages` each side's as
+ * `wouldFaint` takes them: our attack and their defense move the hit.
+ *
+ * Only with the opponent's `shields` all spent. With one left, a finishing hit is the one a player shields, and while
+ * it has one, baiting already holds for the cheapest move: the rule would decide nothing but which move is shielded.
+ *
+ * Undefined, leaving the move held for, where nothing lit finishes or where anything it rests on is unknown: either
+ * side's species or CP, a CP over `cap`, the opponent's HP or a move's numbers. Their CP unread is not taken as the
+ * cap, as `wouldFaint` takes it: a finish is thrown only on what was read.
+ */
+export function finisher(
+  data: GameData,
+  moves: ReadonlyMap<number, string>,
+  lit: Iterable<number>,
+  own: Side,
+  opponent: Side,
+  hp: number | null,
+  shields: number,
+  cap: number | null,
+  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+): Pick | undefined {
+  const ours = buildsOf(data, own, cap);
+  const theirs = buildsOf(data, opponent, cap);
+
+  if (shields > 0 || hp === null || ours.length === 0 || theirs.length === 0) {
+    return undefined;
+  }
+
+  const finishing = [...lit].flatMap((x) => {
+    const move = data.combat[moves.get(x) ?? ''];
+
+    if (!move) {
+      return [];
+    }
+
+    const shares = ours.flatMap((attacker) =>
+      theirs.map(
+        (defender) => hit(data, move, attacker, defender, stages.own.attack, stages.their.defense) / defender.build.hp,
+      ),
+    );
+
+    return FINISH.hit * Math.min(...shares) >= hp + FINISH.slack ? [{ x, cost: -move.energy }] : [];
+  });
+
+  const [cheapest] = finishing.sort((a, b) => a.cost - b.cost);
+
+  return (
+    cheapest && {
+      x: cheapest.x,
+      bait: false,
+      why: `would finish ${opponent.species ?? 'the opponent'} at ${percent(hp)}`,
+    }
+  );
 }

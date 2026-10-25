@@ -148,6 +148,12 @@ const SHIELD_PINK: Colour = [226, 159, 240];
 /**
  * Three places on the switch prompt's panel, which is one flat slate — 35/44/58 at each, to within a level — where
  * a fight shows the field and the shield prompt shows the shield.
+ *
+ * A dark field at night can be that slate too, and the white of the prompt's title, `Switch in a new Pokémon?`, across
+ * the middle of its line is what tells the two apart: 19–23% of `SWITCH_TITLE` on `switch-glaceon`, `switch-sneasel`,
+ * `switch-pixel8` and two prompts of a GO Battle League run at night, where a charged move's purple burst
+ * (`battle-slate-night`) and Dialga standing over the field, which matched the slate's three places in that run,
+ * measured 5% and none.
  */
 const SWITCH_PANEL: readonly Box[] = [
   [0.45, -0.5911, 0.55, -0.5489],
@@ -155,6 +161,20 @@ const SWITCH_PANEL: readonly Box[] = [
   [0.08, -0.1689, 0.14, -0.1056],
 ];
 const SLATE: Colour = [35, 44, 58];
+const SWITCH_TITLE: Box = [0.25, -0.56, 0.75, -0.525];
+const TITLE_WHITE = 0.1;
+
+/** The share of a box that is white, as the switch prompt's title is on its slate. */
+function whiteIn(image: Image, box: Box): number {
+  let [white, n] = [0, 0];
+
+  for (const colour of pixels(image, box, BOTTOM)) {
+    white += luminance(...colour) > 200 ? 1 : 0;
+    n++;
+  }
+
+  return white / Math.max(n, 1);
+}
 
 /**
  * The charged-move buttons, as the circles their rims trace: one move's centred at 179.5,676 of 360×760, and two moves'
@@ -284,7 +304,10 @@ export function pokemonLeft(image: Image): { own: number | null; opponent: numbe
 }
 
 export function recognise(image: Image): State {
-  if (SWITCH_PANEL.every((box) => near(mean(image, box, BOTTOM), SLATE, 12))) {
+  if (
+    SWITCH_PANEL.every((box) => near(mean(image, box, BOTTOM), SLATE, 12)) &&
+    whiteIn(image, SWITCH_TITLE) >= TITLE_WHITE
+  ) {
     return 'switch';
   }
 

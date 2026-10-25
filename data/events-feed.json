@@ -506,17 +506,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "pokemonspotlighthour2026-10-22",
-    "name": "Morelull Spotlight Hour",
-    "eventType": "pokemon-spotlight-hour",
-    "heading": "Pokémon Spotlight Hour",
-    "link": "https://leekduck.com/events/pokemonspotlighthour2026-10-22/",
-    "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "pokemonspotlighthour2026-10-29",
     "name": "Gastly Spotlight Hour",
     "eventType": "pokemon-spotlight-hour",

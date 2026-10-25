@@ -530,8 +530,95 @@ test('aims the minigame’s swipes at its bubbles', async () => {
   }
 });
 
+/**
+ * A throw waits for the fast move under way with its button lit, and a live run tapped it again a second on and told
+ * the one throw twice. Lit past the longest fast move, the first tap did not take and is retried, but told once still.
+ */
+test.each([
+  ['waits out a throw', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'result']],
+  ['retries a tap that did not take', undefined, ['fight', 'fight', 'result']],
+])('%s with the button still lit, telling the throw once', async (_, tap, tapped) => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('charged-shadow-sneak'), ...(tap && { tap }), lasts: { ms: 4000, to: 'minigame' } },
+      queued: { frame: fixture('charged-shadow-sneak'), lasts: { ms: 2000, to: 'minigame' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(taps).toEqual(tapped);
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(['own: threw Shadow Sneak']);
+});
+
+/**
+ * Each stretch off the field told once the battle is back, with what showed: our Shadow Sneak's minigame and the move
+ * playing after it, and, with our shields spent, a move of theirs that puts up no prompt. Shorter stretches and the
+ * result's, which the battle never comes back from, are not told.
+ */
+test.each([
+  [
+    'charged-shadow-sneak',
+    'run: off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)',
+  ],
+  [
+    'battle-shields-spent',
+    "run: off the battle for 5.0s: likely Quaquaval's charged move, none of our shields left to prompt for",
+  ],
+])('tells how long the battle was off its field from %s', async (fight, said) => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: {
+        frame: fixture(fight),
+        tap: { at: [0.499, 0.889], to: 'minigame' },
+        swipes: { count: 10, to: 'away' },
+      },
+      minigame: { frame: fixture('battle-minigame-giratina'), swipes: { count: 40, to: 'away' } },
+      away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'back' } },
+      back: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'blip' } },
+      blip: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'last' } },
+      last: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([said]);
+});
+
+// The menus between the battles are no stretch off a battle's field, nor is the first battle's end, never come back from.
 test('carries on into the next battle until the count is reached', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
+  const report = recorder();
 
   expect(
     await run(
@@ -544,9 +631,11 @@ test('carries on into the next battle until the count is reached', async () => {
         count: 2,
       },
       clock,
+      report,
     ),
   ).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(taps.filter((scene) => scene === 'result')).toHaveLength(2);
+  expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([]);
 });
 
 /**
@@ -581,6 +670,58 @@ test('baits with the cheaper move while the opponent has shields', async () => {
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(['fight', 'result']);
+});
+
+/** `image` with each box, as `[left, top, right, bottom]` in widths, filled with `colour`. */
+function painted(image: Image, colour: readonly number[], ...boxes: (readonly number[])[]): Image {
+  const data = image.data.slice();
+
+  for (const [left = 0, top = 0, right = 0, bottom = 0] of boxes) {
+    for (let y = Math.round(top * image.width); y < bottom * image.width; y++) {
+      for (let x = Math.round(left * image.width); x < right * image.width; x++) {
+        data.set([...colour, 255], (y * image.width + x) * 4);
+      }
+    }
+  }
+
+  return { ...image, data };
+}
+
+/**
+ * Giratina, CP 2392, with Shadow Sneak lit against a CP 2472 Mamoswine at 4%. With Mamoswine's shield hexagons painted
+ * a spent one's purple, its throw is told as the finish it would be; with them up, a shield could stop it, and it is
+ * thrown as the move held for. Our grey Poké Ball is painted red, as if Giratina, the party's third card, had led: read
+ * as a faint, it would be counted against Giratina, the one whose moves fit, leaving none of ours known to be out.
+ */
+test.each([
+  ['spent', [[0.7, 0.195, 0.78, 0.222]], 'own: threw Shadow Sneak: would finish Mamoswine at 4%'],
+  ['up', [], 'own: threw Shadow Sneak'],
+])('with the opponent’s shields %s, a throw that would finish it says so', async (_, spent, said) => {
+  const frame = painted(fixture('charged-shadow-sneak'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215]);
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: painted(frame, [111, 81, 118], ...spent), tap: { at: [0.499, 0.889], to: 'minigame' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).toContain('fight');
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual([said]);
 });
 
 /**
@@ -845,6 +986,50 @@ test('names the lead from the party, and the next of it after a faint', async ()
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
   expect([...named]).toEqual(['Latias against Glaceon', 'Mamoswine against Glaceon']);
+});
+
+/**
+ * What matches the switch prompt with all three of our Poké Balls red follows no faint, and is not answered as one: live,
+ * a charged move's burst over a night field was, and Mewtwo was told as fainted for a battle it fought on in. Here the
+ * prompt itself, its grey ball painted red, stands in for it, `recognise` no longer reading that burst as the prompt.
+ */
+test('answers no switch prompt while all three of our Poké Balls are red', async () => {
+  const prompt = fixture('switch-glaceon');
+  const ball = { x: Math.round(0.058 * prompt.width), y: Math.round(0.2026 * prompt.width) };
+  const painted = { ...prompt, data: prompt.data.slice() };
+
+  for (let y = ball.y - 4; y <= ball.y + 4; y++) {
+    for (let x = ball.x - 4; x <= ball.x + 4; x++) {
+      painted.data.set([220, 40, 40, 255], (y * painted.width + x) * 4);
+    }
+  }
+
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'slate' } },
+      slate: { frame: painted, tap: { at: [0.33, 0.87], to: 'stuck' }, lasts: { ms: 3000, to: 'won' } },
+      stuck: { frame: fixture('other-loss') },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).not.toContain('slate');
+  expect(report.events.filter((line) => line.includes('fainted'))).toEqual([]);
 });
 
 /**

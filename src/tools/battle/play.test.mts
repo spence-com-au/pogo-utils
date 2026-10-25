@@ -50,10 +50,21 @@ test('throws a charged move once it has held for two frames, and once only', () 
   expect(taps(actions)).toEqual([{ kind: 'tap', at: CENTRE, what: 'charged' }]);
 });
 
-test('throws again if the button is still lit a second later', () => {
-  const actions = play(Array(40).fill('charged'));
+/**
+ * A throw waits for the fast move under way, up to five 500ms turns, with its button lit: a tap a second later was the
+ * same throw counted twice. Lit past the longest fast move, the first tap did not take.
+ */
+test('throws again only if the button is still lit past the longest fast move', () => {
+  expect(taps(play(Array(80).fill('charged')))).toHaveLength(1);
+  expect(taps(play(Array(100).fill('charged')))).toHaveLength(2);
+});
 
-  expect(taps(actions)).toHaveLength(2);
+test('throws the next charged move at once after the last one’s throw has played', () => {
+  const player = new Player(SIZE);
+  const thrown = play(['charged', 'charged'], player);
+  const next = play(['other', 'battle', 'charged', 'charged'], player, 1500);
+
+  expect(taps([...thrown, ...next])).toHaveLength(2);
 });
 
 test('of two charged moves, throws the one that lit first', () => {
@@ -95,9 +106,8 @@ test('forgets when a button lit once it goes out', () => {
   player.next('charged', 0, { ready: [RIGHT] });
   player.next('battle', 33, { ready: [] });
   player.next('charged', 2000, { ready: [LEFT] });
-  player.next('charged', 2033, { ready: [LEFT, RIGHT] });
 
-  expect(player.next('charged', 3100, { ready: [LEFT, RIGHT] })).toEqual({ kind: 'tap', at: LEFT, what: 'charged' });
+  expect(player.next('charged', 2033, { ready: [LEFT, RIGHT] })).toEqual({ kind: 'tap', at: LEFT, what: 'charged' });
 });
 
 test('swipes the lower field after a charged move, until the throw plays', () => {
@@ -195,9 +205,8 @@ test('does nothing on any other screen', () => {
 });
 
 /**
- * A recording does not answer the taps made over it: the button in `charge.h264` stays lit for 38 frames, until the
- * person playing threw it, so a second tap a second after the first is the retry doing its job. What the replay does
- * show is the first tap landing on the button's second lit frame, and none following sooner than a second apart.
+ * The button in `charge.h264` stays lit for 38 frames, until the person playing threw it, and then goes dark before the
+ * throw plays: tapped on its second lit frame, it is tapped once, as a throw waiting on a fast move would be.
  */
 test('throws the charged move in a recorded battle as soon as it is ready', async () => {
   const player = new Player(SIZE);
@@ -217,7 +226,6 @@ test('throws the charged move in a recorded battle as soon as it is ready', asyn
   const tapped = timed.filter(({ action }) => action.kind === 'tap');
   const lit = timed.filter(({ state }) => state === 'charged');
 
-  expect(tapped.map(({ action }) => action)).toContainEqual({ kind: 'tap', at: CENTRE, what: 'charged' });
+  expect(tapped.map(({ action }) => action)).toEqual([{ kind: 'tap', at: CENTRE, what: 'charged' }]);
   expect(tapped[0]?.at).toBe(lit[1]?.at);
-  expect(tapped.every(({ at }, n) => n === 0 || at - (tapped[n - 1]?.at ?? 0) >= 1000)).toBe(true);
 });

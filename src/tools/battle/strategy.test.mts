@@ -10,6 +10,7 @@ import { type Meta } from './meta.mts';
 import {
   activeOf,
   bestButton,
+  bestLit,
   chargedOf,
   counterOf,
   damage,
@@ -70,11 +71,11 @@ test('damage is power, times STAB, times what each of the defender’s types mak
 test('the best button is the move that hits hardest against this opponent', () => {
   const kyogre = typesOf(DATA, { species: 'Kyogre' });
 
-  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Entei' })), 'Hydro Pump into Entei').toBe(0.31);
-  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Salamence' })), 'Avalanche into Salamence').toBe(
+  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Entei' }))?.x, 'Hydro Pump into Entei').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Salamence' }))?.x, 'Avalanche into Salamence').toBe(
     0.69,
   );
-  expect(bestButton(DATA, KYOGRE, [], []), 'Hydro Pump on power alone').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Hydro Pump on power alone').toBe(0.31);
 });
 
 test('a move is worth its damage, moved by the stat stages it may change as if each touched one more hit', () => {
@@ -98,9 +99,9 @@ test('the best button counts what a move does to either side’s stats as well a
     [0.69, 'Rock Slide'],
   ]);
 
-  expect(bestButton(DATA, tomb, [], []), 'Rock Tomb, 75 and their attack −1, over Power Gem’s 85').toBe(0.31);
+  expect(bestButton(DATA, tomb, [], [])?.x, 'Rock Tomb, 75 and their attack −1, over Power Gem’s 85').toBe(0.31);
   expect(
-    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), []),
+    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [])?.x,
     'Rock Slide over a Close Combat that leaves Machamp taking half again',
   ).toBe(0.69);
 });
@@ -115,9 +116,10 @@ test('on our last hit, a move’s stages on our side count for nothing, and thos
   expect(worth(DATA, 'Close Combat', [], [], lastHit), 'no next hit for our defense −2 to cost').toBe(100);
   expect(worth(DATA, 'Ancient Power', [], [], lastHit), 'nor a next throw for our attack +1 to help').toBe(60);
   expect(worth(DATA, 'Rock Tomb', [], [], lastHit), 'their attack −1 lasts on them').toBeCloseTo(75 * 1.2);
-  expect(bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [], lastHit), 'Close Combat, 120 to 75').toBe(
-    0.31,
-  );
+  expect(
+    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [], lastHit)?.x,
+    'Close Combat, 120 to 75',
+  ).toBe(0.31);
 });
 
 test('the slot out is the first not fainted whose species can hold the moves read', () => {
@@ -161,14 +163,52 @@ test('while baiting, the cheapest move is best whatever it hits for', () => {
   const kyogre = typesOf(DATA, { species: 'Kyogre' });
   const entei = typesOf(DATA, { species: 'Entei' });
 
-  expect(bestButton(DATA, KYOGRE, kyogre, entei), 'Hydro Pump into Entei once its shields are gone').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, kyogre, entei)?.x, 'Hydro Pump into Entei once its shields are gone').toBe(0.31);
   expect(
-    bestButton(DATA, KYOGRE, kyogre, entei, { bait: true }),
+    bestButton(DATA, KYOGRE, kyogre, entei, { bait: true })?.x,
     'Avalanche, 45 to Hydro Pump’s 75, while they are up',
   ).toBe(0.69);
-  expect(bestButton(DATA, new Map([[0.499, 'Hydro Pump']]), kyogre, entei, { bait: true }), 'one move baits too').toBe(
-    0.499,
-  );
+  expect(
+    bestButton(DATA, new Map([[0.499, 'Hydro Pump']]), kyogre, entei, { bait: true })?.x,
+    'one move baits too',
+  ).toBe(0.499);
+  expect(bestButton(DATA, KYOGRE, kyogre, entei, { bait: true }), 'Avalanche saves 30').toEqual({
+    x: 0.69,
+    bait: true,
+  });
+});
+
+test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the most going instead', () => {
+  const togekiss = new Map([
+    [0.31, 'Ancient Power'],
+    [0.69, 'Flamethrower'],
+  ]);
+
+  expect(
+    bestButton(DATA, togekiss, typesOf(DATA, { species: 'Togekiss' }), typesOf(DATA, { species: 'Scizor' }), {
+      bait: true,
+    }),
+    'Ancient Power, 45, saves only 10 on Flamethrower, 55 and 2.56× into Scizor',
+  ).toEqual({ x: 0.69, bait: false, why: 'not baiting: Ancient Power costs only 10 less than Flamethrower' });
+  expect(
+    bestButton(
+      DATA,
+      new Map([
+        [0.31, 'Night Slash'],
+        [0.69, 'Trailblaze'],
+      ]),
+      [],
+      [],
+      { bait: true },
+    ),
+    'Night Slash, 35, saves 10 on Trailblaze, 45, too',
+  ).toMatchObject({ x: 0.69, bait: false });
+  expect(
+    bestButton(DATA, togekiss, typesOf(DATA, { species: 'Togekiss' }), typesOf(DATA, { species: 'Charizard' }), {
+      bait: true,
+    }),
+    'Ancient Power, 2.56× into Charizard, is the bait and the move worth the most',
+  ).toEqual({ x: 0.31, bait: true });
 });
 
 test.each<[(string | null)[], number[], string, number | undefined, string]>([
@@ -230,9 +270,30 @@ test('a counter says why it was switched to', () => {
 });
 
 test('no button is best while one of a pair has no move read under it', () => {
-  expect(bestButton(DATA, new Map([[0.69, 'Avalanche']]), [], [])).toBe(undefined);
-  expect(bestButton(DATA, new Map(), [], [])).toBe(undefined);
-  expect(bestButton(DATA, new Map([[0.499, 'Shadow Sneak']]), [], [])).toBe(0.499);
+  expect(bestButton(DATA, new Map([[0.69, 'Avalanche']]), [], [])?.x).toBe(undefined);
+  expect(bestButton(DATA, new Map(), [], [])?.x).toBe(undefined);
+  expect(bestButton(DATA, new Map([[0.499, 'Shadow Sneak']]), [], [])?.x).toBe(0.499);
+});
+
+test('of the lit buttons, the one worth the most is thrown now', () => {
+  const kyogre = typesOf(DATA, { species: 'Kyogre' });
+  const entei = typesOf(DATA, { species: 'Entei' });
+  const combat = new Map([
+    [0.31, 'Close Combat'],
+    [0.69, 'Rock Slide'],
+  ]);
+
+  expect(bestLit(DATA, KYOGRE, [0.69], kyogre, entei), 'Avalanche, the only one lit').toBe(0.69);
+  expect(bestLit(DATA, KYOGRE, [0.31, 0.69], kyogre, entei), 'Hydro Pump, both lit').toBe(0.31);
+  expect(bestLit(DATA, KYOGRE, [], kyogre, entei), 'none lit').toBe(undefined);
+  expect(bestLit(DATA, new Map([[0.31, 'Hydro Pump']]), [0.69], kyogre, entei), 'no move read under it').toBe(
+    undefined,
+  );
+  expect(bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), []), 'Rock Slide').toBe(0.69);
+  expect(
+    bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
+    'Close Combat, on our last hit',
+  ).toBe(0.31);
 });
 
 test('an opponent’s form is allowed for what its players run, of what it can hold', () => {

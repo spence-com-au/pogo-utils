@@ -66,8 +66,9 @@ for text and done every few seconds.
 - **[`play.mts`](play.mts)**' `Player` turns a frame's state into an action: a swipe, a tap or a wait. A swipe across
   the field fires a fast move, about six a second. A charged move is tapped the moment the chosen button lights; with
   none chosen, whichever lit first. A state must hold for a few frames before it is answered, because a prompt sliding
-  in matches for a frame or two on its own. A tap isn't repeated within a second, and nothing is swiped for 0.7s after a
-  charged-move tap, since a swipe straight after one could cost the throw.
+  in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move's isn't repeated until
+  its throw plays or 3s pass, since the throw waits for the fast move under way, its button lit meanwhile. Nothing is
+  swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length. Where none are found, rows are swept instead.
@@ -102,7 +103,10 @@ for text and done every few seconds.
 6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
-   `--keep-frames`.
+   `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is
+   told once it comes back, how long and what showed:
+   `off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)`. A stretch
+   the battle never comes back from, its end, is not.
 
 `run` is driven through a `Phone` (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb` directly, so tests
 stand in a scripted phone that plays committed frames as scenes.
@@ -173,10 +177,26 @@ Ancient Power's one-in-ten buff adds about 5%.
 stats count for nothing, since there's no next hit for them to matter on.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the strongest
-move would otherwise be wasted into. Once their shields are gone, it throws the move worth the most.
+move would otherwise be wasted into. Once their shields are gone, it throws the move worth the most. A bait costing no
+more than **10** energy less than the move worth the most isn't worth the shield it might not draw, so that move goes
+instead, logged as `threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already
-ready. ([What's next](#whats-next) covers when that should give way.)
+ready, except when it may not live that long: with no shield to take, and the opponent's counted energy (with the
+[one-hit allowance](#the-opponents-energy)) affording a move that would faint us, it throws whichever lit button is
+worth the most now, even while baiting. A shield drawn or damage dealt beats fainting with the energy stored. A lit
+button whose move wasn't read isn't weighed, and a faint feared only for something unread doesn't count, since only the
+count says a fainting move can come now. It is logged as
+`threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`.
+
+**Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
+whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
+throw for fear of fainting, since the opponent gone can't land the hit we feared, where the move worth the most might
+leave it standing. Its damage is judged as for shielding [below](#when-to-shield), with our attack and their defense
+stages, at the least it would take of any form either side could be. It must take nine tenths of that at least 2 points
+more than the opponent's bar shows, for the builds being guesses and the bar wandering a point or two frame to frame.
+Anything unknown leaves the move held for, the opponent's CP unread included. The throw is logged with the reason, such
+as `threw Hydro Cannon: would finish Giratina at 12%`.
 
 ### When to shield
 
@@ -255,7 +275,8 @@ reads our HUD again 2s after the tap: a CP unchanged means the tap was refused, 
 
 - **Ours:** a nicknamed Pokémon's species comes from the party screen: the lead, then whichever card was sent in. If the
   moves read under the buttons can't belong to that species, which a misread card would cause, it moves on to the next
-  card that fits.
+  card that fits. A switch prompt is answered only once our Poké Balls show a faint since the last one: a dark field at
+  night can match its slate panel, and was once answered with all three of ours still red.
 - **Theirs:** a switch made with the HUD up shows as their HP bar reading fuller than before. Fewer Poké Balls left than
   when the last name was read means the old one fainted, logged as `Entei fainted; sent in Salamence`; otherwise it
   switched out, `switched to Sneasel`.
@@ -266,9 +287,10 @@ The strategy still leaves some gaps:
 
 - **Our own energy.** Reading the fill on the unlit charged-move buttons would say how far off the best move is. That
   needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
-- **Throwing what's ready before fainting.** Throw a weaker move that's already ready if we would faint before the best
-  one fills, even while baiting, since drawing a shield is still something. This needs our own energy, and the
-  opponent's throws counted after our shields are gone, when no prompt shows; the banner can supply those.
+- **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
+  would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
+  fills, which needs our own energy to see coming, and the opponent's throws after our shields are gone, which show no
+  prompt and so go uncounted, leaving the count high; the banner can supply those.
 - **Out of scope for now:**
   - Getting a throw in before the opponent's.
   - Choosing who to send in by the opponent's energy.

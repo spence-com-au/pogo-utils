@@ -185,6 +185,13 @@ export function panel(fight: Fight | undefined, width: number): string {
 /** How often the screen may be redrawn, in milliseconds: a status comes with every frame, 30 a second. */
 const DRAW_MS = 100;
 
+/**
+ * How often the phone is looked at for a new frame, in milliseconds, and drawn alone if there is one: twice
+ * `screenrecord`'s 30 a second, so each frame shows within half a frame of coming. Drawn with the rest it was held to
+ * `DRAW_MS`, and stood still through every wait of the run's that sends no status, a menu's 1.5s among them.
+ */
+const FRAME_MS = 1000 / 60;
+
 /** Events kept of each kind: more than any terminal is tall. */
 const KEPT_EVENTS = 1_000;
 
@@ -196,8 +203,10 @@ const ENTER = '\x1b[?1049h\x1b[?25l';
 const LEAVE = '\x1b[?25h\x1b[?1049l';
 
 /** A redraw from the top left, framed as one update so the terminal shows it whole rather than half drawn. */
-const BEGIN = '\x1b[?2026h\x1b[H';
-const END = '\x1b[J\x1b[?2026l';
+const SYNC = '\x1b[?2026h';
+const BEGIN = `${SYNC}\x1b[H`;
+const UNSYNC = '\x1b[?2026l';
+const END = `\x1b[J${UNSYNC}`;
 const CLEAR_LINE = '\x1b[K';
 
 /** How wide the table must still be with the phone beside it, or the phone is left out; and the gap between them. */
@@ -298,8 +307,17 @@ export function live(
   let drawnAt = -Infinity;
   let pending: NodeJS.Timeout | undefined;
 
-  // The frame last drawn and how tall, which is drawn again only once either has changed.
-  let pictured: { image: Image; rows: number } | undefined;
+  // The frame last drawn, how tall and the columns it took, which is drawn again only once any has changed.
+  let pictured: { image: Image; rows: number; beside: number } | undefined;
+
+  // The frame to draw down the left edge and the columns it takes with the gap, or none where there is no frame yet or
+  // the table would be narrower than `TABLE_MIN` beside it.
+  const fit = (columns: number, rows: number) => {
+    const image = phone?.frame();
+    const beside = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
+
+    return image && beside > 0 && columns - beside >= TABLE_MIN ? { image, beside } : undefined;
+  };
 
   // The screen's `rows` lines, `width` wide, each cut to the width and faint where it is outside the table.
   const screen = (rows: number, width: number) => {
@@ -344,14 +362,12 @@ export function live(
     }
 
     const { columns, rows } = stream;
-    const image = phone?.frame();
-    const beside = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
-    const shown = beside > 0 && columns - beside >= TABLE_MIN ? image : undefined;
+    const { image: shown, beside } = fit(columns, rows) ?? { beside: 0 };
     let picture = '';
 
     if (phone && shown && (shown !== pictured?.image || rows !== pictured.rows)) {
       picture = phone.pictures.picture(shown, rows);
-      pictured = { image: shown, rows };
+      pictured = { image: shown, rows, beside };
     } else if (!shown && pictured) {
       picture = ERASE;
       pictured = undefined;
@@ -380,6 +396,27 @@ export function live(
     }
   };
 
+  // A new frame drawn alone, where it takes the place of the last at the same size; anything else moves the table, so
+  // redraws the lot.
+  const look = () => {
+    if (!phone || !entered || finished) {
+      return;
+    }
+
+    const fitted = fit(stream.columns, stream.rows);
+
+    if (fitted && pictured && stream.rows === pictured.rows && fitted.beside === pictured.beside) {
+      if (fitted.image !== pictured.image) {
+        stream.write(`${SYNC}\x1b[H${phone.pictures.picture(fitted.image, stream.rows)}${UNSYNC}`);
+        pictured = { image: fitted.image, rows: stream.rows, beside: fitted.beside };
+      }
+    } else if (fitted || pictured) {
+      draw();
+    }
+  };
+
+  const looking = phone && setInterval(look, FRAME_MS).unref();
+
   stream.on('resize', draw);
 
   return {
@@ -401,6 +438,7 @@ export function live(
     },
     done() {
       clearTimeout(pending);
+      clearInterval(looking);
       stream.off('resize', draw);
 
       if (entered && !finished) {

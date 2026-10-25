@@ -25,8 +25,8 @@ import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
 import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
-import { activeOf, bestButton, counterOf, nextOut, typesOf } from './strategy.mts';
-import { afterThrow, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
+import { activeOf, bestButton, bestLit, counterOf, nextOut, typesOf, type Pick } from './strategy.mts';
+import { afterThrow, finisher, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
 import { Energy, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
@@ -104,6 +104,14 @@ const THROWN = 3;
  */
 const SWITCHED_MS = 2_000;
 
+/**
+ * How long a battle must be off its field — the minigame, a prompt, a charged move playing — before it is told how long
+ * and what showed, in milliseconds, which the battle's line, written only as it changes, leaves unexplained otherwise:
+ * live, 10–20s went by without a line. Longer than a banner over the HUD, a second or two, and shorter than a charged
+ * move, whose minigame alone waits 2.5s for its first bubbles.
+ */
+const OFF_MS = 3_000;
+
 /** Frames kept for a run that gets lost, about the last three seconds of it at one frame in ten. */
 const KEPT_FRAMES = 10;
 
@@ -112,6 +120,10 @@ const KEPT_FRAMES = 10;
  * the prompt sliding in and how it was answered, or the HUD before and after the faint.
  */
 const AROUND_MS = 1_000;
+
+/** Pokémon left by the Poké Balls, a faint being for good: the lower of the count before and a read, either if null. */
+const fewer = (was: number | null, read: number | null) =>
+  read === null ? was : was === null ? read : Math.min(was, read);
 
 /**
  * A menu read run beside the battle: `done` once its screenshot has been taken and read, or has failed. The result's
@@ -127,6 +139,9 @@ export interface Tally {
   won: number;
   lost: number;
 }
+
+/** `ms` milliseconds in seconds to a tenth, `11.2s`. */
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
 export class Lost extends Error {
   readonly frames: readonly Image[];
@@ -257,6 +272,9 @@ export async function run(
   let left: { own: number | null; opponent: number | null } = { own: null, opponent: null };
   let leftAtName: number | null = null;
 
+  // How many of ours the Poké Balls showed left when the last switch prompt showed: three, before any has.
+  let promptedAt = 3;
+
   // The opponent a fuller bar said was replaced, its name cleared to be read again, until the newcomer's is: what the
   // newcomer is told as having replaced.
   let departed: string | null = null;
@@ -304,6 +322,10 @@ export async function run(
   // no prompt and so goes uncounted, which costs nothing, there being no shield left to decide on.
   let stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES };
 
+  // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
+  // field is back, if it ran `OFF_MS`, and dropped with the battle's end, the menus after it being no stretch of it.
+  let off: { state: State | 'minigame'; what: string; from: number }[] = [];
+
   // What the screen was last recognised as, and the battle as last read, for `report.status`.
   let screen = 'other';
   let fight: Fight | undefined;
@@ -346,7 +368,15 @@ export async function run(
       }
     }
 
-    const state = recognise(frame);
+    // A switch prompt follows a faint of ours, which the Poké Balls show by its first frame: one more of them grey than
+    // when the last prompt showed. Anything else matching it is another dark screen, taken as `other` so nothing is
+    // tapped: a charged move's burst over a night field matched with all three red, and answering it had Mewtwo fainted
+    // while it fought on for 26s. A frame whose balls go unread is judged by the count last read, which shows a faint by
+    // then; with none read this battle, nothing has shown one.
+    const recognised = recognise(frame);
+    const ours = battling ? fewer(left.own, pokemonLeft(frame).own) : null;
+    const owed = prompt !== undefined || (ours !== null && ours < promptedAt);
+    const state = recognised === 'switch' && !owed ? 'other' : recognised;
     const theirName = () => seen.opponent ?? 'the opponent';
 
     if (state === 'shield' && last !== 'shield') {
@@ -360,6 +390,45 @@ export async function run(
     }
 
     last = state;
+
+    if (battling) {
+      const now = clock.now();
+      const part = state === 'battle' || state === 'charged' ? (player.minigame ? 'minigame' : undefined) : state;
+      const [first] = off;
+
+      if (!part) {
+        if (first && now - first.from >= OFF_MS) {
+          // Each part's own time only where there is more than the one, whose time is the stretch's.
+          const parts = off.map(({ what, from }, i) =>
+            off.length > 1 ? `${what} (${seconds((off[i + 1]?.from ?? now) - from)})` : what,
+          );
+
+          log(`off the battle for ${seconds(now - first.from)}`, undefined, parts.join(', then '));
+        }
+
+        off = [];
+      } else if (part !== off.at(-1)?.state) {
+        // What the screen shows besides the battle and its prompts says nothing of itself, so is named by what came
+        // before it: with nothing before it and no shield of ours left, it is most likely the opponent's charged move,
+        // which puts up no prompt once there is no shield to answer it with.
+        const before = off.at(-1)?.state;
+        const what = {
+          minigame: `the minigame for our ${thrown ?? 'charged move'}`,
+          shield: 'the shield prompt',
+          switch: 'the switch prompt',
+          other:
+            before === 'switch'
+              ? 'the next of ours coming in'
+              : before
+                ? 'the charged move playing'
+                : ourShields === 0
+                  ? `likely ${theirName()}'s charged move, none of our shields left to prompt for`
+                  : 'neither the battle nor a prompt',
+        }[part];
+
+        off.push({ state: part, what, from: now });
+      }
+    }
 
     if (state !== 'shield' && prompted >= THROWN && matchup) {
       energy.threw(matchup, theirMoves.get(matchup.opponent.species ?? ''));
@@ -434,6 +503,7 @@ export async function run(
         switching = undefined;
         left = { own: null, opponent: null };
         leftAtName = null;
+        promptedAt = 3;
         departed = null;
         steady = new Steady();
         energy = new Energy(data, meta);
@@ -458,9 +528,6 @@ export async function run(
       // The switch prompt leaves the Poké Balls in view, ours already showing the faint it follows.
       if (state !== 'shield') {
         const balls = pokemonLeft(frame);
-        const fewer = (was: number | null, read: number | null) =>
-          read === null ? was : was === null ? read : Math.min(was, read);
-
         const counted = { own: fewer(left.own, balls.own), opponent: fewer(left.opponent, balls.opponent) };
 
         for (const side of ['own', 'opponent'] as const) {
@@ -607,6 +674,7 @@ export async function run(
 
       // What the opponent can afford: the energy counted, and a fast move's more for a hit the count missed.
       const estimate = energy.estimate(facing);
+      const affordable = estimate ? estimate.energy + estimate.gain : undefined;
 
       // Taken only where the opponent's hardest charged move would faint us: a hit we survive is eaten, the shield kept
       // for one we would not. Hardest of those it can afford, where its energy is counted. A league whose cap went
@@ -622,7 +690,7 @@ export async function run(
               cap,
               meta,
               theirMoves.get(seen.opponent ?? ''),
-              estimate ? estimate.energy + estimate.gain : undefined,
+              affordable,
               stages,
             );
       const shield = ourShields > 0 && verdict.faints;
@@ -631,9 +699,43 @@ export async function run(
       // past mattering. The shield's verdict, unknowns and an unread cap counting as fainting here too: guessed wrong,
       // either way it costs no more than the stages of one move, where telling a guess from a read would take `Verdict`
       // saying which it is.
-      const bait = theirShields > 0;
       const lastHit = ourShields === 0 && verdict.faints;
-      const best = bestButton(data, seen.moves, typesOf(data, us), typesOf(data, them), { bait, lastHit });
+      const ownTypes = typesOf(data, us);
+      const theirTypes = typesOf(data, them);
+      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
+      const ready = state === 'charged' ? readyButtons(frame) : [];
+      const lit = ready.map(([x]) => x);
+
+      // A lit move that would finish the opponent goes now, whatever is held for: a turn waited is a hit taken. Live, a
+      // Swampert held for Earthquake while Hydro Cannon could have finished a Giratina at 12%, and fainted first. Not
+      // while the league's cap is unread, which would leave a CP misread over it to be built as if it were read.
+      const finish =
+        cap === undefined
+          ? undefined
+          : finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, theirShields, cap, stages);
+
+      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, and
+      // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
+      // drawn or damage dealt being better than fainting with the energy stored. Only on the count's word, a faint feared
+      // for something unknown being no sign that one is coming.
+      const now =
+        pick && !shield && verdict.faints && verdict.afforded !== undefined
+          ? bestLit(data, seen.moves, lit, ownTypes, theirTypes, { lastHit })
+          : undefined;
+      const held = pick && seen.moves.get(pick.x);
+
+      // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
+      // the move worth the most could leave it standing to land it.
+      const throwing: Pick | undefined =
+        finish ??
+        (pick && now !== undefined && now !== pick.x
+          ? {
+              x: now,
+              bait: false,
+              why: `${verdict.afforded} would faint us, ${affordable} energy affords it; not holding for ${held}`,
+            }
+          : pick);
+      const best = throwing?.x;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: verdict.why, taken: false };
@@ -650,7 +752,7 @@ export async function run(
         },
         moves: [...seen.moves.values()],
         throwing: (best !== undefined && seen.moves.get(best)) || undefined,
-        bait,
+        bait: throwing?.bait ?? theirShields > 0,
         shield,
         ...(estimate && { energy: { energy: estimate.energy, fast: estimate.fast } }),
       };
@@ -665,6 +767,7 @@ export async function run(
 
       // The switch prompt's cards are the slots not fainted bar the one out, in party order.
       if (state === 'switch' && !prompt) {
+        promptedAt = left.own ?? promptedAt;
         const gone = caught?.slot ?? slot;
         const out = new Set([...fainted, ...(gone === undefined ? [] : [gone])]);
         const chosen = nextOut(data, party, out, them, meta);
@@ -688,9 +791,11 @@ export async function run(
         counter = chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame) };
       }
 
-      const ready = state === 'charged' ? readyButtons(frame) : [];
       const card = prompt?.card;
       const bubbles = player.minigame && bubbleColour ? bubbleSwipes(frame, bubbleColour) : undefined;
+
+      // A charged move tapped before the last one's throw has played is that throw retried, told and counted once.
+      const pending = player.minigame;
       const played = player.next(state, clock.now(), {
         ready,
         best,
@@ -708,11 +813,13 @@ export async function run(
       if (action.kind === 'swipe') {
         await phone.swipe(action.from, action.to, action.ms);
       } else if (action.kind === 'tap') {
-        if (action.what === 'charged') {
+        if (action.what === 'charged' && pending) {
+          log(`tap ${thrown ?? 'a charged move'} again`, 'own', 'its button still lit');
+        } else if (action.what === 'charged') {
           thrown = seen.moves.get(action.at[0]);
           const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
           stages = { own: user, their: target };
-          log(`threw ${thrown ?? 'a charged move'}`, 'own');
+          log(`threw ${thrown ?? 'a charged move'}`, 'own', action.at[0] === best ? throwing?.why : undefined);
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!offered?.taken) {
@@ -869,6 +976,7 @@ export async function run(
         if (menu.screen === 'result') {
           battles++;
           battling = false;
+          off = [];
 
           if (done.outcome) {
             outcomes[done.outcome]++;

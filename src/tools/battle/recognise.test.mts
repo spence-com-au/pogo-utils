@@ -111,6 +111,7 @@ test.each<[string, number | null, number | null]>([
   ['charged-shadow-sneak', 2, 1],
   ['battle-pixel8', 3, 3],
   ['switch-pixel8', 2, 3],
+  ['battle-slate-night', 3, 3],
   ['battle-banner-pixel8-groudon', 3, 3],
   ['shield-glaceon', null, null],
   ['shield-pixel8', null, null],
