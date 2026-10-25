@@ -404,7 +404,13 @@ export function scale(image: Image, factor: number): Image {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const src = (Math.floor(y / factor) * image.width + Math.floor(x / factor)) * 4;
-      data.set(image.data.subarray(src, src + 4), (y * w + x) * 4);
+      const to = (y * w + x) * 4;
+
+      // Copied a byte at a time rather than through `subarray`, which made an array for each pixel.
+      data[to] = image.data[src] ?? 0;
+      data[to + 1] = image.data[src + 1] ?? 0;
+      data[to + 2] = image.data[src + 2] ?? 0;
+      data[to + 3] = image.data[src + 3] ?? 0;
     }
   }
 

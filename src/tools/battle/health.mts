@@ -11,7 +11,6 @@
 
 import { luminance, rgb, type Image } from '../inventory/png.mts';
 
-type Colour = [r: number, g: number, b: number];
 type Fill = 'green' | 'yellow' | 'red';
 
 /**
@@ -20,7 +19,7 @@ type Fill = 'green' | 'yellow' | 'red';
  * where a hit has just taken it, trails an orange that drains away after it, 246–255/139–152/0–22, which is no part of
  * what is left and which the red's test stops short of by its green.
  */
-function fillOf([r, g, b]: Colour): Fill | undefined {
+function fillOf(r: number, g: number, b: number): Fill | undefined {
   if (g > 200 && g - r > 90 && g - b > 30) {
     return 'green';
   }
@@ -102,7 +101,10 @@ function strips(image: Image): Strip[] {
     let gap = 0;
 
     for (let x = 0; x <= image.width; x++) {
-      const fill = x < image.width ? fillOf(rgb(image, x, y)) : undefined;
+      // Read off the data rather than through `rgb`, which made an array for each pixel of the search.
+      const i = (y * image.width + x) * 4;
+      const fill =
+        x < image.width ? fillOf(image.data[i] ?? 0, image.data[i + 1] ?? 0, image.data[i + 2] ?? 0) : undefined;
 
       if (run && fill === run.fill) {
         run.right = x + 1;
