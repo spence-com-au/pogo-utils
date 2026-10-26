@@ -907,11 +907,12 @@ export async function run(
       // The moves lit, which a switch banks: the energy for each stays with ours on the bench.
       const banking = lit.flatMap((x) => seen.moves.get(x) ?? []);
 
-      // No shield of ours left, a hit coming that would faint us, a move lit and a shield of theirs to draw: the throw
-      // goes rather than any switch, there being little left of ours to save. Live, a Galarian Moltres at a tenth of its
-      // HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for
-      // the rest of the battle.
-      const doomed = ourShields === 0 && verdict.faints && theirShields > 0 && banking.length > 0;
+      // No shield of ours left, a hit coming that would faint us, the move to throw lit and a shield of theirs to draw: the
+      // throw goes rather than any switch, there being little left of ours to save. Only where the move to throw is lit,
+      // so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a tenth of its HP stayed in against a
+      // Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for the rest of the battle.
+      const going = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
+      const doomed = ourShields === 0 && verdict.faints && theirShields > 0 && going !== undefined;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one is
@@ -925,7 +926,7 @@ export async function run(
             log(
               `staying in against ${theirName()}`,
               'own',
-              `${banking.join(' and ')} drawn into a shield before ${own ?? 'ours'} faints`,
+              `${going} drawn into a shield before ${own ?? 'ours'} faints`,
             );
           }
 
@@ -935,7 +936,7 @@ export async function run(
         return benched(chosen, false);
       };
 
-      if (answer && slot !== undefined && fighting) {
+      if (answer && slot !== undefined && slot !== stripping && fighting) {
         answer = false;
         counter = finish ? undefined : stay(counterOf(data, party, slot, us, fainted, them, meta));
       }

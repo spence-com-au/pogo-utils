@@ -311,11 +311,11 @@ export interface Switch {
  * charged move the opponent is allowed for, so that ours keeps a move it has ready on the bench rather than spend it
  * into a shield or faint with it. The hardest-hitting of those, and between equals the first card. Undefined where ours
  * is not threatened, as by `shouldShield`'s rule, or where either species is not known. Whether a counter is benched
- * instead, and whether ours has a move ready, are the caller's to say.
+ * instead, and whether ours has a move ready, are the caller's to say, what is lit being read off the frame.
  *
  * Live, a Galarian Moltres facing a Granbull switched in, Fly ready and nothing benched hitting Granbull super
  * effectively, gave way to a Snorlax, which drew both its shields; Moltres came back to finish a Milotic with the energy
- * it had kept. Whether ours has a move ready is the caller's to say: what is lit is read off the frame.
+ * it had kept.
  */
 export function refugeOf(
   data: GameData,
