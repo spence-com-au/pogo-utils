@@ -1,11 +1,12 @@
 /**
- * The `adb` binary as a `Transport`, which is how `pnpm inventory` reaches the phone. Each call is a fresh `adb`
- * process rather than a held shell, which costs a few tens of milliseconds against animations that take most of a
- * second and means a dropped USB connection fails one call loudly instead of leaving a shell writing into nothing.
+ * The `adb` binary as a `Transport`. `adbCli`, which is how `pnpm inventory` reaches the phone, makes each call a fresh
+ * `adb` process, which costs a few tens of milliseconds against animations that take most of a second and means a
+ * dropped USB connection fails one call loudly. `adbHeld`, which is how `pnpm battle` reaches it, writes its shell
+ * commands to one `adb shell` held open, a battle's swipes coming too fast to start a process for each.
  */
 
 import { type Transport } from './adb.mts';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 
 /**
  * Far longer than any call here takes, so it only fires on a device or `adb` server that has wedged — an `offline`
@@ -40,5 +41,108 @@ export function adbCli(serial?: string): Transport {
     state: async () => (await adb(['get-state'])).toString(),
     shell: (args) => adb(['shell', ...args]),
     screencap: () => adb(['exec-out', 'screencap', '-p']),
+  };
+}
+
+/** An argument as the phone's shell reads it back: single-quoted, a `'` inside closing the quote around a `\'`. */
+const quoted = (arg: string) => `'${arg.replaceAll("'", `'\\''`)}'`;
+
+/**
+ * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, which is how
+ * `pnpm battle` reaches the phone: a fresh `adb` process for each of its six swipes a second cost a median 50ms over a
+ * Training battle on a Pixel 4 XL, against a fast move's 80ms swipe. Each command's end is a marker line the shell
+ * echoes after it, with its exit status, which no command's own output carries. The screenshot and the state stay a
+ * process each, being rare and binary.
+ *
+ * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell exiting, or a
+ * command going unanswered for `TIMEOUT_MS`, fails the command under way and every one after it. `close` ends the
+ * shell once nothing more is to be sent.
+ */
+export function adbHeld(serial?: string): Transport & { close(): void } {
+  const prefix = serial ? ['-s', serial] : [];
+  const cli = adbCli(serial);
+  const child = spawn('adb', [...prefix, 'shell'], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const marker = `__adb_held_${process.pid}_${Date.now()}__`;
+  let output = Buffer.alloc(0);
+  let errors = '';
+  let dead: Error | undefined;
+  let closing = false;
+  let current: { resolve: (out: Buffer) => void; reject: (error: Error) => void; timer: NodeJS.Timeout } | undefined;
+  let queue: Promise<unknown> = Promise.resolve();
+
+  const die = (error: Error) => {
+    dead ??= error;
+    current?.reject(dead);
+    clearTimeout(current?.timer);
+    current = undefined;
+  };
+
+  child.stdout.on('data', (chunk: Buffer) => {
+    output = Buffer.concat([output, chunk]);
+
+    // `\n<marker> <status>\n`: the newline before it is the shell's, put there in case the output ended without one.
+    const at = output.indexOf(`\n${marker} `);
+    const end = at < 0 ? -1 : output.indexOf('\n', at + 1);
+
+    if (current && end >= 0) {
+      const status = Number(output.subarray(at + marker.length + 2, end).toString());
+      const out = output.subarray(0, at);
+      const { resolve, reject, timer } = current;
+
+      output = output.subarray(end + 1);
+      clearTimeout(timer);
+      current = undefined;
+
+      if (status === 0) {
+        resolve(out);
+      } else {
+        reject(new Error(errors.trim() || out.toString().trim() || `exited ${status}`));
+      }
+
+      errors = '';
+    }
+  });
+  child.stderr.on('data', (chunk: Buffer) => (errors += chunk.toString()));
+  child.on('error', (error) => die(new Error(`adb shell: ${error.message}`)));
+  child.on('exit', () => {
+    if (!closing) {
+      die(new Error(`adb shell exited${errors.trim() ? `: ${errors.trim()}` : ''}; is the phone still connected?`));
+    }
+  });
+
+  const shell = (args: readonly string[]): Promise<Buffer> => {
+    const run = queue.then(
+      () =>
+        new Promise<Buffer>((resolve, reject) => {
+          if (dead) {
+            reject(dead);
+            return;
+          }
+
+          const timer = setTimeout(() => {
+            die(new Error(`no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`));
+            child.kill();
+          }, TIMEOUT_MS);
+
+          current = { resolve, reject, timer };
+          child.stdin.write(`${args.map(quoted).join(' ')}; printf '\\n%s %d\\n' ${marker} $?\n`);
+        }),
+    );
+
+    queue = run.catch(() => undefined);
+
+    return run.catch((error: unknown) => {
+      throw new Error(`adb shell ${args.join(' ')}: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  };
+
+  return {
+    state: () => cli.state(),
+    shell,
+    screencap: () => cli.screencap(),
+    close: () => {
+      closing = true;
+      child.stdin.end();
+    },
   };
 }

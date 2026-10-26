@@ -70,6 +70,12 @@ for text and done every few seconds.
   its throw plays or 3s pass, since the throw waits for the fast move under way, its button lit meanwhile. Nothing is
   swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to
   switch to is tapped ahead of a lit move, since the switch is made to keep that move's energy.
+- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts)), not a
+  fresh `adb` process for each tap and swipe as `pnpm inventory` uses. Over a Training battle on a Pixel 4 XL, the time
+  a swipe takes beyond its own 80ms fell from a median of 50ms (p95 56ms) to 35ms (p95 74ms), and a tap's from 49ms to
+  28ms. Most of what is left is `input` starting on the phone for each command, which
+  [#489](https://github.com/spence-com-au/pogo-utils/issues/489) is to remove. The shell exiting, as it does when the
+  phone is unplugged, stops the run with `adb shell exited; is the phone still connected?`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length. Where none are found, rows are swept instead.
