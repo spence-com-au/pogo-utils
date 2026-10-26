@@ -53,9 +53,9 @@ const quoted = (arg: string) => `'${arg.replaceAll("'", `'\\''`)}'`;
  * Training battle on a Pixel 4 XL, against a fast move's 80ms swipe. Each command's end is a marker line the shell
  * prints after it with its exit status, which no command's own output carries. The phone's shell writes stderr to
  * stdout, so that what a command wrote to either comes back in order ahead of its marker and is all its own: a command
- * that fails is told by what it wrote, and one that succeeds answers that too, as its output. Waiting on a marker on a
- * stderr of its own instead cost 50ms a command, `adb` sending stderr that much later. The screenshot and the state
- * stay a process each, being rare and binary.
+ * that fails is told by what it wrote, and one that succeeds answers that too, as its output, where a separate stderr
+ * would arrive on its own pipe in either order. The screenshot and the state stay a process each, being rare and
+ * binary.
  *
  * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell closing, a
  * write to it failing, or a command going unanswered for `TIMEOUT_MS` fails the command under way and every one after
