@@ -102,21 +102,25 @@ export async function* decodeFrames(h264: Readable, { width, height }: Size): As
 
   const size = width * height * 4;
 
-  // Gathered until a frame's worth has come and joined once, rather than joined chunk by chunk: a frame comes in some
-  // twenty of a pipe's 64 kB chunks, and joining each to what came before copied the frame ten times over.
-  let pending: Buffer[] = [];
-  let buffered = 0;
+  // Each chunk is copied straight into its frame, so a frame costs one allocation and one copy. Memory allocated outside
+  // V8's heap is what brings on its full collections, about one for each 64 MB, so at thirty frames a second every
+  // further megabyte a frame is another full collection every two seconds.
+  let frame = new Uint8Array(size);
+  let filled = 0;
 
   try {
     for await (const chunk of ffmpeg.stdout as AsyncIterable<Buffer>) {
-      pending.push(chunk);
-      buffered += chunk.length;
+      for (let at = 0; at < chunk.length;) {
+        const taken = Math.min(size - filled, chunk.length - at);
+        frame.set(chunk.subarray(at, at + taken), filled);
+        filled += taken;
+        at += taken;
 
-      while (buffered >= size) {
-        const joined = Buffer.concat(pending, buffered);
-        yield { width, height, data: new Uint8Array(joined.subarray(0, size)) };
-        pending = buffered > size ? [joined.subarray(size)] : [];
-        buffered -= size;
+        if (filled === size) {
+          yield { width, height, data: frame };
+          frame = new Uint8Array(size);
+          filled = 0;
+        }
       }
     }
   } finally {
