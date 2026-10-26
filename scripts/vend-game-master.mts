@@ -1,6 +1,6 @@
 /**
  * Writes the game master fixture the corpus tests read their forms, moves, type names and CP multipliers out of. It
- * exists because a test of a reader must not reach the network, and the two files upstream are 23 MB for the 0.85 MB
+ * exists because a test of a reader must not reach the network, and the two files upstream are 22 MB for the 0.85 MB
  * anything here consults.
  *
  * Nothing reads the clock, so the output is a pure function of the three things `loadGameData` downloads and

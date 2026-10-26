@@ -561,7 +561,7 @@ from `tessdata_fast` 4.1.0 — what `apt` and `brew` both install — fetched on
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, the form icons from
 `pogo_assets` that the Pokédex page already draws, and the game master — the vended
 [`fixtures/game-master.json`](src/tools/inventory/fixtures/game-master.json), which the build publishes rather than the
-page fetching the 23 MB upstream. The screenshot and its reading stay in memory, and leave only as a download.
+page fetching the 23 MB it is made from. The screenshot and its reading stay in memory, and leave only as a download.
 
 The corpus is what holds the page to the CLI. `INVENTORY_OCR=wasm pnpm test:corpus` runs
 [`screens.test.mts`](src/tools/inventory/screens.test.mts) under the WebAssembly engine, handed the CLI's model off disk

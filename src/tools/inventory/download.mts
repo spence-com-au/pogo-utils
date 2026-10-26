@@ -1,9 +1,9 @@
 /**
  * The game master, the string table and the icon listing, downloaded and cached on disk, which is the half of
  * `game-master.mts` only `pnpm inventory` has: a browser has no disk to keep a week's copy on, and the Inventory page
- * reads the vended `fixtures/game-master.json` the build publishes rather than the 23 MB upstream.
+ * reads the vended `fixtures/game-master.json` the build publishes rather than the 23 MB it is made from.
  *
- * Every download is cached for a week, the game master being 20 MB and a scan of a few thousand Pokémon not the moment
+ * Every download is cached for a week, the game master being 19 MB and a scan of a few thousand Pokémon not the moment
  * to discover the network is down.
  */
 
