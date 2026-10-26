@@ -70,7 +70,10 @@ export interface Choices {
   /** Which of the switch prompt's cards to send in. */
   card?: Point;
 
-  /** A bench card to switch in mid-fight, tapped in place of the fight's swipe, but never through the minigame. */
+  /**
+   * A bench card to switch in mid-fight, tapped in place of the fight's swipe and ahead of a lit charged move, the switch
+   * keeping that move's energy, but never through the minigame.
+   */
   bench?: Point;
 
   /**

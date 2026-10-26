@@ -287,7 +287,8 @@ that counters it outright: safe from every one of those moves, and holding a cha
 against every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that
 hits hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can
 learn, since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit
-move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move.
+move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor
+one [doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
 once, with nothing to confirm, and does nothing while our own switch timer runs. Rather than model the timer, the run
@@ -312,11 +313,11 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   a Galarian Moltres, whose two banked Fly drew both shields; Melmetal came back after Moltres fainted and finished
   Samurott.
 - **Spending it when doomed.** With no shield of ours left, our HP read low enough that a hit the opponent may land
-  would faint us, and a shield of theirs to draw, neither switch is made: the move to throw, once lit, goes into the
-  shield, there being little left of ours to save. The faint is feared rather than counted, since an opponent just
-  switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds after coming back in.
-  Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that Fly took Kyogre's
-  last shield, and it had none for the rest of the battle.
+  would faint us, and a shield of theirs to draw, no switch is made, the counter switch included: the move to throw,
+  once lit, goes into the shield, there being little left of ours to save. The faint is feared rather than counted,
+  since an opponent just switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds
+  after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
+  Fly took Kyogre's last shield, and it had none for the rest of the battle.
 
 A switch the timer refuses gives the bank back, and neither switch is tried again for 10s.
 
