@@ -11,7 +11,7 @@
  * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do.
  */
 
-import { ICON_CACHE } from './download.mts';
+import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
 import { encodePng } from './png.mts';
 import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -39,11 +39,11 @@ const dumpRows = (text: string) => text.split('\n').filter((line) => DUMP.test(l
  * scanner's `CACHE` is relative, which is why this works at all: the directory a subprocess runs in decides where its
  * cache is, so no flag or stub is needed to move it.
  *
- * All three files are load-bearing, measured rather than reasoned about — seeded with `game-master.json` alone, a
- * `parse` run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP
- * multiplier for every level, where an empty icon index and string table it takes in its stride. That emptiness is
- * what lets the stderr below be asserted — no form means no icon to fetch, so an empty stderr is exactly the claim
- * that the seeded cache was read rather than merely present.
+ * All three files are load-bearing, measured rather than reasoned about — seeded with the game master alone, a `parse`
+ * run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP multiplier for
+ * every level, where an empty icon index and string table it takes in its stride. That emptiness is what lets the
+ * stderr below be asserted — no form means no icon to fetch, so an empty stderr is exactly the claim that the seeded
+ * cache was read rather than merely present.
  *
  * `extra` is appended to those templates for the tests that need a form to exist, and defaults to none so every other
  * caller keeps that emptiness. `icons` names what the index holds and writes each file beside it: the index is what
@@ -57,7 +57,7 @@ function reads(extra: readonly unknown[] = [], icons: readonly string[] = []): s
 
   mkdirSync(cache, { recursive: true });
   writeFileSync(
-    join(cache, 'game-master.json'),
+    join(cache, GAME_MASTER_CACHE),
     JSON.stringify([
       { templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: levels } } },
       ...extra,

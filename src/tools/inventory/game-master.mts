@@ -1,6 +1,5 @@
 /**
- * What the game itself knows about every species, form and move, from PokeMiners' decoded game master and the English
- * string table beside it.
+ * What the game itself knows about every species, form and move, from its decoded game master and English string table.
  *
  * The screen says a Pokémon's form only by implication, but it follows from numbers that are shown: HP is a pure
  * function of the base stamina, the stamina IV and the level's CP multiplier, so given PGSharp's overlay a form is
