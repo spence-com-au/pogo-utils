@@ -268,7 +268,8 @@ straight away. If the newcomer's allowed moves can hit ours super effectively, i
 that counters it outright: safe from every one of those moves, and holding a charged move that is super effective
 against every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that
 hits hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can
-learn, since their actual moves only show once they're out. Unread species never switch.
+learn, since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit
+move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
 once, with nothing to confirm, and does nothing while our own switch timer runs. Rather than model the timer, the run
@@ -278,9 +279,9 @@ reads our HUD again 2s after the tap: a CP unchanged means the tap was refused, 
 ### Banking energy
 
 A Pokémon keeps its energy on the bench, so a charged move lit as it switches out is still lit when it comes back in.
-The bot can't read energy, but a lit button proves it, so each switch of ours records the moves lit as it left. This is
-how the user played the 11 GO Battle League battles they recorded, 10 of them won: the same Pokémon switched out with a
-move ready, and threw it on coming back, took a shield or a knockout each time.
+The bot can't read energy, but a lit button proves it, so each switch of ours records the moves lit as it left. In 4 of
+the 11 GO Battle League battles the user recorded (10 won), a Pokémon switched out with a move ready and threw it on
+coming back, about seven times in all, taking a shield or a knockout each time.
 
 - **Escaping with it.** While the opponent switched in stays out, its switch timer spent, a Pokémon of ours it threatens
   that has a move lit and no [counter](#when-the-opponent-switches) benched switches to one safe from all of the
@@ -291,10 +292,12 @@ move ready, and threw it on coming back, took a shield or a knockout each time.
   back after that one faints, with the finish still lit. One sent in for this throws rather than switching away again.
   Live, a Melmetal with Dynamic Punch ready for a shielded Samurott gave way to a Galarian Moltres, whose two banked Fly
   drew both shields; Melmetal came back after Moltres fainted and finished Samurott.
-- **Spending it when doomed.** With no shield of ours left, a hit coming that would faint us and a shield of theirs to
-  draw, neither switch is made: the lit move is thrown into the shield, there being little left of ours to save, logged
-  as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that Fly took Kyogre's last
-  shield, and it had none for the rest of the battle.
+- **Spending it when doomed.** With no shield of ours left, our HP read low enough that a hit the opponent may land
+  would faint us, and a shield of theirs to draw, neither switch is made: the move to throw, once lit, goes into the
+  shield, there being little left of ours to save. The faint is feared rather than counted, since an opponent just
+  switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds after coming back in.
+  Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that Fly took Kyogre's
+  last shield, and it had none for the rest of the battle.
 
 A switch the timer refuses gives the bank back, and neither switch is tried again for 10s.
 
