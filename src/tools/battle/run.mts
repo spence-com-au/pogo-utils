@@ -968,13 +968,13 @@ export async function run(
       // lit and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to
       // save. A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may
       // carry energy banked that the count, starting it at nothing, cannot see, and the counter and refuge switches
-      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on our HP as read, never on
-      // it unread. And only where the move to throw is lit already, so that staying in is a throw and not a swipe.
+      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never on
+      // a guess for something unread. And only where the move to throw is lit already, so that staying in is a throw and not a swipe.
       // Live, a Galarian Moltres at a tenth of its HP stayed in against a Kyogre switched in, threw Fly into its last
       // shield and fainted; Kyogre had none left for the battle.
       const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
       const doomed =
-        ourShields === 0 && health.own !== null && verdict.faints && theirShields > 0 && aimed !== undefined;
+        ourShields === 0 && verdict.faints && verdict.hardest !== undefined && theirShields > 0 && aimed !== undefined;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one

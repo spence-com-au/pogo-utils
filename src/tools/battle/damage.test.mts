@@ -176,6 +176,14 @@ test('anything unknown counts as fainting', () => {
   expect(wouldFaint(DATA, CHARIZARD, { species: 'Not A Pokémon', cp: 1826 }, 0.9, ULTRA).faints).toBe(true);
 });
 
+/** Which a doomed Pokémon of ours, staying in rather than switch, is told by: a faint guessed is no sign of one. */
+test('names the hardest move only where its hit was calculated', () => {
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA).hardest).toBe('Fire Blast');
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, null, ULTRA).hardest, 'the HP left').toBe(undefined);
+  expect(wouldFaint(DATA, CHARIZARD, { species: null, cp: 1826 }, 0.9, ULTRA).hardest, 'their species').toBe(undefined);
+  expect(wouldFaint(DATA, { species: 'Charizard', cp: null }, MAGMAR, 0.9, ULTRA).hardest, 'our CP').toBe(undefined);
+});
+
 test('their CP unread is taken as the cap, and says so', () => {
   const unread = { species: 'Magmar', cp: null };
   const atCap = wouldFaint(DATA, CHARIZARD, { species: 'Magmar', cp: ULTRA }, 0.9, ULTRA);
@@ -183,6 +191,7 @@ test('their CP unread is taken as the cap, and says so', () => {
   expect(wouldFaint(DATA, CHARIZARD, unread, 0.9, ULTRA)).toEqual({
     faints: atCap.faints,
     why: `${atCap.why} (their CP unread, taken as the 2500 cap)`,
+    hardest: atCap.hardest,
   });
   expect(atCap.faints, 'a hit it survives keeps the shield').toBe(false);
   expect(wouldFaint(DATA, { species: 'Charizard', cp: null }, MAGMAR, 0.9, ULTRA).why, 'ours is not').toBe(
@@ -194,6 +203,7 @@ test('says which hit it judged by, and how much of us it takes against what is l
   expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA)).toEqual({
     faints: true,
     why: 'Fire Blast would take ~48%, with 50% left',
+    hardest: 'Fire Blast',
   });
   expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.6, ULTRA).why).toBe('Fire Blast would take ~48%, with 60% left');
 });
@@ -280,7 +290,11 @@ test.each<[string, number, ReturnType<typeof staged>, boolean, string]>([
     'Fire Blast would take ~48%, with 60% left',
   ],
 ])('with %s, at %s HP a CP 2495 Charizard would faint: %s', (_, hp, stages, faints, why) => {
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, hp, ULTRA, null, new Set(), undefined, stages)).toEqual({ faints, why });
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, hp, ULTRA, null, new Set(), undefined, stages)).toEqual({
+    faints,
+    why,
+    hardest: 'Fire Blast',
+  });
 });
 
 test('only a stat change that always happens moves a stage, and no further than ±4', () => {
