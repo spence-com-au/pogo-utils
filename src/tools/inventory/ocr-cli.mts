@@ -5,7 +5,6 @@
  */
 
 import { type Engine } from './ocr.mts';
-import { encodePng } from './png.mts';
 import { execFile } from 'node:child_process';
 
 /**
@@ -18,6 +17,10 @@ import { execFile } from 'node:child_process';
  *
  * A floating-point exception counts as reading nothing, it being the image rather than the machine that causes it:
  * Tesseract 5.3.4 dies of one every time on some whitelisted bands.
+ *
+ * The image goes in as a PAM, its pixels as they are behind a few lines of header, rather than a PNG: Tesseract reads
+ * both the same, and deflating a PNG cost Node 40–50ms a full screen and some 7ms a battle's band, where a PAM costs
+ * Tesseract no more than 12ms extra to read.
  */
 export const tesseractCli: Engine = {
   tsv: (image, psm, whitelist) => {
@@ -43,10 +46,13 @@ export const tesseractCli: Engine = {
         },
       );
 
-      // A Tesseract that fails before reading its input closes the pipe under a PNG too big to buffer, and the EPIPE
+      // A Tesseract that fails before reading its input closes the pipe under an image too big to buffer, and the EPIPE
       // would otherwise be an unhandled error that kills Node before the exit status above can say what went wrong.
       child.stdin?.on('error', () => {});
-      child.stdin?.end(encodePng(image));
+      child.stdin?.write(
+        `P7\nWIDTH ${image.width}\nHEIGHT ${image.height}\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n`,
+      );
+      child.stdin?.end(image.data);
     });
   },
 };
