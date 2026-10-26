@@ -44,7 +44,7 @@ import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, Screen, screenrecord, streamSize } from '../src/tools/battle/stream.mts';
-import { adbCli } from '../src/tools/inventory/adb-cli.mts';
+import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
@@ -204,8 +204,11 @@ if (command === 'run') {
     fail('--count takes a whole number of battles, 1 or more');
   }
 
+  // Taps and swipes go through one held shell, six swipes a second being too many to start a process for each; the
+  // settings put back on every way out go a process each, so that a shell gone with the connection still tries.
   const transport = adbCli(options.serial);
-  const device = new Device(transport);
+  const held = adbHeld(options.serial);
+  const device = new Device(held);
   await device.check();
   useEngine(tesseractCli);
 
@@ -224,7 +227,17 @@ if (command === 'run') {
     await transport.shell(['settings', 'get', 'global', 'stay_on_while_plugged_in']),
   );
   const before = /^\d+$/.test(awake.trim()) ? awake.trim() : '0';
-  const restore = () => transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]);
+
+  // A phone gone, unplugged mid-battle, cannot be put back: said in a line rather than thrown over the error that
+  // stopped the run.
+  const restore = () =>
+    transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
+      () => undefined,
+      (error: unknown) =>
+        console.error(
+          `stay_on_while_plugged_in not put back to ${before}: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+    );
   let screen: Screen | undefined;
 
   // A terminal is drawn the panel whether or not `--verbose` asks; anything else is written lines, and only if it does.
@@ -303,10 +316,16 @@ if (command === 'run') {
     mkdirSync(dir, { recursive: true });
   }
 
+  // Ctrl-C closes the held shell while the run is still sending to it: what then fails is no error of the run's, and
+  // the setting is put back by the handler alone.
+  let interrupted = false;
+
   process.once('SIGINT', () => {
+    interrupted = true;
     panel?.done();
     flush();
     screen?.close();
+    held.close();
     void restore().finally(() => process.exit(130));
   });
 
@@ -356,7 +375,10 @@ if (command === 'run') {
     // into the screen taken over would go with it.
     panel?.done();
     process.exitCode = 1;
-    console.error(error instanceof Error ? error.message : String(error));
+
+    if (!interrupted) {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
 
     if (error instanceof Lost && dir) {
       error.frames.forEach((frame, i) =>
@@ -367,7 +389,11 @@ if (command === 'run') {
   } finally {
     flush();
     screen?.close();
-    await restore();
+    held.close();
+
+    if (!interrupted) {
+      await restore();
+    }
   }
 } else if (command === 'record') {
   const [out, ...extra] = rest;
