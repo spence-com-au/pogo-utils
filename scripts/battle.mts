@@ -316,7 +316,12 @@ if (command === 'run') {
     mkdirSync(dir, { recursive: true });
   }
 
+  // Ctrl-C closes the held shell while the run is still sending to it: what then fails is no error of the run's, and
+  // the setting is put back by the handler alone.
+  let interrupted = false;
+
   process.once('SIGINT', () => {
+    interrupted = true;
     panel?.done();
     flush();
     screen?.close();
@@ -370,7 +375,10 @@ if (command === 'run') {
     // into the screen taken over would go with it.
     panel?.done();
     process.exitCode = 1;
-    console.error(error instanceof Error ? error.message : String(error));
+
+    if (!interrupted) {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
 
     if (error instanceof Lost && dir) {
       error.frames.forEach((frame, i) =>
@@ -382,7 +390,10 @@ if (command === 'run') {
     flush();
     screen?.close();
     held.close();
-    await restore();
+
+    if (!interrupted) {
+      await restore();
+    }
   }
 } else if (command === 'record') {
   const [out, ...extra] = rest;
