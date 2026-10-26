@@ -277,7 +277,8 @@ its lands. It's logged as `its banked Fly finishes Buzzwole`. Otherwise it prefe
 allowed moves can hit super effectively. Among those, or among all of them if none is safe, it picks the one whose
 hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
 The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species wasn't read goes in only
-when its banked energy finishes the opponent or nothing named is left.
+when its banked energy finishes the opponent, when nothing named is left, or when it is first and nothing named is safe
+or hits at all.
 
 ### When the opponent switches
 

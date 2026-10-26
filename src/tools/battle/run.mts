@@ -722,7 +722,7 @@ export async function run(
             stages = { ...stages, own: switching.stages };
             banked.delete(switching.from);
             stripping = switching.stripping;
-            calmAt = Math.max(calmAt, clock.now() + REFUSED_MS);
+            calmAt = clock.now() + REFUSED_MS;
 
             if (switching.bank) {
               banked.set(switching.slot, switching.bank);
@@ -973,14 +973,28 @@ export async function run(
       // lit and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to
       // save. A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may
       // carry energy banked that the count, starting it at nothing, cannot see, and the counter and refuge switches
-      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never
-      // on a guess for something unread, bar their CP, which is taken as the cap as the shield takes it. And only where
-      // the move to throw is lit already, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a
-      // tenth of its HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had
-      // none left for the battle.
+      // answer just such a one: so every move it is allowed, not only those the count affords, its banked energy
+      // unseen. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never on a guess for
+      // something unread, bar their CP, which is taken as the cap as the shield takes it. And only where the move to
+      // throw is lit already, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a tenth of its
+      // HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for
+      // the battle.
       const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
-      const doomed =
-        ourShields === 0 && verdict.faints && verdict.hardest !== undefined && theirShields > 0 && aimed !== undefined;
+      const feared =
+        ourShields === 0 && theirShields > 0 && aimed !== undefined && cap !== undefined
+          ? wouldFaint(
+              data,
+              facing.own,
+              facing.opponent,
+              health.own,
+              cap,
+              meta,
+              theirMoves.get(seen.opponent ?? ''),
+              undefined,
+              stages,
+            )
+          : undefined;
+      const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one
