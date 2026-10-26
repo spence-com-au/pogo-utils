@@ -623,13 +623,25 @@ export async function run(
       }
 
       // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved. A switch of
-      // ours under way is overtaken by the faint, whatever the HUD shows next being the card sent in.
+      // ours under way is overtaken by the faint, whatever the HUD shows next being the card sent in. Which of the two
+      // fainted cannot be told, the CP that would say whether the switch took being cleared with the HUD, so neither is
+      // trusted to have banked: the one switched from loses what the switch banked, which would have it sent back in to
+      // finish if it was the one that fainted, and the one switched to gets back what it had.
       if (state === 'switch') {
         seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
         steady.forget('own');
         stages = { ...stages, own: NO_STAGES };
         readAt = -Infinity;
         counter = undefined;
+
+        if (switching) {
+          banked.delete(switching.from);
+
+          if (switching.bank) {
+            banked.set(switching.slot, switching.bank);
+          }
+        }
+
         switching = undefined;
       }
 
@@ -961,9 +973,9 @@ export async function run(
       }
 
       // A lit move that would finish the opponent but for its shield is kept, and a benched slot with energy banked sent
-      // in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints. Not from
-      // a slot sent in to draw one itself, which throws rather than switch away again, nor while the switch timer may
-      // still be running from a switch it refused.
+      // in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints where it
+      // took the last. Not from a slot sent in to draw one itself, which throws rather than switch away again, nor while
+      // the switch timer may still be running from a switch it refused.
       if (
         !counter &&
         !switching &&

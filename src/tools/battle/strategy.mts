@@ -351,7 +351,8 @@ export function refugeOf(
  * one with energy banked, which throws as it lands, by the moves `banked` says were ready as each left the field. One
  * the opponent cannot hit super effectively first, then the one with the hardest hit on it, then the first card.
  * Undefined where none has energy banked, or where the opponent's species is not known. Ours keeps its finish on the
- * bench, to throw once the shields are gone, sent back in by `nextOut` after the one sent faints.
+ * bench, to throw once the shields are gone: where the one sent takes the last, ours is sent back in by `nextOut` after
+ * it faints.
  *
  * Live, a Melmetal with Dynamic Punch ready to finish a shielded Hisuian Samurott gave way to a Galarian Moltres, whose
  * two banked Fly drew both shields; Melmetal came back in after Moltres fainted and finished Samurott.

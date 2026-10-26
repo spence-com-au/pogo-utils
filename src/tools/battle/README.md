@@ -284,14 +284,15 @@ the 11 GO Battle League battles the user recorded (10 won), a Pokémon switched 
 coming back, about seven times in all, taking a shield or a knockout each time.
 
 - **Escaping with it.** While the opponent switched in stays out, its switch timer spent, a Pokémon of ours it threatens
-  that has a move lit and no [counter](#when-the-opponent-switches) benched switches to one safe from all of the
-  newcomer's moves, the hardest-hitting of those ([`strategy.mts`](strategy.mts)'s `refugeOf`), logged as
+  that has a move lit and no [counter](#when-the-opponent-switches) being switched to switches to one safe from all of
+  the newcomer's moves, the hardest-hitting of those ([`strategy.mts`](strategy.mts)'s `refugeOf`), logged as
   `switching to Snorlax against Granbull, banking Fly`. Not when the lit move would finish the newcomer.
 - **Drawing the shield with it.** A lit move that would finish the opponent but for its shield is kept, and a benched
-  Pokémon with energy banked is sent in to draw the shield (`stripperOf`), one safe from the opponent first. Ours comes
-  back after that one faints, with the finish still lit. One sent in for this throws rather than switching away again.
-  Live, a Melmetal with Dynamic Punch ready for a shielded Samurott gave way to a Galarian Moltres, whose two banked Fly
-  drew both shields; Melmetal came back after Moltres fainted and finished Samurott.
+  Pokémon with energy banked is sent in to draw the shield (`stripperOf`), one safe from the opponent first. Where the
+  one sent takes the last shield, ours is sent back in after it faints, with the finish still lit. One sent in for this
+  throws rather than switching away again. Live, a Melmetal with Dynamic Punch ready for a shielded Samurott gave way to
+  a Galarian Moltres, whose two banked Fly drew both shields; Melmetal came back after Moltres fainted and finished
+  Samurott.
 - **Spending it when doomed.** With no shield of ours left, our HP read low enough that a hit the opponent may land
   would faint us, and a shield of theirs to draw, neither switch is made: the move to throw, once lit, goes into the
   shield, there being little left of ours to save. The faint is feared rather than counted, since an opponent just
