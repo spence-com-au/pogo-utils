@@ -781,8 +781,10 @@ export async function run(
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
-      // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw.
-      const going = lit.some((x) => throwing === undefined || x === throwing.x);
+      // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw. Never once a throw is tapped and
+      // not yet played: a banner read landing meanwhile can lower the count into a hold, which would stop a lost tap's
+      // retap, the counts it rests on staying paused until the throw plays.
+      const going = !player.minigame && lit.some((x) => throwing === undefined || x === throwing.x);
       const spared = going
         ? spare(
             data,
