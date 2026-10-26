@@ -68,7 +68,8 @@ for text and done every few seconds.
   none chosen, whichever lit first. A state must hold for a few frames before it is answered, because a prompt sliding
   in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move's isn't repeated until
   its throw plays or 3s pass, since the throw waits for the fast move under way, its button lit meanwhile. Nothing is
-  swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw.
+  swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to
+  switch to is tapped ahead of a lit move, since the switch is made to keep that move's energy.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length. Where none are found, rows are swept instead.
@@ -270,10 +271,14 @@ the count must be short, and every move is allowed for again.
 
 ### After a faint
 
-Of the Pokémon left, it prefers one that none of the opponent's allowed moves can hit super effectively. Among those, or
-among all of them if none is safe, it picks the one whose hardest move hits the opponent hardest, and between equals,
-the first card ([`strategy.mts`](strategy.mts)'s `nextOut`). The reason is logged, such as
-`the only one safe from Glaceon's moves`. A card whose species wasn't read goes in only when nothing named is left.
+Of the Pokémon left, it prefers one whose [banked](#banking-energy) charged move would finish the opponent the moment it
+lands, judged as [finishing](#which-charged-move-to-throw) is, which comes before safety: the opponent gone, nothing of
+its lands. It's logged as `its banked Fly finishes Buzzwole`. Otherwise it prefers one that none of the opponent's
+allowed moves can hit super effectively. Among those, or among all of them if none is safe, it picks the one whose
+hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
+The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species wasn't read goes in only
+when its banked energy finishes the opponent, when nothing named is left, or when it is first and nothing named is safe
+or hits at all.
 
 ### When the opponent switches
 
@@ -282,12 +287,41 @@ straight away. If the newcomer's allowed moves can hit ours super effectively, i
 that counters it outright: safe from every one of those moves, and holding a charged move that is super effective
 against every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that
 hits hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can
-learn, since their actual moves only show once they're out. Unread species never switch.
+learn, since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit
+move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor
+one [doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
 once, with nothing to confirm, and does nothing while our own switch timer runs. Rather than model the timer, the run
 reads our HUD again 2s after the tap: a CP unchanged means the tap was refused, logged as
 `Latias not sent in: the switch timer is running`, and the Pokémon tapped away from is taken to still be out.
+
+### Banking energy
+
+A Pokémon keeps its energy on the bench, so a charged move lit as it switches out is still lit when it comes back in.
+The bot can't read energy, but a lit button proves it, so each switch of ours records the moves lit as it left. In 4 of
+the 11 GO Battle League battles the user recorded (10 won), a Pokémon switched out with a move ready and threw it on
+coming back, about seven times in all, taking a shield or a knockout each time.
+
+- **Escaping with it.** While the opponent switched in stays out, its switch timer spent, a Pokémon of ours it threatens
+  that has a move lit and no [counter](#when-the-opponent-switches) being switched to switches to one safe from all of
+  the newcomer's moves, the hardest-hitting of those ([`strategy.mts`](strategy.mts)'s `refugeOf`), logged as
+  `switching to Snorlax against Granbull, banking Fly`. Not when the lit move would finish the newcomer.
+- **Drawing the shield with it.** A lit move that would finish the opponent but for its shield is kept, and a benched
+  Pokémon with energy banked is sent in to draw the shield (`stripperOf`), one safe from the opponent first. Where the
+  one sent takes the last shield, ours is sent back in after it faints, with the finish still lit. One sent in for this
+  throws rather than switching away again. Live, a Melmetal with Dynamic Punch ready for a shielded Samurott gave way to
+  a Galarian Moltres, whose two banked Fly drew both shields; Melmetal came back after Moltres fainted and finished
+  Samurott.
+- **Spending it when doomed.** With no shield of ours left, our HP read low enough that a hit the opponent may land
+  would faint us, and a shield of theirs to draw, no switch is made, the counter switch included: the move to throw,
+  already lit, goes into the shield, there being little left of ours to save. The faint is feared rather than counted,
+  since an opponent just switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds
+  after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
+  Fly took Kyogre's last shield, and it had none for the rest of the battle.
+
+Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One the timer refuses all
+the same gives the bank back, and neither is tried again for 10s.
 
 ### Knowing who is out
 

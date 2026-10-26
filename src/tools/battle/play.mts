@@ -70,7 +70,10 @@ export interface Choices {
   /** Which of the switch prompt's cards to send in. */
   card?: Point;
 
-  /** A bench card to switch in mid-fight, tapped in place of the fight's swipe, but never through the minigame. */
+  /**
+   * A bench card to switch in mid-fight, tapped in place of the fight's swipe and ahead of a lit charged move, the
+   * switch keeping that move's energy, but never through the minigame.
+   */
   bench?: Point;
 
   /**
@@ -203,13 +206,14 @@ export class Player {
 
     const throwable = best === undefined ? ready : ready.filter(([x]) => x === best);
 
+    // Before a lit move is thrown: the switch is made to keep that energy on the bench.
+    if (bench && !this.#minigame && (state === 'battle' || state === 'charged')) {
+      return { kind: 'tap', at: bench, what: 'bench' };
+    }
+
     if (state === 'battle' || (state === 'charged' && throwable.length === 0)) {
       if (this.#tapped?.state === 'charged' && now - this.#tapped.at < HOLD_MS) {
         return { kind: 'wait' };
-      }
-
-      if (bench && !this.#minigame) {
-        return { kind: 'tap', at: bench, what: 'bench' };
       }
 
       const [through] = this.#minigame ? (bubbles ?? []) : [];

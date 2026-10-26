@@ -207,6 +207,9 @@ export interface Verdict {
   faints: boolean;
   why: string;
 
+  /** The hardest move, where the hit was calculated: undefined where something unknown decided `faints` instead. */
+  hardest?: string;
+
   /**
    * The hardest move, where it is one the opponent's counted energy affords. Undefined where the energy is not counted,
    * or where the count affords nothing and so every move is allowed for.
@@ -323,6 +326,7 @@ export function wouldFaint(
   return {
     faints: hardest.share >= FAINTS * hp,
     why: taken + afforded + staged(stages.their.attack, stages.own.defense) + assumed,
+    hardest: hardest.name,
     ...(hardest.afforded && { afforded: hardest.name }),
   };
 }
