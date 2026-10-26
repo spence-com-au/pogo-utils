@@ -1,9 +1,9 @@
 /**
- * The game master and the icon listing, downloaded from PokeMiners and cached on disk, which is the half of
+ * The game master, the string table and the icon listing, downloaded and cached on disk, which is the half of
  * `game-master.mts` only `pnpm inventory` has: a browser has no disk to keep a week's copy on, and the Inventory page
- * reads the vended `fixtures/game-master.json` the build publishes rather than the 23 MB upstream.
+ * reads the vended `fixtures/game-master.json` the build publishes rather than the 23 MB it is made from.
  *
- * Every download is cached for a week, the game master being 20 MB and a scan of a few thousand Pokémon not the moment
+ * Every download is cached for a week, the game master being 19 MB and a scan of a few thousand Pokémon not the moment
  * to discover the network is down.
  */
 
@@ -15,7 +15,14 @@ import { decodePng } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const GAME_MASTER = 'https://raw.githubusercontent.com/PokeMiners/game_masters/master/latest/latest.json';
+/**
+ * The game master as alexelgt's bot dumps it from the game, about once a day: the array of `{ templateId, data }` the
+ * templates below are read from, current within a day or so of each season's rebalance of moves. How current matters
+ * to `pnpm battle`, which judges every shield and throw by the power, energy and move pools in it.
+ */
+const GAME_MASTER = 'https://raw.githubusercontent.com/alexelgt/game_masters/master/GAME_MASTER.json';
+
+/** The English string table, from PokeMiners' `pogo_assets`, there being none beside alexelgt's game master. */
 const STRINGS =
   'https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Texts/Latest%20APK/JSON/i18n_english.json';
 
@@ -38,6 +45,13 @@ const ICON_INDEX =
  */
 export const ICON_CACHE = `icons-${ICON_DIR.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.json`;
 
+/**
+ * Where the game master is cached, named for whose dump it is and derived from `GAME_MASTER` for the reason
+ * `ICON_CACHE` is: a fixed name across a change of source answers the new one with the old one's copy until the week
+ * is out. Exported for `cli.test.mts`, which seeds it.
+ */
+export const GAME_MASTER_CACHE = `game-master-${new URL(GAME_MASTER).pathname.split('/')[1]?.toLowerCase()}.json`;
+
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 /** Where the downloads are kept between runs. */
@@ -51,7 +65,6 @@ interface Template {
   data: {
     pokemonSettings?: {
       pokemonId: string;
-      form?: string;
       type: string;
       type2?: string;
       stats: { baseAttack?: number; baseDefense?: number; baseStamina?: number };
@@ -61,10 +74,16 @@ interface Template {
       eliteCinematicMove?: string[];
       nonTmCinematicMoves?: string[];
       shadow?: { shadowChargeMove?: string; purifiedChargeMove?: string };
+
+      /**
+       * The form's name, or its number where it is too new for the names the dump was made with: `3362` for Zubat's
+       * Halloween 2026 costume, the week it arrived.
+       */
+      form?: string | number;
     };
     formSettings?: {
       pokemon: string;
-      forms?: { form: string; isCostume?: boolean }[];
+      forms?: { form: string | number; isCostume?: boolean }[];
     };
     moveSettings?: object;
     combatMove?: {
@@ -165,7 +184,7 @@ async function iconIndex(dir: string, refresh: boolean): Promise<ReadonlySet<str
 }
 
 export async function loadGameData(cacheDir: string, refresh = false): Promise<GameData> {
-  const templates = (await cachedJson(cacheDir, 'game-master.json', GAME_MASTER, refresh)) as Template[];
+  const templates = (await cachedJson(cacheDir, GAME_MASTER_CACHE, GAME_MASTER, refresh)) as Template[];
   const index = await iconIndex(cacheDir, refresh);
   const flat = ((await cachedJson(cacheDir, 'english.json', STRINGS, refresh)) as { data: string[] }).data;
   const strings = new Map<string, string>();
@@ -179,7 +198,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     return strings.get(`pokemon_type_${key}`) ?? titleise(key);
   };
 
-  const costumes = new Set<string>();
+  const costumes = new Set<string | number>();
 
   for (const { data } of templates) {
     for (const f of data.formSettings?.forms ?? []) {
@@ -256,26 +275,30 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
   for (const { templateId, data } of templates) {
     const settings = data.pokemonSettings;
-    const match = /^V(\d{4})_POKEMON_/.exec(templateId);
+    const match = /^V(\d{4})_POKEMON_(.*)$/.exec(templateId);
 
     if (!settings || !match) {
       continue;
     }
 
+    // A form's template is named for it after the dex — `V0034_POKEMON_NIDOKING_NORMAL` holds `NIDOKING_NORMAL`, as all
+    // 1,465 named ones in the dump do — so the template names a form that arrived as its number.
+    const name = typeof settings.form === 'number' ? match[2] : settings.form;
     const dex = Number(match[1]);
     const { baseAttack = 0, baseDefense = 0, baseStamina = 0 } = settings.stats;
     const prefix = `${settings.pokemonId}_`;
-    const suffix = settings.form?.startsWith(prefix) ? settings.form.slice(prefix.length) : (settings.form ?? '');
+    const suffix = name?.startsWith(prefix) ? name.slice(prefix.length) : (name ?? '');
     const form: Form = {
       dex,
       species: strings.get(`pokemon_name_${match[1]}`) ?? titleise(settings.pokemonId),
 
       // Nidoran's is `NIDORAN_NORMAL` under a `pokemonId` of `NIDORAN_FEMALE`, so the prefix test alone misses it. A
       // species with no forms at all, as Ogerpon is upstream, has nothing to test and is ordinary too.
-      form: settings.form === undefined || ORDINARY.test(suffix) ? null : titleise(suffix),
+      form: name === undefined || ORDINARY.test(suffix) ? null : titleise(suffix),
 
+      // By the form as the form settings give it too, which is the number where the name is missing.
       costume: settings.form !== undefined && costumes.has(settings.form),
-      icon: iconName(index, dex, suffix, settings.form),
+      icon: iconName(index, dex, suffix, name),
       types: [settings.type, settings.type2].filter((t) => t !== undefined).map(typeName),
       attack: baseAttack,
       defense: baseDefense,
@@ -298,7 +321,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
     // A species with forms is listed once bare and once per form, the bare entry repeating the `_NORMAL` one. Keep it
     // only for species that have nothing else.
-    if (settings.form === undefined) {
+    if (name === undefined) {
       bare.set(dex, form);
     } else {
       forms.push(form);

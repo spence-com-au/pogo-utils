@@ -127,6 +127,26 @@
     {
       "dex": 4,
       "species": "Charmander",
+      "form": "Goggles 2026",
+      "costume": false,
+      "icon": "pm4.fGOGGLES_2026.icon.png",
+      "types": ["Fire"],
+      "attack": 116,
+      "defense": 93,
+      "stamina": 118,
+      "moves": [
+        { "name": "Ember", "fast": true },
+        { "name": "Scratch", "fast": true },
+        { "name": "Flame Charge", "fast": false },
+        { "name": "Flame Burst", "fast": false },
+        { "name": "Flamethrower", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
+      "dex": 4,
+      "species": "Charmander",
       "form": null,
       "costume": false,
       "icon": "pm4.icon.png",
@@ -138,6 +158,27 @@
         { "name": "Ember", "fast": true },
         { "name": "Scratch", "fast": true },
         { "name": "Flame Charge", "fast": false },
+        { "name": "Flame Burst", "fast": false },
+        { "name": "Flamethrower", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
+      "dex": 5,
+      "species": "Charmeleon",
+      "form": "Goggles 2026",
+      "costume": false,
+      "icon": "pm5.fGOGGLES_2026.icon.png",
+      "types": ["Fire"],
+      "attack": 158,
+      "defense": 126,
+      "stamina": 151,
+      "moves": [
+        { "name": "Ember", "fast": true },
+        { "name": "Fire Fang", "fast": true },
+        { "name": "Scratch", "fast": true },
+        { "name": "Fire Punch", "fast": false },
         { "name": "Flame Burst", "fast": false },
         { "name": "Flamethrower", "fast": false },
         { "name": "Frustration", "fast": false },
@@ -171,6 +212,32 @@
       "form": "Copy 2019",
       "costume": false,
       "icon": "pm6.fCOPY_2019.icon.png",
+      "types": ["Fire", "Flying"],
+      "attack": 223,
+      "defense": 173,
+      "stamina": 186,
+      "moves": [
+        { "name": "Fire Spin", "fast": true },
+        { "name": "Air Slash", "fast": true },
+        { "name": "Ember", "fast": true },
+        { "name": "Wing Attack", "fast": true },
+        { "name": "Dragon Breath", "fast": true },
+        { "name": "Fire Blast", "fast": false },
+        { "name": "Dragon Claw", "fast": false },
+        { "name": "Overheat", "fast": false },
+        { "name": "Air Cutter", "fast": false },
+        { "name": "Blast Burn", "fast": false },
+        { "name": "Flamethrower", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
+      "dex": 6,
+      "species": "Charizard",
+      "form": "Goggles 2026",
+      "costume": false,
+      "icon": "pm6.fGOGGLES_2026.icon.png",
       "types": ["Fire", "Flying"],
       "attack": 223,
       "defense": 173,
@@ -684,6 +751,8 @@
         { "name": "Sludge Wave", "fast": false },
         { "name": "Gunk Shot", "fast": false },
         { "name": "Acid Spray", "fast": false },
+        { "name": "Wrap", "fast": false },
+        { "name": "Brutal Swing", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -1057,6 +1126,27 @@
       "form": "Fossil 2026",
       "costume": true,
       "icon": "pm25.fFOSSIL_2026.icon.png",
+      "types": ["Electric"],
+      "attack": 112,
+      "defense": 96,
+      "stamina": 111,
+      "moves": [
+        { "name": "Thunder Shock", "fast": true },
+        { "name": "Quick Attack", "fast": true },
+        { "name": "Present", "fast": true },
+        { "name": "Discharge", "fast": false },
+        { "name": "Thunderbolt", "fast": false },
+        { "name": "Wild Charge", "fast": false },
+        { "name": "Surf", "fast": false },
+        { "name": "Thunder", "fast": false }
+      ]
+    },
+    {
+      "dex": 25,
+      "species": "Pikachu",
+      "form": "Glass Helmet 2026",
+      "costume": true,
+      "icon": "pm25.fGLASS_HELMET_2026.icon.png",
       "types": ["Electric"],
       "attack": 112,
       "defense": 96,
@@ -1573,6 +1663,27 @@
     {
       "dex": 25,
       "species": "Pikachu",
+      "form": "Halloween 2026",
+      "costume": true,
+      "icon": "pm25.fHALLOWEEN_2026.icon.png",
+      "types": ["Electric"],
+      "attack": 112,
+      "defense": 96,
+      "stamina": 111,
+      "moves": [
+        { "name": "Thunder Shock", "fast": true },
+        { "name": "Quick Attack", "fast": true },
+        { "name": "Present", "fast": true },
+        { "name": "Discharge", "fast": false },
+        { "name": "Thunderbolt", "fast": false },
+        { "name": "Wild Charge", "fast": false },
+        { "name": "Surf", "fast": false },
+        { "name": "Thunder", "fast": false }
+      ]
+    },
+    {
+      "dex": 25,
+      "species": "Pikachu",
       "form": "Horizons",
       "costume": true,
       "icon": "pm25.fHORIZONS.icon.png",
@@ -1631,6 +1742,27 @@
       "form": "Kurta",
       "costume": true,
       "icon": "pm25.fKURTA.icon.png",
+      "types": ["Electric"],
+      "attack": 112,
+      "defense": 96,
+      "stamina": 111,
+      "moves": [
+        { "name": "Thunder Shock", "fast": true },
+        { "name": "Quick Attack", "fast": true },
+        { "name": "Present", "fast": true },
+        { "name": "Discharge", "fast": false },
+        { "name": "Thunderbolt", "fast": false },
+        { "name": "Wild Charge", "fast": false },
+        { "name": "Surf", "fast": false },
+        { "name": "Thunder", "fast": false }
+      ]
+    },
+    {
+      "dex": 25,
+      "species": "Pikachu",
+      "form": "K 2026 A 01",
+      "costume": true,
+      "icon": "pm25.fK_2026_A_01.icon.png",
       "types": ["Electric"],
       "attack": 112,
       "defense": 96,
@@ -2068,7 +2200,8 @@
         { "name": "Grass Knot", "fast": false },
         { "name": "Trailblaze", "fast": false },
         { "name": "Surf", "fast": false },
-        { "name": "Psyshock", "fast": false }
+        { "name": "Psyshock", "fast": false },
+        { "name": "Volt Tackle", "fast": false }
       ]
     },
     {
@@ -2092,6 +2225,7 @@
         { "name": "Skull Bash", "fast": false },
         { "name": "Trailblaze", "fast": false },
         { "name": "Surf", "fast": false },
+        { "name": "Volt Tackle", "fast": false },
         { "name": "Thunder", "fast": false }
       ]
     },
@@ -2311,6 +2445,7 @@
         { "name": "Megahorn", "fast": false },
         { "name": "Earth Power", "fast": false },
         { "name": "Sand Tomb", "fast": false },
+        { "name": "Avalanche", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -2498,6 +2633,27 @@
     {
       "dex": 41,
       "species": "Zubat",
+      "form": "Halloween 2026 01",
+      "costume": true,
+      "icon": null,
+      "types": ["Poison", "Flying"],
+      "attack": 83,
+      "defense": 73,
+      "stamina": 120,
+      "moves": [
+        { "name": "Quick Attack", "fast": true },
+        { "name": "Bite", "fast": true },
+        { "name": "Poison Fang", "fast": false },
+        { "name": "Air Cutter", "fast": false },
+        { "name": "Swift", "fast": false },
+        { "name": "Sludge Bomb", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
+      "dex": 41,
+      "species": "Zubat",
       "form": null,
       "costume": false,
       "icon": "pm41.icon.png",
@@ -2512,6 +2668,27 @@
         { "name": "Air Cutter", "fast": false },
         { "name": "Swift", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
+      "dex": 42,
+      "species": "Golbat",
+      "form": "Halloween 2026 01",
+      "costume": true,
+      "icon": null,
+      "types": ["Poison", "Flying"],
+      "attack": 161,
+      "defense": 150,
+      "stamina": 181,
+      "moves": [
+        { "name": "Wing Attack", "fast": true },
+        { "name": "Bite", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Air Cutter", "fast": false },
+        { "name": "Poison Fang", "fast": false },
+        { "name": "Ominous Wind", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -3266,6 +3443,32 @@
       ]
     },
     {
+      "dex": 68,
+      "species": "Machamp",
+      "form": "Wildarea 2026 01",
+      "costume": true,
+      "icon": "pm68.fWILDAREA_2026_01.icon.png",
+      "types": ["Fighting"],
+      "attack": 234,
+      "defense": 159,
+      "stamina": 207,
+      "moves": [
+        { "name": "Bullet Punch", "fast": true },
+        { "name": "Counter", "fast": true },
+        { "name": "Karate Chop", "fast": true },
+        { "name": "Heavy Slam", "fast": false },
+        { "name": "Dynamic Punch", "fast": false },
+        { "name": "Close Combat", "fast": false },
+        { "name": "Rock Slide", "fast": false },
+        { "name": "Cross Chop", "fast": false },
+        { "name": "Stone Edge", "fast": false },
+        { "name": "Submission", "fast": false },
+        { "name": "Payback", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
+      ]
+    },
+    {
       "dex": 69,
       "species": "Bellsprout",
       "form": null,
@@ -3319,6 +3522,7 @@
       "moves": [
         { "name": "Razor Leaf", "fast": true },
         { "name": "Acid", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
         { "name": "Magical Leaf", "fast": true },
         { "name": "Leaf Blade", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
@@ -3950,6 +4154,8 @@
         { "name": "Gunk Shot", "fast": false },
         { "name": "Sludge Wave", "fast": false },
         { "name": "Acid Spray", "fast": false },
+        { "name": "Ice Punch", "fast": false },
+        { "name": "Brutal Swing", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -5425,6 +5631,7 @@
         { "name": "Hyper Beam", "fast": false },
         { "name": "Rock Slide", "fast": false },
         { "name": "Earth Power", "fast": false },
+        { "name": "Brutal Swing", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -5449,6 +5656,7 @@
         { "name": "Hyper Beam", "fast": false },
         { "name": "Rock Slide", "fast": false },
         { "name": "Earth Power", "fast": false },
+        { "name": "Brutal Swing", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -5466,6 +5674,7 @@
       "moves": [
         { "name": "Zen Headbutt", "fast": true },
         { "name": "Lick", "fast": true },
+        { "name": "Psywave", "fast": true },
         { "name": "Yawn", "fast": true },
         { "name": "Heavy Slam", "fast": false },
         { "name": "Hyper Beam", "fast": false },
@@ -5491,6 +5700,7 @@
       "moves": [
         { "name": "Zen Headbutt", "fast": true },
         { "name": "Lick", "fast": true },
+        { "name": "Psywave", "fast": true },
         { "name": "Yawn", "fast": true },
         { "name": "Heavy Slam", "fast": false },
         { "name": "Hyper Beam", "fast": false },
@@ -6174,7 +6384,30 @@
         { "name": "Megahorn", "fast": false },
         { "name": "Cross Poison", "fast": false },
         { "name": "Lunge", "fast": false },
-        { "name": "Trailblaze", "fast": false }
+        { "name": "Trailblaze", "fast": false },
+        { "name": "Foul Play", "fast": false }
+      ]
+    },
+    {
+      "dex": 169,
+      "species": "Crobat",
+      "form": "Halloween 2026 01",
+      "costume": true,
+      "icon": null,
+      "types": ["Poison", "Flying"],
+      "attack": 194,
+      "defense": 178,
+      "stamina": 198,
+      "moves": [
+        { "name": "Air Slash", "fast": true },
+        { "name": "Bite", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Air Cutter", "fast": false },
+        { "name": "Sludge Bomb", "fast": false },
+        { "name": "Poison Fang", "fast": false },
+        { "name": "Cross Poison", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -6190,6 +6423,7 @@
       "moves": [
         { "name": "Air Slash", "fast": true },
         { "name": "Bite", "fast": true },
+        { "name": "Gust", "fast": true },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Air Cutter", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
@@ -8022,6 +8256,7 @@
         { "name": "Brave Bird", "fast": false },
         { "name": "Sky Attack", "fast": false },
         { "name": "Flash Cannon", "fast": false },
+        { "name": "Drill Run", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -8059,10 +8294,12 @@
       "moves": [
         { "name": "Snarl", "fast": true },
         { "name": "Fire Fang", "fast": true },
+        { "name": "Incinerate", "fast": true },
         { "name": "Crunch", "fast": false },
         { "name": "Fire Blast", "fast": false },
         { "name": "Foul Play", "fast": false },
         { "name": "Flamethrower", "fast": false },
+        { "name": "Trailblaze", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -8304,7 +8541,8 @@
         { "name": "Body Slam", "fast": false },
         { "name": "Gyro Ball", "fast": false },
         { "name": "Thunderbolt", "fast": false },
-        { "name": "Ice Beam", "fast": false }
+        { "name": "Ice Beam", "fast": false },
+        { "name": "High Horsepower", "fast": false }
       ]
     },
     {
@@ -8546,6 +8784,7 @@
         { "name": "Hydro Pump", "fast": false },
         { "name": "Future Sight", "fast": false },
         { "name": "Fly", "fast": false },
+        { "name": "Earth Power", "fast": false },
         { "name": "Aeroblast", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
@@ -8568,6 +8807,7 @@
         { "name": "Hydro Pump", "fast": false },
         { "name": "Future Sight", "fast": false },
         { "name": "Fly", "fast": false },
+        { "name": "Earth Power", "fast": false },
         { "name": "Aeroblast", "fast": false },
         { "name": "Aeroblast+", "fast": false },
         { "name": "Aeroblast++", "fast": false }
@@ -9812,6 +10052,7 @@
         { "name": "Heavy Slam", "fast": false },
         { "name": "Rock Tomb", "fast": false },
         { "name": "Meteor Beam", "fast": false },
+        { "name": "Brick Break", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -9947,9 +10188,11 @@
       "moves": [
         { "name": "Struggle Bug", "fast": true },
         { "name": "Tackle", "fast": true },
+        { "name": "Infestation", "fast": true },
         { "name": "Signal Beam", "fast": false },
         { "name": "Bug Buzz", "fast": false },
-        { "name": "Thunderbolt", "fast": false }
+        { "name": "Thunderbolt", "fast": false },
+        { "name": "Lunge", "fast": false }
       ]
     },
     {
@@ -9965,9 +10208,11 @@
       "moves": [
         { "name": "Struggle Bug", "fast": true },
         { "name": "Tackle", "fast": true },
+        { "name": "Infestation", "fast": true },
         { "name": "Silver Wind", "fast": false },
         { "name": "Bug Buzz", "fast": false },
-        { "name": "Dazzling Gleam", "fast": false }
+        { "name": "Dazzling Gleam", "fast": false },
+        { "name": "Shadow Ball", "fast": false }
       ]
     },
     {
@@ -11913,6 +12158,7 @@
       "moves": [
         { "name": "Zen Headbutt", "fast": true },
         { "name": "Counter", "fast": true },
+        { "name": "Low Kick", "fast": true },
         { "name": "Psycho Boost", "fast": false },
         { "name": "Thunderbolt", "fast": false },
         { "name": "Rock Slide", "fast": false }
@@ -12934,6 +13180,7 @@
         { "name": "Shadow Ball", "fast": false },
         { "name": "Dark Pulse", "fast": false },
         { "name": "Dazzling Gleam", "fast": false },
+        { "name": "Mystical Fire", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -13895,6 +14142,7 @@
         { "name": "Close Combat", "fast": false },
         { "name": "Psychic", "fast": false },
         { "name": "Leaf Blade", "fast": false },
+        { "name": "Sacred Sword", "fast": false },
         { "name": "Synchronoise", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
@@ -14367,9 +14615,11 @@
       "moves": [
         { "name": "Snarl", "fast": true },
         { "name": "Feint Attack", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
         { "name": "Focus Blast", "fast": false },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Dark Pulse", "fast": false },
+        { "name": "Foul Play", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
@@ -14388,6 +14638,7 @@
       "moves": [
         { "name": "Hidden Power", "fast": true },
         { "name": "Zen Headbutt", "fast": true },
+        { "name": "Magical Leaf", "fast": true },
         { "name": "Energy Ball", "fast": false },
         { "name": "Grass Knot", "fast": false },
         { "name": "Solar Beam", "fast": false },
@@ -15507,6 +15758,7 @@
       "moves": [
         { "name": "Pound", "fast": true },
         { "name": "Zen Headbutt", "fast": true },
+        { "name": "Charge Beam", "fast": true },
         { "name": "Disarming Voice", "fast": false },
         { "name": "Dazzling Gleam", "fast": false },
         { "name": "Hyper Beam", "fast": false },
@@ -16291,6 +16543,7 @@
         { "name": "Shadow Ball", "fast": false },
         { "name": "Dark Pulse", "fast": false },
         { "name": "Psychic", "fast": false },
+        { "name": "Energy Ball", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
       ]
@@ -16470,7 +16723,8 @@
         { "name": "Foul Play", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
         { "name": "Flamethrower", "fast": false },
-        { "name": "Shadow Ball", "fast": false }
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Swift", "fast": false }
       ]
     },
     {
@@ -16486,6 +16740,7 @@
       "moves": [
         { "name": "Shadow Claw", "fast": true },
         { "name": "Snarl", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
         { "name": "Foul Play", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
         { "name": "Flamethrower", "fast": false },
@@ -17386,6 +17641,7 @@
         { "name": "Hex", "fast": true },
         { "name": "Fire Spin", "fast": true },
         { "name": "Incinerate", "fast": true },
+        { "name": "Astonish", "fast": true },
         { "name": "Energy Ball", "fast": false },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Overheat", "fast": false },
@@ -18209,7 +18465,9 @@
         { "name": "Wild Charge", "fast": false },
         { "name": "Flash Cannon", "fast": false },
         { "name": "Crunch", "fast": false },
-        { "name": "Fusion Bolt", "fast": false }
+        { "name": "Fusion Bolt", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -18675,6 +18933,7 @@
         { "name": "Aerial Ace", "fast": false },
         { "name": "Surf", "fast": false },
         { "name": "Hydro Pump", "fast": false },
+        { "name": "Brutal Swing", "fast": false },
         { "name": "Hydro Cannon", "fast": false },
         { "name": "Frustration", "fast": false },
         { "name": "Return", "fast": false }
@@ -20198,7 +20457,9 @@
         { "name": "Tackle", "fast": true },
         { "name": "Low Sweep", "fast": false },
         { "name": "Crunch", "fast": false },
-        { "name": "Body Slam", "fast": false }
+        { "name": "Body Slam", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -20219,7 +20480,9 @@
         { "name": "Close Combat", "fast": false },
         { "name": "Night Slash", "fast": false },
         { "name": "Iron Head", "fast": false },
-        { "name": "Rock Slide", "fast": false }
+        { "name": "Rock Slide", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -21013,6 +21276,25 @@
     {
       "dex": 705,
       "species": "Sliggoo",
+      "form": "Hisuian",
+      "costume": false,
+      "icon": "pm705.fHISUIAN.icon.png",
+      "types": ["Steel", "Dragon"],
+      "attack": 153,
+      "defense": 190,
+      "stamina": 151,
+      "moves": [
+        { "name": "Tackle", "fast": true },
+        { "name": "Water Gun", "fast": true },
+        { "name": "Heavy Slam", "fast": false },
+        { "name": "Dragon Pulse", "fast": false },
+        { "name": "Sludge Wave", "fast": false },
+        { "name": "Water Pulse", "fast": false }
+      ]
+    },
+    {
+      "dex": 705,
+      "species": "Sliggoo",
       "form": null,
       "costume": false,
       "icon": "pm705.icon.png",
@@ -21029,6 +21311,26 @@
         { "name": "Muddy Water", "fast": false },
         { "name": "Water Pulse", "fast": false },
         { "name": "Body Slam", "fast": false }
+      ]
+    },
+    {
+      "dex": 706,
+      "species": "Goodra",
+      "form": "Hisuian",
+      "costume": false,
+      "icon": "pm706.fHISUIAN.icon.png",
+      "types": ["Steel", "Dragon"],
+      "attack": 211,
+      "defense": 255,
+      "stamina": 190,
+      "moves": [
+        { "name": "Dragon Tail", "fast": true },
+        { "name": "Iron Tail", "fast": true },
+        { "name": "Water Gun", "fast": true },
+        { "name": "Heavy Slam", "fast": false },
+        { "name": "Draco Meteor", "fast": false },
+        { "name": "Sludge Wave", "fast": false },
+        { "name": "Hydro Pump", "fast": false }
       ]
     },
     {
@@ -22407,7 +22709,9 @@
         { "name": "Leaf Blade", "fast": false },
         { "name": "Energy Ball", "fast": false },
         { "name": "Grass Knot", "fast": false },
-        { "name": "Trailblaze", "fast": false }
+        { "name": "Trailblaze", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -22428,7 +22732,9 @@
         { "name": "Leaf Storm", "fast": false },
         { "name": "Superpower", "fast": false },
         { "name": "X-Scissor", "fast": false },
-        { "name": "Trailblaze", "fast": false }
+        { "name": "Trailblaze", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -22699,7 +23005,9 @@
       "stamina": 93,
       "moves": [
         { "name": "Struggle Bug", "fast": true },
-        { "name": "Bug Buzz", "fast": false }
+        { "name": "Bug Buzz", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -22721,7 +23029,9 @@
         { "name": "Aqua Jet", "fast": false },
         { "name": "Aerial Ace", "fast": false },
         { "name": "Liquidation", "fast": false },
-        { "name": "Razor Shell", "fast": false }
+        { "name": "Razor Shell", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -22741,7 +23051,9 @@
         { "name": "Sand Tomb", "fast": false },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Earth Power", "fast": false },
-        { "name": "Scorching Sands", "fast": false }
+        { "name": "Scorching Sands", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -22761,7 +23073,9 @@
         { "name": "Sand Tomb", "fast": false },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Earth Power", "fast": false },
-        { "name": "Scorching Sands", "fast": false }
+        { "name": "Scorching Sands", "fast": false },
+        { "name": "Frustration", "fast": false },
+        { "name": "Return", "fast": false }
       ]
     },
     {
@@ -23202,6 +23516,150 @@
       "types": ["Rock", "Flying"],
       "attack": 218,
       "defense": 131,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor",
+      "costume": false,
+      "icon": "pm774.fMETEOR.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Blue",
+      "costume": false,
+      "icon": "pm774.fMETEOR_BLUE.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Green",
+      "costume": false,
+      "icon": "pm774.fMETEOR_GREEN.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Indigo",
+      "costume": false,
+      "icon": "pm774.fMETEOR_INDIGO.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Orange",
+      "costume": false,
+      "icon": "pm774.fMETEOR_ORANGE.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Red",
+      "costume": false,
+      "icon": "pm774.fMETEOR_RED.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Violet",
+      "costume": false,
+      "icon": "pm774.fMETEOR_VIOLET.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
+      "stamina": 155,
+      "moves": [
+        { "name": "Rollout", "fast": true },
+        { "name": "Take Down", "fast": true },
+        { "name": "Power Gem", "fast": false },
+        { "name": "Ancient Power", "fast": false },
+        { "name": "Acrobatics", "fast": false }
+      ]
+    },
+    {
+      "dex": 774,
+      "species": "Minior",
+      "form": "Meteor Yellow",
+      "costume": false,
+      "icon": "pm774.fMETEOR_YELLOW.icon.png",
+      "types": ["Rock", "Flying"],
+      "attack": 116,
+      "defense": 194,
       "stamina": 155,
       "moves": [
         { "name": "Rollout", "fast": true },
@@ -24000,7 +24458,9 @@
         { "name": "Volt Switch", "fast": true },
         { "name": "Thunder Punch", "fast": false },
         { "name": "Discharge", "fast": false },
-        { "name": "Wild Charge", "fast": false }
+        { "name": "Wild Charge", "fast": false },
+        { "name": "Plasma Fists", "fast": false },
+        { "name": "Dynamic Punch", "fast": false }
       ]
     },
     {
@@ -24198,6 +24658,7 @@
         { "name": "Water Pulse", "fast": false },
         { "name": "Surf", "fast": false },
         { "name": "Shadow Ball", "fast": false },
+        { "name": "Snipe Shot", "fast": false },
         { "name": "Hydro Cannon", "fast": false }
       ]
     },
@@ -24688,6 +25149,7 @@
       "moves": [
         { "name": "Peck", "fast": true },
         { "name": "Water Gun", "fast": true },
+        { "name": "Dive", "fast": false },
         { "name": "Fly", "fast": false },
         { "name": "Hydro Pump", "fast": false },
         { "name": "Surf", "fast": false }
@@ -24706,6 +25168,7 @@
       "moves": [
         { "name": "Peck", "fast": true },
         { "name": "Water Gun", "fast": true },
+        { "name": "Dive", "fast": false },
         { "name": "Fly", "fast": false },
         { "name": "Hydro Pump", "fast": false },
         { "name": "Surf", "fast": false }
@@ -24724,6 +25187,7 @@
       "moves": [
         { "name": "Peck", "fast": true },
         { "name": "Water Gun", "fast": true },
+        { "name": "Dive", "fast": false },
         { "name": "Fly", "fast": false },
         { "name": "Hydro Pump", "fast": false },
         { "name": "Surf", "fast": false }
@@ -24799,7 +25263,8 @@
         { "name": "Acid Spray", "fast": false },
         { "name": "Discharge", "fast": false },
         { "name": "Wild Charge", "fast": false },
-        { "name": "Power-Up Punch", "fast": false }
+        { "name": "Power-Up Punch", "fast": false },
+        { "name": "Swift", "fast": false }
       ]
     },
     {
@@ -24819,7 +25284,8 @@
         { "name": "Acid Spray", "fast": false },
         { "name": "Discharge", "fast": false },
         { "name": "Wild Charge", "fast": false },
-        { "name": "Power-Up Punch", "fast": false }
+        { "name": "Power-Up Punch", "fast": false },
+        { "name": "Swift", "fast": false }
       ]
     },
     {
@@ -24916,9 +25382,45 @@
     {
       "dex": 854,
       "species": "Sinistea",
+      "form": "A Halloween 2026 01",
+      "costume": true,
+      "icon": "pm854.fA_HALLOWEEN_2026_01.icon.png",
+      "types": ["Ghost"],
+      "attack": 134,
+      "defense": 96,
+      "stamina": 120,
+      "moves": [
+        { "name": "Astonish", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Dark Pulse", "fast": false },
+        { "name": "Psychic", "fast": false }
+      ]
+    },
+    {
+      "dex": 854,
+      "species": "Sinistea",
       "form": "Phony",
       "costume": false,
       "icon": "pm854.fPHONY.icon.png",
+      "types": ["Ghost"],
+      "attack": 134,
+      "defense": 96,
+      "stamina": 120,
+      "moves": [
+        { "name": "Astonish", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Dark Pulse", "fast": false },
+        { "name": "Psychic", "fast": false }
+      ]
+    },
+    {
+      "dex": 854,
+      "species": "Sinistea",
+      "form": "P Halloween 2026 01",
+      "costume": true,
+      "icon": "pm854.fP_HALLOWEEN_2026_01.icon.png",
       "types": ["Ghost"],
       "attack": 134,
       "defense": 96,
@@ -24953,9 +25455,47 @@
     {
       "dex": 855,
       "species": "Polteageist",
+      "form": "A Halloween 2026 01",
+      "costume": true,
+      "icon": "pm855.fA_HALLOWEEN_2026_01.icon.png",
+      "types": ["Ghost"],
+      "attack": 248,
+      "defense": 189,
+      "stamina": 155,
+      "moves": [
+        { "name": "Astonish", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
+        { "name": "Hex", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Dark Pulse", "fast": false },
+        { "name": "Psychic", "fast": false }
+      ]
+    },
+    {
+      "dex": 855,
+      "species": "Polteageist",
       "form": "Phony",
       "costume": false,
       "icon": "pm855.fPHONY.icon.png",
+      "types": ["Ghost"],
+      "attack": 248,
+      "defense": 189,
+      "stamina": 155,
+      "moves": [
+        { "name": "Astonish", "fast": true },
+        { "name": "Sucker Punch", "fast": true },
+        { "name": "Hex", "fast": true },
+        { "name": "Shadow Ball", "fast": false },
+        { "name": "Dark Pulse", "fast": false },
+        { "name": "Psychic", "fast": false }
+      ]
+    },
+    {
+      "dex": 855,
+      "species": "Polteageist",
+      "form": "P Halloween 2026 01",
+      "costume": true,
+      "icon": "pm855.fP_HALLOWEEN_2026_01.icon.png",
       "types": ["Ghost"],
       "attack": 248,
       "defense": 189,
@@ -25078,7 +25618,8 @@
         { "name": "Foul Play", "fast": false },
         { "name": "Dark Pulse", "fast": false },
         { "name": "Play Rough", "fast": false },
-        { "name": "Power-Up Punch", "fast": false }
+        { "name": "Power-Up Punch", "fast": false },
+        { "name": "Draining Kiss", "fast": false }
       ]
     },
     {
@@ -25435,6 +25976,7 @@
         { "name": "Thunder Shock", "fast": true },
         { "name": "Seed Bomb", "fast": false },
         { "name": "Outrage", "fast": false },
+        { "name": "Aura Wheel", "fast": false },
         { "name": "Psychic Fangs", "fast": false }
       ]
     },
@@ -25454,6 +25996,7 @@
         { "name": "Thunder Shock", "fast": true },
         { "name": "Seed Bomb", "fast": false },
         { "name": "Outrage", "fast": false },
+        { "name": "Aura Wheel", "fast": false },
         { "name": "Psychic Fangs", "fast": false }
       ]
     },
@@ -25730,7 +26273,8 @@
         { "name": "Poison Jab", "fast": true },
         { "name": "Sludge Bomb", "fast": false },
         { "name": "Hyper Beam", "fast": false },
-        { "name": "Flamethrower", "fast": false }
+        { "name": "Flamethrower", "fast": false },
+        { "name": "Dynamax Cannon", "fast": false }
       ]
     },
     {
@@ -25748,7 +26292,8 @@
         { "name": "Poison Jab", "fast": true },
         { "name": "Sludge Bomb", "fast": false },
         { "name": "Dragon Pulse", "fast": false },
-        { "name": "Flamethrower", "fast": false }
+        { "name": "Flamethrower", "fast": false },
+        { "name": "Dynamax Cannon", "fast": false }
       ]
     },
     {
@@ -26014,6 +26559,7 @@
         { "name": "Tackle", "fast": true },
         { "name": "Rock Smash", "fast": true },
         { "name": "Smack Down", "fast": true },
+        { "name": "Scratch", "fast": true },
         { "name": "Fire Punch", "fast": false },
         { "name": "Thunder Punch", "fast": false },
         { "name": "Aerial Ace", "fast": false },
@@ -26897,7 +27443,7 @@
         { "name": "Snarl", "fast": true },
         { "name": "Bite", "fast": true },
         { "name": "Crunch", "fast": false },
-        { "name": "Payback", "fast": false },
+        { "name": "Psychic Fangs", "fast": false },
         { "name": "Dig", "fast": false }
       ]
     },
@@ -26915,7 +27461,7 @@
         { "name": "Snarl", "fast": true },
         { "name": "Bite", "fast": true },
         { "name": "Crunch", "fast": false },
-        { "name": "Payback", "fast": false },
+        { "name": "Psychic Fangs", "fast": false },
         { "name": "Dig", "fast": false }
       ]
     },
@@ -26950,9 +27496,11 @@
       "moves": [
         { "name": "Mud-Slap", "fast": true },
         { "name": "Poison Jab", "fast": true },
+        { "name": "Scratch", "fast": true },
         { "name": "Acid Spray", "fast": false },
         { "name": "Poison Fang", "fast": false },
-        { "name": "Sludge Bomb", "fast": false }
+        { "name": "Sludge Bomb", "fast": false },
+        { "name": "Foul Play", "fast": false }
       ]
     },
     {
@@ -27264,7 +27812,8 @@
         { "name": "Payback", "fast": false },
         { "name": "Aerial Ace", "fast": false },
         { "name": "Fly", "fast": false },
-        { "name": "Rock Tomb", "fast": false }
+        { "name": "Rock Tomb", "fast": false },
+        { "name": "Drill Run", "fast": false }
       ]
     },
     {
@@ -27489,6 +28038,7 @@
       "moves": [
         { "name": "Wing Attack", "fast": true },
         { "name": "Double Kick", "fast": true },
+        { "name": "Peck", "fast": true },
         { "name": "Aerial Ace", "fast": false },
         { "name": "Brave Bird", "fast": false },
         { "name": "Upper Hand", "fast": false }
@@ -27749,6 +28299,7 @@
         { "name": "Snarl", "fast": true },
         { "name": "Metal Claw", "fast": true },
         { "name": "Metal Sound", "fast": true },
+        { "name": "Low Kick", "fast": true },
         { "name": "Dark Pulse", "fast": false },
         { "name": "Iron Head", "fast": false },
         { "name": "X-Scissor", "fast": false },
@@ -27991,7 +28542,8 @@
         { "name": "Avalanche", "fast": false },
         { "name": "Outrage", "fast": false },
         { "name": "Blizzard", "fast": false },
-        { "name": "Icy Wind", "fast": false }
+        { "name": "Icy Wind", "fast": false },
+        { "name": "Glaive Rush", "fast": false }
       ]
     },
     {
@@ -30004,7 +30556,7 @@
   "combat": {
     "Wrap": { "type": "Normal", "power": 70, "energy": -45, "turns": 1, "buffs": { "chance": 1, "theirDefense": -1 } },
     "Hyper Beam": { "type": "Normal", "power": 150, "energy": -80, "turns": 1 },
-    "Dark Pulse": { "type": "Dark", "power": 80, "energy": -50, "turns": 1 },
+    "Dark Pulse": { "type": "Dark", "power": 80, "energy": -45, "turns": 1 },
     "Sludge": { "type": "Poison", "power": 70, "energy": -40, "turns": 1 },
     "Vise Grip": { "type": "Normal", "power": 70, "energy": -40, "turns": 1 },
     "Flame Wheel": { "type": "Fire", "power": 80, "energy": -45, "turns": 1 },
@@ -30036,7 +30588,7 @@
     },
     "Poison Fang": {
       "type": "Poison",
-      "power": 45,
+      "power": 50,
       "energy": -40,
       "turns": 1,
       "buffs": { "chance": 1, "theirDefense": -1 }
@@ -30050,8 +30602,8 @@
     },
     "Bubble Beam": {
       "type": "Water",
-      "power": 25,
-      "energy": -40,
+      "power": 50,
+      "energy": -50,
       "turns": 1,
       "buffs": { "chance": 1, "theirAttack": -1 }
     },
@@ -30086,9 +30638,9 @@
       "turns": 1,
       "buffs": { "chance": 0.1, "ownAttack": 1, "ownDefense": 1 }
     },
-    "Shadow Ball": { "type": "Ghost", "power": 100, "energy": -50, "turns": 1 },
-    "Magnet Bomb": { "type": "Steel", "power": 70, "energy": -45, "turns": 1 },
-    "Iron Head": { "type": "Steel", "power": 70, "energy": -50, "turns": 1 },
+    "Shadow Ball": { "type": "Ghost", "power": 90, "energy": -50, "turns": 1 },
+    "Magnet Bomb": { "type": "Steel", "power": 70, "energy": -40, "turns": 1 },
+    "Iron Head": { "type": "Steel", "power": 85, "energy": -50, "turns": 1 },
     "Parabolic Charge": {
       "type": "Electric",
       "power": 70,
@@ -30103,12 +30655,18 @@
     "Dragon Pulse": { "type": "Dragon", "power": 90, "energy": -55, "turns": 1 },
     "Dragon Claw": { "type": "Dragon", "power": 80, "energy": -50, "turns": 1 },
     "Disarming Voice": { "type": "Fairy", "power": 70, "energy": -45, "turns": 1 },
-    "Draining Kiss": { "type": "Fairy", "power": 60, "energy": -55, "turns": 1 },
+    "Draining Kiss": {
+      "type": "Fairy",
+      "power": 80,
+      "energy": -55,
+      "turns": 1,
+      "buffs": { "chance": 1, "ownDefense": 1 }
+    },
     "Dazzling Gleam": { "type": "Fairy", "power": 90, "energy": -55, "turns": 1 },
     "Moonblast": {
       "type": "Fairy",
-      "power": 110,
-      "energy": -60,
+      "power": 90,
+      "energy": -50,
       "turns": 1,
       "buffs": { "chance": 0.1, "theirAttack": -1 }
     },
@@ -30126,10 +30684,10 @@
     "Bone Club": { "type": "Ground", "power": 55, "energy": -35, "turns": 1 },
     "Bulldoze": {
       "type": "Ground",
-      "power": 45,
-      "energy": -45,
+      "power": 80,
+      "energy": -55,
       "turns": 1,
-      "buffs": { "chance": 0.5, "theirDefense": -1 }
+      "buffs": { "chance": 1, "theirDefense": -1 }
     },
     "Mud Bomb": { "type": "Ground", "power": 65, "energy": -45, "turns": 1 },
     "Signal Beam": {
@@ -30149,7 +30707,7 @@
     },
     "Flame Burst": { "type": "Fire", "power": 70, "energy": -55, "turns": 1 },
     "Fire Blast": { "type": "Fire", "power": 140, "energy": -80, "turns": 1 },
-    "Brine": { "type": "Water", "power": 60, "energy": -50, "turns": 1 },
+    "Brine": { "type": "Water", "power": 100, "energy": -60, "turns": 1 },
     "Water Pulse": { "type": "Water", "power": 80, "energy": -50, "turns": 1 },
     "Scald": { "type": "Water", "power": 85, "energy": -50, "turns": 1, "buffs": { "chance": 0.3, "theirAttack": -1 } },
     "Hydro Pump": { "type": "Water", "power": 130, "energy": -75, "turns": 1 },
@@ -30169,10 +30727,10 @@
     "Power Whip": { "type": "Grass", "power": 90, "energy": -50, "turns": 1 },
     "Air Cutter": {
       "type": "Flying",
-      "power": 45,
-      "energy": -35,
+      "power": 60,
+      "energy": -40,
       "turns": 1,
-      "buffs": { "chance": 0.3, "ownAttack": 1 }
+      "buffs": { "chance": 0.125, "ownAttack": 1 }
     },
     "Hurricane": { "type": "Flying", "power": 110, "energy": -60, "turns": 1 },
     "Brick Break": {
@@ -30186,17 +30744,17 @@
     "Horn Attack": { "type": "Normal", "power": 40, "energy": -35, "turns": 1 },
     "Stomp": { "type": "Normal", "power": 55, "energy": -40, "turns": 1 },
     "Hyper Fang": { "type": "Normal", "power": 80, "energy": -50, "turns": 1 },
-    "Body Slam": { "type": "Normal", "power": 55, "energy": -35, "turns": 1 },
+    "Body Slam": { "type": "Normal", "power": 65, "energy": -40, "turns": 1 },
     "Rest": { "type": "Normal", "power": 50, "energy": -35, "turns": 1 },
     "Struggle": { "type": "Normal", "power": 35, "energy": -100, "turns": 1 },
     "Fury Cutter": { "type": "Bug", "power": 3, "energy": 4, "turns": 1 },
     "Bug Bite": { "type": "Bug", "power": 4, "energy": 3, "turns": 1 },
-    "Bite": { "type": "Dark", "power": 4, "energy": 2, "turns": 1 },
+    "Bite": { "type": "Dark", "power": 2, "energy": 4, "turns": 1 },
     "Sucker Punch": { "type": "Dark", "power": 8, "energy": 7, "turns": 2 },
     "Dragon Breath": { "type": "Dragon", "power": 3, "energy": 4, "turns": 1 },
     "Thunder Shock": { "type": "Electric", "power": 4, "energy": 9, "turns": 2 },
     "Spark": { "type": "Electric", "power": 5, "energy": 7, "turns": 2 },
-    "Low Kick": { "type": "Fighting", "power": 5, "energy": 8, "turns": 2 },
+    "Low Kick": { "type": "Fighting", "power": 6, "energy": 8, "turns": 2 },
     "Karate Chop": { "type": "Fighting", "power": 5, "energy": 9, "turns": 2 },
     "Ember": { "type": "Fire", "power": 4, "energy": 9, "turns": 2 },
     "Wing Attack": { "type": "Flying", "power": 5, "energy": 8, "turns": 2 },
@@ -30209,7 +30767,7 @@
     "Ice Shard": { "type": "Ice", "power": 9, "energy": 10, "turns": 3 },
     "Frost Breath": { "type": "Ice", "power": 7, "energy": 5, "turns": 2 },
     "Quick Attack": { "type": "Normal", "power": 5, "energy": 8, "turns": 2 },
-    "Scratch": { "type": "Normal", "power": 4, "energy": 2, "turns": 1 },
+    "Scratch": { "type": "Normal", "power": 3, "energy": 4, "turns": 1 },
     "Tackle": { "type": "Normal", "power": 3, "energy": 3, "turns": 1 },
     "Pound": { "type": "Normal", "power": 4, "energy": 4, "turns": 2 },
     "Cut": { "type": "Normal", "power": 3, "energy": 2, "turns": 1 },
@@ -30243,7 +30801,7 @@
     "Dynamic Punch": { "type": "Fighting", "power": 90, "energy": -45, "turns": 1 },
     "Focus Blast": { "type": "Fighting", "power": 150, "energy": -75, "turns": 1 },
     "Aurora Beam": { "type": "Ice", "power": 80, "energy": -60, "turns": 1 },
-    "Charge Beam": { "type": "Electric", "power": 5, "energy": 11, "turns": 3 },
+    "Charge Beam": { "type": "Electric", "power": 6, "energy": 11, "turns": 3 },
     "Volt Switch": { "type": "Electric", "power": 14, "energy": 16, "turns": 4 },
     "Wild Charge": {
       "type": "Electric",
@@ -30272,13 +30830,13 @@
     "Sky Attack": { "type": "Flying", "power": 75, "energy": -50, "turns": 1 },
     "Sand Tomb": {
       "type": "Ground",
-      "power": 40,
-      "energy": -40,
+      "power": 55,
+      "energy": -45,
       "turns": 1,
       "buffs": { "chance": 1, "theirDefense": -1 }
     },
     "Rock Blast": { "type": "Rock", "power": 50, "energy": -40, "turns": 1 },
-    "Infestation": { "type": "Bug", "power": 6, "energy": 12, "turns": 3 },
+    "Infestation": { "type": "Bug", "power": 10, "energy": 12, "turns": 3 },
     "Struggle Bug": { "type": "Bug", "power": 9, "energy": 8, "turns": 3 },
     "Silver Wind": {
       "type": "Bug",
@@ -30306,7 +30864,7 @@
     },
     "Extrasensory": { "type": "Psychic", "power": 8, "energy": 10, "turns": 3 },
     "Future Sight": { "type": "Psychic", "power": 110, "energy": -65, "turns": 1 },
-    "Mirror Coat": { "type": "Psychic", "power": 60, "energy": -55, "turns": 1 },
+    "Mirror Coat": { "type": "Psychic", "power": 75, "energy": -45, "turns": 1 },
     "Outrage": { "type": "Dragon", "power": 110, "energy": -60, "turns": 1 },
     "Snarl": { "type": "Dark", "power": 5, "energy": 13, "turns": 3 },
     "Crunch": {
@@ -30318,7 +30876,7 @@
     },
     "Foul Play": { "type": "Dark", "power": 65, "energy": -40, "turns": 1 },
     "Hidden Power": { "type": "Normal", "power": 9, "energy": 8, "turns": 3 },
-    "Take Down": { "type": "Normal", "power": 5, "energy": 8, "turns": 3 },
+    "Take Down": { "type": "Normal", "power": 14, "energy": 9, "turns": 3 },
     "Waterfall": { "type": "Water", "power": 11, "energy": 10, "turns": 3 },
     "Surf": { "type": "Water", "power": 75, "energy": -45, "turns": 1 },
     "Draco Meteor": {
@@ -30332,7 +30890,7 @@
     "Yawn": { "type": "Normal", "power": 0, "energy": 12, "turns": 4 },
     "Psycho Boost": {
       "type": "Psychic",
-      "power": 70,
+      "power": 85,
       "energy": -35,
       "turns": 1,
       "buffs": { "chance": 1, "ownAttack": -2 }
@@ -30375,7 +30933,7 @@
       "turns": 1,
       "buffs": { "chance": 0.125, "ownAttack": 2 }
     },
-    "Lunge": { "type": "Bug", "power": 60, "energy": -45, "turns": 1, "buffs": { "chance": 1, "theirAttack": -1 } },
+    "Lunge": { "type": "Bug", "power": 70, "energy": -45, "turns": 1, "buffs": { "chance": 1, "theirAttack": -1 } },
     "Octazooka": {
       "type": "Water",
       "power": 50,
@@ -30426,7 +30984,7 @@
       "turns": 1,
       "buffs": { "chance": 0.3, "theirAttack": -1 }
     },
-    "Blaze Kick": { "type": "Fire", "power": 60, "energy": -40, "turns": 1 },
+    "Blaze Kick": { "type": "Fire", "power": 60, "energy": -35, "turns": 1 },
     "Razor Shell": {
       "type": "Water",
       "power": 35,
@@ -30564,7 +31122,7 @@
       "turns": 1,
       "buffs": { "chance": 1, "ownDefense": 1, "theirDefense": -1 }
     },
-    "Shadow Force": { "type": "Ghost", "power": 120, "energy": -90, "turns": 1 },
+    "Shadow Force": { "type": "Ghost", "power": 120, "energy": -65, "turns": 1 },
     "Meteor Beam": {
       "type": "Rock",
       "power": 120,
@@ -30576,7 +31134,7 @@
     "Fusion Bolt": { "type": "Electric", "power": 90, "energy": -45, "turns": 1 },
     "Fusion Flare": { "type": "Fire", "power": 90, "energy": -45, "turns": 1 },
     "Poltergeist": { "type": "Ghost", "power": 150, "energy": -75, "turns": 1 },
-    "High Horsepower": { "type": "Ground", "power": 100, "energy": -60, "turns": 1 },
+    "High Horsepower": { "type": "Ground", "power": 100, "energy": -55, "turns": 1 },
     "Glaciate": { "type": "Ice", "power": 60, "energy": -40, "turns": 1, "buffs": { "chance": 1, "theirAttack": -1 } },
     "Breaking Swipe": {
       "type": "Dragon",
@@ -30586,7 +31144,7 @@
       "buffs": { "chance": 1, "theirAttack": -1 }
     },
     "Boomburst": { "type": "Normal", "power": 150, "energy": -70, "turns": 1 },
-    "Double Iron Bash": { "type": "Steel", "power": 55, "energy": -35, "turns": 1 },
+    "Double Iron Bash": { "type": "Steel", "power": 70, "energy": -35, "turns": 1 },
     "Mystical Fire": {
       "type": "Fire",
       "power": 60,
@@ -30693,7 +31251,7 @@
     },
     "Force Palm": { "type": "Fighting", "power": 13, "energy": 10, "turns": 3 },
     "Sparkling Aria": { "type": "Water", "power": 80, "energy": -45, "turns": 1 },
-    "Rage Fist": { "type": "Ghost", "power": 50, "energy": -35, "turns": 1, "buffs": { "chance": 1, "ownAttack": 1 } },
+    "Rage Fist": { "type": "Ghost", "power": 55, "energy": -40, "turns": 1, "buffs": { "chance": 1, "ownAttack": 1 } },
     "Flower Trick": {
       "type": "Grass",
       "power": 30,

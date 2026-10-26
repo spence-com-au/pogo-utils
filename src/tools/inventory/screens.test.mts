@@ -384,7 +384,7 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 1605,
-    defects: { unseparated: ['Charizard (Copy 2019)'] },
+    defects: { unseparated: ['Charizard (Copy 2019)', 'Charizard (Goggles 2026)'] },
     file: 'charizard-gigantamax.png',
     form: null,
     gender: 'male',
@@ -1415,7 +1415,7 @@ test('the vended game master is the shape the readers are asserted against', () 
       cpm: DATA.cpm.length,
     },
     'the vended game master has changed shape; re-vend and update these figures',
-  ).toStrictEqual({ forms: 1449, species: 1024, moves: 328, types: 18, cpm: 101 });
+  ).toStrictEqual({ forms: 1473, species: 1024, moves: 328, types: 18, cpm: 101 });
 });
 
 /**
@@ -1941,7 +1941,7 @@ const DECLINED = { form: null, cp: null, alternatives: [], unseparated: [], leve
  * species, so the first filter — `f.species === species` over a `species` of `null` — admits nothing, and the fallback
  * that searches every species is gated on an IV, an HP and a type the map has none of. So `fits` is never reached over
  * the whole table at all, and the answer is a property of the pipeline rather than of whichever form the table folds
- * first — which the vended 1,449 forms say outright, where a cut-down table had to have the claim measured against a
+ * first — which the vended 1,473 forms say outright, where a cut-down table had to have the claim measured against a
  * real one before it could be believed at all.
  */
 test('overworld.png is the map, and every reader declines it', async () => {

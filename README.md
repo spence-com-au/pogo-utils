@@ -483,8 +483,8 @@ read from; on the stock client those columns come back empty. Plug the phone in 
 English and choose a storage sort order first; the scan keeps whatever order is set. It opens the first Pokémon and
 swipes through the rest, reading the detail screen and then the moves scrolled into view. Form is never shown on screen,
 so the script works it out from the HP, IVs and types against the base stats in
-[PokeMiners' game master](https://github.com/PokeMiners), which is also how a nicknamed Pokémon gets its species back.
-Size comes from the `XXL` or `XXS` badge on the detail screen, and shiny, lucky and costume from the game's own
+[the game master](https://github.com/alexelgt/game_masters), which is also how a nicknamed Pokémon gets its species
+back. Size comes from the `XXL` or `XXS` badge on the detail screen, and shiny, lucky and costume from the game's own
 searches, one quick pass each before the full pass; `--flags` picks which. Expect several seconds per Pokémon. `--limit`
 and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again rather than
 using the week-old cache. The icons are found through GitHub's API, which answers an address without a token 60 times an
@@ -561,7 +561,7 @@ from `tessdata_fast` 4.1.0 — what `apt` and `brew` both install — fetched on
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, the form icons from
 `pogo_assets` that the Pokédex page already draws, and the game master — the vended
 [`fixtures/game-master.json`](src/tools/inventory/fixtures/game-master.json), which the build publishes rather than the
-page fetching the 23 MB upstream. The screenshot and its reading stay in memory, and leave only as a download.
+page fetching the 23 MB it is made from. The screenshot and its reading stay in memory, and leave only as a download.
 
 The corpus is what holds the page to the CLI. `INVENTORY_OCR=wasm pnpm test:corpus` runs
 [`screens.test.mts`](src/tools/inventory/screens.test.mts) under the WebAssembly engine, handed the CLI's model off disk
