@@ -330,6 +330,9 @@ export async function run(
 
         /** What the slot switched to had banked, given back to it where the switch is refused. */
         bank: Bank | undefined;
+
+        /** The slot sent in to draw a shield before this switch, still out where the switch is refused. */
+        stripping: number | undefined;
       }
     | undefined;
 
@@ -693,7 +696,7 @@ export async function run(
             sent = switching.from;
             stages = { ...stages, own: switching.stages };
             banked.delete(switching.from);
-            stripping = undefined;
+            stripping = switching.stripping;
             refusedAt = clock.now();
 
             if (switching.bank) {
@@ -876,6 +879,7 @@ export async function run(
                   health.opponent,
                   theirShields,
                   league,
+                  { own: NO_STAGES, their: stages.their },
                 );
                 const move = pick && moves.get(pick.x);
 
@@ -912,8 +916,8 @@ export async function run(
 
       // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one is
       // benched; and for as long as the newcomer stays out, its switch timer spent, ours threatened by it banks a move
-      // lit by switching to one safe from it, whenever one lights, unless the move would finish it. Neither where ours
-      // is doomed, told once a newcomer.
+      // lit by switching to one safe from it, whenever one lights. Neither where a lit move would finish the newcomer,
+      // the bench tap going ahead of the throw, nor where ours is doomed, told once a newcomer.
       const stay = (chosen: Switch | undefined) => {
         if (chosen && doomed) {
           if (stayedFor !== theirName()) {
@@ -933,7 +937,7 @@ export async function run(
 
       if (answer && slot !== undefined && fighting) {
         answer = false;
-        counter = stay(counterOf(data, party, slot, us, fainted, them, meta));
+        counter = finish ? undefined : stay(counterOf(data, party, slot, us, fainted, them, meta));
       }
 
       if (
@@ -1023,6 +1027,7 @@ export async function run(
             at: clock.now(),
             stages: stages.own,
             bank: banked.get(counter.slot),
+            stripping,
           };
           banked.delete(counter.slot);
           banked.set(slot, { moves: banking, own: facing.own });

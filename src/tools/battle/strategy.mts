@@ -307,10 +307,11 @@ export interface Switch {
 }
 
 /**
- * Which slot to switch to, of the bench, where no counter is but ours, threatened by the opponent just switched in, has
- * a charged move ready: one safe from every charged move the opponent is allowed for, so that ours keeps its energy on
- * the bench rather than spend it into a shield or faint with it. The hardest-hitting of those, and between equals the
- * first card. Undefined where ours is not threatened, as by `shouldShield`'s rule, or where either species is not known.
+ * Which slot to switch to, of the bench, for ours threatened by the opponent just switched in: one safe from every
+ * charged move the opponent is allowed for, so that ours keeps a move it has ready on the bench rather than spend it
+ * into a shield or faint with it. The hardest-hitting of those, and between equals the first card. Undefined where ours
+ * is not threatened, as by `shouldShield`'s rule, or where either species is not known. Whether a counter is benched
+ * instead, and whether ours has a move ready, are the caller's to say.
  *
  * Live, a Galarian Moltres facing a Granbull switched in, Fly ready and nothing benched hitting Granbull super
  * effectively, gave way to a Snorlax, which drew both its shields; Moltres came back to finish a Milotic with the energy
