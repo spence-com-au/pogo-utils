@@ -36,11 +36,14 @@ test('answers each command with its own output, one after another', async () => 
     const [first, second, bare] = await Promise.all([
       held.shell(['echo', 'one']),
       held.shell(['echo', 'two']),
-      held.shell(['printf', 'no newline']),
+      held.shell(['printf', "'no newline'"]),
     ]);
 
     expect([text(first), text(second), text(bare)]).toEqual(['one\n', 'two\n', 'no newline']);
-    expect(text(await held.shell(['echo', "it's $HOME and `x`"])), 'quoted as written').toBe("it's $HOME and `x`\n");
+    expect(text(await held.shell(['echo', "'a  b'", 'c'])), 'read by the shell, as `adb shell` reads it').toBe(
+      'a  b c\n',
+    );
+    expect(text(await held.shell(['echo', 'd', '#', 'e'])), 'a comment ending at the line').toBe('d\n');
     expect((await held.state()).trim(), 'a process of its own').toBe('device');
   } finally {
     held.close();
@@ -51,7 +54,7 @@ test('a command that fails rejects with what it wrote, and the next still runs',
   const held = adbHeld();
 
   try {
-    await expect(held.shell(['sh', '-c', 'echo nope >&2; exit 3'])).rejects.toThrow(/nope/);
+    await expect(held.shell(['sh', '-c', "'echo nope >&2; exit 3'"])).rejects.toThrow(/nope/);
     await expect(held.shell(['false'])).rejects.toThrow(/exited 1/);
     expect(text(await held.shell(['echo', 'after']))).toBe('after\n');
   } finally {

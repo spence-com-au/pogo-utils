@@ -44,18 +44,15 @@ export function adbCli(serial?: string): Transport {
   };
 }
 
-/** An argument as the phone's shell reads it back: single-quoted, a `'` inside closing the quote around a `\'`. */
-const quoted = (arg: string) => `'${arg.replaceAll("'", `'\\''`)}'`;
-
 /**
- * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, which is how
- * `pnpm battle` reaches the phone: a fresh `adb` process for each of its six swipes a second cost a median 50ms over a
- * Training battle on a Pixel 4 XL, against a fast move's 80ms swipe. Each command's end is a marker line the shell
- * prints after it with its exit status, which no command's own output carries. The phone's shell writes stderr to
- * stdout, so that what a command wrote to either comes back in order ahead of its marker and is all its own: a command
- * that fails is told by what it wrote, and one that succeeds answers that too, as its output, where a separate stderr
- * would arrive on its own pipe in either order. The screenshot and the state stay a process each, being rare and
- * binary.
+ * As `adbCli`, its arguments joined with spaces for the phone's shell to read as `adb shell` joins them, but with shell
+ * commands written one after another to a single `adb shell` held open, which is how `pnpm battle` reaches the phone: a
+ * fresh `adb` process for each of its six swipes a second cost a median 50ms over a Training battle on a Pixel 4 XL,
+ * against a fast move's 80ms swipe. Each command's end is a marker line the shell prints after it with its exit status,
+ * which no command's own output carries. The phone's shell writes stderr to stdout, so that what a command wrote to
+ * either comes back in order ahead of its marker and is all its own: a command that fails is told by what it wrote, and
+ * one that succeeds answers that too, as its output, where a separate stderr would arrive on its own pipe in either
+ * order. The state, being no shell command, and the screenshot, being binary, stay a process each.
  *
  * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell closing, a
  * write to it failing, or a command going unanswered for `TIMEOUT_MS` fails the command under way and every one after
@@ -139,7 +136,8 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
           current = { resolve, reject, timer };
 
           // `echo` rather than `printf`, which is no builtin of the phone's shell but a process of its own, 14ms a call.
-          child.stdin.write(`${args.map(quoted).join(' ')}; s=$?; echo; echo ${marker} $s\n`);
+          // The marker on a line of its own, so that a `#` in the command comments out none of it.
+          child.stdin.write(`${args.join(' ')}\ns=$?; echo; echo ${marker} $s\n`);
         }),
     );
 
