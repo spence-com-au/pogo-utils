@@ -314,7 +314,7 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   Samurott.
 - **Spending it when doomed.** With no shield of ours left, our HP read low enough that a hit the opponent may land
   would faint us, and a shield of theirs to draw, no switch is made, the counter switch included: the move to throw,
-  once lit, goes into the shield, there being little left of ours to save. The faint is feared rather than counted,
+  already lit, goes into the shield, there being little left of ours to save. The faint is feared rather than counted,
   since an opponent just switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds
   after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
   Fly took Kyogre's last shield, and it had none for the rest of the battle.

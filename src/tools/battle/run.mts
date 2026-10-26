@@ -925,7 +925,7 @@ export async function run(
         const finishing = new Map(
           league === undefined
             ? []
-            : [...banked].flatMap(([benched, bank]) => {
+            : [...banked].flatMap(([waiting, bank]) => {
                 const moves = new Map(bank.moves.map((move, i) => [i, move]));
                 const pick = finisher(
                   data,
@@ -940,7 +940,7 @@ export async function run(
                 );
                 const move = pick && moves.get(pick.x);
 
-                return move === undefined ? [] : [[benched, move] as const];
+                return move === undefined ? [] : [[waiting, move] as const];
               }),
         );
         const chosen = nextOut(data, party, out, them, meta, finishing);
@@ -964,22 +964,23 @@ export async function run(
       // The moves lit, which a switch banks: the energy for each stays with ours on the bench.
       const banking = lit.flatMap((x) => seen.moves.get(x) ?? []);
 
-      // No shield of ours left, our HP read so low that a hit the opponent may land would faint us, the move to throw lit
-      // and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to save.
-      // A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may carry energy
-      // banked that the count, starting it at nothing, cannot see, and the counter and refuge switches answer just such
-      // a one. Live, a Zapdos threw two seconds after coming back in. But on our HP as read, never on it unread. And only where the move to throw is
-      // lit, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a tenth of its HP stayed in
-      // against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for the battle.
+      // No shield of ours left, our HP read so low that a hit the opponent may land would faint us, the move to throw
+      // lit and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to
+      // save. A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may
+      // carry energy banked that the count, starting it at nothing, cannot see, and the counter and refuge switches
+      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on our HP as read, never on
+      // it unread. And only where the move to throw is lit already, so that staying in is a throw and not a swipe.
+      // Live, a Galarian Moltres at a tenth of its HP stayed in against a Kyogre switched in, threw Fly into its last
+      // shield and fainted; Kyogre had none left for the battle.
       const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
       const doomed =
         ourShields === 0 && health.own !== null && verdict.faints && theirShields > 0 && aimed !== undefined;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
-      // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one is
-      // benched; and for as long as the newcomer stays out, its switch timer spent, ours threatened by it banks a move
-      // lit by switching to one safe from it, whenever one lights. Neither where a lit move would finish the newcomer,
-      // the bench tap going ahead of the throw, nor where ours is doomed, which is logged once per opponent.
+      // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one
+      // is benched; and for as long as the newcomer stays out, its switch timer spent, ours threatened by it banks a
+      // move lit by switching to one safe from it, whenever one lights. Neither where a lit move would finish the
+      // newcomer, the bench tap going ahead of the throw, nor where ours is doomed, which is logged once per opponent.
       const stay = (chosen: Switch | undefined) => {
         if (chosen && doomed) {
           if (stayedFor !== theirName()) {
@@ -1017,10 +1018,10 @@ export async function run(
         counter = stay(refugeOf(data, party, slot, us, fainted, them, meta));
       }
 
-      // A lit move that would finish the opponent but for its shield is kept, and a benched slot with energy banked sent
-      // in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints where it
-      // took the last. Not from a slot sent in to draw one itself, which throws rather than switch away again, nor while
-      // the switch timer may still be running from a switch it refused.
+      // A lit move that would finish the opponent but for its shield is kept, and a benched slot with energy banked
+      // sent in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints
+      // where it took the last. Not from a slot sent in to draw one itself, which throws rather than switch away again,
+      // nor while the switch timer may still be running from a switch it refused.
       if (
         !counter &&
         !switching &&
@@ -1033,7 +1034,7 @@ export async function run(
         clock.now() - refusedAt >= REFUSED_MS
       ) {
         const kept = finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, 0, cap, stages);
-        const moves = new Map([...banked].map(([benched, bank]) => [benched, bank.moves]));
+        const moves = new Map([...banked].map(([waiting, bank]) => [waiting, bank.moves]));
         const chosen = kept && stripperOf(data, party, slot, fainted, moves, them, meta);
         const held = kept && seen.moves.get(kept.x);
 
