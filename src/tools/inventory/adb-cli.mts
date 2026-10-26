@@ -51,12 +51,15 @@ const quoted = (arg: string) => `'${arg.replaceAll("'", `'\\''`)}'`;
  * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, which is how
  * `pnpm battle` reaches the phone: a fresh `adb` process for each of its six swipes a second cost a median 50ms over a
  * Training battle on a Pixel 4 XL, against a fast move's 80ms swipe. Each command's end is a marker line the shell
- * echoes after it, with its exit status, which no command's own output carries. The screenshot and the state stay a
- * process each, being rare and binary.
+ * prints after it with its exit status, which no command's own output carries. The phone's shell writes stderr to
+ * stdout, so that what a command wrote to either comes back in order ahead of its marker and is all its own: a command
+ * that fails is told by what it wrote, and one that succeeds answers that too, as its output. Waiting on a marker on a
+ * stderr of its own instead cost 50ms a command, `adb` sending stderr that much later. The screenshot and the state
+ * stay a process each, being rare and binary.
  *
- * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell exiting, or a
- * command going unanswered for `TIMEOUT_MS`, fails the command under way and every one after it. `close` ends the
- * shell once nothing more is to be sent.
+ * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell closing, a
+ * write to it failing, or a command going unanswered for `TIMEOUT_MS` fails the command under way and every one after
+ * it. `close` ends the shell once nothing more is to be sent, and anything sent after fails at once.
  */
 export function adbHeld(serial?: string): Transport & { close(): void } {
   const prefix = serial ? ['-s', serial] : [];
@@ -67,8 +70,9 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
   let errors = '';
   let dead: Error | undefined;
   let closing = false;
-  let current: { resolve: (out: Buffer) => void; reject: (error: Error) => void; timer: NodeJS.Timeout } | undefined;
   let queue: Promise<unknown> = Promise.resolve();
+
+  let current: { resolve: (out: Buffer) => void; reject: (error: Error) => void; timer: NodeJS.Timeout } | undefined;
 
   const die = (error: Error) => {
     dead ??= error;
@@ -96,26 +100,34 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
       if (status === 0) {
         resolve(out);
       } else {
-        reject(new Error(errors.trim() || out.toString().trim() || `exited ${status}`));
+        reject(new Error(out.toString().trim() || `exited ${status}`));
       }
+    }
+  });
 
-      errors = '';
-    }
-  });
+  // What `adb` itself writes, such as why it lost the phone, the phone's own stderr coming on stdout.
   child.stderr.on('data', (chunk: Buffer) => (errors += chunk.toString()));
+  child.stdin.on('error', (error) => die(new Error(`adb shell: ${error.message}; is the phone still connected?`)));
+  child.stdin.write('exec 2>&1\n');
   child.on('error', (error) => die(new Error(`adb shell: ${error.message}`)));
-  child.on('exit', () => {
-    if (!closing) {
-      die(new Error(`adb shell exited${errors.trim() ? `: ${errors.trim()}` : ''}; is the phone still connected?`));
-    }
-  });
+
+  // `close` rather than `exit`: it waits for both streams to end, so a marker or a reason adb wrote is not lost.
+  child.on('close', () =>
+    die(
+      new Error(
+        closing
+          ? 'adb shell closed'
+          : `adb shell exited${errors.trim() ? `: ${errors.trim()}` : ''}; is the phone still connected?`,
+      ),
+    ),
+  );
 
   const shell = (args: readonly string[]): Promise<Buffer> => {
     const run = queue.then(
       () =>
         new Promise<Buffer>((resolve, reject) => {
-          if (dead) {
-            reject(dead);
+          if (dead || closing) {
+            reject(dead ?? new Error('adb shell closed'));
             return;
           }
 
@@ -125,7 +137,9 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
           }, TIMEOUT_MS);
 
           current = { resolve, reject, timer };
-          child.stdin.write(`${args.map(quoted).join(' ')}; printf '\\n%s %d\\n' ${marker} $?\n`);
+
+          // `echo` rather than `printf`, which is no builtin of the phone's shell but a process of its own, 14ms a call.
+          child.stdin.write(`${args.map(quoted).join(' ')}; s=$?; echo; echo ${marker} $s\n`);
         }),
     );
 

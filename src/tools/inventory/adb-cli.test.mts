@@ -59,6 +59,15 @@ test('a command that fails rejects with what it wrote, and the next still runs',
   }
 });
 
+/** As Ctrl-C closes it while the battle loop is still sending: nothing written into a shell being closed, nor waited on. */
+test('a command sent after close fails at once', async () => {
+  const held = adbHeld();
+
+  expect(text(await held.shell(['echo', 'before']))).toBe('before\n');
+  held.close();
+  await expect(held.shell(['echo', 'after'])).rejects.toThrow(/adb shell closed/);
+});
+
 /** As unplugging the phone ends `adb shell`: the command under way and every one after it fail, none left hanging. */
 test('the shell exiting fails the command under way and every one after it', async () => {
   const held = adbHeld();
