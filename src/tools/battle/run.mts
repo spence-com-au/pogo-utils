@@ -971,9 +971,9 @@ export async function run(
       // two seconds after coming back in. But on our HP as read, never on it unread. And only where the move to throw is
       // lit, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a tenth of its HP stayed in
       // against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for the battle.
-      const going = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
+      const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
       const doomed =
-        ourShields === 0 && health.own !== null && verdict.faints && theirShields > 0 && going !== undefined;
+        ourShields === 0 && health.own !== null && verdict.faints && theirShields > 0 && aimed !== undefined;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one is
@@ -987,7 +987,7 @@ export async function run(
             log(
               `staying in against ${theirName()}`,
               'own',
-              `${going} drawn into a shield before ${own ?? 'ours'} faints`,
+              `${aimed} drawn into a shield before ${own ?? 'ours'} faints`,
             );
           }
 
