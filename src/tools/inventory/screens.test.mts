@@ -384,7 +384,7 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 1605,
-    defects: { unseparated: ['Charizard (Copy 2019)'] },
+    defects: { unseparated: ['Charizard (Copy 2019)', 'Charizard (Goggles 2026)'] },
     file: 'charizard-gigantamax.png',
     form: null,
     gender: 'male',
@@ -1415,7 +1415,7 @@ test('the vended game master is the shape the readers are asserted against', () 
       cpm: DATA.cpm.length,
     },
     'the vended game master has changed shape; re-vend and update these figures',
-  ).toStrictEqual({ forms: 1449, species: 1024, moves: 328, types: 18, cpm: 101 });
+  ).toStrictEqual({ forms: 1473, species: 1024, moves: 328, types: 18, cpm: 101 });
 });
 
 /**

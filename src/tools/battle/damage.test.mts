@@ -62,9 +62,9 @@ test('a CP read is matched exactly where some spread shows it, rank 1 among thos
 });
 
 test('every form of a species is built, none where the read cannot be one', () => {
-  expect(buildsOf(DATA, CHARIZARD, ULTRA).map(({ form }) => form.form)).toEqual(['Copy 2019', null]);
+  expect(buildsOf(DATA, CHARIZARD, ULTRA).map(({ form }) => form.form)).toEqual(['Copy 2019', 'Goggles 2026', null]);
   expect(buildsOf(DATA, { species: 'Charizard', cp: 2501 }, ULTRA), 'over the cap is a misread').toEqual([]);
-  expect(buildsOf(DATA, { species: 'Charizard', cp: 2501 }, null), 'Master League has none').toHaveLength(2);
+  expect(buildsOf(DATA, { species: 'Charizard', cp: 2501 }, null), 'Master League has none').toHaveLength(3);
   expect(buildsOf(DATA, { species: 'Charizard', cp: null }, ULTRA)).toEqual([]);
   expect(buildsOf(DATA, { species: null, cp: 2495 }, ULTRA)).toEqual([]);
   expect(
