@@ -98,9 +98,9 @@ for text and done every few seconds.
    before means a new Pokémon, HP never coming back, so its name and CP are dropped and read again at once.
 3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels, and with them each side's type
    icons. After a shield prompt, the banner is looked for for 8s, beside the battle rather than holding it up.
-4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)).
-5. **Decide:** whether a shield would be taken, which button to throw, which card to send in after a faint, and whether
-   to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
+4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
+5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
+   whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
 6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
@@ -198,6 +198,24 @@ stages, at the least it would take of any form either side could be. It must tak
 more than the opponent's bar shows, for the builds being guesses and the bar wandering a point or two frame to frame.
 Anything unknown leaves the move held for, the opponent's CP unread included. The throw is logged with the reason, such
 as `threw Hydro Cannon: would finish Giratina at 12%`.
+
+**Not overkilling.** Ahead of all of these, a throw about to go is held, every charged move with it, where our fast
+moves alone will finish an opponent with another to come before it can throw ([`energy.mts`](energy.mts)'s `spare`). The
+energy then lands on the next the moment it is out: a player held Brave Bird and Fly while Galarian Moltres's fast moves
+finished a Giratina at 15%, and threw Brave Bird as the Mewtwo after it landed, which won the game. Only with the
+opponent's shields spent and more than one of its Poké Balls red, and only on what was measured:
+
+- **Our hits.** What one of our fast moves takes of its bar is measured as [its on ours](#the-opponents-energy) is, the
+  median clean step. No more than **4** of them may be left to finish it, with the bar's 2 points of wander: about what
+  Sucker Punch needed for that Giratina.
+- **Its throw.** Its counted energy must afford none of its charged moves after the fast moves of its that land
+  meanwhile, plus one for a hit the count missed. Meanwhile is our hits at the longest fast move our species has, and
+  never fewer of its than of ours.
+- **Our survival.** Those fast moves of its, at its measured step, must leave us standing.
+
+Anything unmeasured or unread throws as before. The hold is logged once, such as
+`holding Brave Bird and Fly for the next: fast moves finish Giratina at 15%`, and an opponent switching out simply ends
+it.
 
 ### When to shield
 
@@ -322,6 +340,8 @@ The strategy still leaves some gaps:
   would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
   fills, which needs our own energy to see coming, and the opponent's throws after our shields are gone, which show no
   prompt and so go uncounted, leaving the count high; the banner can supply those.
+- **Our own fast move.** Holding for the next ([above](#which-charged-move-to-throw)) takes ours to be the longest our
+  species has. Told apart by the size of our hits, as the opponent's is by its, it would hold more often.
 - **Out of scope for now:**
   - Getting a throw in before the opponent's.
   - Choosing who to send in by the opponent's energy.
