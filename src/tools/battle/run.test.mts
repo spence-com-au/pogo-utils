@@ -1011,10 +1011,10 @@ test('stays in when nothing benched counters the opponent switched in', async ()
  * The opponent switches Glaceon out for Mamoswine while our Giratina has Shadow Sneak lit. Mamoswine's Avalanche
  * threatens Giratina, and nothing benched counters Mamoswine, but Umbreon is safe from all of its moves: Giratina
  * switches to it rather than throw, keeping the energy on the bench. There being no committed party of these, the party
- * screen is read with Zeraora's icon standing for Umbreon and Gyarados' for Giratina, so the party is Umbreon, Latias and
- * Giratina, and Umbreon the bench's top card. Mamoswine's frame is of a later battle, its Poké Balls painted red so that
- * it, like Glaceon's, shows all three of each side's left, and the change reads as a switch rather than a faint. The
- * switch shows only as `other` before Mamoswine's first frame, which so reads the HUD at once, its last read being
+ * screen is read with Zeraora's icon standing for Umbreon and Gyarados' for Giratina, so the party is Umbreon, Latias
+ * and Giratina, and Umbreon the bench's top card. Mamoswine's frame is of a later battle, its Poké Balls painted red so
+ * that it, like Glaceon's, shows all three of each side's left, and the change reads as a switch rather than a faint.
+ * The switch shows only as `other` before Mamoswine's first frame, which so reads the HUD at once, its last read being
  * `READ_MS` ago.
  *
  * Giratina's own shields are spent on the frame as recorded, and Mamoswine's moves would faint it: doomed, it stays in

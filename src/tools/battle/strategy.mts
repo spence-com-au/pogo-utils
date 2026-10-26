@@ -171,10 +171,10 @@ export function activeOf(
  * cannot hit super effectively, then the one with the hardest hit on it, then the first. A banked finish comes before
  * safety, the opponent gone before it can land what we would be unsafe from: live, a Galarian Moltres at a tenth of its
  * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of every charged
- * move its species can hold, which of them it has being shown only once it is out, bar Frustration and Return:
- * Return's 130 would otherwise tie every species that has a shadow form, few of ours being purified. A card that was
- * not read is neither safe nor known to hit, so it goes in only where nothing named is left, or where it is first and
- * nothing named is safe or hits at all.
+ * move its species can hold, which of them it has being shown only once it is out, bar Frustration and Return: Return's
+ * 130 would otherwise tie every species that has a shadow form, few of ours being purified. A card that was not read is
+ * neither safe nor known to hit, so it goes in only where its banked energy finishes, where nothing named is left, or
+ * where it is first and nothing named is safe or hits at all.
  */
 export function nextOut(
   data: GameData,
@@ -314,8 +314,8 @@ export interface Switch {
  * instead, and whether ours has a move ready, are the caller's to say, what is lit being read off the frame.
  *
  * Live, a Galarian Moltres facing a Granbull switched in, Fly ready and nothing benched hitting Granbull super
- * effectively, gave way to a Snorlax, which drew both its shields; Moltres came back to finish a Milotic with the energy
- * it had kept.
+ * effectively, gave way to a Snorlax, which drew both its shields; Moltres came back to finish a Milotic with the
+ * energy it had kept.
  */
 export function refugeOf(
   data: GameData,

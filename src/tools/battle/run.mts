@@ -116,9 +116,13 @@ const THROWN = 3;
 const SWITCHED_MS = 2_000;
 
 /**
- * How long after the switch timer refused a switch of ours another to bank energy is not tried, in milliseconds: the
- * timer is not read, and a tap it refuses costs the turn it is made in, so the bench is not tapped every frame it runs.
+ * How long after a switch of ours another to bank energy is not tried, in milliseconds: our switch timer, which is not
+ * read, and a tap it refuses costs the turn it is made in. Live, the bench's cards were still half dark with it 40s
+ * after a switch; a timer running longer is caught by the refusal, after which `REFUSED_MS` more go by.
  */
+const TIMER_MS = 45_000;
+
+/** How long after the switch timer refused a switch of ours another to bank energy is not tried, in milliseconds. */
 const REFUSED_MS = 10_000;
 
 /**
@@ -309,14 +313,15 @@ export async function run(
   let theirShields = 2;
   let ourShields = 2;
 
-  // Whether the opponent's switch just read is still to be answered, and the counter of ours chosen for it, tapped on
-  // the first frame `Player` lets a bench card be. Once tapped, the switch is checked: our HUD's CP unchanged after
+  // Whether the opponent's switch just read is still to be answered, and the switch of ours chosen, tapped on the first
+  // frame `Player` lets a bench card be: a counter to the opponent's switch, or a switch to bank energy, `strip` where
+  // it is to draw a shield. Once tapped, the switch is checked: our HUD's CP unchanged after
   // `SWITCHED_MS` is the switch timer having refused the tap, which leaves the one tapped away from out.
   let answer = false;
   let counter: (Switch & { at: Point; strip: boolean }) | undefined;
 
-  // Whether the opponent out came in by a switch rather than after a faint, and so has its switch timer to run before it
-  // can switch away from ours; and the opponent ours last stayed in against, doomed, rather than switch from.
+  // Whether the opponent out came in by a switch rather than after a faint, and so has its switch timer to run before
+  // it can switch away from ours; and the opponent ours last stayed in against, doomed, rather than switch from.
   let switchedIn = false;
   let stayedFor: string | null = null;
   let switching:
@@ -338,11 +343,11 @@ export async function run(
 
   // The energy each of ours left the field with by a switch, as the charged moves lit as it went, and the Pokémon as it
   // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
-  // slot sent in to draw a shield with its own, which is not switched away again to draw another. And when the switch
-  // timer last refused a switch of ours.
+  // slot sent in to draw a shield with its own, which is not switched away again to draw another. And how soon another
+  // switch to bank energy may be tried, by our switch timer and its refusals.
   let banked = new Map<number, Bank>();
   let stripping: number | undefined;
-  let refusedAt = -Infinity;
+  let calmAt = -Infinity;
 
   // How many Pokémon each side has left as the HUD's Poké Balls last showed it, never more than the last count, a faint
   // being for good; null until read. `leftAtName` is the opponent's count when its name was first read, which a lower
@@ -588,7 +593,7 @@ export async function run(
         switching = undefined;
         banked = new Map();
         stripping = undefined;
-        refusedAt = -Infinity;
+        calmAt = -Infinity;
         left = { own: null, opponent: null };
         leftAtName = null;
         promptedAt = 3;
@@ -717,7 +722,7 @@ export async function run(
             stages = { ...stages, own: switching.stages };
             banked.delete(switching.from);
             stripping = switching.stripping;
-            refusedAt = clock.now();
+            calmAt = Math.max(calmAt, clock.now() + REFUSED_MS);
 
             if (switching.bank) {
               banked.set(switching.slot, switching.bank);
@@ -968,10 +973,11 @@ export async function run(
       // lit and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to
       // save. A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may
       // carry energy banked that the count, starting it at nothing, cannot see, and the counter and refuge switches
-      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never on
-      // a guess for something unread. And only where the move to throw is lit already, so that staying in is a throw and not a swipe.
-      // Live, a Galarian Moltres at a tenth of its HP stayed in against a Kyogre switched in, threw Fly into its last
-      // shield and fainted; Kyogre had none left for the battle.
+      // answer just such a one. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never
+      // on a guess for something unread, bar their CP, which is taken as the cap as the shield takes it. And only where
+      // the move to throw is lit already, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a
+      // tenth of its HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had
+      // none left for the battle.
       const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
       const doomed =
         ourShields === 0 && verdict.faints && verdict.hardest !== undefined && theirShields > 0 && aimed !== undefined;
@@ -1013,7 +1019,7 @@ export async function run(
         banking.length > 0 &&
         slot !== undefined &&
         slot !== stripping &&
-        clock.now() - refusedAt >= REFUSED_MS
+        clock.now() >= calmAt
       ) {
         counter = stay(refugeOf(data, party, slot, us, fainted, them, meta));
       }
@@ -1031,7 +1037,7 @@ export async function run(
         slot !== stripping &&
         theirShields > 0 &&
         cap !== undefined &&
-        clock.now() - refusedAt >= REFUSED_MS
+        clock.now() >= calmAt
       ) {
         const kept = finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, 0, cap, stages);
         const moves = new Map([...banked].map(([waiting, bank]) => [waiting, bank.moves]));
@@ -1097,6 +1103,7 @@ export async function run(
           banked.delete(counter.slot);
           banked.set(slot, { moves: banking, own: facing.own });
           stripping = counter.strip ? counter.slot : undefined;
+          calmAt = clock.now() + TIMER_MS;
           sent = counter.slot;
           counter = undefined;
           seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };

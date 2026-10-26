@@ -277,7 +277,7 @@ its lands. It's logged as `its banked Fly finishes Buzzwole`. Otherwise it prefe
 allowed moves can hit super effectively. Among those, or among all of them if none is safe, it picks the one whose
 hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
 The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species wasn't read goes in only
-when nothing named is left.
+when its banked energy finishes the opponent or nothing named is left.
 
 ### When the opponent switches
 
@@ -319,7 +319,8 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
   Fly took Kyogre's last shield, and it had none for the rest of the battle.
 
-A switch the timer refuses gives the bank back, and neither switch is tried again for 10s.
+Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One the timer refuses all
+the same gives the bank back, and neither is tried again for 10s.
 
 ### Knowing who is out
 
