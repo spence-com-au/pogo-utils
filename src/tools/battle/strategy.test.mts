@@ -15,7 +15,9 @@ import {
   counterOf,
   damage,
   nextOut,
+  refugeOf,
   shouldShield,
+  stripperOf,
   typesOf,
   worth,
 } from './strategy.mts';
@@ -267,6 +269,76 @@ test('a counter says why it was switched to', () => {
   expect(
     counterOf(DATA, ['Tyranitar', 'Kyogre'], 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.why,
   ).toBe("Tyranitar is hit super effectively; Blizzard is, and nothing of Salamence's is");
+});
+
+/**
+ * A Giratina whose Dragon Pulse was banked on the bench finishes Salamence as it lands, which comes before Kyogre being
+ * the one safe from Salamence's moves: the opponent gone, nothing of its lands on Giratina.
+ */
+test('after a faint, sends in the one whose banked energy finishes the opponent, ahead of the one safe from it', () => {
+  const party = ['Tyranitar', 'Giratina', 'Kyogre'];
+  const banked = new Map([[1, 'Dragon Pulse']]);
+
+  expect(nextOut(DATA, party, new Set([0]), { species: 'Salamence' }, null, banked)).toEqual({
+    slot: 1,
+    why: 'its banked Dragon Pulse finishes Salamence',
+  });
+  expect(nextOut(DATA, party, new Set([0, 1]), { species: 'Salamence' }, null, banked)?.slot, 'it fainted').toBe(2);
+});
+
+test.each<[(string | null)[], number, number[], string | null, number | undefined, string]>([
+  [['Latias', 'Kyogre'], 0, [], 'Glaceon', 1, 'Kyogre is safe from Glaceon, though nothing of its beats it'],
+  [['Tyranitar', 'Giratina', 'Kyogre'], 0, [], 'Salamence', 2, 'Giratina is hit by Outrage; Kyogre is not'],
+  [['Tyranitar', 'Kyogre', 'Kyogre'], 0, [1], 'Salamence', 2, 'the one safe fainted, the other taken'],
+  [['Latias', 'Mamoswine'], 0, [], 'Sneasel', undefined, 'Close Combat hits Mamoswine'],
+  [['Kyogre', 'Tyranitar'], 0, [], 'Salamence', undefined, 'Kyogre is not threatened by Salamence'],
+  [['Latias', 'Kyogre'], 0, [], null, undefined, 'theirs not read'],
+  [[null, 'Kyogre'], 0, [], 'Glaceon', undefined, 'ours not read'],
+  [['Latias', null], 0, [], 'Glaceon', undefined, 'an unread card is not known safe'],
+])(
+  'with %o, slot %s out, less %o, against %s banks by switching to slot %s: %s',
+  (party, out, fainted, opponent, slot) => {
+    expect(
+      refugeOf(DATA, party, out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
+    ).toBe(slot);
+  },
+);
+
+test('a refuge says why it was switched to', () => {
+  expect(refugeOf(DATA, ['Latias', 'Kyogre'], 0, { species: 'Latias' }, new Set(), { species: 'Glaceon' })?.why).toBe(
+    "Latias is hit super effectively and banks its energy; Kyogre is safe from Glaceon's moves",
+  );
+});
+
+test.each<[number[], [number, string[]][], string | null, number | undefined, string]>([
+  [[], [[1, ['Dragon Pulse']]], 'Salamence', 1, 'the one with energy banked'],
+  [
+    [],
+    [
+      [1, ['Dragon Pulse']],
+      [2, ['Surf']],
+    ],
+    'Salamence',
+    2,
+    'Kyogre safe from Salamence, Giratina not',
+  ],
+  [[], [[0, ['Stone Edge']]], 'Salamence', undefined, 'only the one out has any banked'],
+  [[1], [[1, ['Dragon Pulse']]], 'Salamence', undefined, 'the one with energy banked fainted'],
+  [[], [[1, []]], 'Salamence', undefined, 'nothing lit as it left'],
+  [[], [[1, ['Dragon Pulse']]], null, undefined, 'theirs not read'],
+])('less %o, with %o banked, against %s draws the shield with slot %s: %s', (fainted, banked, opponent, slot) => {
+  expect(
+    stripperOf(DATA, ['Tyranitar', 'Giratina', 'Kyogre'], 0, new Set(fainted), new Map(banked), { species: opponent })
+      ?.slot,
+  ).toBe(slot);
+});
+
+test('a shield drawer says why it was switched to', () => {
+  const banked = new Map([[1, ['Surf', 'Blizzard']]]);
+
+  expect(stripperOf(DATA, ['Tyranitar', 'Kyogre'], 0, new Set(), banked, { species: 'Salamence' })?.why).toBe(
+    "Kyogre has Surf and Blizzard banked to draw Salamence's shield",
+  );
 });
 
 test('no button is best while one of a pair has no move read under it', () => {

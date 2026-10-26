@@ -12,7 +12,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, expect, test } from 'vitest';
 import { silhouetteOfIcon } from './party.mts';
-import { type Point } from './play.mts';
+import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
+import { place } from './layout.mts';
 import { type Fight, type Reporter } from './report.mts';
 import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
 
@@ -953,6 +954,70 @@ test('stays in when nothing benched counters the opponent switched in', async ()
 
   expect(taps.filter((scene) => scene === 'sneasel')).toEqual([]);
 });
+
+/**
+ * The opponent switches Glaceon out for Mamoswine while our Giratina has Shadow Sneak lit. Mamoswine's Avalanche
+ * threatens Giratina, and nothing benched counters Mamoswine, but Umbreon is safe from all of its moves: Giratina
+ * switches to it rather than throw, keeping the energy on the bench. There being no committed party of these, the party
+ * screen is read with Zeraora's icon standing for Umbreon and Gyarados' for Giratina, so the party is Umbreon, Latias and
+ * Giratina, and Umbreon the bench's top card. Mamoswine's frame is of a later battle, its Poké Balls painted red so that
+ * it, like Glaceon's, shows all three of each side's left, and the change reads as a switch rather than a faint. The
+ * switch shows only as `other` before Mamoswine's first frame, which so reads the HUD at once, its last read being
+ * `READ_MS` ago.
+ *
+ * Giratina's own shields are spent on the frame as recorded, and Mamoswine's moves would faint it: doomed, it stays in
+ * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks.
+ */
+test.each([
+  ['spent', [], ['own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints'], []],
+  [
+    'held',
+    [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]),
+    [],
+    [
+      "own: switching to Umbreon against Mamoswine, banking Shadow Sneak: Giratina is hit super effectively and banks its energy; Umbreon is safe from Mamoswine's moves",
+    ],
+  ],
+])(
+  'with our shields %s, a lit move against an opponent switched in is thrown or banked',
+  async (_, held, stayed, switched) => {
+    const stand = { Zeraora: 'Umbreon', Gyarados: 'Giratina' } as Record<string, string>;
+    const icons = ICONS.map((icon) => ({ ...icon, species: stand[icon.species] ?? icon.species }));
+    const balls = [0.058, 0.111, 0.161, 0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+    const red = painted(fixture('charged-shadow-sneak'), [220, 40, 40], ...balls);
+    const mamoswine = painted(red, [224, 161, 238], ...held);
+    const bench = place(BENCH[0] ?? [0, 0], BENCH_ANCHOR, mamoswine);
+    const { phone, clock, taps } = scripted(
+      {
+        ...battleAndBack(),
+        party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+        loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+        glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
+        coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
+        mamoswine: { frame: mamoswine, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+      },
+      'party',
+    );
+    const report = recorder();
+
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    );
+
+    expect(taps).toContain('mamoswine');
+    expect(report.events.filter((line) => line.startsWith('own: staying'))).toEqual(stayed);
+    expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
+  },
+);
 
 /**
  * Latias leads, from the party screen, and faints to Glaceon; the switch prompt's first card sends in Mamoswine, the

@@ -166,8 +166,11 @@ export function activeOf(
 }
 
 /**
- * Which slot to send in after a faint, of those not fainted, and why it over the next best: first one the opponent
- * cannot hit super effectively, then the one with the hardest hit on it, then the first. Hardest out of every charged
+ * Which slot to send in after a faint, of those not fainted, and why it over the next best: first one whose energy
+ * banked on the bench finishes the opponent the moment it lands, by `finishing`'s move for it, then one the opponent
+ * cannot hit super effectively, then the one with the hardest hit on it, then the first. A banked finish comes before
+ * safety, the opponent gone before it can land what we would be unsafe from: live, a Galarian Moltres at a tenth of its
+ * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of every charged
  * move its species can hold, which of them it has being shown only once it is out, bar Frustration and Return:
  * Return's 130 would otherwise tie every species that has a shadow form, few of ours being purified. A card that was
  * not read is neither safe nor known to hit, so it goes in only where nothing named is left, or where it is first and
@@ -179,6 +182,7 @@ export function nextOut(
   fainted: ReadonlySet<number>,
   opponent: Shown,
   meta?: Meta | null,
+  finishing: ReadonlyMap<number, string> = new Map(),
 ): { slot: number; why: string } | undefined {
   const scored = party.flatMap((species, slot) =>
     fainted.has(slot)
@@ -186,13 +190,20 @@ export function nextOut(
       : [
           {
             slot,
+            finishes: finishing.get(slot),
             safe: species !== null && !shouldShield(data, { species }, opponent, meta),
             ...hardest(data, species, opponent),
           },
         ],
   );
 
-  scored.sort((a, b) => Number(b.safe) - Number(a.safe) || b.hardest - a.hardest || a.slot - b.slot);
+  scored.sort(
+    (a, b) =>
+      Number(b.finishes !== undefined) - Number(a.finishes !== undefined) ||
+      Number(b.safe) - Number(a.safe) ||
+      b.hardest - a.hardest ||
+      a.slot - b.slot,
+  );
 
   const [best, next] = scored;
 
@@ -204,11 +215,13 @@ export function nextOut(
   const safety = `safe from ${opponent.species ?? 'the opponent'}'s moves`;
   const why = !next
     ? 'the last left'
-    : best.safe !== next.safe
-      ? `the only one ${safety}`
-      : best.hardest !== next.hardest
-        ? `${best.safe ? `${safety}, and` : `none ${safety};`} hits hardest (${best.move})`
-        : 'first card, nothing to choose between them';
+    : best.finishes !== undefined && next.finishes === undefined
+      ? `its banked ${best.finishes} finishes ${opponent.species ?? 'the opponent'}`
+      : best.safe !== next.safe
+        ? `the only one ${safety}`
+        : best.hardest !== next.hardest
+          ? `${best.safe ? `${safety}, and` : `none ${safety};`} hits hardest (${best.move})`
+          : 'first card, nothing to choose between them';
 
   return { slot: best.slot, why };
 }
@@ -283,6 +296,99 @@ export function counterOf(
     best && {
       slot: best.slot,
       why: `${own.species} is hit super effectively; ${best.beats} is, and nothing of ${opponent.species}'s is`,
+    }
+  );
+}
+
+/** A benched slot to switch to, and why. */
+export interface Switch {
+  slot: number;
+  why: string;
+}
+
+/**
+ * Which slot to switch to, of the bench, where no counter is but ours, threatened by the opponent just switched in, has
+ * a charged move ready: one safe from every charged move the opponent is allowed for, so that ours keeps its energy on
+ * the bench rather than spend it into a shield or faint with it. The hardest-hitting of those, and between equals the
+ * first card. Undefined where ours is not threatened, as by `shouldShield`'s rule, or where either species is not known.
+ *
+ * Live, a Galarian Moltres facing a Granbull switched in, Fly ready and nothing benched hitting Granbull super
+ * effectively, gave way to a Snorlax, which drew both its shields; Moltres came back to finish a Milotic with the energy
+ * it had kept. Whether ours has a move ready is the caller's to say: what is lit is read off the frame.
+ */
+export function refugeOf(
+  data: GameData,
+  party: readonly (string | null)[],
+  out: number,
+  own: Shown,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  meta?: Meta | null,
+): Switch | undefined {
+  if (own.species === null || opponent.species === null || !shouldShield(data, own, opponent, meta)) {
+    return undefined;
+  }
+
+  const [best] = party
+    .flatMap((species, slot) =>
+      species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)
+        ? []
+        : [{ slot, species, ...hardest(data, species, opponent) }],
+    )
+    .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
+
+  return (
+    best && {
+      slot: best.slot,
+      why: `${own.species} is hit super effectively and banks its energy; ${best.species} is safe from ${opponent.species}'s moves`,
+    }
+  );
+}
+
+/**
+ * Which slot to switch to, of the bench, to draw the shield the opponent would take against a finish ours has ready:
+ * one with energy banked, which throws as it lands, by the moves `banked` says were ready as each left the field. One
+ * the opponent cannot hit super effectively first, then the one with the hardest hit on it, then the first card.
+ * Undefined where none has energy banked, or where the opponent's species is not known. Ours keeps its finish on the
+ * bench, to throw once the shields are gone, sent back in by `nextOut` after the one sent faints.
+ *
+ * Live, a Melmetal with Dynamic Punch ready to finish a shielded Hisuian Samurott gave way to a Galarian Moltres, whose
+ * two banked Fly drew both shields; Melmetal came back in after Moltres fainted and finished Samurott.
+ */
+export function stripperOf(
+  data: GameData,
+  party: readonly (string | null)[],
+  out: number,
+  fainted: ReadonlySet<number>,
+  banked: ReadonlyMap<number, readonly string[]>,
+  opponent: Shown,
+  meta?: Meta | null,
+): Switch | undefined {
+  if (opponent.species === null) {
+    return undefined;
+  }
+
+  const [best] = [...banked]
+    .flatMap(([slot, moves]) => {
+      const species = party[slot];
+
+      return species === undefined || slot === out || fainted.has(slot) || moves.length === 0
+        ? []
+        : [
+            {
+              slot,
+              moves,
+              safe: species !== null && !shouldShield(data, { species }, opponent, meta),
+              ...hardest(data, species, opponent),
+            },
+          ];
+    })
+    .sort((a, b) => Number(b.safe) - Number(a.safe) || b.hardest - a.hardest || a.slot - b.slot);
+
+  return (
+    best && {
+      slot: best.slot,
+      why: `${party[best.slot] ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
     }
   );
 }

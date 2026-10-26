@@ -203,13 +203,14 @@ export class Player {
 
     const throwable = best === undefined ? ready : ready.filter(([x]) => x === best);
 
+    // Before a lit move is thrown: the switch is made to keep that energy on the bench.
+    if (bench && !this.#minigame && (state === 'battle' || state === 'charged')) {
+      return { kind: 'tap', at: bench, what: 'bench' };
+    }
+
     if (state === 'battle' || (state === 'charged' && throwable.length === 0)) {
       if (this.#tapped?.state === 'charged' && now - this.#tapped.at < HOLD_MS) {
         return { kind: 'wait' };
-      }
-
-      if (bench && !this.#minigame) {
-        return { kind: 'tap', at: bench, what: 'bench' };
       }
 
       const [through] = this.#minigame ? (bubbles ?? []) : [];

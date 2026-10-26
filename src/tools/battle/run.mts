@@ -25,8 +25,19 @@ import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
 import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
-import { activeOf, bestButton, bestLit, counterOf, nextOut, typesOf, type Pick } from './strategy.mts';
-import { afterThrow, finisher, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
+import {
+  activeOf,
+  bestButton,
+  bestLit,
+  counterOf,
+  nextOut,
+  refugeOf,
+  stripperOf,
+  typesOf,
+  type Pick,
+  type Switch,
+} from './strategy.mts';
+import { afterThrow, finisher, NO_STAGES, wouldFaint, type Side, type Stages, type Verdict } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
 import { Energy, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
@@ -105,6 +116,12 @@ const THROWN = 3;
 const SWITCHED_MS = 2_000;
 
 /**
+ * How long after the switch timer refused a switch of ours another to bank energy is not tried, in milliseconds: the
+ * timer is not read, and a tap it refuses costs the turn it is made in, so the bench is not tapped every frame it runs.
+ */
+const REFUSED_MS = 10_000;
+
+/**
  * How long a battle must be off its field — the minigame, a prompt, a charged move playing — before it is told how long
  * and what showed, in milliseconds, which the battle's line, written only as it changes, leaves unexplained otherwise:
  * live, 10–20s went by without a line. Longer than a banner over the HUD, a second or two, and shorter than a charged
@@ -120,6 +137,12 @@ const KEPT_FRAMES = 10;
  * the prompt sliding in and how it was answered, or the HUD before and after the faint.
  */
 const AROUND_MS = 1_000;
+
+/** Energy of ours on the bench: the charged moves lit as it left the field, and the Pokémon as then read. */
+interface Bank {
+  moves: string[];
+  own: Side;
+}
 
 /** Pokémon left by the Poké Balls, a faint being for good: the lower of the count before and a read, either if null. */
 const fewer = (was: number | null, read: number | null) =>
@@ -290,8 +313,33 @@ export async function run(
   // the first frame `Player` lets a bench card be. Once tapped, the switch is checked: our HUD's CP unchanged after
   // `SWITCHED_MS` is the switch timer having refused the tap, which leaves the one tapped away from out.
   let answer = false;
-  let counter: { slot: number; why: string; at: Point } | undefined;
-  let switching: { from: number; to: string; cp: number | null; at: number; stages: Stages } | undefined;
+  let counter: (Switch & { at: Point; strip: boolean }) | undefined;
+
+  // Whether the opponent out came in by a switch rather than after a faint, and so has its switch timer to run before it
+  // can switch away from ours; and the opponent ours last stayed in against, doomed, rather than switch from.
+  let switchedIn = false;
+  let stayedFor: string | null = null;
+  let switching:
+    | {
+        from: number;
+        slot: number;
+        to: string;
+        cp: number | null;
+        at: number;
+        stages: Stages;
+
+        /** What the slot switched to had banked, given back to it where the switch is refused. */
+        bank: Bank | undefined;
+      }
+    | undefined;
+
+  // The energy each of ours left the field with by a switch, as the charged moves lit as it went, and the Pokémon as it
+  // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
+  // slot sent in to draw a shield with its own, which is not switched away again to draw another. And when the switch
+  // timer last refused a switch of ours.
+  let banked = new Map<number, Bank>();
+  let stripping: number | undefined;
+  let refusedAt = -Infinity;
 
   // How many Pokémon each side has left as the HUD's Poké Balls last showed it, never more than the last count, a faint
   // being for good; null until read. `leftAtName` is the opponent's count when its name was first read, which a lower
@@ -526,8 +574,13 @@ export async function run(
         theirShields = 2;
         ourShields = 2;
         answer = false;
+        switchedIn = false;
+        stayedFor = null;
         counter = undefined;
         switching = undefined;
+        banked = new Map();
+        stripping = undefined;
+        refusedAt = -Infinity;
         left = { own: null, opponent: null };
         leftAtName = null;
         promptedAt = 3;
@@ -627,6 +680,7 @@ export async function run(
             log(gone ? `${before} fainted; sent in ${seen.opponent}` : `switched to ${seen.opponent}`, 'opponent');
             stages = { ...stages, their: NO_STAGES };
             answer = !gone;
+            switchedIn = !gone;
             counter = undefined;
           }
 
@@ -638,6 +692,14 @@ export async function run(
           if (seen.ownCp === switching.cp) {
             sent = switching.from;
             stages = { ...stages, own: switching.stages };
+            banked.delete(switching.from);
+            stripping = undefined;
+            refusedAt = clock.now();
+
+            if (switching.bank) {
+              banked.set(switching.slot, switching.bank);
+            }
+
             log(`${switching.to} not sent in: the switch timer is running`, 'own');
           }
 
@@ -797,7 +859,30 @@ export async function run(
         promptedAt = left.own ?? promptedAt;
         const gone = caught?.slot ?? slot;
         const out = new Set([...fainted, ...(gone === undefined ? [] : [gone])]);
-        const chosen = nextOut(data, party, out, them, meta);
+
+        // Which benched slot's banked energy finishes the opponent as it lands, as a lit move of the one out would.
+        const league = cap;
+        const finishing = new Map(
+          league === undefined
+            ? []
+            : [...banked].flatMap(([benched, bank]) => {
+                const moves = new Map(bank.moves.map((move, i) => [i, move]));
+                const pick = finisher(
+                  data,
+                  moves,
+                  moves.keys(),
+                  bank.own,
+                  facing.opponent,
+                  health.opponent,
+                  theirShields,
+                  league,
+                );
+                const move = pick && moves.get(pick.x);
+
+                return move === undefined ? [] : [[benched, move] as const];
+              }),
+        );
+        const chosen = nextOut(data, party, out, them, meta, finishing);
         const next = chosen?.slot;
         const measured =
           next === undefined ? undefined : SWITCH_CARDS[[...party.keys()].filter((i) => !out.has(i)).indexOf(next)];
@@ -807,15 +892,85 @@ export async function run(
         caught = undefined;
       }
 
-      // The opponent's switch answered once, on the first frame the bench is drawn for: by a counter of ours where one is
-      // benched, the bench's cards being the slots not fainted bar the one out, in party order.
-      if (answer && slot !== undefined && (state === 'battle' || state === 'charged') && !player.minigame) {
-        answer = false;
-        const chosen = counterOf(data, party, slot, us, fainted, them, meta);
+      // Where a benched slot's card is, the bench's cards being the slots not fainted bar the one out, in party order.
+      const benched = (chosen: Switch | undefined, strip: boolean) => {
         const measured =
           chosen && BENCH[[...party.keys()].filter((i) => i !== slot && !fainted.has(i)).indexOf(chosen.slot)];
 
-        counter = chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame) };
+        return chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame), strip };
+      };
+
+      // The moves lit, which a switch banks: the energy for each stays with ours on the bench.
+      const banking = lit.flatMap((x) => seen.moves.get(x) ?? []);
+
+      // No shield of ours left, a hit coming that would faint us, a move lit and a shield of theirs to draw: the throw
+      // goes rather than any switch, there being little left of ours to save. Live, a Galarian Moltres at a tenth of its
+      // HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for
+      // the rest of the battle.
+      const doomed = ourShields === 0 && verdict.faints && theirShields > 0 && banking.length > 0;
+      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
+
+      // The opponent's switch answered once, on the first frame the bench is drawn for, by a counter of ours where one is
+      // benched; and for as long as the newcomer stays out, its switch timer spent, ours threatened by it banks a move
+      // lit by switching to one safe from it, whenever one lights, unless the move would finish it. Neither where ours
+      // is doomed, told once a newcomer.
+      const stay = (chosen: Switch | undefined) => {
+        if (chosen && doomed) {
+          if (stayedFor !== theirName()) {
+            stayedFor = theirName();
+            log(
+              `staying in against ${theirName()}`,
+              'own',
+              `${banking.join(' and ')} drawn into a shield before ${own ?? 'ours'} faints`,
+            );
+          }
+
+          return undefined;
+        }
+
+        return benched(chosen, false);
+      };
+
+      if (answer && slot !== undefined && fighting) {
+        answer = false;
+        counter = stay(counterOf(data, party, slot, us, fainted, them, meta));
+      }
+
+      if (
+        !counter &&
+        !switching &&
+        !finish &&
+        switchedIn &&
+        fighting &&
+        banking.length > 0 &&
+        slot !== undefined &&
+        slot !== stripping &&
+        clock.now() - refusedAt >= REFUSED_MS
+      ) {
+        counter = stay(refugeOf(data, party, slot, us, fainted, them, meta));
+      }
+
+      // A lit move that would finish the opponent but for its shield is kept, and a benched slot with energy banked sent
+      // in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints. Not from
+      // a slot sent in to draw one itself, which throws rather than switch away again, nor while the switch timer may
+      // still be running from a switch it refused.
+      if (
+        !counter &&
+        !switching &&
+        !doomed &&
+        fighting &&
+        slot !== undefined &&
+        slot !== stripping &&
+        theirShields > 0 &&
+        cap !== undefined &&
+        clock.now() - refusedAt >= REFUSED_MS
+      ) {
+        const kept = finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, 0, cap, stages);
+        const moves = new Map([...banked].map(([benched, bank]) => [benched, bank.moves]));
+        const chosen = kept && stripperOf(data, party, slot, fainted, moves, them, meta);
+        const held = kept && seen.moves.get(kept.x);
+
+        counter = benched(chosen && { ...chosen, why: `${chosen.why}; ${held ?? 'ours'} ${kept.why}` }, true);
       }
 
       const card = prompt?.card;
@@ -857,9 +1012,21 @@ export async function run(
         } else if (action.what === 'bench' && counter && slot !== undefined) {
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
           const to = party[counter.slot] ?? '?';
+          const keeping = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
 
-          log(`switching to ${to} against ${seen.opponent ?? 'the opponent'}`, 'own', counter.why);
-          switching = { from: slot, to, cp: seen.ownCp, at: clock.now(), stages: stages.own };
+          log(`switching to ${to} against ${seen.opponent ?? 'the opponent'}${keeping}`, 'own', counter.why);
+          switching = {
+            from: slot,
+            slot: counter.slot,
+            to,
+            cp: seen.ownCp,
+            at: clock.now(),
+            stages: stages.own,
+            bank: banked.get(counter.slot),
+          };
+          banked.delete(counter.slot);
+          banked.set(slot, { moves: banking, own: facing.own });
+          stripping = counter.strip ? counter.slot : undefined;
           sent = counter.slot;
           counter = undefined;
           seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
@@ -887,6 +1054,8 @@ export async function run(
 
           if (prompt.next !== undefined) {
             sent = prompt.next;
+            banked.delete(prompt.next);
+            stripping = undefined;
             const gone = prompt.fainted === undefined || prompt.told ? '' : `${party[prompt.fainted] ?? '?'} fainted; `;
 
             log(`${gone}sending in ${party[prompt.next] ?? '?'}`, 'own', prompt.why);
