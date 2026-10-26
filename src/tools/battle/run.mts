@@ -28,7 +28,7 @@ import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type
 import { activeOf, bestButton, bestLit, counterOf, nextOut, typesOf, type Pick } from './strategy.mts';
 import { afterThrow, finisher, NO_STAGES, wouldFaint, type Stages, type Verdict } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, type Matchup } from './energy.mts';
+import { Energy, Hits, spare, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 
@@ -321,6 +321,11 @@ export async function run(
   // one, a prompt sliding past matching for a frame or two on its own.
   let energy = new Energy(data, meta);
   let matchup: Matchup | undefined;
+
+  // Our fast moves' hits on the opponent's bar, measured as its on ours are, and whom a hold of our charged moves for
+  // the next was last told for: told once, rather than on every frame it lasts, until a throw ends it.
+  let hits = new Hits();
+  let sparing: string | null | undefined;
   let prompted = 0;
 
   // The colour of the bubbles the minigame now showing draws, that of the move last thrown, where its type is known.
@@ -534,6 +539,8 @@ export async function run(
         departed = null;
         steady = new Steady();
         energy = new Energy(data, meta);
+        hits = new Hits();
+        sparing = undefined;
         theirMoves = new Map();
         bannerUntil = -Infinity;
         stages = { own: NO_STAGES, their: NO_STAGES };
@@ -596,6 +603,7 @@ export async function run(
         seen = { ...seen, opponent: null, opponentCp: null, opponentTypes: null };
         readAt = -Infinity;
         energy.pause();
+        hits.pause();
       }
 
       if ((state === 'battle' || state === 'charged') && !player.minigame && clock.now() - readAt >= READ_MS) {
@@ -692,11 +700,19 @@ export async function run(
       // fight with our bar not found does neither, the drop across it still the fight's. A frame that did find it counts
       // the HP decided on, a misread's drop and the rise back from it being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
+      const theirBar = bars && bars.opponent !== null ? health.opponent : null;
 
       if ((state !== 'battle' && state !== 'charged') || player.minigame) {
         energy.pause();
-      } else if (bar !== null) {
-        energy.read(clock.now(), bar, facing);
+        hits.pause();
+      } else {
+        if (bar !== null) {
+          energy.read(clock.now(), bar, facing);
+        }
+
+        if (theirBar !== null) {
+          hits.read(clock.now(), theirBar, facing);
+        }
       }
 
       // What the opponent can afford: the energy counted, and a fast move's more for a hit the count missed.
@@ -762,7 +778,34 @@ export async function run(
               why: `${verdict.afforded} would faint us, ${affordable} energy affords it; not holding for ${held}`,
             }
           : pick);
-      const best = throwing?.x;
+
+      // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
+      // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
+      // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw.
+      const going = lit.some((x) => throwing === undefined || x === throwing.x);
+      const spared = going
+        ? spare(
+            data,
+            {
+              matchup: facing,
+              hp: health,
+              shields: theirShields,
+              left: left.opponent,
+              steps: { ours: hits.step, theirs: energy.step },
+              estimate,
+              seen: theirMoves.get(seen.opponent ?? ''),
+            },
+            meta,
+          )
+        : undefined;
+      const best = spared === undefined ? throwing?.x : undefined;
+
+      if (spared !== undefined && sparing !== seen.opponent) {
+        const names = lit.flatMap((x) => seen.moves.get(x) ?? []);
+
+        log(`holding ${names.length > 0 ? names.join(' and ') : 'our charged moves'} for the next`, 'own', spared);
+        sparing = seen.opponent;
+      }
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: verdict.why, taken: false };
@@ -824,7 +867,7 @@ export async function run(
       // A charged move tapped before the last one's throw has played is that throw retried, told and counted once.
       const pending = player.minigame;
       const played = player.next(state, clock.now(), {
-        ready,
+        ready: spared === undefined ? ready : [],
         best,
         shield,
         ...(card && { card }),
@@ -844,6 +887,7 @@ export async function run(
           log(`tap ${thrown ?? 'a charged move'} again`, 'own', 'its button still lit');
         } else if (action.what === 'charged') {
           thrown = seen.moves.get(action.at[0]);
+          sparing = undefined;
           const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
           stages = { own: user, their: target };
           log(`threw ${thrown ?? 'a charged move'}`, 'own', action.at[0] === best ? throwing?.why : undefined);
@@ -901,6 +945,7 @@ export async function run(
 
     player.next(state, clock.now());
     energy.pause();
+    hits.pause();
 
     if (otherSince === undefined) {
       otherSince = clock.now();

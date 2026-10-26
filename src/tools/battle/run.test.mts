@@ -725,6 +725,58 @@ test.each([
 });
 
 /**
+ * The same Giratina against Mamoswine with its shields spent, our fast moves seen taking it from 16% to 10% and to the
+ * 4% the frame shows, steps 200ms apart, with Shadow Sneak's button painted unlit until it lights at 4%; and one Powder
+ * Snow taking our 58% to 55%. One hit more finishes it, before that Powder Snow's 8 energy and the 24 of three more,
+ * two landing in our longest fast move's three turns and one for the count, reach Icicle Spear's 40. With Mamoswine's
+ * middle Poké Ball painted red, another is to come, and Shadow Sneak is held for it; with Mamoswine its last, the finish
+ * is thrown.
+ */
+test.each([
+  [
+    'with another to come',
+    [[0.879, 0.19, 0.905, 0.215]],
+    ['own: holding Shadow Sneak for the next: fast moves finish Mamoswine at 4%'],
+  ],
+  ['on its last', [], ['own: threw Shadow Sneak: would finish Mamoswine at 4%']],
+])('fast moves finishing the opponent %s hold the energy lit only for the next', async (_, next, said) => {
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215], ...next);
+  const hud = painted(balls, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
+  const hit = painted(hud, [105, 91, 41], [79 / 360, 220 / 360, 82 / 360, 225 / 360]);
+
+  // Their fill run on to `px` of the bar's 100 at 360 wide, and Shadow Sneak's button with the top of its rim painted
+  // over, the half `readyButtons` needs white gone.
+  const theirs = (image: Image, px: number) =>
+    painted(image, [229, 105, 103], [216 / 360, 265 / 360, (216 + px) / 360, 271 / 360]);
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: unlit(theirs(hud, 16)), lasts: { ms: 200, to: 'closer' } },
+      closer: { frame: unlit(theirs(hit, 10)), lasts: { ms: 200, to: 'charged' } },
+      charged: { frame: hit, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => /^own: (threw|holding)/.test(line))).toEqual(said);
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy.
