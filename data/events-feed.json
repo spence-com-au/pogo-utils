@@ -319,17 +319,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "minior-showers-orionids-2026",
-    "name": "Minior Showers: Orionids 2026",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/minior-showers-orionids-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/minior-showers-2026.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "minior-showers-perseids-2027",
     "name": "Minior Showers: Perseids 2027",
     "eventType": "event",
@@ -380,8 +369,8 @@
     "heading": "City Safari",
     "link": "https://leekduck.com/events/pokemon-go-city-safari-boston-2026-rescheduled/",
     "image": "https://cdn.leekduck.com/assets/img/events/city-safari-boston-2026.jpg",
-    "start": "2026-10-24T10:00:00.000",
-    "end": "2026-10-25T18:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-14T13:59:13.286Z"
   },
   {
