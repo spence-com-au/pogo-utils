@@ -56,6 +56,9 @@ test('a command that fails rejects with what it wrote, and the next still runs',
   try {
     await expect(held.shell(['sh', '-c', "'echo nope >&2; exit 3'"])).rejects.toThrow(/nope/);
     await expect(held.shell(['false'])).rejects.toThrow(/exited 1/);
+    await expect(held.shell(['false', '#', 'x'.repeat(200)]), 'a long command cut short').rejects.toThrow(
+      /^adb shell false # x{52}…: exited 1$/,
+    );
     expect(text(await held.shell(['echo', 'after']))).toBe('after\n');
   } finally {
     held.close();

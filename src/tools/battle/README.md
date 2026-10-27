@@ -23,7 +23,7 @@ flowchart LR
 
     phone -- screenrecord --> stream -- frame --> run
     run --> read --> decide -- choices --> run
-    run --> play -- "adb tap / swipe" --> phone
+    run --> play -- "touches through /dev/uhid" --> phone
     run --> report
 ```
 
@@ -83,13 +83,17 @@ for text and done every few seconds.
   swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to
   switch to is tapped ahead of a lit move, since the switch is made to keep that move's energy.
 - **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts)), not a
-  fresh `adb` process for each tap and swipe as `pnpm inventory` uses. Over a Training battle on a Pixel 4 XL, the time
-  a swipe takes beyond its own 80ms fell from a median of 50ms (p95 56ms) to 35ms (p95 51ms), and a tap's from 49ms to
-  40ms. Most of what is left is `input` starting on the phone for each command, which
-  [#489](https://github.com/spence-com-au/pogo-utils/issues/489) is to remove. The shell exiting, as it does when the
-  phone is unplugged, stops the run with the command it was sending, as
-  `adb shell input swipe 216 1277 1008 1520 80: adb shell exited; is the phone still connected?`, and a phone that stops
-  answering does so after 30s with `no answer after 30s`.
+  fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
+  ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
+  phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
+  report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
+  touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included. Over a Training
+  battle on a Pixel 4 XL, the time a swipe takes beyond its own 80ms fell from a median of 30ms (p95 42ms) with `input`
+  to 12ms (p95 19ms), and a tap's from 23ms to 3ms. Part of the tail was the held shell answering each command in two
+  writes, the second waiting up to 40ms on the `adb` client's delayed ACK of the first. The shell exiting, as it does
+  when the phone is unplugged, stops the run with the command it was sending, cut short, as
+  `adb shell print -nu3 '\0014\0000\0000\0000\0010\0000\0001\0001\0000\00…: adb shell exited; is the phone still connected?`,
+  and a phone that stops answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length. Where none are found, rows are swept instead. `Player` swipes the minigame from a charged-move tap until the
