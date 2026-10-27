@@ -337,6 +337,7 @@ if (command === 'run') {
   let video: Video | undefined;
   let fd: number | undefined;
   let videoFailed: string | undefined;
+  let videoWritten = 0;
 
   if (videoFile !== undefined) {
     try {
@@ -357,7 +358,7 @@ if (command === 'run') {
         }
 
         try {
-          writeSync(fd, bytes);
+          videoWritten += writeSync(fd, bytes);
         } catch (error) {
           videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
         }
@@ -379,11 +380,21 @@ if (command === 'run') {
       }
 
       fd = undefined;
-      console.error(
-        videoFailed === undefined
-          ? `kept the screen in ${videoFile}`
-          : `kept the screen in ${videoFile} only until a write failed ${videoFailed}`,
-      );
+
+      // Nothing reaches the file before the first whole picture, which a run stopped early never sees.
+      if (videoWritten === 0) {
+        console.error(
+          videoFailed === undefined
+            ? `no picture of the screen came, so ${videoFile} is empty`
+            : `nothing kept in ${videoFile}: a write failed ${videoFailed}`,
+        );
+      } else {
+        console.error(
+          videoFailed === undefined
+            ? `kept the screen in ${videoFile}`
+            : `kept the screen in ${videoFile} only until a write failed ${videoFailed}`,
+        );
+      }
     }
   };
 
