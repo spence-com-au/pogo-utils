@@ -143,6 +143,24 @@ export function swipe(from: readonly [number, number], to: readonly [number, num
   return [write(report(true, from)), ...moves.flat(), write(report(false, to))].join('; ');
 }
 
+/**
+ * How long apart the taps of a burst are, in milliseconds: two frames at 60Hz and more than one at 30Hz, so that the game
+ * sees each tap as one of its own rather than a touch held.
+ */
+const BURST_MS = 50;
+
+/**
+ * `times` taps at `at` as one command, down and up, `BURST_MS` apart: paced by the phone, as a swipe's moves are, and
+ * one round trip however many.
+ */
+export function taps(at: readonly [number, number], times = 1): string {
+  const tap = `${write(report(true, at))}; ${write(report(false, at))}`;
+
+  return Array.from({ length: Math.max(1, times) }, () => tap).join(
+    `; read -t ${(BURST_MS / 1000).toFixed(4)} -u${IDLE_FD}; `,
+  );
+}
+
 /** Whether `dumpsys input` lists the device as a touchscreen, `AINPUT_SOURCE_TOUCHSCREEN` among its sources. */
 export function listed(dump: string): boolean {
   const sources = new RegExp(`Device \\d+: ${NAME}\\n(?:[ \\t]+.*\\n)*?[ \\t]+Sources: 0x([0-9a-f]+)`).exec(dump)?.[1];
@@ -151,8 +169,8 @@ export function listed(dump: string): boolean {
 }
 
 export interface Touchscreen {
-  /** Down and up at `at`, fractions of the screen across and down. */
-  tap(at: readonly [number, number]): Promise<void>;
+  /** Down and up at `at`, fractions of the screen across and down, `times` over in a burst. */
+  tap(at: readonly [number, number], times?: number): Promise<void>;
 
   /** Down at `from`, moved towards `to` over `ms`, and up there. */
   swipe(from: readonly [number, number], to: readonly [number, number], ms: number): Promise<void>;
@@ -188,7 +206,7 @@ export async function touchscreen(transport: Transport): Promise<Touchscreen> {
   }
 
   return {
-    tap: (at) => send(`${write(report(true, at))}; ${write(report(false, at))}`),
+    tap: (at, times) => send(taps(at, times)),
     swipe: (from, to, ms) => send(swipe(from, to, ms)),
   };
 }

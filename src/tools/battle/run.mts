@@ -55,7 +55,9 @@ export interface Phone {
   /** The latest frame of the stream, or `undefined` before the first. */
   frame(): Image | undefined;
   screenshot(): Promise<Image>;
-  tap(at: Point): Promise<void>;
+
+  /** A tap at `at`, or `times` of them in a burst. */
+  tap(at: Point, times?: number): Promise<void>;
   swipe(from: Point, to: Point, ms: number): Promise<void>;
 }
 
@@ -137,6 +139,14 @@ const PLAYING_MS = 3_500;
  * ahead of, and that plays after theirs, shows its button lit for a tenth of a second as the HUD comes back.
  */
 const RELIT_MS = 1_000;
+
+/**
+ * How many times over a charged move's button is tapped at once, a burst taking about 150ms. A tap the game drops costs
+ * the second `Player` waits before tapping a button still lit again, where a Pokémon low on HP may have none to spare,
+ * and tapping the button more has been seen to cost nothing: retapped a second on, a throw waiting was still one throw.
+ * Swipes are what cost a throw, and none are made for a while after the tap.
+ */
+const BURST = 4;
 
 /**
  * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
@@ -541,7 +551,11 @@ export async function run(
 
     if (battling) {
       const now = clock.now();
-      const part = state === 'battle' || state === 'charged' ? (player.minigame ? 'minigame' : undefined) : state;
+
+      // A button lit is the fight, whatever `Player` waits on: the minigame draws none, and a throw tapped and still lit
+      // is waiting on a fast move or was dropped. Live, a dropped Overheat's lit button was told as its minigame.
+      const part =
+        state === 'charged' ? undefined : state === 'battle' ? (player.minigame ? 'minigame' : undefined) : state;
       const [first] = off;
 
       if (!part) {
@@ -1249,7 +1263,7 @@ export async function run(
           log(`tap ${action.what}`, 'own');
         }
 
-        await phone.tap(action.at);
+        await phone.tap(action.at, action.what === 'charged' ? BURST : 1);
 
         if (action.what === 'charged') {
           const type = data.combat[seen.moves.get(action.at[0]) ?? '']?.type;

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test } from 'vitest';
 import { type Transport } from './adb.mts';
-import { create, listed, report, swipe, touchscreen, write } from './touchscreen.mts';
+import { create, listed, report, swipe, taps, touchscreen, write } from './touchscreen.mts';
 
 /** `dumpsys input`'s InputReader entry for the device, as a Pixel 4 XL on Android 13 lists it. */
 const LISTED = `  Device 5: pogo-utils touch
@@ -72,6 +72,13 @@ test('swipes as one command, moving along the line every 8ms or so of the time a
   expect(waits).toHaveLength(10);
 });
 
+test('taps in a burst as one command, 50ms apart', () => {
+  const tap = `${write(report(true, [0.5, 0.9]))}; ${write(report(false, [0.5, 0.9]))}`;
+
+  expect(taps([0.5, 0.9])).toBe(tap);
+  expect(taps([0.5, 0.9], 3)).toBe([tap, tap, tap].join('; read -t 0.0500 -u4; '));
+});
+
 test('makes the device, then taps down and up at the point in one command', async () => {
   const { transport, commands } = phone(LISTED);
   const touch = await touchscreen(transport);
@@ -81,6 +88,10 @@ test('makes the device, then taps down and up at the point in one command', asyn
 
   await touch.tap([0.1, 0.2]);
   expect(commands).toEqual([`${write(report(true, [0.1, 0.2]))}; ${write(report(false, [0.1, 0.2]))}`]);
+
+  commands.length = 0;
+  await touch.tap([0.1, 0.2], 4);
+  expect(commands).toEqual([taps([0.1, 0.2], 4)]);
 });
 
 test('fails where Android never takes it as a touchscreen', async () => {

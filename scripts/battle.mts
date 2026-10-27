@@ -348,7 +348,7 @@ if (command === 'run') {
     const phone: Phone = {
       frame: () => recording.latest()?.image,
       screenshot: () => device.screenshot(),
-      tap: (point) => touch.tap(point),
+      tap: (point, times) => touch.tap(point, times),
       swipe: (from, to, ms) => touch.swipe(from, to, ms),
     };
 

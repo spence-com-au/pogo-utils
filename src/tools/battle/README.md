@@ -78,10 +78,11 @@ for text and done every few seconds.
 - **[`play.mts`](play.mts)**' `Player` turns a frame's state into an action: a swipe, a tap or a wait. A swipe across
   the field fires a fast move, about six a second. A charged move is tapped the moment the chosen button lights; with
   none chosen, whichever lit first. A state must hold for a few frames before it is answered, because a prompt sliding
-  in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move's isn't repeated until
-  its throw plays or 3s pass, since the throw waits for the fast move under way, its button lit meanwhile. Nothing is
-  swiped for 0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to
-  switch to is tapped ahead of a lit move, since the switch is made to keep that move's energy.
+  in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move is tapped in a burst of
+  four, and again every second its button stays lit. The throw waits for the fast move under way, its button lit
+  meanwhile, but a dropped tap looks the same, and a Pokémon low on HP can faint while it waits. Nothing is swiped for
+  0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to switch to is
+  tapped ahead of a lit move, since the switch is made to keep that move's energy.
 - **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts)), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
   ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
