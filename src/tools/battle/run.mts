@@ -35,8 +35,8 @@ import {
 } from './recognise.mts';
 import {
   activeOf,
+  beforeFainting,
   bestButton,
-  bestLit,
   counterOf,
   nextOut,
   refugeOf,
@@ -926,23 +926,15 @@ export async function run(
       // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
       // drawn or damage dealt being better than fainting with the energy stored. Only on the count's word, a faint feared
       // for something unknown being no sign that one is coming.
+      const fear = `${verdict.afforded} would faint us, ${affordable} energy affords it`;
       const now =
         pick && !shield && verdict.faints && verdict.afforded !== undefined
-          ? bestLit(data, seen.moves, lit, ownTypes, theirTypes, { lastHit })
+          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fear, { lastHit })
           : undefined;
-      const held = pick && seen.moves.get(pick.x);
 
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
-      // the move worth the most could leave it standing to land it.
-      const throwing: Pick | undefined =
-        finish ??
-        (pick && now !== undefined && now !== pick.x
-          ? {
-              x: now,
-              bait: false,
-              why: `${verdict.afforded} would faint us, ${affordable} energy affords it; not holding for ${held}`,
-            }
-          : pick);
+      // the one lit worth the most could leave it standing to land it.
+      const throwing: Pick | undefined = finish ?? now ?? pick;
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's

@@ -585,7 +585,8 @@ pnpm battle run --leader spark --league great --count 5
 Start it from the map, or anywhere between the result of one battle and the start of the next: from the map it opens the
 main menu's BATTLE and scrolls the Battle tab down to the Training card. It swipes across the field for fast moves.
 While the opponent has shields left, read off the hexagons along the top, it throws its cheapest charged move to draw
-them; once they are gone, the one worth the most — power, times STAB, times its effectiveness against the opponent,
+them; once they are gone, the one worth the most for each point of energy it costs, and of two worth as much, the
+cheaper, which fires sooner — a move's worth being power, times STAB, times its effectiveness against the opponent,
 adjusted for the chance it raises or drops either side's attack or defense as though that touched one more hit of its
 size, bar our own side's where their next charged move would faint us with no shield left — keeping the energy for it
 while a weaker one is ready instead. It reads the moves off the labels under their buttons and the two Pokémon off the

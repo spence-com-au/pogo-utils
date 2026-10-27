@@ -197,22 +197,37 @@ Ancient Power's one-in-ten buff adds about 5%.
 **On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
 stats count for nothing, since there's no next hit for them to matter on.
 
-**Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the strongest
-move would otherwise be wasted into. Once their shields are gone, it throws the move worth the most. A bait costing no
-more than **10** energy less than the move worth the most isn't worth the shield it might not draw, so that move goes
-instead, logged as `threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
+**Worth per energy.** Once the opponent's shields are gone, it throws the move worth the most for each point of energy
+it costs, and of two worth as much, the cheaper, which fires sooner. With no shield to take a throw, energy is all that
+limits the damage dealt, which over a fight comes to the energy gained × the worth of each point. Holding for a bigger
+move worth no more per energy gains nothing, and risks fainting with the energy stored or the opponent switching out. So
+Snorlax throws Body Slam, 78 for 40 energy or 1.95 a point, rather than hold for Earthquake, 120 for 65 or 1.85, against
+an opponent that takes both neutrally. It holds for Earthquake into an Ampharos, which Earthquake hits super
+effectively, or a Giratina, which resists Body Slam twice over. In the 12 Ultra League battles the user recorded, they
+threw Body Slam or Dynamic Punch at an unshielded opponent as soon as it lit rather than hold for Earthquake or Hyper
+Beam: worth per energy matches 8 of their 10 such choices, where worth alone matches 3, a move thrown again at the same
+opponent counting as the one choice. Snorlax's two Body Slams at an unshielded Garchomp are one, and Garchomp fainted
+without throwing a charged move in its 29s out. The two choices that don't match were both against a Sylveon: holding
+Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch, twice, where Hyper Beam gets more per energy.
+
+**Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
+the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
+the most per energy isn't worth the shield it might not draw, so that move goes instead, logged as
+`threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already
 ready, except when it may not live that long: with no shield to take, and the opponent's counted energy (with the
 [one-hit allowance](#the-opponents-energy)) affording a move that would faint us, it throws whichever lit button is
-worth the most now, even while baiting. A shield drawn or damage dealt beats fainting with the energy stored. A lit
-button whose move wasn't read isn't weighed, and a faint feared only for something unread doesn't count, since only the
-count says a fainting move can come now. It is logged as
-`threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`.
+worth the most now, whatever it costs, even while baiting. A shield drawn or damage dealt beats fainting with the energy
+stored, and a throw that may be the last is worth what it hits for. A lit button whose move wasn't read isn't weighed,
+and a faint feared only for something unread doesn't count, since only the count says a fainting move can come now. It
+is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`. Where
+the move picked is lit as well, as Body Slam is when Earthquake lights beside it, the throw passes it over rather than
+holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy affords it; worth more than Body Slam`.
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
-throw for fear of fainting, since the opponent gone can't land the hit we feared, where the move worth the most might
+throw for fear of fainting, since the opponent gone can't land the hit we feared, where the one lit worth the most might
 leave it standing. Its damage is judged as for shielding [below](#when-to-shield), with our attack and their defense
 stages, at the least it would take of any form either side could be. It must take nine tenths of that at least 2 points
 more than the opponent's bar shows, for the builds being guesses and the bar wandering a point or two frame to frame.

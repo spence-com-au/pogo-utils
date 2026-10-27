@@ -9,6 +9,7 @@ import { type GameData } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
 import {
   activeOf,
+  beforeFainting,
   bestButton,
   bestLit,
   chargedOf,
@@ -17,6 +18,7 @@ import {
   nextOut,
   refugeOf,
   shouldShield,
+  type Shown,
   stripperOf,
   typesOf,
   worth,
@@ -35,6 +37,12 @@ const metaOf = (species: string, chargedMoves: string[]): Meta => ({
 
 const KYOGRE = new Map([
   [0.31, 'Hydro Pump'],
+  [0.69, 'Avalanche'],
+]);
+
+/** Two moves of a type and a power, Ice Beam costing 55 and Avalanche 45. */
+const GLACEON = new Map([
+  [0.31, 'Ice Beam'],
   [0.69, 'Avalanche'],
 ]);
 
@@ -70,14 +78,83 @@ test('damage is power, times STAB, times what each of the defender’s types mak
   ).toBeCloseTo(100 * 1.2 * 1.6);
 });
 
-test('the best button is the move that hits hardest against this opponent', () => {
+test('the best button is the move worth the most per energy against this opponent', () => {
   const kyogre = typesOf(DATA, { species: 'Kyogre' });
 
   expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Entei' }))?.x, 'Hydro Pump into Entei').toBe(0.31);
   expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Salamence' }))?.x, 'Avalanche into Salamence').toBe(
     0.69,
   );
-  expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Hydro Pump on power alone').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Avalanche on power alone, 2 per energy to Hydro Pump’s 1.73').toBe(0.69);
+});
+
+/** The move `bestButton` holds for, by name, with `left` and `right` under the pair of buttons. */
+const heldFor = (own: Shown, opponent: Shown, [left, right]: readonly [string, string], { lastHit = false } = {}) => {
+  const moves = new Map([
+    [0.31, left],
+    [0.69, right],
+  ]);
+  const pick = bestButton(DATA, moves, typesOf(DATA, own), typesOf(DATA, opponent), { lastHit });
+
+  return pick && moves.get(pick.x);
+};
+
+/**
+ * The user's Ultra League team. Its Snorlax and Melmetal threw Body Slam and Dynamic Punch at unshielded opponents as
+ * they lit, rather than hold for Earthquake and Hyper Beam.
+ */
+test('with no shield to bait, the move held for is the one worth the most per energy', () => {
+  const snorlax = ['Earthquake', 'Body Slam'] as const;
+  const melmetal = ['Hyper Beam', 'Dynamic Punch'] as const;
+  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
+
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Garchomp' }, snorlax), '1.95 per energy to 1.85').toBe(
+    'Body Slam',
+  );
+  expect(heldFor({ species: 'Snorlax' }, { species: null }, snorlax), 'against an opponent not read').toBe('Body Slam');
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Ampharos' }, snorlax), 'super effective, 2.95 to 1.95').toBe(
+    'Earthquake',
+  );
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Giratina' }, snorlax), 'Body Slam doubly resisted, 0.76').toBe(
+    'Earthquake',
+  );
+  expect(heldFor({ species: 'Melmetal' }, { species: 'Garchomp' }, melmetal), '2 per energy to 1.88').toBe(
+    'Dynamic Punch',
+  );
+  expect(heldFor({ species: 'Melmetal' }, { species: 'Sylveon' }, melmetal), 'Fighting resisted, 1.25 to 1.88').toBe(
+    'Hyper Beam',
+  );
+  expect(heldFor(moltres, { species: null }, ['Fly', 'Brave Bird']), 'Brave Bird’s defense −3, 0.71 to 2.13').toBe(
+    'Fly',
+  );
+  expect(
+    heldFor(moltres, { species: null }, ['Fly', 'Brave Bird'], { lastHit: true }),
+    'on our last hit, 2.84 to 2.13',
+  ).toBe('Brave Bird');
+});
+
+test('of two worth as much per energy, the cheaper is held for, whatever the last bit of the arithmetic says', () => {
+  const dewgong = new Map([
+    [0.31, 'Water Pulse'],
+    [0.69, 'Icy Wind'],
+  ]);
+  const own = typesOf(DATA, { species: 'Dewgong' });
+
+  expect(worth(DATA, 'Icy Wind', own, []) / 45, 'the floats split the tie for Water Pulse').toBeLessThan(
+    worth(DATA, 'Water Pulse', own, []) / 50,
+  );
+  expect(bestButton(DATA, dewgong, own, [])?.x, 'Icy Wind, 86.4 for 45, over Water Pulse, 96 for 50: 1.92 each').toBe(
+    0.69,
+  );
+});
+
+test('a move whose energy is not known is worth nothing per energy', () => {
+  const unknown = new Map([
+    [0.31, 'Not A Move'],
+    [0.69, 'Body Slam'],
+  ]);
+
+  expect(bestButton(DATA, unknown, [], [])?.x).toBe(0.69);
 });
 
 test('a move is worth its damage, moved by the stat stages it may change as if each touched one more hit', () => {
@@ -180,7 +257,7 @@ test('while baiting, the cheapest move is best whatever it hits for', () => {
   });
 });
 
-test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the most going instead', () => {
+test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the most per energy going instead', () => {
   const togekiss = new Map([
     [0.31, 'Ancient Power'],
     [0.69, 'Flamethrower'],
@@ -211,6 +288,19 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
     }),
     'Ancient Power, 2.56× into Charizard, is the bait and the move worth the most',
   ).toEqual({ x: 0.31, bait: true });
+  expect(
+    bestButton(
+      DATA,
+      new Map([
+        [0.31, 'Moonblast'],
+        [0.69, 'Meteor Mash'],
+      ]),
+      typesOf(DATA, { species: 'Clefable' }),
+      [],
+      { bait: true },
+    ),
+    'Meteor Mash, 2.22 to Moonblast’s 2.20, is the bait and the move worth the most per energy, though it saves 5',
+  ).toEqual({ x: 0.69, bait: true });
 });
 
 test.each<[(string | null)[], number[], string, number | undefined, string]>([
@@ -366,6 +456,64 @@ test('of the lit buttons, the one worth the most is thrown now', () => {
     bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
     'Close Combat, on our last hit',
   ).toBe(0.31);
+  expect(bestLit(DATA, GLACEON, [0.31, 0.69], typesOf(DATA, { species: 'Glaceon' }), []), 'Avalanche, 45 to 55').toBe(
+    0.69,
+  );
+});
+
+/**
+ * Snorlax with Earthquake on the left and Body Slam on the right, holding for Body Slam into a Garchomp and for
+ * Earthquake into an Ampharos, as `bestButton` does per energy; Glaceon holding for Avalanche over an Ice Beam as
+ * strong; and Kyogre baiting Entei with Avalanche.
+ */
+test('before a feared faint, the lit move worth the most goes, passing over the move chosen where it is lit', () => {
+  const fear = 'Psyshock would faint us, 40 energy affords it';
+  const snorlax = new Map([
+    [0.31, 'Earthquake'],
+    [0.69, 'Body Slam'],
+  ]);
+  const own = typesOf(DATA, { species: 'Snorlax' });
+  const garchomp = typesOf(DATA, { species: 'Garchomp' });
+  const ampharos = typesOf(DATA, { species: 'Ampharos' });
+  const slam = { x: 0.69, bait: false };
+  const quake = { x: 0.31, bait: false };
+
+  expect(beforeFainting(DATA, snorlax, [0.31, 0.69], own, garchomp, slam, fear), 'Earthquake, 120 to 78').toEqual({
+    x: 0.31,
+    bait: false,
+    why: `${fear}; worth more than Body Slam`,
+  });
+  expect(beforeFainting(DATA, snorlax, [0.69], own, ampharos, quake, fear), 'Body Slam, the one lit').toEqual({
+    x: 0.69,
+    bait: false,
+    why: `${fear}; not holding for Earthquake`,
+  });
+  expect(beforeFainting(DATA, snorlax, [0.31, 0.69], own, ampharos, quake, fear), 'the move chosen').toBe(undefined);
+  expect(beforeFainting(DATA, snorlax, [], own, garchomp, slam, fear), 'nothing lit').toBe(undefined);
+  expect(
+    beforeFainting(
+      DATA,
+      GLACEON,
+      [0.31, 0.69],
+      typesOf(DATA, { species: 'Glaceon' }),
+      [],
+      { x: 0.69, bait: false },
+      fear,
+    ),
+    'Avalanche, as good as Ice Beam for 10 less',
+  ).toBe(undefined);
+  expect(
+    beforeFainting(
+      DATA,
+      KYOGRE,
+      [0.31, 0.69],
+      typesOf(DATA, { species: 'Kyogre' }),
+      typesOf(DATA, { species: 'Entei' }),
+      { x: 0.69, bait: true },
+      fear,
+    )?.why,
+    'Hydro Pump over the bait',
+  ).toBe(`${fear}; worth more than Avalanche`);
 });
 
 test('an opponent’s form is allowed for what its players run, of what it can hold', () => {
