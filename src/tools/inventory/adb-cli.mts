@@ -145,8 +145,12 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
 
     queue = run.catch(() => undefined);
 
+    // A command cut short where it runs on, as a swipe's hundreds of escaped bytes do: its start tells which it was.
+    const command = args.join(' ');
+    const shown = command.length > 60 ? `${command.slice(0, 60)}…` : command;
+
     return run.catch((error: unknown) => {
-      throw new Error(`adb shell ${args.join(' ')}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`adb shell ${shown}: ${error instanceof Error ? error.message : String(error)}`);
     });
   };
 

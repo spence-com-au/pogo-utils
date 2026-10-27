@@ -47,6 +47,7 @@ import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, Screen, screenrecord, streamSize } from '../src/tools/battle/stream.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
+import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
@@ -338,18 +339,17 @@ if (command === 'run') {
   try {
     await transport.shell(['svc', 'power', 'stayon', 'usb']);
 
-    // A screenshot for the screen's size, which every tap is a fraction of and the stream takes its shape from.
-    const shot = await device.screenshot();
-    const at = ([x, y]: readonly [number, number]): [number, number] => [x * shot.width, y * shot.height];
-    const size = streamSize(shot);
+    // A screenshot for the screen's size, which the stream takes its shape from.
+    const size = streamSize(await device.screenshot());
     const recording = new Screen(() => screenrecord(options.serial, size), size);
     screen = recording;
+    const touch = await touchscreen(held);
 
     const phone: Phone = {
       frame: () => recording.latest()?.image,
       screenshot: () => device.screenshot(),
-      tap: (point) => device.tap(at(point)),
-      swipe: (from, to, ms) => device.swipe(at(from), at(to), ms),
+      tap: (point) => touch.tap(point),
+      swipe: (from, to, ms) => touch.swipe(from, to, ms),
     };
 
     await recording.first();
