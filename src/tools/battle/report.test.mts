@@ -338,7 +338,7 @@ test('draws the phone down the left edge, the table beside it at the width it le
   expect(pictures.close).toHaveBeenCalled();
 });
 
-test('draws each new frame alone as it comes, with no status to redraw the rest, and the rest once one first comes', () => {
+test('draws the latest frame alone ten times a second, with no status to redraw the rest, and the rest once one first comes', () => {
   const { stream, written } = terminal(130, 24);
   const { pictures, image, drawn } = phone();
   let frame: typeof image | undefined;
@@ -346,34 +346,46 @@ test('draws each new frame alone as it comes, with no status to redraw the rest,
 
   report.status(STATUS);
   frame = image;
-  vi.advanceTimersByTime(20);
+  vi.advanceTimersByTime(100);
 
   expect(drawn).toEqual([24]);
   expect(written().split('\x1b[?2026h').at(-1)).toContain('\x1b[25G');
 
   const before = written().length;
 
+  // A second of `screenrecord`'s 30 frames, in whole milliseconds so that the last lands on a tenth of a second.
   for (let i = 0; i < 30; i++) {
     frame = { ...image };
-    vi.advanceTimersByTime(1000 / 30);
+    vi.advanceTimersByTime(i % 3 === 2 ? 34 : 33);
   }
 
-  expect(drawn).toHaveLength(31);
+  expect(drawn).toHaveLength(11);
   expect(written().slice(before).split('\x1b[?2026h').slice(1)).toEqual(
-    Array<string>(30).fill('\x1b[H[picture 24 rows]\x1b[?2026l'),
+    Array<string>(10).fill('\x1b[H[picture 24 rows]\x1b[?2026l'),
   );
+
+  // The rest redrawn sooner than that after the last picture keeps it, for all that a frame has come since.
+  frame = { ...image };
+  vi.advanceTimersByTime(50);
+  report.status(STATUS);
+
+  expect(drawn).toHaveLength(11);
+
+  vi.advanceTimersByTime(50);
+
+  expect(drawn).toHaveLength(12);
 
   // Twice as wide is 46 columns, which moves the table over, so is drawn with the rest.
   frame = { ...image, width: 720 };
-  vi.advanceTimersByTime(20);
+  vi.advanceTimersByTime(100);
 
-  expect(drawn).toHaveLength(32);
+  expect(drawn).toHaveLength(13);
   expect(written().split('\x1b[?2026h').at(-1)).toContain('\x1b[48G');
 
   report.done();
   vi.advanceTimersByTime(1000);
 
-  expect(drawn).toHaveLength(32);
+  expect(drawn).toHaveLength(13);
 });
 
 test('leaves the phone out where the table would be narrower than 80 beside it, or there is no frame yet', () => {

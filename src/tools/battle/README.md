@@ -141,6 +141,12 @@ the terminal reads, and asks the terminal first, so one that can't read the file
 rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose` gives
 there.
 
+The phone is drawn ten times a second rather than every frame. At 30 a second Ghostty fell behind reading the 1.2 MB
+files, and the run sat blocked writing the panel to it, for 181ms at the longest. Ten a second costs the run itself
+about 0.7ms a picture, under 1% of a core, but the terminal 1% to 8% of a core more than without it. On a laptop whose
+graphics share the processor's power, the run's own work then took up to a third more CPU time. `--no-phone` rules the
+picture out when chasing a timing problem.
+
 ### Game data
 
 - **The game master,** from [`../inventory/download.mts`](../inventory/download.mts): every form's types, stats and move
