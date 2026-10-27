@@ -88,17 +88,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "citysafari-boston-2026",
-    "name": "Pokémon GO City Safari: Boston",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/featured-in-person-events/citysafari/boston",
-    "image": "https://lh3.googleusercontent.com/5SAHXmMPUCpY_TUiDA81oiN00LXrIbsOXN9CTFtZbjI4pz_0RbQr0tmSACr1JErfEvZqM131RfCU8-LA2uskPRaP7YAom1uS216jhW_JpQ=s0-e365",
-    "start": "2026-10-24T10:00:00.000",
-    "end": "2026-10-25T18:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "pokemon-run-30-kaohsiung-2026",
     "name": "Pokémon RUN 30 — Dream Mall, Kaohsiung, Taiwan",
     "eventType": "regional-event",
