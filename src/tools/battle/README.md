@@ -333,6 +333,9 @@ Neither the opponent's energy nor its fast move is on screen, so both are counte
 - **Bookkeeping.**
   - Energy is kept per opponent Pokémon, including while it's switched out, and capped at 100.
   - HP lost across a prompt, the minigame, a switch or a banner isn't counted as a fast move.
+  - Nor is what the bar goes on losing after one: a charged move's hit drains it for about 2s once the fight is back, a
+    drop every frame. Counting starts again only once the bar has held for 300ms, which a fast move's hit, landing in
+    one frame, leaves it doing between hits.
 
 The count can only run low through hits it can't see, such as one landing behind a banner or one smaller than a pixel of
 the bar. The one-hit allowance covers a single miss. When the allowance still leaves no move the opponent could afford,

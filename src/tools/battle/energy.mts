@@ -12,7 +12,8 @@
  * Counted per opponent Pokémon, whose energy is kept while it is switched out, and per stretch the same two Pokémon
  * face each other, a step being a fraction of whichever bar of ours it came off. HP lost across anything else — a
  * charged move, a prompt, the minigame, a banner over the HUD — is not counted, the drop across it not being a fast
- * move's. A hit landing in such a gap goes uncounted with it, which the slack the caller allows covers.
+ * move's, nor is what the bar goes on losing after it until it holds. A hit landing in such a gap goes uncounted with
+ * it, which the slack the caller allows covers.
  *
  * Our own fast moves' hits are measured off the opponent's bar the same way, and with the count they say whether those
  * alone finish it before it can throw, and so whether our charged moves are better kept for the next one: `spare`.
@@ -37,6 +38,15 @@ const CLEAN_MS = 500;
  * side's bar runs at 360 wide. A 1-power Lock-On can take less, and goes uncounted below it.
  */
 const LEAST = 0.01;
+
+/**
+ * How long a bar must hold after a pause before the next drop off it is counted, in milliseconds. A charged move's hit
+ * goes on draining the bar for about 2s after the fight is back, its banner still up, a drop every reading of it: in a
+ * GO Battle League run on a Pixel 4 XL, Buzzwole's fell from 98% to 38% after Dialga's Iron Head, which counted Dialga
+ * 100 energy. A fast move's hit lands in one reading, and even 1-turn moves leave the bar steady longer than this
+ * between them.
+ */
+const SETTLE_MS = 300;
 
 /** The two Pokémon facing each other, and the league's cap their CPs are read against. */
 export interface Matchup {
@@ -66,6 +76,9 @@ class Steps {
   #low: number | null = null;
   #at = 0;
 
+  /** Whether the bar is yet to hold for `SETTLE_MS` since a pause, its drops until then no fast move's. */
+  #settling = false;
+
   read(at: number, hp: number): void {
     if (this.#low === null) {
       this.#low = hp;
@@ -74,6 +87,19 @@ class Steps {
     }
 
     const drop = this.#low - hp;
+
+    // Still falling from what the pause was for: the next drop is measured from wherever it comes to rest.
+    if (this.#settling) {
+      if (drop >= LEAST) {
+        this.#low = hp;
+        this.#at = at;
+      } else if (at - this.#at >= SETTLE_MS) {
+        this.#settling = false;
+        this.#at = at;
+      }
+
+      return;
+    }
 
     if (drop >= LEAST) {
       this.lost += drop;
@@ -92,9 +118,13 @@ class Steps {
     }
   }
 
-  /** Anything the fight pauses for, or the bar unread across: the next reading is measured from afresh. */
+  /**
+   * Anything the fight pauses for, or the bar unread across: the next drop is measured from afresh, once the bar has
+   * held for `SETTLE_MS`.
+   */
   pause(): void {
     this.#low = null;
+    this.#settling = true;
   }
 
   /** What one hit takes of the bar, the median clean step, or undefined before any. */

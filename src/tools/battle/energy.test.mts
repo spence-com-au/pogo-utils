@@ -115,6 +115,24 @@ test('what is lost across a pause is no fast move’s', () => {
   expect(energy.estimate(MATCHUP)?.energy).toBe(12);
 });
 
+test('nor is what the bar goes on losing after it, until it holds', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 2 });
+
+  // A charged hit draining the bar 3% a frame for 2s after the fight is back, then two more Counters once it has held.
+  energy.threw(MATCHUP);
+  energy.pause();
+
+  for (let frame = 0; frame <= 20; frame++) {
+    energy.read(5000 + frame * 100, hp - 0.03 * frame, MATCHUP);
+  }
+
+  fight(energy, { from: hp - 0.6, step: COUNTER, hits: 2, start: 7100 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(12);
+  expect(energy.step).toBeCloseTo(COUNTER);
+});
+
 test('a throw spends the cheapest charged move it is allowed for, from what it had', () => {
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: PSYCHO_CUT, hits: 10 });
