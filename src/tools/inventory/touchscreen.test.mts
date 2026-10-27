@@ -76,7 +76,7 @@ test('makes the device, then taps down and up at the point in one command', asyn
   const { transport, commands } = phone(LISTED);
   const touch = await touchscreen(transport);
 
-  expect(commands.slice(0, 3)).toEqual(['exec 3<>/dev/uhid 4<>/dev/uhid', write(create()), 'dumpsys input']);
+  expect(commands.slice(0, 3)).toEqual(['command exec 3<>/dev/uhid 4<>/dev/uhid', write(create()), 'dumpsys input']);
   commands.length = 0;
 
   await touch.tap([0.1, 0.2]);
@@ -85,4 +85,19 @@ test('makes the device, then taps down and up at the point in one command', asyn
 
 test('fails where Android never takes it as a touchscreen', async () => {
   await expect(touchscreen(phone('').transport)).rejects.toThrow(/has not taken pogo-utils touch as a touchscreen/);
+});
+
+test('fails saying so where the shell may not open /dev/uhid', async () => {
+  const { transport } = phone(LISTED);
+  const refused: Transport = {
+    ...transport,
+    shell: (args) =>
+      args.join(' ').includes('exec')
+        ? Promise.reject(new Error("/system/bin/sh: can't create /dev/uhid: Permission denied"))
+        : transport.shell(args),
+  };
+
+  await expect(touchscreen(refused)).rejects.toThrow(
+    /could not open \/dev\/uhid for a touchscreen: .*can't create \/dev\/uhid: Permission denied/,
+  );
 });

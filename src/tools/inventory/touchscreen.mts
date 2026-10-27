@@ -165,7 +165,14 @@ export interface Touchscreen {
 export async function touchscreen(transport: Transport): Promise<Touchscreen> {
   const send = async (command: string) => void (await transport.shell([command]));
 
-  await send(`exec ${FD}<>/dev/uhid ${IDLE_FD}<>/dev/uhid`);
+  // Behind `command`, so that a refused open leaves the shell to answer with why: a special builtin's failed
+  // redirection ends a shell that isn't interactive, which would blame the cable.
+  await send(`command exec ${FD}<>/dev/uhid ${IDLE_FD}<>/dev/uhid`).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`the phone's shell could not open /dev/uhid for a touchscreen: ${reason}`);
+  });
+
   await send(write(create()));
 
   for (const deadline = performance.now() + READY_MS; ;) {
