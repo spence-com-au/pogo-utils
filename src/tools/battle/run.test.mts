@@ -91,8 +91,9 @@ function scripted(
   const developing: { due: number; deliver: () => unknown }[] = [];
 
   // How many times the clock has moved, and whether it is moving now. A run at work comes back to the phone or the clock
-  // before anything else has a turn, so one that has not by then is waiting on something else, a read it awaits itself:
-  // the clock moves on to when the next is due, as time passes while a real read holds the run up.
+  // before anything else has a turn, so one that has not by then has finished with reads still under way, which the
+  // clock moves on through so that they are not left pending. `run` never awaits a read itself, but one that did would
+  // be waiting on it here, and would see the read take its time, as on a real phone, rather than hang.
   let moves = 0;
   let advancing = false;
 

@@ -935,11 +935,6 @@ export async function run(
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
 
-      // A lit button whose move the read under way is to name is not thrown before it does, a read's 220ms at most, as
-      // one of ours sent in with energy banked lights at once: thrown unnamed, it could be the weaker of two, and its
-      // minigame's bubbles would be of no colour known.
-      const naming = sighting?.from === seen && lit.some((x) => !seen.moves.has(x));
-
       // The throw pending plays once its minigame has run `PLAYING_MS`, `Player` swiping it as one where the opponent's
       // move, or a frame of no fight early in the minigame, ended the wait for it that its tap began. Its button lit
       // again for `RELIT_MS` once that wait has ended, and not tapped again, is the tap dropped, its energy kept.
@@ -977,6 +972,12 @@ export async function run(
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
       // the one lit worth the most could leave it standing to land it.
       const throwing: Pick | undefined = finish ?? now ?? pick;
+
+      // A lit button whose move the read under way is to name is not thrown before it does, for as long as the read
+      // takes, about 220ms, as one of ours sent in with energy banked lights at once: thrown unnamed, it could be the
+      // weaker of two, and its minigame's bubbles would be of no colour known. Not where a named move is to go now, a
+      // finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
+      const naming = (finish ?? now) === undefined && sighting?.from === seen && lit.some((x) => !seen.moves.has(x));
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
