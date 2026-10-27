@@ -43,6 +43,14 @@ flowchart LR
   until something next moves, since `screenrecord` sends nothing for a still screen. Cutting it needs a source that
   frames its pictures, as scrcpy's server does with each packet's size. `adb`'s reads don't: 13 of 612 carried the tail
   of a picture, up to 5ms after its start, so a marker added after each read would cut one picture in fifty in two.
+- **[`video.mts`](video.mts)** keeps the same H.264 for `--keep-video`, heard beside the decoder's pipe so nothing is
+  recorded twice. It cuts the bytes into pictures as they come, by the NAL units that open one, stamps each with when it
+  arrived since the run began, and writes it as MPEG-TS, raw H.264 having no times of its own: a still screen sends
+  nothing, so a picture's place in the video is only its stamp. The video goes over to the next recording at its first
+  byte, where it leads with its parameter sets, dropping what the last sends after that and holding the next's pictures
+  until the last has ended, so a restart shows neither a gap nor a picture twice. The first picture is shown from 0,
+  there being nothing earlier, so a player's clock is the log's. Each picture is one synchronous write of whole packets,
+  with the tables ahead of each key picture, so a run stopped by Ctrl-C leaves a file that plays to where it stopped.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths

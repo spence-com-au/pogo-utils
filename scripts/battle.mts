@@ -7,9 +7,9 @@
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
  *   pnpm battle run --leader blanche|candela|spark --league great|ultra|master [--count N] [--serial SERIAL]
- *                   [--keep-frames DIR] [--no-graphics] [--verbose]
+ *                   [--keep-frames DIR] [--keep-video FILE] [--no-graphics] [--verbose]
  *   pnpm battle run --mode gbl --league LEAGUE [--party NAME] [--count N] [--serial SERIAL] [--keep-frames DIR]
- *                   [--no-graphics] [--verbose]
+ *                   [--keep-video FILE] [--no-graphics] [--verbose]
  *                       play Team Leader or GO Battle League battles one after another, from the map or anywhere
  *                       between the result of one battle and the start of the next, until `N` have finished or
  *                       Ctrl-C; stops where nothing on screen has been recognised for 20s. GO Battle League stops at
@@ -18,6 +18,11 @@
  *                       `DIR` is given the frames from a second before each faint, ours or theirs, and each shield
  *                       prompt to a second after it, named by when they were seen and for what, as
  *                       `0012.437s-shield.png`, and the last frames before a run stops for nothing recognised.
+ *                       `FILE` is given the whole of the screen the run watched, battles and menus alike, as the
+ *                       MPEG-TS video `mpv FILE` or `ffplay FILE` plays, its time the seconds since the run began
+ *                       that `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, saved
+ *                       as it arrives: about 15 MB a minute at most, and less for a still screen. Like the frames, it
+ *                       shows the account's trainer names, and is not to be committed as it is.
  *                       `LEAGUE` is how the title of one league on now starts, as `ultra` or `fantasy cup`, and
  *                       `NAME` a party saved for it, which is battled with rather than whichever the screen opens
  *                       on; one not saved stops the run.
@@ -45,6 +50,7 @@ import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, Screen, screenrecord, streamSize } from '../src/tools/battle/stream.mts';
+import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
@@ -53,8 +59,8 @@ import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { decodePng, encodePng, type Image } from '../src/tools/inventory/png.mts';
-import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
@@ -68,6 +74,7 @@ const { values: options, positionals } = parseArgs({
     'party': { type: 'string' },
     'count': { type: 'string' },
     'keep-frames': { type: 'string' },
+    'keep-video': { type: 'string' },
     'no-graphics': { type: 'boolean', default: false },
     'verbose': { type: 'boolean', default: false },
     'seconds': { type: 'string', default: '30' },
@@ -87,7 +94,7 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 
 /** Which flags each command acts on, for the reason `inventory.mts` gives beside its own. */
 const HONOURED: Record<string, readonly string[]> = {
-  run: ['mode', 'leader', 'league', 'party', 'count', 'serial', 'keep-frames', 'no-graphics', 'verbose'],
+  run: ['mode', 'leader', 'league', 'party', 'count', 'serial', 'keep-frames', 'keep-video', 'no-graphics', 'verbose'],
   record: ['seconds', 'serial'],
 };
 
@@ -323,6 +330,37 @@ if (command === 'run') {
     mkdirSync(dir, { recursive: true });
   }
 
+  // The whole of the screen, written a picture at a time as each is known whole: synchronously, at about 8 KB a
+  // picture, so that a run stopped by Ctrl-C, which exits without waiting on a stream, still leaves all it saw. Opened
+  // here rather than at the first picture, so a FILE that cannot be written fails before the run changes the phone.
+  const videoFile = options['keep-video'];
+  let video: Video | undefined;
+  let fd: number | undefined;
+
+  if (videoFile !== undefined) {
+    try {
+      mkdirSync(dirname(videoFile), { recursive: true });
+      fd = openSync(videoFile, 'w');
+    } catch (error) {
+      console.error(`could not write ${videoFile}: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+
+    const out = fd;
+    video = new Video((bytes) => writeSync(out, bytes), started, clock.now);
+  }
+
+  const closeVideo = () => {
+    video?.close();
+    video = undefined;
+
+    if (fd !== undefined) {
+      closeSync(fd);
+      fd = undefined;
+      console.error(`kept the screen in ${videoFile}`);
+    }
+  };
+
   // Ctrl-C closes the held shell while the run is still sending to it: what then fails is no error of the run's, and
   // the setting is put back by the handler alone.
   let interrupted = false;
@@ -332,6 +370,7 @@ if (command === 'run') {
     panel?.done();
     flush();
     screen?.close();
+    closeVideo();
     held.close();
     void restore().finally(() => process.exit(130));
   });
@@ -341,7 +380,12 @@ if (command === 'run') {
 
     // A screenshot for the screen's size, which the stream takes its shape from.
     const size = streamSize(await device.screenshot());
-    const recording = new Screen(() => screenrecord(options.serial, size), size);
+    const kept = video;
+    const recording = new Screen(() => {
+      const recorded = screenrecord(options.serial, size);
+
+      return kept ? kept.watch(recorded) : recorded;
+    }, size);
     screen = recording;
     const touch = await touchscreen(held);
 
@@ -395,6 +439,7 @@ if (command === 'run') {
   } finally {
     flush();
     screen?.close();
+    closeVideo();
     held.close();
 
     if (!interrupted) {

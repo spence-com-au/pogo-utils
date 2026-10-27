@@ -50,6 +50,7 @@ test('refuses a flag it does not know', async () => {
 test.each([
   ['record', ['--verbose', 'out.h264'], '--verbose'],
   ['record', ['--no-graphics', 'out.h264'], '--no-graphics'],
+  ['record', ['--keep-video', 'run.ts', 'out.h264'], '--keep-video'],
   ['run', ['--leader', 'spark', '--league', 'great', '--seconds', '5'], '--seconds'],
 ])('refuses a flag %s does not act on', async (command, args, flag) => {
   const { code, stderr } = await battle(command, ...args);
