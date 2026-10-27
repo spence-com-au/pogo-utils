@@ -143,9 +143,11 @@ there.
 
 The phone is drawn ten times a second rather than every frame. At 30 a second Ghostty fell behind reading the 1.2 MB
 files, and the run sat blocked writing the panel to it, for 181ms at the longest. Ten a second costs the run itself
-about 0.7ms a picture, under 1% of a core, but the terminal 1% to 8% of a core more than without it. On a laptop whose
-graphics share the processor's power, the run's own work then took up to a third more CPU time. `--no-phone` rules the
-picture out when chasing a timing problem.
+about 0.8ms a picture, under 1% of a core, but the terminal draws each on the graphics processor. On a Ryzen 5 7640U
+laptop that took the chip from 20W to its 33W limit, and through the second half of a 208s battle its cores ran at 1.5
+GHz rather than 2.7 GHz. The run's own work took half as much CPU time again, it stood still for up to 235ms at a time,
+and the slowest 1% of its actions came 560ms to 600ms after their frame rather than 250ms. One picture a second cost
+nothing measurable. `--no-phone` rules the picture out when chasing a timing problem.
 
 ### Game data
 

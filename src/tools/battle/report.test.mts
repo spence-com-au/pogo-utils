@@ -388,6 +388,32 @@ test('draws the latest frame alone ten times a second, with no status to redraw 
   expect(drawn).toHaveLength(13);
 });
 
+test('draws a new frame at every look, for all that drawing one takes time', () => {
+  const { stream } = terminal(130, 24);
+  const { pictures, image, drawn } = phone();
+  let frame = image;
+
+  // Each picture taking 5ms, as writing a real one does: a rate timed from when one was finished would hold that
+  // against the next look, and draw at only every other.
+  const picture = pictures.picture;
+
+  pictures.picture = (shown, rows) => {
+    vi.advanceTimersByTime(5);
+
+    return picture(shown, rows);
+  };
+
+  live(stream, { pictures, frame: () => frame }).status(STATUS);
+
+  for (let i = 0; i < 10; i++) {
+    frame = { ...image };
+    vi.advanceTimersByTime(100);
+  }
+
+  // The first with the rest, then one at each of ten looks.
+  expect(drawn).toHaveLength(11);
+});
+
 test('leaves the phone out where the table would be narrower than 80 beside it, or there is no frame yet', () => {
   const { stream, shown } = terminal(103, 24);
   const { pictures, drawn } = phone();
