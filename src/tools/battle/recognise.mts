@@ -165,15 +165,71 @@ const SWITCH_TITLE: Box = [0.25, -0.56, 0.75, -0.525];
 const TITLE_WHITE = 0.1;
 
 /** The share of a box that is white, as the switch prompt's title is on its slate. */
-function whiteIn(image: Image, box: Box): number {
+function whiteIn(image: Image, box: Box, anchor = BOTTOM): number {
   let [white, n] = [0, 0];
 
-  for (const colour of pixels(image, box, BOTTOM)) {
+  for (const colour of pixels(image, box, anchor)) {
     white += luminance(...colour) > 200 ? 1 : 0;
     n++;
   }
 
   return white / Math.max(n, 1);
+}
+
+/**
+ * The countdown the opponent's charged move puts up at the top of the screen while its minigame plays: a disc of
+ * translucent black, the seconds left in white at its middle and a white arc around it running down with them. It is
+ * over the shield prompt and the switch prompt too, but with none of our shields left the throw puts up no prompt, and
+ * the countdown and `No Protect Shields remaining!` across the middle, five seconds of each, are all there is to see of
+ * it. The disc is 148–212 by 32–96 of 360 on a Pixel 4 XL's prompts and a Pixel 8 Pro's alike, so it is pinned to the
+ * top: centred, 0.178 widths down, a radius of 0.089.
+ *
+ * Two things tell it. Being translucent black, it darkens whatever is behind it by about half, under cloud or a night
+ * sky alike: points on a circle between its numeral and its arc against the points straight out from them beyond its
+ * edge read 100–117 to 213–234 by luminance on the Pixel 4 XL's prompts, and 36 to 81 on the Pixel 8 Pro's at night.
+ * And its numeral is white on that dark ground, 21–35% of a box about the middle, where the HUD's panels, cloud and
+ * the field leave it all white or none of it.
+ *
+ * Measured over 12 GO Battle League battles recorded off a Pixel 8 Pro, at 10 frames a second: of the 26 throws made
+ * with none of our shields left, every one passes for its whole five seconds bar three frames at most, 1,305 of the
+ * 1,326 frames of them that read as `other`; of the 6,252 frames that read as `other` away from those throws and from
+ * any prompt, none does, the most of their points darker 46% where the numeral's box was in range and 67% where not.
+ * A Galarian Moltres's wing behind part of the disc took it to 79% (`other-pixel8-countdown-wing`), still a pass.
+ */
+const COUNTDOWN = { x: 0.5, y: 0.1778, inside: 0.054, outside: 0.108, points: 24 } as const;
+const COUNTDOWN_NUMERAL: Box = [0.475, 0.1428, 0.525, 0.2128];
+
+/** How much darker a point inside the disc must be than the one beyond it, and on how many of the points. */
+const DIMMED = { by: 0.75, share: 0.75 } as const;
+const NUMERAL_WHITE = { least: 0.1, most: 0.45 } as const;
+
+/**
+ * Whether the opponent's charged-move countdown is up. Only meaningful on a frame `recognise` reads as `other`, the
+ * prompts carrying it too.
+ */
+export function countdown(image: Image): boolean {
+  const at = (radius: number, angle: number) =>
+    luminance(
+      ...rgb(
+        image,
+        (COUNTDOWN.x + radius * Math.cos(angle)) * image.width,
+        (COUNTDOWN.y + radius * Math.sin(angle)) * image.width,
+      ),
+    );
+
+  let dimmed = 0;
+
+  for (let k = 0; k < COUNTDOWN.points; k++) {
+    const angle = (2 * Math.PI * k) / COUNTDOWN.points;
+
+    if (at(COUNTDOWN.inside, angle) < DIMMED.by * at(COUNTDOWN.outside, angle)) {
+      dimmed++;
+    }
+  }
+
+  const numeral = whiteIn(image, COUNTDOWN_NUMERAL, TOP);
+
+  return dimmed / COUNTDOWN.points >= DIMMED.share && numeral >= NUMERAL_WHITE.least && numeral <= NUMERAL_WHITE.most;
 }
 
 /**

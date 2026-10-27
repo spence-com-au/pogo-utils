@@ -46,7 +46,8 @@ for text and done every few seconds.
 - **[`recognise.mts`](recognise.mts)** says which part of a battle a frame shows: `battle`, `charged` (a charged-move
   button is lit), `shield` (the Protect Shield prompt), `switch` (the prompt after a faint) or `other` (a charged move
   playing, a banner, the result, a menu). It also reads which charged-move buttons are lit, each side's shields from the
-  hexagons in the HUD, and each side's Pokémon left from the three Poké Balls beside them.
+  hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, and the countdown the opponent's
+  charged move puts up at the top of the screen while its minigame plays.
 - **[`health.mts`](health.mts)** finds each side's HP bar. The camera moves both bars around the screen, so they are
   searched for: a strip of the fill's green, yellow or red with the bar's outline around it. Where a strip starts across
   the screen says whose it is.
@@ -105,7 +106,8 @@ for text and done every few seconds.
 2. **Read cheap things every frame:** shields, Pokémon left and HP bars. A bar of the opponent's reading fuller than
    before means a new Pokémon, HP never coming back, so its name and CP are dropped and read again at once.
 3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels, and with them each side's type
-   icons. After a shield prompt, the banner is looked for for 8s, beside the battle rather than holding it up.
+   icons. After the opponent's throw, a shield prompt or its countdown, the banner is looked for for 8s, beside the
+   battle rather than holding it up.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
 5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
    whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
@@ -268,6 +270,11 @@ Neither the opponent's energy nor its fast move is on screen, so both are counte
 - **Throws.**
   - A shield prompt that holds for three frames counts as the opponent's throw. It's taken to be its cheapest allowed
     move until the banner names it; then the throw is settled at the named move's real cost.
+  - With none of our shields left, a throw puts up no prompt, only `No Protect Shields remaining!` and the countdown at
+    the top of the screen, a disc of translucent black around the seconds left. The countdown holding for three frames
+    counts as the throw instead, once until the fight shows again, and the banner after it is read as after a prompt. In
+    the user's 12 recorded GO Battle League battles, 26 throws came this way, in 10 of them, and the countdown read as
+    up for each for its whole five seconds, bar three frames at most, and for nothing else.
   - If the banner names a move dearer than what was counted, the count was short, and the opponent is left with nothing.
 - **Bookkeeping.**
   - Energy is kept per opponent Pokémon, including while it's switched out, and capped at 100.
@@ -349,8 +356,7 @@ The strategy still leaves some gaps:
   needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
 - **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
   would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
-  fills, which needs our own energy to see coming, and the opponent's throws after our shields are gone, which show no
-  prompt and so go uncounted, leaving the count high; the banner can supply those.
+  fills, which needs our own energy to see coming.
 - **Our own fast move.** Holding for the next ([above](#which-charged-move-to-throw)) takes ours to be the longest our
   species has. Told apart by the size of our hits, as the opponent's is by its, it would hold more often.
 - **Out of scope for now:**
