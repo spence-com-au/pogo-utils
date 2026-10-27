@@ -6,6 +6,7 @@
 
 import { rgb } from '../inventory/png.mts';
 import { spawn } from 'node:child_process';
+import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from 'vitest';
 import { decodeFrames, Screen, streamSize, type Recording } from './stream.mts';
@@ -63,6 +64,62 @@ test('decodes every frame of a stream at the stream size', async () => {
   const [r, g, b] = first ? rgb(first, 10, 10) : [0, 0, 0];
   expect(r).toBeGreaterThan(200);
   expect(g + b).toBeLessThan(40);
+});
+
+test('decodes each frame once the next has begun', async () => {
+  // Ten frames of a changing picture, each led by an access unit delimiter, `00 00 00 01 09`, which is where it is cut.
+  const encoder = spawn(
+    'ffmpeg',
+    [
+      ...['-loglevel', 'error', '-f', 'lavfi', '-i', `testsrc=size=${width}x${height}:rate=30`, '-frames:v', '10'],
+      ...['-c:v', 'libx264', '-tune', 'zerolatency', '-x264-params', 'aud=1', '-pix_fmt', 'yuv420p', '-f', 'h264'],
+      'pipe:1',
+    ],
+    { stdio: ['ignore', 'pipe', 'inherit'] },
+  );
+
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of encoder.stdout as AsyncIterable<Buffer>) {
+    chunks.push(chunk);
+  }
+
+  const h264 = Buffer.concat(chunks);
+  const aud = Buffer.from([0, 0, 0, 1, 9]);
+  const cuts: number[] = [];
+
+  for (let at = h264.indexOf(aud); at >= 0; at = h264.indexOf(aud, at + 1)) {
+    cuts.push(at);
+  }
+
+  const pictures = cuts.map((at, n) => h264.subarray(at, cuts[n + 1]));
+  expect(pictures).toHaveLength(10);
+
+  const source = new PassThrough();
+  const frames: unknown[] = [];
+
+  const decoding = (async () => {
+    for await (const frame of decodeFrames(source, size)) {
+      frames.push(frame);
+    }
+  })();
+
+  // A frame cannot come out before the next has begun, `ffmpeg` finding where a picture ends only from the start of
+  // the one after it, which `screenrecord` gives nothing earlier to mark. Nothing else may hold one back, as the
+  // `rawvideo` encoder's frame threading would, a frame more.
+  const behind = [];
+
+  for (const [n, picture] of pictures.entries()) {
+    source.write(picture);
+    await sleep(150);
+    behind.push(n + 1 - frames.length);
+  }
+
+  source.end();
+  await decoding;
+
+  expect(behind.slice(1)).toEqual(Array(9).fill(1));
+  expect(frames).toHaveLength(10);
 });
 
 test('hands the screen to the next recording without going back to the last', async () => {
