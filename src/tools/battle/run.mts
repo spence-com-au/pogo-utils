@@ -24,7 +24,15 @@ import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS, type Point } from './play.mt
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
-import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
+import {
+  countdown,
+  opponentShields,
+  ownShields,
+  pokemonLeft,
+  readyButtons,
+  recognise,
+  type State,
+} from './recognise.mts';
 import {
   activeOf,
   bestButton,
@@ -91,10 +99,11 @@ const SCROLL_MS = 400;
 const READ_MS = 3_000;
 
 /**
- * How long after a shield prompt the banner naming the move is looked for, and how often, in milliseconds. The banner
- * follows the move's animation, a shield's included: 2.4s after a prompt for Groudon's Solar Beam, past 3.9s for a
- * Rhyperior's, the wall still up at the last of twelve reads. Read beside the battle rather than holding it up, as the
- * menu is, the battle having often come back by then.
+ * How long after a shield prompt, or the countdown of a throw with no shield of ours left to prompt for, the banner
+ * naming the move is looked for, and how often, in milliseconds. The banner follows the move's animation, a shield's
+ * included: 2.4s after a prompt for Groudon's Solar Beam, past 3.9s for a Rhyperior's, the wall still up at the last of
+ * twelve reads, and read 2.1s after the countdown for Greninja's Hydro Cannon. Read beside the battle rather than
+ * holding it up, as the menu is, the battle having often come back by then.
  */
 const BANNER_MS = 8_000;
 const BANNER_EVERY_MS = 300;
@@ -105,7 +114,10 @@ const BANNER_EVERY_MS = 300;
  */
 const NEWCOMER = 0.1;
 
-/** How many frames the shield prompt must show for to be counted as the opponent's throw, as `Player` settles on it. */
+/**
+ * How many frames the shield prompt must show for to be counted as the opponent's throw, as `Player` settles on it, and
+ * the countdown where the throw puts up no prompt, none of our shields being left.
+ */
 const THROWN = 3;
 
 /**
@@ -249,6 +261,7 @@ export async function run(
     ownShields: perFrame(ownShields),
     readHealth: perFrame(readHealth),
     readyButtons: perFrame(readyButtons),
+    countdown: perFrame(countdown),
     bubbleSwipes: perFrame(bubbleSwipes),
   };
   let player: Player | undefined;
@@ -374,7 +387,8 @@ export async function run(
 
   // The opponent's energy, counted off the hits on our bar, and the matchup as last read and how many frames the shield
   // prompt has shown for: a prompt gone is their charged move thrown, once it held as long as `Player` waits to answer
-  // one, a prompt sliding past matching for a frame or two on its own.
+  // one, a prompt sliding past matching for a frame or two on its own. With none of our shields left a throw puts up no
+  // prompt, and how many frames its countdown has shown for since the fight last did counts it instead.
   let energy = new Energy(data, meta);
   let matchup: Matchup | undefined;
 
@@ -383,13 +397,14 @@ export async function run(
   let hits = new Hits();
   let sparing: string | null | undefined;
   let prompted = 0;
+  let unprompted = 0;
 
   // The colour of the bubbles the minigame now showing draws, that of the move last thrown, where its type is known.
   let bubbleColour: Colour | undefined;
   let seen: Sighting = unseen();
   let readAt = -Infinity;
 
-  // The charged moves each opponent has been seen to use this battle, by species, off the banner after each prompt.
+  // The charged moves each opponent has been seen to use this battle, by species, off the banner after each throw.
   let theirMoves = new Map<string, Set<string>>();
   let bannerUntil = -Infinity;
   let bannerAt = -Infinity;
@@ -406,8 +421,7 @@ export async function run(
   let thrown: string | undefined;
 
   // The attack and defense stages of the Pokémon out on each side, as the charged moves thrown have moved them: ours
-  // from each we throw, theirs off the banner after each prompt. A move of theirs thrown while we hold no shields shows
-  // no prompt and so goes uncounted, which costs nothing, there being no shield left to decide on.
+  // from each we throw, theirs off the banner after each of their throws.
   let stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES };
 
   // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
@@ -524,6 +538,22 @@ export async function run(
 
     prompted = state === 'shield' ? prompted + 1 : 0;
 
+    // With none of our shields left, the opponent's throw puts up no prompt, only its countdown: counted once it has
+    // shown for as many frames as a prompt must since the fight last showed, in a row or not, and once only until the
+    // fight shows again, so that a wing across the countdown for a frame or two splits no throw in two. Asked only of
+    // what was recognised as `other`, not of a switch prompt taken for `other` above, which carries one of its own.
+    const countingDown = battling && recognised === 'other' && ourShields === 0 && reads.countdown(frame);
+
+    unprompted = state === 'battle' || state === 'charged' ? 0 : unprompted + (countingDown ? 1 : 0);
+
+    if (countingDown && unprompted === THROWN) {
+      log(`${theirName()} threw a charged move`, 'opponent', 'none of our shields left to prompt for');
+
+      if (matchup) {
+        energy.threw(matchup, theirMoves.get(matchup.opponent.species ?? ''));
+      }
+    }
+
     if (offered && state !== 'shield') {
       if (!offered.taken) {
         log('kept shield', 'own', offered.why);
@@ -532,9 +562,9 @@ export async function run(
       offered = undefined;
     }
 
-    // The move just thrown at us, named once it lands, whether or not the shield was taken: the banner is drawn over the
-    // battle and over the frames that read as neither, so it is looked for on both.
-    if (state === 'shield') {
+    // The move just thrown at us, named once it lands, whether or not a shield was taken or there was one to take: the
+    // banner is drawn over the battle and over the frames that read as neither, so it is looked for on both.
+    if (state === 'shield' || countingDown) {
       bannerUntil = clock.now() + BANNER_MS;
     } else if (
       seen.opponent &&
@@ -552,8 +582,8 @@ export async function run(
       const moves = theirMoves;
       const counting = energy;
 
-      // One banner a prompt, the read stopping at the first that names a move: so each is one throw of theirs, its
-      // stages moved unless the thrower has since gone.
+      // One banner a throw, prompted or counted down, the read stopping at the first that names a move: so each is one
+      // throw of theirs, its stages moved unless the thrower has since gone.
       void readBanner(frame, data, seen)
         .then((move) => {
           if (move) {

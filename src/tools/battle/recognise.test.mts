@@ -13,7 +13,15 @@ import { decodePng } from '../inventory/png.mts';
 import { createReadStream, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { opponentShields, ownShields, pokemonLeft, readyButtons, recognise, type State } from './recognise.mts';
+import {
+  countdown,
+  opponentShields,
+  ownShields,
+  pokemonLeft,
+  readyButtons,
+  recognise,
+  type State,
+} from './recognise.mts';
 import { decodeFrames, streamSize } from './stream.mts';
 
 const FIXTURES = fileURLToPath(new URL('fixtures/', import.meta.url));
@@ -58,6 +66,18 @@ test.each([
   const lit = readyButtons(decodePng(readFileSync(`${FIXTURES}${name}.png`)));
 
   expect(lit.map(([x]) => x)).toEqual(xs);
+});
+
+/**
+ * The opponent's countdown, which every shield prompt carries on both phones, and a throw made with none of our shields
+ * left shows on its own: `other-pixel8-countdown`, and `other-pixel8-countdown-wing` with Galarian Moltres's wing
+ * behind part of it. No other still has it. The switch prompt carries one too and is left out: `recognise` reads it as
+ * `switch` first, and the run asks for the countdown only of a frame `recognise` reads as `other`.
+ */
+const countdowns = pngs.filter((name) => name.startsWith('shield-') || name.startsWith('other-pixel8-countdown'));
+
+test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the countdown only where it is up', (name) => {
+  expect(countdown(decodePng(readFileSync(FIXTURES + name)))).toBe(countdowns.includes(name));
 });
 
 test('follows a charged move coming ready and being thrown through the decoder', async () => {

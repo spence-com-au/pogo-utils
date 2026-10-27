@@ -1328,6 +1328,87 @@ test('learns the move the banner after a shield prompt names', async () => {
   expect(report.events).toContain('opponent: Quaquaval has Aqua Jet');
 });
 
+/**
+ * Moltres against Greninja in GO Battle League with none of our shields left, as recorded off a Pixel 8 Pro: Greninja's
+ * Hydro Cannon puts up no prompt, only its countdown, which is counted as its throw, once for all its frames, and is
+ * followed by the banner naming the move. With our shields still up, as against Typhlosion, a prompt is what a throw
+ * shows, and a countdown without one is not counted.
+ */
+test.each([
+  ['battle-pixel8-greninja', ['opponent: Greninja threw a charged move: none of our shields left to prompt for']],
+  ['battle-pixel8-moltres-wing', []],
+])('after %s, the countdown counts as a throw in %j', async (fight, threw) => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture(fight), swipes: { count: 10, to: 'countdown' } },
+      countdown: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 3000, to: 'banner' } },
+      banner: { frame: fixture('battle-banner-pixel8-greninja'), lasts: { ms: 2000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.includes('threw a charged move'))).toEqual(threw);
+  expect(taps.filter((scene) => scene === 'countdown')).toEqual([]);
+
+  if (threw.length > 0) {
+    expect(report.events).toContain('opponent: Greninja has Hydro Cannon');
+  }
+});
+
+/**
+ * The switch prompt carries a countdown too, as after Moltres fainted to a Garganacl, recorded off a Pixel 8 Pro. With
+ * its grey Poké Ball painted red, no faint of ours accounts for the prompt, and the run takes it for `other`, as it does
+ * a dark field that matches the prompt's slate. With none of our shields left, its countdown is still no throw.
+ */
+test('counts no throw off the countdown on a switch prompt taken for `other`', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-pixel8-greninja'), swipes: { count: 10, to: 'prompt' } },
+      prompt: {
+        frame: painted(fixture('switch-pixel8-countdown'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215]),
+        lasts: { ms: 3000, to: 'won' },
+      },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(
+    taps.filter((scene) => scene === 'prompt'),
+    'the prompt was answered, so not taken for `other`',
+  ).toEqual([]);
+  expect(report.events.filter((line) => line.includes('threw a charged move'))).toEqual([]);
+});
+
 // Started mid-battle in GO Battle League, the party screen that states the league's cap never seen: every shield taken.
 test('takes every shield in GO Battle League until the party screen has given the cap', async () => {
   const { phone, clock, taps } = scripted(
