@@ -217,7 +217,7 @@ holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy af
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
-throw for fear of fainting, since the opponent gone can't land the hit we feared, where the move worth the most might
+throw for fear of fainting, since the opponent gone can't land the hit we feared, where the one lit worth the most might
 leave it standing. Its damage is judged as for shielding [below](#when-to-shield), with our attack and their defense
 stages, at the least it would take of any form either side could be. It must take nine tenths of that at least 2 points
 more than the opponent's bar shows, for the builds being guesses and the bar wandering a point or two frame to frame.

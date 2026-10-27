@@ -880,7 +880,7 @@ export async function run(
           : undefined;
 
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
-      // the move worth the most could leave it standing to land it.
+      // the one lit worth the most could leave it standing to land it.
       const throwing: Pick | undefined = finish ?? now ?? pick;
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
