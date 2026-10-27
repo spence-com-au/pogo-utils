@@ -1370,6 +1370,45 @@ test.each([
   }
 });
 
+/**
+ * The switch prompt carries a countdown too, as after Moltres fainted to a Garganacl, recorded off a Pixel 8 Pro. With
+ * its grey Poké Ball painted red, no faint of ours accounts for the prompt, and the run takes it for `other`, as it does
+ * a dark field that matches the prompt's slate. With none of our shields left, its countdown is still no throw.
+ */
+test('counts no throw off the countdown on a switch prompt taken for `other`', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-pixel8-greninja'), swipes: { count: 10, to: 'prompt' } },
+      prompt: {
+        frame: painted(fixture('switch-pixel8-countdown'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215]),
+        lasts: { ms: 3000, to: 'won' },
+      },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(
+    taps.filter((scene) => scene === 'prompt'),
+    'the prompt was answered, so not taken for `other`',
+  ).toEqual([]);
+  expect(report.events.filter((line) => line.includes('threw a charged move'))).toEqual([]);
+});
+
 // Started mid-battle in GO Battle League, the party screen that states the league's cap never seen: every shield taken.
 test('takes every shield in GO Battle League until the party screen has given the cap', async () => {
   const { phone, clock, taps } = scripted(

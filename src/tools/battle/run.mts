@@ -540,8 +540,9 @@ export async function run(
 
     // With none of our shields left, the opponent's throw puts up no prompt, only its countdown: counted as a prompt is
     // once it has held as long, and once only until the fight shows again, a wing across the countdown for a frame or
-    // two splitting what is one throw.
-    const countingDown = battling && state === 'other' && ourShields === 0 && reads.countdown(frame);
+    // two splitting what is one throw. Asked only of what was recognised as `other`, not of a switch prompt taken for
+    // `other` above, which carries a countdown of its own.
+    const countingDown = battling && recognised === 'other' && ourShields === 0 && reads.countdown(frame);
 
     unprompted = state === 'battle' || state === 'charged' ? 0 : unprompted + (countingDown ? 1 : 0);
 
@@ -581,8 +582,8 @@ export async function run(
       const moves = theirMoves;
       const counting = energy;
 
-      // One banner a prompt, the read stopping at the first that names a move: so each is one throw of theirs, its
-      // stages moved unless the thrower has since gone.
+      // One banner a throw, prompted or counted down, the read stopping at the first that names a move: so each is one
+      // throw of theirs, its stages moved unless the thrower has since gone.
       void readBanner(frame, data, seen)
         .then((move) => {
           if (move) {

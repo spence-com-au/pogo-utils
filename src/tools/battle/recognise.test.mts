@@ -71,8 +71,8 @@ test.each([
 /**
  * The opponent's countdown, which every shield prompt carries on both phones, and a throw made with none of our shields
  * left shows on its own: `other-pixel8-countdown-wing` with Galarian Moltres's wing behind part of it. No other still
- * has it. The switch prompt carries one too and is left out, `recognise` reading it first and the countdown being asked
- * of `other` alone.
+ * has it. The switch prompt carries one too and is left out: `recognise` reads it as `switch` first, and the run asks
+ * for the countdown only of a frame `recognise` reads as `other`.
  */
 const countdowns = pngs.filter((name) => name.startsWith('shield-') || name.startsWith('other-pixel8-countdown'));
 
