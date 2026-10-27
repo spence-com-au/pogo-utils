@@ -193,8 +193,8 @@
     "heading": "Max Mondays",
     "link": "https://leekduck.com/events/max-mondays-2026-10-26/",
     "image": "https://cdn.leekduck.com/assets/img/events/max-battles-kanto.jpg",
-    "start": "2026-10-26T06:00:00.000",
-    "end": "2026-10-26T21:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -361,17 +361,6 @@
     "start": "2026-10-21T06:00:00.000",
     "end": "2026-10-27T22:00:00.000",
     "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "pokemon-go-city-safari-boston-2026-rescheduled",
-    "name": "Pokémon GO City Safari: Boston (Rescheduled)",
-    "eventType": "city-safari",
-    "heading": "City Safari",
-    "link": "https://leekduck.com/events/pokemon-go-city-safari-boston-2026-rescheduled/",
-    "image": "https://cdn.leekduck.com/assets/img/events/city-safari-boston-2026.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-14T13:59:13.286Z"
   },
   {
     "eventID": "pokemon-go-tour-alola-global-2027",
