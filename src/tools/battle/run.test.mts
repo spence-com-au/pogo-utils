@@ -225,7 +225,7 @@ function battleAndBack(): Record<string, Scene> {
   };
 }
 
-/** The menus' taps are one each, and only the charged move's is a burst, which a lost tap there costs a throw. */
+/** The menus' taps are one each, and only the charged move's is a burst, since a lost tap there costs a throw. */
 test('plays a battle from the Battle tab and taps its way back round', async () => {
   const { phone, clock, taps, bursts } = scripted(battleAndBack(), 'training');
 

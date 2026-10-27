@@ -142,11 +142,12 @@ const SETTLE: Partial<Record<State, number>> = { charged: 2, shield: 3, switch: 
 /**
  * How long a tap is given to take before the same state is answered again, in milliseconds. The button stays lit for a
  * few frames after a charged move is thrown, and the prototype answered each of them, tapping it five times over 200ms.
- * A charged move's tap is one answer here, which `run` sends as a burst of its own size. A charged move's throw also waits for the fast move under way, up to five 500ms turns, its button lit meanwhile, so a
- * retap a second on can be the same throw still waiting: three of a live run's 15 throws were tapped twice so, and
- * each was one throw, which `run` tells once. It is retapped even so, there being no telling a throw waiting from a tap
- * dropped while the button stays lit: held for 3s instead, a dropped Overheat was retapped 0.1s before Entei fainted,
- * its energy lost and the shield it would have drawn kept for the rest of the battle.
+ * A charged move's tap is one answer here, which `run` sends as a burst of `BURST` taps. Its throw also waits for the
+ * fast move under way, up to five 500ms turns, its button lit meanwhile, so a retap a second on can be the same throw
+ * still waiting: three of a live run's 15 throws were tapped twice so, and each was one throw, which `run` tells once.
+ * It is retapped even so, there being no telling a throw waiting from a tap dropped while the button stays lit: held
+ * for 3s instead, a dropped Overheat was retapped 0.1s before Entei fainted, its energy lost and the shield it would
+ * have drawn kept for the rest of the battle.
  */
 const RETAP_MS = 1000;
 
