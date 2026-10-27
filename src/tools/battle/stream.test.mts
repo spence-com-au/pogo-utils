@@ -106,19 +106,26 @@ test('decodes each frame once the next has begun', async () => {
 
   // A frame cannot come out before the next has begun, `ffmpeg` finding where a picture ends only from the start of
   // the one after it, which `screenrecord` gives nothing earlier to mark. Nothing else may hold one back, as the
-  // `rawvideo` encoder's frame threading would, a frame more.
-  const behind = [];
+  // `rawvideo` encoder's frame threading would, a frame more. A frame held back waits for more input, which none comes
+  // while this waits, so a deadline rather than a fixed pause tells the two apart however busy the machine is.
+  const reached = [];
 
   for (const [n, picture] of pictures.entries()) {
     source.write(picture);
-    await sleep(150);
-    behind.push(n + 1 - frames.length);
+
+    const until = performance.now() + 5000;
+
+    while (frames.length < n && performance.now() < until) {
+      await sleep(10);
+    }
+
+    reached.push(frames.length);
   }
 
   source.end();
   await decoding;
 
-  expect(behind.slice(1)).toEqual(Array(9).fill(1));
+  expect(reached).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   expect(frames).toHaveLength(10);
 });
 
