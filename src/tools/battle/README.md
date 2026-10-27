@@ -136,10 +136,10 @@ stand in a scripted phone that plays committed frames as scenes.
 and a status sent every frame. On a terminal, `live` draws a fixed full-screen panel with our side on the left and the
 opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty, Ghostty and WezTerm do, the
 phone's latest frame is drawn down the panel's left edge at full height, so long as the table beside it still has 80
-columns and `--no-phone` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as a temporary file
-the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one, draws no picture
-rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose` gives
-there.
+columns and `--no-graphics` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as a temporary
+file the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one, draws no
+picture rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose`
+gives there.
 
 The phone is drawn ten times a second rather than every frame. At 30 a second Ghostty fell behind reading the 1.2 MB
 files, and the run sat blocked writing the panel to it, for 181ms at the longest. Ten a second costs the run itself
@@ -147,7 +147,7 @@ about 0.8ms a picture, under 1% of a core, but the terminal draws each on the gr
 laptop that took the chip from 20W to its 33W limit, and through the second half of a 208s battle its cores ran at 1.5
 GHz rather than 2.7 GHz. The run's own work took half as much CPU time again, it stood still for up to 235ms at a time,
 and the slowest 1% of its actions came 560ms to 600ms after their frame rather than 250ms. One picture a second cost
-nothing measurable. `--no-phone` rules the picture out when chasing a timing problem.
+nothing measurable. `--no-graphics` rules the picture out when chasing a timing problem.
 
 ### Game data
 
