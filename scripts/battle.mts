@@ -7,9 +7,9 @@
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
  *   pnpm battle run --leader blanche|candela|spark --league great|ultra|master [--count N] [--serial SERIAL]
- *                   [--keep-frames DIR] [--verbose]
+ *                   [--keep-frames DIR] [--no-phone] [--verbose]
  *   pnpm battle run --mode gbl --league LEAGUE [--party NAME] [--count N] [--serial SERIAL] [--keep-frames DIR]
- *                   [--verbose]
+ *                   [--no-phone] [--verbose]
  *                       play Team Leader or GO Battle League battles one after another, from the map or anywhere
  *                       between the result of one battle and the start of the next, until `N` have finished or
  *                       Ctrl-C; stops where nothing on screen has been recognised for 20s. GO Battle League stops at
@@ -24,8 +24,9 @@
  *                       On a terminal, which it takes over until it stops, a table shows the battle, ours at the
  *                       left and the opponent's at the right, and what each side does under it, with how the run
  *                       stands above it and the menus it taps through below, and the phone's screen down the left
- *                       where the terminal draws Kitty graphics and is wide enough; `--verbose` writes the same as
- *                       lines where stderr is not a terminal, each after how long the run has gone on
+ *                       where the terminal draws Kitty graphics and is wide enough, unless `--no-phone` leaves it
+ *                       out; `--verbose` writes the same as lines where stderr is not a terminal, each after how long
+ *                       the run has gone on
  *   pnpm battle record [--seconds N] [--serial SERIAL] OUT
  *                       save `N` seconds (30 unless given, at most 180) of the screen to `OUT` as the raw H.264
  *                       a battle decodes, which is what the recognition fixtures are cut from
@@ -66,6 +67,7 @@ const { values: options, positionals } = parseArgs({
     'party': { type: 'string' },
     'count': { type: 'string' },
     'keep-frames': { type: 'string' },
+    'no-phone': { type: 'boolean', default: false },
     'verbose': { type: 'boolean', default: false },
     'seconds': { type: 'string', default: '30' },
     'serial': { type: 'string' },
@@ -84,7 +86,7 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 
 /** Which flags each command acts on, for the reason `inventory.mts` gives beside its own. */
 const HONOURED: Record<string, readonly string[]> = {
-  run: ['mode', 'leader', 'league', 'party', 'count', 'serial', 'keep-frames', 'verbose'],
+  run: ['mode', 'leader', 'league', 'party', 'count', 'serial', 'keep-frames', 'no-phone', 'verbose'],
   record: ['seconds', 'serial'],
 };
 
@@ -241,8 +243,12 @@ if (command === 'run') {
   let screen: Screen | undefined;
 
   // A terminal is drawn the panel whether or not `--verbose` asks; anything else is written lines, and only if it does.
-  // The phone goes beside it where the terminal can draw it, asked over stdin, the terminal's own answers coming there.
-  const drawn = process.stderr.isTTY && process.stdin.isTTY ? await pictures(process.stdin, process.stderr) : undefined;
+  // The phone goes beside it where the terminal can draw it, asked over stdin, the terminal's own answers coming there;
+  // with `--no-phone` the terminal is not asked, and is left as one that cannot.
+  const drawn =
+    process.stderr.isTTY && process.stdin.isTTY && !options['no-phone']
+      ? await pictures(process.stdin, process.stderr)
+      : undefined;
 
   // The frame, or none once the recording has failed: `run` hears of that from `phone.frame` and stops, where thrown
   // from a redraw it would be uncaught and leave the phone's setting unrestored.

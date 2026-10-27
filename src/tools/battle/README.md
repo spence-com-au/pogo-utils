@@ -136,9 +136,10 @@ stand in a scripted phone that plays committed frames as scenes.
 and a status sent every frame. On a terminal, `live` draws a fixed full-screen panel with our side on the left and the
 opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty, Ghostty and WezTerm do, the
 phone's latest frame is drawn down the panel's left edge at full height, so long as the table beside it still has 80
-columns. [`kitty.mts`](kitty.mts) draws it, passing each frame as a temporary file the terminal reads, and asks the
-terminal first, so one that can't read the file, such as a remote one, draws no picture rather than a broken one. Where
-stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose` gives there.
+columns and `--no-phone` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as a temporary file
+the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one, draws no picture
+rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose` gives
+there.
 
 ### Game data
 
