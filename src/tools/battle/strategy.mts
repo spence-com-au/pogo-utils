@@ -1,7 +1,8 @@
 /**
- * Which charged move to throw: the one worth the most, as power × STAB × type effectiveness, adjusted for the stat stages
- * it may move. Attack, defense, level and the trainer-battle bonus are the same for both of one Pokémon's moves against
- * one opponent, so they cancel out of the comparison and nothing here needs a stat.
+ * Which charged move to throw: the one worth the most for the energy it costs, its worth being power × STAB × type
+ * effectiveness, adjusted for the stat stages it may move. Attack, defense, level and the trainer-battle bonus are the
+ * same for both of one Pokémon's moves against one opponent, so they cancel out of the comparison and nothing here
+ * needs a stat.
  *
  * Whatever is not known counts as neutral rather than holding anything up: an opponent whose name was not read is hit
  * for 1×, and a Pokémon of ours whose species is not known gets no STAB. A name its forms give different types — a
@@ -417,10 +418,11 @@ export function shouldShield(data: GameData, own: Shown, opponent: Shown, meta?:
 }
 
 /**
- * How much cheaper than the move worth the most a bait must be to be thrown in its place. A bait saves only the energy
- * between the two, and ten is a fast move or two — Scizor's Bullet Punch gains 7 — where the shield it draws may never
- * come. Togekiss baited a Scizor with Ancient Power, 45 energy, rather than throw Flamethrower, 55, which hits Scizor
- * 2.56×: Scizor shielded the one Ancient Power, and Togekiss fainted seven seconds later without having thrown again.
+ * How much cheaper than the move worth the most per energy a bait must be to be thrown in its place. A bait saves only
+ * the energy between the two, and ten is a fast move or two — Scizor's Bullet Punch gains 7 — where the shield it draws
+ * may never come. Togekiss baited a Scizor with Ancient Power, 45 energy, rather than throw Flamethrower, 55, which
+ * hits Scizor 2.56×: Scizor shielded the one Ancient Power, and Togekiss fainted seven seconds later without having
+ * thrown again.
  */
 export const BAIT_SAVES = 10;
 
@@ -456,12 +458,33 @@ const weigh = (
   worth: worth(data, move, own, opponent, { lastHit }),
 });
 
+/** What a weighed move is worth for each point of energy it costs: nothing where what it costs is not known. */
+const perEnergy = ({ cost, worth }: Weighed): number => (cost > 0 ? worth / cost : 0);
+
 /**
- * Which button to throw, given the move read under each button: the one worth the most, or undefined where a button of
- * the pair has no move read under it yet and so could be either. While `bait`, the cheapest instead, to draw a shield
- * the strongest would otherwise be thrown into, and the one worth more of two that cost the same; but only where it
- * costs more than `BAIT_SAVES` less than the one worth the most, which is thrown instead as if there were no shields to
- * bait. Worth as `worth` prices it on our `lastHit` or otherwise.
+ * Whether `a` is to be held for rather than `b`: worth more per energy, or as much and cheaper, which fires sooner. As
+ * much to within a billionth, a true tie being split only by the last bit of the multipliers its two moves share: a
+ * Dewgong's Icy Wind, 86.4 for 45 energy, and Water Pulse, 96 for 50, come to 1.9199999999999997 and 1.92.
+ */
+const better = (a: Weighed, b: Weighed): boolean => {
+  const more = perEnergy(a) - perEnergy(b);
+
+  return more > 1e-9 || (more > -1e-9 && a.cost < b.cost);
+};
+
+/**
+ * Which button to throw, given the move read under each button: the one worth the most per energy, or undefined where a
+ * button of the pair has no move read under it yet and so could be either. Once the opponent's shields are gone, energy
+ * is all that limits the damage dealt, which over a fight comes to the energy gained times what each point of it is
+ * worth. A bigger move worth no more per energy gains nothing by being held for, and risks fainting with the energy
+ * stored or the opponent switching out: a player's Snorlax threw Body Slam, 78 for 40 energy, at an unshielded Garchomp
+ * each time it lit rather than hold for Earthquake, 120 for 65, and Garchomp fainted to the second without having
+ * thrown a charged move in its 29s out. Of two worth the same per energy, the cheaper, which fires sooner.
+ *
+ * While `bait`, the cheapest instead, and the one worth more of two that cost the same, to draw a shield the one worth
+ * the most per energy would otherwise be thrown into; but only where it costs more than `BAIT_SAVES` less than that
+ * one, which is thrown instead as if there were no shields to bait. Worth as `worth` prices it on our `lastHit` or
+ * otherwise.
  */
 export function bestButton(
   data: GameData,
@@ -472,7 +495,7 @@ export function bestButton(
 ): Pick | undefined {
   const [left, centre, right] = BUTTON_XS;
   const buttons = moves.has(left) || moves.has(right) ? [left, right] : [centre];
-  let strongest: Weighed | undefined;
+  let best: Weighed | undefined;
   let cheapest: Weighed | undefined;
 
   for (const x of buttons) {
@@ -484,8 +507,8 @@ export function bestButton(
 
     const hit = weigh(data, x, move, own, opponent, lastHit);
 
-    if (!strongest || hit.worth > strongest.worth) {
-      strongest = hit;
+    if (!best || better(hit, best)) {
+      best = hit;
     }
 
     if (!cheapest || hit.cost < cheapest.cost || (hit.cost === cheapest.cost && hit.worth > cheapest.worth)) {
@@ -493,26 +516,22 @@ export function bestButton(
     }
   }
 
-  if (!strongest || !cheapest || !bait || cheapest === strongest) {
-    return strongest && { x: strongest.x, bait };
+  if (!best || !cheapest || !bait || cheapest === best) {
+    return best && { x: best.x, bait };
   }
 
-  const saves = strongest.cost - cheapest.cost;
+  const saves = best.cost - cheapest.cost;
 
   return saves > BAIT_SAVES
     ? { x: cheapest.x, bait }
-    : {
-        x: strongest.x,
-        bait: false,
-        why: `not baiting: ${cheapest.move} costs only ${saves} less than ${strongest.move}`,
-      };
+    : { x: best.x, bait: false, why: `not baiting: ${cheapest.move} costs only ${saves} less than ${best.move}` };
 }
 
 /**
  * Which of the `lit` buttons is worth the most to throw now, by its x, rather than hold for the one chosen: of those
  * with a move read under them, a lit button whose move is not known having nothing to weigh. Undefined where none is.
- * Worth as `worth` prices it on our `lastHit` or otherwise, and with no bait: a throw that may be our last is worth what
- * it hits for.
+ * Worth as `worth` prices it on our `lastHit` or otherwise, with no bait and whatever it costs, unlike `bestButton`: a
+ * throw that may be our last is worth what it hits for.
  */
 export function bestLit(
   data: GameData,

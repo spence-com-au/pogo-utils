@@ -17,6 +17,7 @@ import {
   nextOut,
   refugeOf,
   shouldShield,
+  type Shown,
   stripperOf,
   typesOf,
   worth,
@@ -70,14 +71,80 @@ test('damage is power, times STAB, times what each of the defender’s types mak
   ).toBeCloseTo(100 * 1.2 * 1.6);
 });
 
-test('the best button is the move that hits hardest against this opponent', () => {
+test('the best button is the move worth the most per energy against this opponent', () => {
   const kyogre = typesOf(DATA, { species: 'Kyogre' });
 
   expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Entei' }))?.x, 'Hydro Pump into Entei').toBe(0.31);
   expect(bestButton(DATA, KYOGRE, kyogre, typesOf(DATA, { species: 'Salamence' }))?.x, 'Avalanche into Salamence').toBe(
     0.69,
   );
-  expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Hydro Pump on power alone').toBe(0.31);
+  expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Avalanche on power alone, 2 per energy to Hydro Pump’s 1.73').toBe(0.69);
+});
+
+/** The move `bestButton` holds for, by name, with `left` and `right` under the pair of buttons. */
+const heldFor = (own: Shown, opponent: Shown, [left, right]: readonly [string, string], { lastHit = false } = {}) => {
+  const moves = new Map([
+    [0.31, left],
+    [0.69, right],
+  ]);
+  const pick = bestButton(DATA, moves, typesOf(DATA, own), typesOf(DATA, opponent), { lastHit });
+
+  return pick && moves.get(pick.x);
+};
+
+/**
+ * The user's Ultra League team. Its Snorlax and Melmetal threw Body Slam and Dynamic Punch at unshielded opponents as
+ * they lit, rather than hold for Earthquake and Hyper Beam.
+ */
+test('with no shield to bait, the move held for is the one worth the most per energy', () => {
+  const snorlax = ['Earthquake', 'Body Slam'] as const;
+  const melmetal = ['Hyper Beam', 'Dynamic Punch'] as const;
+  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
+
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Garchomp' }, snorlax), '1.95 per energy to 1.85').toBe(
+    'Body Slam',
+  );
+  expect(heldFor({ species: 'Snorlax' }, { species: null }, snorlax), 'against an opponent not read').toBe('Body Slam');
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Ampharos' }, snorlax), 'super effective, 2.95 to 1.95').toBe(
+    'Earthquake',
+  );
+  expect(heldFor({ species: 'Melmetal' }, { species: 'Garchomp' }, melmetal), '2 per energy to 1.88').toBe(
+    'Dynamic Punch',
+  );
+  expect(heldFor({ species: 'Melmetal' }, { species: 'Sylveon' }, melmetal), 'Fighting resisted, 1.25 to 1.88').toBe(
+    'Hyper Beam',
+  );
+  expect(heldFor(moltres, { species: null }, ['Fly', 'Brave Bird']), 'Brave Bird’s defense −3, 0.71 to 2.13').toBe(
+    'Fly',
+  );
+  expect(
+    heldFor(moltres, { species: null }, ['Fly', 'Brave Bird'], { lastHit: true }),
+    'on our last hit, 2.84 to 2.13',
+  ).toBe('Brave Bird');
+});
+
+test('of two worth as much per energy, the cheaper is held for, whatever the last bit of the arithmetic says', () => {
+  const dewgong = new Map([
+    [0.31, 'Water Pulse'],
+    [0.69, 'Icy Wind'],
+  ]);
+  const own = typesOf(DATA, { species: 'Dewgong' });
+
+  expect(worth(DATA, 'Icy Wind', own, []) / 45, 'the floats split the tie for Water Pulse').toBeLessThan(
+    worth(DATA, 'Water Pulse', own, []) / 50,
+  );
+  expect(bestButton(DATA, dewgong, own, [])?.x, 'Icy Wind, 86.4 for 45, over Water Pulse, 96 for 50: 1.92 each').toBe(
+    0.69,
+  );
+});
+
+test('a move whose energy is not known is worth nothing per energy', () => {
+  const unknown = new Map([
+    [0.31, 'Not A Move'],
+    [0.69, 'Body Slam'],
+  ]);
+
+  expect(bestButton(DATA, unknown, [], [])?.x).toBe(0.69);
 });
 
 test('a move is worth its damage, moved by the stat stages it may change as if each touched one more hit', () => {
@@ -180,7 +247,7 @@ test('while baiting, the cheapest move is best whatever it hits for', () => {
   });
 });
 
-test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the most going instead', () => {
+test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the most per energy going instead', () => {
   const togekiss = new Map([
     [0.31, 'Ancient Power'],
     [0.69, 'Flamethrower'],
@@ -211,6 +278,19 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
     }),
     'Ancient Power, 2.56× into Charizard, is the bait and the move worth the most',
   ).toEqual({ x: 0.31, bait: true });
+  expect(
+    bestButton(
+      DATA,
+      new Map([
+        [0.31, 'Moonblast'],
+        [0.69, 'Meteor Mash'],
+      ]),
+      typesOf(DATA, { species: 'Clefable' }),
+      [],
+      { bait: true },
+    ),
+    'Meteor Mash, 2.22 per energy to Moonblast’s 2.20, is the bait and the move worth the most, though it saves 5',
+  ).toEqual({ x: 0.69, bait: true });
 });
 
 test.each<[(string | null)[], number[], string, number | undefined, string]>([
