@@ -209,7 +209,9 @@ ready, except when it may not live that long: with no shield to take, and the op
 worth the most now, whatever it costs, even while baiting. A shield drawn or damage dealt beats fainting with the energy
 stored, and a throw that may be the last is worth what it hits for. A lit button whose move wasn't read isn't weighed,
 and a faint feared only for something unread doesn't count, since only the count says a fainting move can come now. It
-is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`.
+is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`. Where
+the move picked is lit as well, as Body Slam is when Earthquake lights beside it, the throw passes it over rather than
+holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy affords it; worth more than Body Slam`.
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a

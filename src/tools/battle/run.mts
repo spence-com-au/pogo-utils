@@ -849,6 +849,10 @@ export async function run(
           : undefined;
       const held = pick && seen.moves.get(pick.x);
 
+      // The move chosen may be lit beside the one going, chosen as the bait or for its worth per energy where the one
+      // going is worth more outright: passed over, not held for.
+      const passed = pick && lit.includes(pick.x) ? `worth more than ${held}` : `not holding for ${held}`;
+
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
       // the move worth the most could leave it standing to land it.
       const throwing: Pick | undefined =
@@ -857,7 +861,7 @@ export async function run(
           ? {
               x: now,
               bait: false,
-              why: `${verdict.afforded} would faint us, ${affordable} energy affords it; not holding for ${held}`,
+              why: `${verdict.afforded} would faint us, ${affordable} energy affords it; ${passed}`,
             }
           : pick);
 
