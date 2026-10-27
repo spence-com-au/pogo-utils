@@ -106,7 +106,7 @@ test('decodes each frame once the next has begun', async () => {
 
   // A frame cannot come out before the next has begun, `ffmpeg` finding where a picture ends only from the start of
   // the one after it, which `screenrecord` gives nothing earlier to mark. Nothing else may hold one back, as the
-  // `rawvideo` encoder's frame threading would, a frame more. A frame held back waits for more input, which none comes
+  // `rawvideo` encoder's frame threading would, a frame more. A frame held back waits for more input, and none comes
   // while this waits, so a deadline rather than a fixed pause tells the two apart however busy the machine is.
   const reached = [];
 

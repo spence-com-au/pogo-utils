@@ -70,10 +70,10 @@ export function screenrecord(serial: string | undefined, { width, height }: Size
  * Each frame of an H.264 stream as it is decoded, ending with the stream. The flags are for latency: by default
  * `ffmpeg` probes a few seconds of input before it decodes any, and frame threading holds frames back to decode them
  * side by side, either of which puts the picture behind the battle it shows. Threading is turned off twice, since
- * `-threads` before `-i` reaches only the decoder, and the `rawvideo` encoder's held each frame until the next arrived.
- * `-fflags nobuffer` is the one that reads as if it belongs with them and does not: it dropped 28 of the first 30 frames
- * of a recording off the phone. A frame still comes out only once the next has begun, `ffmpeg` finding where a picture
- * ends from the start of the one after it.
+ * `-threads` before `-i` reaches only the decoder, and the `rawvideo` encoder's threading would hold each frame until
+ * the next. `-fflags nobuffer` is the one that reads as if it belongs with them and does not: it dropped 28 of the
+ * first 30 frames of a recording off the phone. A frame still comes out only once the next has begun, `ffmpeg` finding
+ * where a picture ends from the start of the one after it.
  */
 export async function* decodeFrames(h264: Readable, { width, height }: Size): AsyncGenerator<Image> {
   const ffmpeg = spawn(
