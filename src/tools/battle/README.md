@@ -271,10 +271,11 @@ Neither the opponent's energy nor its fast move is on screen, so both are counte
   - A shield prompt that holds for three frames counts as the opponent's throw. It's taken to be its cheapest allowed
     move until the banner names it; then the throw is settled at the named move's real cost.
   - With none of our shields left, a throw puts up no prompt, only `No Protect Shields remaining!` and the countdown at
-    the top of the screen, a disc of translucent black around the seconds left. The countdown holding for three frames
-    counts as the throw instead, once until the fight shows again, and the banner after it is read as after a prompt. In
-    the user's 12 recorded GO Battle League battles, 26 throws came this way, in 10 of them, and the countdown read as
-    up for each for its whole five seconds, bar three frames at most, and for nothing else.
+    the top of the screen, a disc of translucent black around the seconds left. The countdown showing for three frames
+    since the fight last did, in a row or not, counts as the throw instead, once only until the fight shows again, so
+    that a wing across the disc for a frame or two splits no throw in two. The banner after it is read as after a
+    prompt. In the user's 12 recorded GO Battle League battles, 26 throws came this way, in 10 of them, and the
+    countdown read as up for each for its whole five seconds, bar three frames at most, and for nothing else.
   - If the banner names a move dearer than what was counted, the count was short, and the opponent is left with nothing.
 - **Bookkeeping.**
   - Energy is kept per opponent Pokémon, including while it's switched out, and capped at 100.

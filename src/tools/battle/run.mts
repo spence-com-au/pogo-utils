@@ -538,10 +538,10 @@ export async function run(
 
     prompted = state === 'shield' ? prompted + 1 : 0;
 
-    // With none of our shields left, the opponent's throw puts up no prompt, only its countdown: counted as a prompt is
-    // once it has held as long, and once only until the fight shows again, a wing across the countdown for a frame or
-    // two splitting what is one throw. Asked only of what was recognised as `other`, not of a switch prompt taken for
-    // `other` above, which carries a countdown of its own.
+    // With none of our shields left, the opponent's throw puts up no prompt, only its countdown: counted once it has
+    // shown for as many frames as a prompt must since the fight last showed, in a row or not, and once only until the
+    // fight shows again, so that a wing across the countdown for a frame or two splits no throw in two. Asked only of
+    // what was recognised as `other`, not of a switch prompt taken for `other` above, which carries one of its own.
     const countingDown = battling && recognised === 'other' && ourShields === 0 && reads.countdown(frame);
 
     unprompted = state === 'battle' || state === 'charged' ? 0 : unprompted + (countingDown ? 1 : 0);
