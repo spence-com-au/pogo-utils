@@ -973,10 +973,11 @@ export async function run(
       // the one lit worth the most could leave it standing to land it.
       const throwing: Pick | undefined = finish ?? now ?? pick;
 
-      // A lit button whose move the read under way is to name is not thrown before it does, for as long as the read
-      // takes, about 220ms, as one of ours sent in with energy banked lights at once: thrown unnamed, it could be the
-      // weaker of two, and its minigame's bubbles would be of no colour known. Not where a named move is to go now, a
-      // finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
+      // While a read of the `seen` now held is under way, no lit button is thrown if any is unnamed, for as long as the
+      // read takes, about 220ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
+      // of no colour known. That covers one of ours sent in after a faint with energy banked, lit at once and read at
+      // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`. Nor a named move that is
+      // to go now, a finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
       const naming = (finish ?? now) === undefined && sighting?.from === seen && lit.some((x) => !seen.moves.has(x));
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
