@@ -40,6 +40,12 @@ const KYOGRE = new Map([
   [0.69, 'Avalanche'],
 ]);
 
+/** Two moves of a type and a power, Ice Beam costing 55 and Avalanche 45. */
+const GLACEON = new Map([
+  [0.31, 'Ice Beam'],
+  [0.69, 'Avalanche'],
+]);
+
 test('a species has every typing its forms have', () => {
   expect(typesOf(DATA, { species: 'Kyogre' })).toEqual([['Water']]);
   expect(typesOf(DATA, { species: 'Salamence' })).toEqual([['Dragon', 'Flying']]);
@@ -450,11 +456,15 @@ test('of the lit buttons, the one worth the most is thrown now', () => {
     bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
     'Close Combat, on our last hit',
   ).toBe(0.31);
+  expect(bestLit(DATA, GLACEON, [0.31, 0.69], typesOf(DATA, { species: 'Glaceon' }), []), 'Avalanche, 45 to 55').toBe(
+    0.69,
+  );
 });
 
 /**
  * Snorlax with Earthquake on the left and Body Slam on the right, holding for Body Slam into a Garchomp and for
- * Earthquake into an Ampharos, as `bestButton` does per energy; and Kyogre baiting Entei with Avalanche.
+ * Earthquake into an Ampharos, as `bestButton` does per energy; Glaceon holding for Avalanche over an Ice Beam as
+ * strong; and Kyogre baiting Entei with Avalanche.
  */
 test('before a feared faint, the lit move worth the most goes, passing over the move chosen where it is lit', () => {
   const fear = 'Psyshock would faint us, 40 energy affords it';
@@ -480,6 +490,18 @@ test('before a feared faint, the lit move worth the most goes, passing over the 
   });
   expect(beforeFainting(DATA, snorlax, [0.31, 0.69], own, ampharos, quake, fear), 'the move chosen').toBe(undefined);
   expect(beforeFainting(DATA, snorlax, [], own, garchomp, slam, fear), 'nothing lit').toBe(undefined);
+  expect(
+    beforeFainting(
+      DATA,
+      GLACEON,
+      [0.31, 0.69],
+      typesOf(DATA, { species: 'Glaceon' }),
+      [],
+      { x: 0.69, bait: false },
+      fear,
+    ),
+    'Avalanche, as good as Ice Beam for 10 less',
+  ).toBe(undefined);
   expect(
     beforeFainting(
       DATA,

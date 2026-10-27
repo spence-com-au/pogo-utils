@@ -531,7 +531,8 @@ export function bestButton(
  * Which of the `lit` buttons is worth the most to throw now, by its x, rather than hold for the one chosen: of those
  * with a move read under them, a lit button whose move is not known having nothing to weigh. Undefined where none is.
  * Worth as `worth` prices it on our `lastHit` or otherwise, with no bait and whatever it costs, unlike `bestButton`: a
- * throw that may be our last is worth what it hits for.
+ * throw that may be our last is worth what it hits for. Of two worth as much, the cheaper, which leaves the more energy
+ * should we live, and is the one `bestButton` holds for.
  */
 export function bestLit(
   data: GameData,
@@ -547,7 +548,7 @@ export function bestLit(
     const move = moves.get(x);
     const hit = move === undefined ? undefined : weigh(data, x, move, own, opponent, lastHit);
 
-    if (hit && (!best || hit.worth > best.worth)) {
+    if (hit && (!best || hit.worth > best.worth || (hit.worth === best.worth && hit.cost < best.cost))) {
       best = hit;
     }
   }
