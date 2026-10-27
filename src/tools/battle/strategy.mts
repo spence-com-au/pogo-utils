@@ -554,3 +554,32 @@ export function bestLit(
 
   return best?.x;
 }
+
+/**
+ * What to throw instead of `pick`, the move chosen, where a hit the opponent can afford would faint us and there may be
+ * no time left to hold energy for it: the lit button `bestLit` finds worth the most. Undefined where that is the move
+ * chosen, or where no lit button has a move to weigh. `why` says what would faint us, `fear`, and what becomes of the
+ * move chosen: not held for where it is not lit, and passed over where it is, chosen as the bait or for its worth per
+ * energy where the one thrown is worth more outright.
+ */
+export function beforeFainting(
+  data: GameData,
+  moves: ReadonlyMap<number, string>,
+  lit: readonly number[],
+  own: readonly Typing[],
+  opponent: readonly Typing[],
+  pick: Pick,
+  fear: string,
+  { lastHit = false } = {},
+): Pick | undefined {
+  const x = bestLit(data, moves, lit, own, opponent, { lastHit });
+
+  if (x === undefined || x === pick.x) {
+    return undefined;
+  }
+
+  const chosen = moves.get(pick.x);
+  const passed = lit.includes(pick.x) ? `worth more than ${chosen}` : `not holding for ${chosen}`;
+
+  return { x, bait: false, why: `${fear}; ${passed}` };
+}

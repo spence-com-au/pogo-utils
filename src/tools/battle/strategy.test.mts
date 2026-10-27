@@ -9,6 +9,7 @@ import { type GameData } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
 import {
   activeOf,
+  beforeFainting,
   bestButton,
   bestLit,
   chargedOf,
@@ -449,6 +450,48 @@ test('of the lit buttons, the one worth the most is thrown now', () => {
     bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
     'Close Combat, on our last hit',
   ).toBe(0.31);
+});
+
+/**
+ * Snorlax with Earthquake on the left and Body Slam on the right, holding for Body Slam into a Garchomp and for
+ * Earthquake into an Ampharos, as `bestButton` does per energy; and Kyogre baiting Entei with Avalanche.
+ */
+test('before a feared faint, the lit move worth the most goes, passing over the move chosen where it is lit', () => {
+  const fear = 'Psyshock would faint us, 40 energy affords it';
+  const snorlax = new Map([
+    [0.31, 'Earthquake'],
+    [0.69, 'Body Slam'],
+  ]);
+  const own = typesOf(DATA, { species: 'Snorlax' });
+  const garchomp = typesOf(DATA, { species: 'Garchomp' });
+  const ampharos = typesOf(DATA, { species: 'Ampharos' });
+  const slam = { x: 0.69, bait: false };
+  const quake = { x: 0.31, bait: false };
+
+  expect(beforeFainting(DATA, snorlax, [0.31, 0.69], own, garchomp, slam, fear), 'Earthquake, 120 to 78').toEqual({
+    x: 0.31,
+    bait: false,
+    why: `${fear}; worth more than Body Slam`,
+  });
+  expect(beforeFainting(DATA, snorlax, [0.69], own, ampharos, quake, fear), 'Body Slam, the one lit').toEqual({
+    x: 0.69,
+    bait: false,
+    why: `${fear}; not holding for Earthquake`,
+  });
+  expect(beforeFainting(DATA, snorlax, [0.31, 0.69], own, ampharos, quake, fear), 'the move chosen').toBe(undefined);
+  expect(beforeFainting(DATA, snorlax, [], own, garchomp, slam, fear), 'nothing lit').toBe(undefined);
+  expect(
+    beforeFainting(
+      DATA,
+      KYOGRE,
+      [0.31, 0.69],
+      typesOf(DATA, { species: 'Kyogre' }),
+      typesOf(DATA, { species: 'Entei' }),
+      { x: 0.69, bait: true },
+      fear,
+    )?.why,
+    'Hydro Pump over the bait',
+  ).toBe(`${fear}; worth more than Avalanche`);
 });
 
 test('an opponent’s form is allowed for what its players run, of what it can hold', () => {
