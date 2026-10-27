@@ -149,6 +149,25 @@ test('swipes through the bubbles found in the minigame, and waits for them throu
   expect(late).not.toMatchObject({ from: chain[0] });
 });
 
+// A throw the opponent's came ahead of plays after theirs, its minigame coming long after the tap that began the last.
+test('swipes a minigame that no tap here began, until the throw plays', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.4, 0.5],
+    [0.89, 0.55],
+  ];
+
+  play(['charged', 'charged', 'shield', 'other'], player);
+
+  expect(player.next('battle', 12_000, { bubbles: [chain] })).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
+  expect(player.next('battle', 12_033, { minigame: true, bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('battle', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.minigame).toBe(true);
+
+  player.next('other', 20_000);
+  expect(player.minigame).toBe(false);
+});
+
 test('swipes nothing for a moment after a charged move is tapped', () => {
   const player = new Player(SIZE);
   const tapped = play(['charged', 'charged'], player);

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, expect, test } from 'vitest';
 import { silhouetteOfIcon } from './party.mts';
 import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
+import { bubbleSwipes, typeColour } from './minigame.mts';
 import { place } from './layout.mts';
 import { type Fight, type Reporter } from './report.mts';
 import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
@@ -568,6 +569,101 @@ test.each([
 });
 
 /**
+ * Moltres against Charizard in GO Battle League, as the user recorded it on a Pixel 8 Pro: Fly's tap moves on to
+ * `tapped`, its minigame or the prompt for Charizard's Air Cutter on the same turn, which plays and puts up its banner
+ * before `after`.
+ */
+function moltresFly(tapped: string, after: string): Record<string, Scene> {
+  const fly = (to: string): Scene => ({ frame: fixture('charged-pixel8-fly'), tap: { at: [0.69, 0.895], to } });
+
+  return {
+    ...battleAndBack(),
+    fight: fly(tapped),
+    prompt: { frame: fixture('shield-pixel8-charizard'), lasts: { ms: 2000, to: 'away' } },
+    away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'banner' } },
+    banner: { frame: fixture('battle-banner-pixel8-charizard'), lasts: { ms: 2000, to: 'gap' } },
+    gap: { frame: fixture('other-vs-fade'), lasts: { ms: 700, to: after } },
+    relit: fly('minigame'),
+    minigame: { frame: fixture('battle-minigame-pixel8-fly'), lasts: { ms: 6000, to: 'won' } },
+  };
+}
+
+/** What is told of a throw: ours tapped again, thrown or not, and the opponent's. */
+const throws = (events: readonly string[]) =>
+  events.filter((line) => /^own: (threw|tap Fly|Fly)|threw a charged move$/.test(line));
+
+/**
+ * Where Air Cutter comes first, the tap can be dropped, Fly's button lit again once the field is back and the retap
+ * thrown, or held back, its minigame following Air Cutter's banner with no tap of its own. Either way the one throw is
+ * told once it plays, as one played at once is, and its minigame is swiped through its bubbles. Told at the tap, a
+ * dropped tap would be two throws, and a held-back minigame would be swiped at as the fight.
+ */
+test.each([
+  ['played', 'minigame', 'minigame', []],
+  [
+    'dropped',
+    'prompt',
+    'relit',
+    ['opponent: Charizard threw a charged move', 'own: tap Fly again: its button still lit'],
+  ],
+  ['held back', 'prompt', 'minigame', ['opponent: Charizard threw a charged move']],
+])('tells a throw %s once it plays, and swipes its minigame', async (_, tapped, after, before) => {
+  const { phone, clock, strokes } = scripted(moltresFly(tapped, after), 'fight');
+  const report = recorder();
+  const [chain] = bubbleSwipes(fixture('battle-minigame-pixel8-fly'), typeColour(fixture('types/POKEMON_TYPE_FLYING')));
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const last = strokes.filter(({ scene }) => scene === 'minigame').at(-1);
+
+  expect(throws(report.events)).toEqual([...before, 'own: threw Fly']);
+  expect(last && [last.from, last.to]).toEqual(chain);
+});
+
+// Moltres faints to Air Cutter before Fly plays: lost, and not told as thrown by the next of ours as it fights on.
+test('loses a throw where ours faints before it plays', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...moltresFly('prompt', 'minigame'),
+      away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'fainted' } },
+      fainted: { frame: fixture('switch-pixel8'), lasts: { ms: 2000, to: 'next' } },
+      next: { frame: fixture('battle-pixel8-moltres-body'), lasts: { ms: 5000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(throws(report.events)).toEqual([
+    'opponent: Charizard threw a charged move',
+    'own: Fly not thrown: Moltres fainted first',
+  ]);
+});
+
+/**
  * Each stretch off the field told once the battle is back, with what showed: our Shadow Sneak's minigame and the move
  * playing after it, and, with our shields spent, a move of theirs that puts up no prompt. Shorter stretches and the
  * result's, which the battle never comes back from, are not told.
@@ -688,21 +784,32 @@ function painted(image: Image, colour: readonly number[], ...boxes: (readonly nu
   return { ...image, data };
 }
 
+/** Where our first Poké Ball is on the Pixel 4 XL's frames, as a box for `painted`. */
+const FIRST_BALL = [0.045, 0.19, 0.071, 0.215];
+
+/** The minigame of `battleAndBack` with our first Poké Ball painted red, as the frames thrown from are. */
+const minigameNoneFainted = (): Scene => ({
+  frame: painted(fixture('battle-minigame-giratina'), [200, 60, 60], FIRST_BALL),
+  swipes: { count: 40, to: 'won' },
+});
+
 /**
  * Giratina, CP 2392, with Shadow Sneak lit against a CP 2472 Mamoswine at 4%. With Mamoswine's shield hexagons painted
  * a spent one's purple, its throw is told as the finish it would be; with them up, a shield could stop it, and it is
- * thrown as the move held for. Our grey Poké Ball is painted red, as if Giratina, the party's third card, had led: read
- * as a faint, it would be counted against Giratina, the one whose moves fit, leaving none of ours known to be out.
+ * thrown as the move held for. Our grey Poké Ball is painted red, on the minigame too, as if Giratina, the party's third
+ * card, had led: read as a faint, it would be counted against Giratina, the one whose moves fit, leaving none of ours
+ * known to be out, and the throw lost to it.
  */
 test.each([
   ['spent', [[0.7, 0.195, 0.78, 0.222]], 'own: threw Shadow Sneak: would finish Mamoswine at 4%'],
   ['up', [], 'own: threw Shadow Sneak'],
 ])('with the opponent’s shields %s, a throw that would finish it says so', async (_, spent, said) => {
-  const frame = painted(fixture('charged-shadow-sneak'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215]);
+  const frame = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL);
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),
       fight: { frame: painted(frame, [111, 81, 118], ...spent), tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: minigameNoneFainted(),
     },
     'party',
   );
@@ -741,7 +848,7 @@ test.each([
   ],
   ['on its last', [], ['own: threw Shadow Sneak: would finish Mamoswine at 4%']],
 ])('fast moves finishing the opponent %s hold the energy lit only for the next', async (_, next, said) => {
-  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], [0.045, 0.19, 0.071, 0.215], ...next);
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...next);
   const hud = painted(balls, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
   const hit = painted(hud, [105, 91, 41], [79 / 360, 220 / 360, 82 / 360, 225 / 360]);
 
@@ -756,6 +863,7 @@ test.each([
       fight: { frame: unlit(theirs(hud, 16)), lasts: { ms: 200, to: 'closer' } },
       closer: { frame: unlit(theirs(hit, 10)), lasts: { ms: 200, to: 'charged' } },
       charged: { frame: hit, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+      minigame: minigameNoneFainted(),
     },
     'party',
   );
