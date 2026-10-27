@@ -292,7 +292,7 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
       [],
       { bait: true },
     ),
-    'Meteor Mash, 2.22 per energy to Moonblast’s 2.20, is the bait and the move worth the most, though it saves 5',
+    'Meteor Mash, 2.22 to Moonblast’s 2.20, is the bait and the move worth the most per energy, though it saves 5',
   ).toEqual({ x: 0.69, bait: true });
 });
 
