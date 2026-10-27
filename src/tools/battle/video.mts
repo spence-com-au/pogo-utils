@@ -249,7 +249,7 @@ interface Segment {
 /**
  * A run's screen as one video, out of each recording `watch` is handed in the order they start. Pictures are written as
  * soon as they are known whole and known to be the video's: a recording's go out until the next recording's first
- * picture, and the next's once the last has ended, held until then.
+ * byte, and the next's once the last has sent a picture from there on or has ended, held until then.
  */
 export class Video {
   readonly #stream: TransportStream;

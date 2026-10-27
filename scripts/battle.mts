@@ -336,6 +336,7 @@ if (command === 'run') {
   const videoFile = options['keep-video'];
   let video: Video | undefined;
   let fd: number | undefined;
+  let videoFailed: string | undefined;
 
   if (videoFile !== undefined) {
     try {
@@ -346,8 +347,24 @@ if (command === 'run') {
       process.exit(1);
     }
 
-    const out = fd;
-    video = new Video((bytes) => writeSync(out, bytes), started, clock.now);
+    // A write that fails — the disk full — stops the video and nothing else. It is heard from `screenrecord`'s stdout
+    // and from the ways out, where a throw would be uncaught or skip putting the phone's setting back, so it is kept
+    // to be told once the run is over rather than thrown, and nothing more is written after it.
+    video = new Video(
+      (bytes) => {
+        if (fd === undefined || videoFailed !== undefined) {
+          return;
+        }
+
+        try {
+          writeSync(fd, bytes);
+        } catch (error) {
+          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      },
+      started,
+      clock.now,
+    );
   }
 
   const closeVideo = () => {
@@ -355,9 +372,18 @@ if (command === 'run') {
     video = undefined;
 
     if (fd !== undefined) {
-      closeSync(fd);
+      try {
+        closeSync(fd);
+      } catch (error) {
+        videoFailed ??= `on closing: ${error instanceof Error ? error.message : String(error)}`;
+      }
+
       fd = undefined;
-      console.error(`kept the screen in ${videoFile}`);
+      console.error(
+        videoFailed === undefined
+          ? `kept the screen in ${videoFile}`
+          : `kept the screen in ${videoFile} only until a write failed ${videoFailed}`,
+      );
     }
   };
 
