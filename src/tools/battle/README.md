@@ -193,10 +193,10 @@ Snorlax throws Body Slam, 78 for 40 energy or 1.95 a point, rather than hold for
 an opponent that takes both neutrally. It holds for Earthquake into an Ampharos, which Earthquake hits super
 effectively, or a Giratina, which resists Body Slam twice over. In the 12 Ultra League battles the user recorded, they
 threw Body Slam or Dynamic Punch at an unshielded opponent as soon as it lit rather than hold for Earthquake or Hyper
-Beam: worth per energy matches 8 of their 10 such choices, where worth alone matches 3. Snorlax threw Body Slam twice at
-an unshielded Garchomp, which fainted without throwing a charged move in its 29s out. The two that don't match were both
-against a Sylveon: holding Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch twice where Hyper
-Beam gets more per energy.
+Beam: worth per energy matches 8 of their 10 such choices, where worth alone matches 3, a move thrown again at the same
+opponent counting as the one choice. Snorlax's two Body Slams at an unshielded Garchomp are one, and Garchomp fainted
+without throwing a charged move in its 29s out. The two choices that don't match were both against a Sylveon: holding
+Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch, twice, where Hyper Beam gets more per energy.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
