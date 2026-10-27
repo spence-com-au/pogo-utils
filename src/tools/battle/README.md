@@ -189,16 +189,18 @@ stats count for nothing, since there's no next hit for them to matter on.
 it costs, and of two worth as much, the cheaper, which fires sooner. With no shield to take a throw, energy is all that
 limits the damage dealt, which over a fight comes to the energy gained × the worth of each point. Holding for a bigger
 move worth no more per energy gains nothing, and risks fainting with the energy stored or the opponent switching out. So
-Snorlax throws Body Slam, 78 for 40 energy or 1.95 a point, rather than hold for Earthquake, 120 for 65 or 1.85, unless
-Earthquake is super effective. In the 12 Ultra League battles the user recorded, they threw Body Slam or Dynamic Punch
-at an unshielded opponent as soon as it lit rather than hold for Earthquake or Hyper Beam: worth per energy matches 8 of
-their 10 such choices, where worth alone matches 3. Snorlax threw Body Slam twice at an unshielded Garchomp, which
-fainted without throwing a charged move in its 29s out. The two that don't match were both against a Sylveon: holding
-Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch twice where Hyper Beam gets more per energy.
+Snorlax throws Body Slam, 78 for 40 energy or 1.95 a point, rather than hold for Earthquake, 120 for 65 or 1.85, against
+an opponent that takes both neutrally. It holds for Earthquake into an Ampharos, which Earthquake hits super
+effectively, or a Giratina, which resists Body Slam twice over. In the 12 Ultra League battles the user recorded, they
+threw Body Slam or Dynamic Punch at an unshielded opponent as soon as it lit rather than hold for Earthquake or Hyper
+Beam: worth per energy matches 8 of their 10 such choices, where worth alone matches 3. Snorlax threw Body Slam twice at
+an unshielded Garchomp, which fainted without throwing a charged move in its 29s out. The two that don't match were both
+against a Sylveon: holding Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch twice where Hyper
+Beam gets more per energy.
 
-**Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the strongest
-move would otherwise be wasted into. A bait costing no more than **10** energy less than the move worth the most per
-energy isn't worth the shield it might not draw, so that move goes instead, logged as
+**Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
+the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
+the most per energy isn't worth the shield it might not draw, so that move goes instead, logged as
 `threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already

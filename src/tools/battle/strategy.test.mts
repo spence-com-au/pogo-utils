@@ -108,6 +108,9 @@ test('with no shield to bait, the move held for is the one worth the most per en
   expect(heldFor({ species: 'Snorlax' }, { species: 'Ampharos' }, snorlax), 'super effective, 2.95 to 1.95').toBe(
     'Earthquake',
   );
+  expect(heldFor({ species: 'Snorlax' }, { species: 'Giratina' }, snorlax), 'Body Slam doubly resisted, 0.76').toBe(
+    'Earthquake',
+  );
   expect(heldFor({ species: 'Melmetal' }, { species: 'Garchomp' }, melmetal), '2 per energy to 1.88').toBe(
     'Dynamic Punch',
   );
