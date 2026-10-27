@@ -93,8 +93,10 @@ const NO_BATTLE_READS = 2;
 const SCROLL_MS = 400;
 
 /**
- * How often the battle's names and move labels are read again, in milliseconds. A read holds the loop up for about
- * 220ms, a fast move's worth, and what it reads changes only when a Pokémon on either side does.
+ * How often the battle's names and move labels are read again, from when the last read began, in milliseconds: what it
+ * reads changes only when a Pokémon on either side does. A read takes about 220ms, a fast move's worth, so it runs
+ * beside the battle rather than holding it up, which would leave every frame meanwhile unplayed, no swipe going out and
+ * a prompt or a lit button seen late.
  */
 const READ_MS = 3_000;
 
@@ -180,12 +182,17 @@ interface Bank {
 const fewer = (was: number | null, read: number | null) =>
   read === null ? was : was === null ? read : Math.min(was, read);
 
-/**
- * A menu read run beside the battle: `done` once its screenshot has been taken and read, or has failed. The result's
- * screenshot is read for the battle's outcome too.
- */
-interface Reading {
-  done?: { screenshot: Image; menu: Menu; outcome: Outcome | undefined } | { error: unknown };
+/** A read run beside the battle: `done` once it has finished, or failed, the failure thrown where the read is used. */
+interface Reading<T> {
+  done?: T | { error: unknown };
+}
+
+/** Sets `reading`'s `done` once `read` has finished or failed. */
+function settle<T>(reading: Reading<T>, read: Promise<T>): void {
+  void read.then(
+    (done) => (reading.done = done),
+    (error: unknown) => (reading.done = { error }),
+  );
 }
 
 /** How many battles finished, and of those how many the result said were won and lost; the rest went unread. */
@@ -289,8 +296,9 @@ export async function run(
   let noBattle = 0;
   let search = carousel();
 
-  // The menu read under way, if any: settled once its screenshot is taken and read, or failed.
-  let reading: Reading | undefined;
+  // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
+  // is read for the battle's outcome too.
+  let reading: Reading<{ screenshot: Image; menu: Menu; outcome: Outcome | undefined }> | undefined;
   let frames = 0;
   const kept: Image[] = [];
 
@@ -419,6 +427,11 @@ export async function run(
   let bubbleColour: Colour | undefined;
   let seen: Sighting = unseen();
   let readAt = -Infinity;
+
+  // The battle's names, CPs, move labels and types being read, if they are: off the frame of `at`, and onto the `seen`
+  // it began from. Begun before `seen` was cleared, for a newcomer of theirs, a faint or a switch of ours or the next
+  // battle, it is of the Pokémon before, and is never merged: its name or CP would stand for the one sent in.
+  let sighting: (Reading<Sighting> & { at: number; from: Sighting }) | undefined;
 
   // The charged moves each opponent has been seen to use this battle, by species, off the banner after each throw.
   let theirMoves = new Map<string, Set<string>>();
@@ -698,6 +711,61 @@ export async function run(
         left = counted;
       }
 
+      // The battle's read, once it is back, merged before anything this frame shows can clear `seen`: it was read off an
+      // earlier frame, which showed what it read.
+      if (sighting?.done && sighting.from === seen) {
+        const { done: read, at } = sighting;
+        sighting = undefined;
+
+        if ('error' in read) {
+          throw read.error;
+        }
+
+        const named = seen.opponent;
+        const before = named ?? departed;
+
+        seen = merge(seen, read);
+
+        if (seen.opponent !== null && seen.opponent !== before) {
+          // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
+          // standing: Gengar went on at Charizard's CP 2285 for fifteen reads. One read alongside the new name is its.
+          if (named !== null) {
+            seen = { ...seen, opponentCp: read.opponentCp, opponentTypes: read.opponentTypes };
+          }
+
+          if (before !== null) {
+            const gone = leftAtName !== null && left.opponent !== null && left.opponent < leftAtName;
+
+            log(gone ? `${before} fainted; sent in ${seen.opponent}` : `switched to ${seen.opponent}`, 'opponent');
+            stages = { ...stages, their: NO_STAGES };
+            answer = !gone;
+            switchedIn = !gone;
+            counter = undefined;
+          }
+
+          leftAtName = left.opponent;
+          departed = null;
+        }
+
+        if (switching && seen.ownCp !== null && at - switching.at >= SWITCHED_MS) {
+          if (seen.ownCp === switching.cp) {
+            sent = switching.from;
+            stages = { ...stages, own: switching.stages };
+            banked.delete(switching.from);
+            stripping = switching.stripping;
+            calmAt = clock.now() + REFUSED_MS;
+
+            if (switching.bank) {
+              banked.set(switching.slot, switching.bank);
+            }
+
+            log(`${switching.to} not sent in: the switch timer is running`, 'own');
+          }
+
+          switching = undefined;
+        }
+      }
+
       // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved, and a throw
       // of the one before's still to play never will. A switch of ours under way is overtaken by the faint, whatever the
       // HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would say whether the
@@ -745,60 +813,29 @@ export async function run(
         hits.pause();
       }
 
-      if ((state === 'battle' || state === 'charged') && !player.minigame && clock.now() - readAt >= READ_MS) {
+      // One read at a time, but for one dropped as of the Pokémon before, which is left to finish unmerged as the next
+      // begins.
+      if (
+        sighting?.from !== seen &&
+        (state === 'battle' || state === 'charged') &&
+        !player.minigame &&
+        clock.now() - readAt >= READ_MS
+      ) {
         readAt = clock.now();
-        const named = seen.opponent;
-        const before = named ?? departed;
+        sighting = { at: readAt, from: seen };
 
         // Only a species the HUD has named narrows the labels: the party's guess at a nicknamed one is what the labels
         // correct, through `activeOf`, and narrowed to it they could never show it wrong.
         const shown = readTypes(frame, badges);
-        const read = {
-          ...(await readBattle(frame, data, undefined, seen.own)),
-          ownTypes: shown.own,
-          opponentTypes: shown.opponent,
-        };
 
-        seen = merge(seen, read);
-
-        if (seen.opponent !== null && seen.opponent !== before) {
-          // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
-          // standing: Gengar went on at Charizard's CP 2285 for fifteen reads. One read alongside the new name is its.
-          if (named !== null) {
-            seen = { ...seen, opponentCp: read.opponentCp, opponentTypes: read.opponentTypes };
-          }
-
-          if (before !== null) {
-            const gone = leftAtName !== null && left.opponent !== null && left.opponent < leftAtName;
-
-            log(gone ? `${before} fainted; sent in ${seen.opponent}` : `switched to ${seen.opponent}`, 'opponent');
-            stages = { ...stages, their: NO_STAGES };
-            answer = !gone;
-            switchedIn = !gone;
-            counter = undefined;
-          }
-
-          leftAtName = left.opponent;
-          departed = null;
-        }
-
-        if (switching && seen.ownCp !== null && clock.now() - switching.at >= SWITCHED_MS) {
-          if (seen.ownCp === switching.cp) {
-            sent = switching.from;
-            stages = { ...stages, own: switching.stages };
-            banked.delete(switching.from);
-            stripping = switching.stripping;
-            calmAt = clock.now() + REFUSED_MS;
-
-            if (switching.bank) {
-              banked.set(switching.slot, switching.bank);
-            }
-
-            log(`${switching.to} not sent in: the switch timer is running`, 'own');
-          }
-
-          switching = undefined;
-        }
+        settle(
+          sighting,
+          readBattle(frame, data, undefined, seen.own).then((read) => ({
+            ...read,
+            ownTypes: shown.own,
+            opponentTypes: shown.opponent,
+          })),
+        );
       }
 
       // A prompt gone unanswered, the game's timer having picked, still owes the faint the Poké Balls caught on it.
@@ -935,6 +972,13 @@ export async function run(
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
       // the one lit worth the most could leave it standing to land it.
       const throwing: Pick | undefined = finish ?? now ?? pick;
+
+      // While a read of the `seen` now held is under way, no lit button is thrown if any is unnamed, for as long as the
+      // read takes, about 220ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
+      // of no colour known. That covers one of ours sent in after a faint with energy banked, lit at once and read at
+      // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`. Nor a named move that is
+      // to go now, a finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
+      const naming = (finish ?? now) === undefined && sighting?.from === seen && lit.some((x) => !seen.moves.has(x));
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
@@ -1140,7 +1184,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined ? ready : [],
+        ready: spared === undefined && !naming ? ready : [],
         best,
         shield,
         minigame: playing,
@@ -1246,19 +1290,18 @@ export async function run(
     }
 
     if (clock.now() - otherSince >= MENU_AFTER_MS && !reading) {
-      const started: Reading = {};
       const result = battling;
-      reading = started;
+      reading = {};
 
-      void (async () => {
-        const screenshot = await phone.screenshot();
+      settle(
+        reading,
+        (async () => {
+          const screenshot = await phone.screenshot();
 
-        const menu = await readMenu(screenshot, { ...mode, result });
+          const menu = await readMenu(screenshot, { ...mode, result });
 
-        return { screenshot, menu, outcome: menu.screen === 'result' ? await readOutcome(screenshot) : undefined };
-      })().then(
-        (done) => (started.done = done),
-        (error: unknown) => (started.done = { error }),
+          return { screenshot, menu, outcome: menu.screen === 'result' ? await readOutcome(screenshot) : undefined };
+        })(),
       );
     }
 

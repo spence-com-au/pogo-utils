@@ -1,7 +1,8 @@
 /**
  * The whole loop against a scripted phone: recorded frames of each screen, moved on by a tap in the right place and by
- * nothing else, under a clock that only advances when the run waits or the phone works. A tap anywhere a screen does not
- * answer leaves it where it is, which is how a wrong tap shows: the run stalls, and ends `Lost`.
+ * nothing else, under a clock that only advances when the run waits or the phone works, on which a screenshot or an OCR
+ * read takes as long as it would on a real phone. A tap anywhere a screen does not answer leaves it where it is, which
+ * is how a wrong tap shows: the run stalls, and ends `Lost`.
  */
 
 import { type GameData } from '../inventory/game-master.mts';
@@ -10,7 +11,8 @@ import { useEngine } from '../inventory/ocr.mts';
 import { tesseractCli } from '../inventory/ocr-cli.mts';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, expect, test } from 'vitest';
+import { setImmediate } from 'node:timers/promises';
+import { expect, test } from 'vitest';
 import { silhouetteOfIcon } from './party.mts';
 import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
@@ -18,23 +20,8 @@ import { place } from './layout.mts';
 import { type Fight, type Reporter } from './report.mts';
 import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
 
-/**
- * OCR under way, which the scripted clock waits on rather than passing: real Tesseract takes real milliseconds, which the
- * run's loop, no longer awaiting the menu it reads, would otherwise spend as seconds of scripted time.
- */
-const reading = new Set<Promise<string>>();
-
-beforeAll(() =>
-  useEngine({
-    tsv: (...args) => {
-      const read = tesseractCli.tsv(...args);
-      reading.add(read);
-      void read.finally(() => reading.delete(read)).catch(() => {});
-
-      return read;
-    },
-  }),
-);
+/** How long Tesseract takes over a band of a battle's frame, in milliseconds: `readBattle` reads two, about 220ms. */
+const OCR_MS = 110;
 
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
@@ -81,9 +68,14 @@ interface Scene {
   lasts?: { ms: number; to: string };
 }
 
+/**
+ * A phone playing `scenes` from `start`, and the clock it runs on. Each OCR read takes `ocrMs` of it, given the time the
+ * read began: `OCR_MS` unless a test slows it.
+ */
 function scripted(
   scenes: Record<string, Scene>,
   start: string,
+  ocrMs: (at: number) => number = () => OCR_MS,
 ): { phone: Phone; clock: Clock; taps: string[]; strokes: { scene: string; from: Point; to: Point; at: number }[] } {
   let time = 0;
   let current = start;
@@ -92,18 +84,61 @@ function scripted(
   const taps: string[] = [];
   const strokes: { scene: string; from: Point; to: Point; at: number }[] = [];
 
-  // Screenshots taken and not yet handed back: a second's work each, which passes on the run's clock rather than
-  // holding it, as a real screenshot does while the stream goes on.
-  const developing: { due: number; deliver: () => void }[] = [];
+  // Screenshots taken and OCR begun, not yet handed back: each takes time on the run's clock, a screenshot a second and
+  // a read `ocrMs`, which passes as the run waits or the phone works rather than holding the run up, as on a real
+  // phone while the stream goes on. A read is handed back once that time has passed, the clock waiting there for the
+  // real one to finish.
+  const developing: { due: number; deliver: () => unknown }[] = [];
 
-  const advance = (ms: number) => {
+  // How many times the clock has moved, and whether it is moving now. A run at work comes back to the phone or the clock
+  // before anything else has a turn, so one that has not by then has finished with reads still under way, which the
+  // clock moves on through so that they are not left pending. `run` never awaits a read itself, but one that did would
+  // be waiting on it here, and would see the read take its time, as on a real phone, rather than hang.
+  let moves = 0;
+  let advancing = false;
+
+  async function advance(ms: number) {
+    moves++;
+    advancing = true;
     time += ms;
 
-    for (const shot of developing.filter(({ due }) => due <= time)) {
-      developing.splice(developing.indexOf(shot), 1);
-      shot.deliver();
+    for (const work of developing.filter(({ due }) => due <= time).sort((a, b) => a.due - b.due)) {
+      developing.splice(developing.indexOf(work), 1);
+      await work.deliver();
     }
-  };
+
+    // Whatever follows on from what was handed back has run before the run looks at the phone again.
+    await setImmediate();
+    advancing = false;
+    idle();
+  }
+
+  function idle() {
+    const at = moves;
+
+    void setImmediate().then(() => {
+      const next = Math.min(...developing.map(({ due }) => due));
+
+      if (moves === at && !advancing && next < Infinity) {
+        void advance(next - time);
+      }
+    });
+  }
+
+  useEngine({
+    tsv: (...args) => {
+      const read = tesseractCli.tsv(...args);
+      const due = time + ocrMs(time);
+
+      // Failing before it is due, a read fails where it is handed back rather than as a rejection nothing handles.
+      read.catch(() => {});
+
+      return new Promise((resolve, reject) => {
+        developing.push({ due, deliver: () => read.then(resolve, reject) });
+        idle();
+      });
+    },
+  });
 
   const go = (to: string) => {
     current = to;
@@ -135,40 +170,27 @@ function scripted(
         developing.push({ due: time + 1000, deliver: () => resolve(screenshot ?? frame) }),
       );
     },
-    tap: ([x, y]) => {
-      advance(30);
+    tap: async ([x, y]) => {
+      await advance(30);
       const { tap } = scene();
       taps.push(current);
 
       if (tap && Math.abs(tap.at[0] - x) < 0.05 && Math.abs(tap.at[1] - y) < 0.04) {
         go(tap.to);
       }
-
-      return Promise.resolve();
     },
-    swipe: (from, to, ms) => {
+    swipe: async (from, to, ms) => {
       strokes.push({ scene: current, from, to, at: time });
-      advance(ms + 30);
+      await advance(ms + 30);
       const { swipes } = scene();
 
       if (swipes && ++swiped >= swipes.count) {
         go(swipes.to);
       }
-
-      return Promise.resolve();
     },
   };
 
-  const clock: Clock = {
-    now: () => time,
-    sleep: async (ms) => {
-      while (reading.size > 0) {
-        await Promise.allSettled([...reading]);
-      }
-
-      advance(ms);
-    },
-  };
+  const clock: Clock = { now: () => time, sleep: advance };
 
   return { phone, clock, taps, strokes };
 }
@@ -426,8 +448,8 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(kept).toEqual([
-    ['fainted', 7730, 'faint-own'],
-    ['again', 8340, 'faint-own'],
+    ['fainted', 7630, 'faint-own'],
+    ['again', 8240, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([
@@ -472,6 +494,51 @@ test('plays on as soon as the battle is back, without waiting for a menu read', 
 
   expect(resumed?.at).toBeGreaterThanOrEqual(3200);
   expect(resumed?.at).toBeLessThan(3400);
+});
+
+/**
+ * The battle's names and labels take 2s to read here, a second a band, from its first frame. The fight is swiped
+ * throughout, one swipe straight after another from that frame on, and Sneasel is named only once the read is back.
+ */
+test('plays on while the battle’s names are read, rather than wait for them', async () => {
+  const { phone, clock, strokes } = scripted(
+    {
+      fight: { frame: fixture('battle-deoxys'), lasts: { ms: 4000, to: 'gone' } },
+      gone: { frame: fixture('other-white') },
+    },
+    'fight',
+    () => 1000,
+  );
+  let named: { at: number; strokes: number } | undefined;
+
+  await expect(
+    run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+      },
+      clock,
+      {
+        event: () => {},
+        status: ({ fight }) => {
+          if (fight?.opponent.species === 'Sneasel') {
+            named ??= { at: clock.now(), strokes: strokes.length };
+          }
+        },
+      },
+    ),
+  ).rejects.toBeInstanceOf(Lost);
+
+  const before = strokes.slice(0, named?.strokes).map(({ at }) => at);
+  const gaps = before.slice(1).map((at, i) => at - (before[i] ?? 0));
+
+  expect(named?.at).toBeGreaterThanOrEqual(2000);
+  expect(before[0]).toBe(0);
+  expect(before.length).toBeGreaterThan(1);
+  expect(new Set(gaps).size, 'swiped evenly, none held up').toBe(1);
 });
 
 test('stops on a Battle tab whose Training card never shows, rather than scroll it for ever', async () => {
@@ -833,12 +900,12 @@ test.each([
 });
 
 /**
- * The same Giratina against Mamoswine with its shields spent, our fast moves seen taking it from 16% to 10% and to the
- * 4% the frame shows, steps 200ms apart, with Shadow Sneak's button painted unlit until it lights at 4%; and one Powder
- * Snow taking our 58% to 55%. One hit more finishes it, before that Powder Snow's 8 energy and the 24 of three more,
- * two landing in our longest fast move's three turns and one for the count, reach Icicle Spear's 40. With Mamoswine's
- * middle Poké Ball painted red, another is to come, and Shadow Sneak is held for it; with Mamoswine its last, the finish
- * is thrown.
+ * The same Giratina against Mamoswine with its shields spent, our fast moves seen taking it from 16%, once the battle's
+ * first read has named it, to 10% and to the 4% the frame shows, steps 200ms apart, with Shadow Sneak's button painted
+ * unlit until it lights at 4%; and one Powder Snow taking our 58% to 55%. One hit more finishes it, before that Powder
+ * Snow's 8 energy and the 24 of three more, two landing in our longest fast move's three turns and one for the count,
+ * reach Icicle Spear's 40. With Mamoswine's middle Poké Ball painted red, another is to come, and Shadow Sneak is held
+ * for it; with Mamoswine its last, the finish is thrown.
  */
 test.each([
   [
@@ -860,7 +927,7 @@ test.each([
   const { phone, clock } = scripted(
     {
       ...battleAndBack(),
-      fight: { frame: unlit(theirs(hud, 16)), lasts: { ms: 200, to: 'closer' } },
+      fight: { frame: unlit(theirs(hud, 16)), lasts: { ms: 400, to: 'closer' } },
       closer: { frame: unlit(theirs(hit, 10)), lasts: { ms: 200, to: 'charged' } },
       charged: { frame: hit, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
       minigame: minigameNoneFainted(),
@@ -888,7 +955,8 @@ test.each([
 /**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
- * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy.
+ * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the
+ * battle's start, the opponent is named as nobody.
  */
 test('reads the opponent again the moment a fuller bar says it was switched', async () => {
   const { phone, clock } = scripted(
@@ -916,12 +984,92 @@ test('reads the opponent again the moment a fuller bar says it was switched', as
 
   const newcomer = report.fights.filter(({ opponent }) => opponent.hp !== null && Math.round(opponent.hp * 100) === 43);
 
-  expect(new Set(report.fights.map(({ opponent }) => opponent.species))).toEqual(new Set(['Entei', 'Salamence']));
+  expect(new Set(report.fights.map(({ opponent }) => opponent.species))).toEqual(new Set([null, 'Entei', 'Salamence']));
   expect(newcomer.length).toBeGreaterThan(0);
-  expect(new Set(newcomer.map(({ opponent }) => opponent.species))).toEqual(new Set(['Salamence']));
+  expect(new Set(newcomer.map(({ opponent }) => opponent.species))).toEqual(new Set([null, 'Salamence']));
   expect(report.events, 'told, as a switch read the slow way is').toContain(
     'opponent: Entei fainted; sent in Salamence',
   );
+});
+
+/**
+ * Entei's second read is slow, still under way when Salamence's fuller bar says it was sent in: Salamence's own read,
+ * begun then, is back first. Entei's, back after it, is of the Pokémon before, and is dropped rather than name Entei,
+ * with its CP, over Salamence until the next read.
+ */
+test('drops a read begun before a newcomer was sent in, rather than let it stand for the newcomer', async () => {
+  const sentIn = 3500;
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-crunch-entei'), lasts: { ms: sentIn, to: 'newcomer' } },
+      newcomer: { frame: fixture('battle-crunch-salamence'), lasts: { ms: 4000, to: 'won' } },
+    },
+    'fight',
+    (at) => (at < sentIn ? 1000 : OCR_MS),
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const of = (species: string) => report.fights.filter(({ opponent }) => opponent.species === species);
+  const newcomer = report.fights.filter(({ opponent }) => opponent.hp !== null && Math.round(opponent.hp * 100) === 43);
+  const enteiCp = of('Entei')[0]?.opponent.cp;
+
+  expect(enteiCp).toEqual(expect.any(Number));
+  expect(of('Salamence').length).toBeGreaterThan(0);
+  expect(new Set(newcomer.map(({ opponent }) => opponent.species))).toEqual(new Set([null, 'Salamence']));
+  expect(newcomer.map(({ opponent }) => opponent.cp)).not.toContain(enteiCp);
+  expect(report.events.filter((line) => line.startsWith('opponent: ') && !line.includes('shielded'))).toEqual([
+    'opponent: Entei fainted; sent in Salamence',
+  ]);
+});
+
+/**
+ * A battle against Sneasel ends with its only read still under way, back once the menus are showing. It is of the
+ * battle before, and is dropped rather than name Sneasel as the next battle's opponent, Entei, until Entei's own read.
+ */
+test('drops a read still under way as its battle ends, rather than carry it into the next', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      sneasel: { frame: fixture('battle-deoxys'), lasts: { ms: 500, to: 'won' } },
+      fight: { frame: fixture('battle-crunch-entei'), lasts: { ms: 4000, to: 'won' } },
+    },
+    'sneasel',
+    (at) => (at < 500 ? 1000 : OCR_MS),
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 2,
+    },
+    clock,
+    report,
+  );
+
+  const named = new Set(report.fights.map(({ opponent }) => opponent.species));
+
+  expect(named).toContain('Entei');
+  expect(named).not.toContain('Sneasel');
+  expect(report.events.filter((line) => line.startsWith('opponent: ') && !line.includes('shielded'))).toEqual([]);
 });
 
 /**
@@ -1181,7 +1329,8 @@ test.each([
 
 /**
  * Latias leads, from the party screen, and faints to Glaceon; the switch prompt's first card sends in Mamoswine, the
- * next of the party. No frame here shows a move label or our species, so the party is all that names either.
+ * next of the party. No frame here shows a move label or our species, so the party is all that names either. Glaceon
+ * is named once the battle's first read is back.
  */
 test('names the lead from the party, and the next of it after a faint', async () => {
   const { phone, clock } = scripted(
@@ -1210,7 +1359,7 @@ test('names the lead from the party, and the next of it after a faint', async ()
 
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
-  expect([...named]).toEqual(['Latias against Glaceon', 'Mamoswine against Glaceon']);
+  expect([...named]).toEqual(['Latias against null', 'Latias against Glaceon', 'Mamoswine against Glaceon']);
 });
 
 /**
@@ -1291,7 +1440,7 @@ test('counts a faint off our Poké Balls where no switch prompt is answered for 
   expect(report.events.filter((line) => line.startsWith('own: ') && line.includes('fainted'))).toEqual([
     'own: Latias fainted: one fewer of our Poké Balls',
   ]);
-  expect([...named]).toEqual(['Latias against Glaceon', 'Mamoswine against Glaceon']);
+  expect([...named]).toEqual(['Latias against null', 'Latias against Glaceon', 'Mamoswine against Glaceon']);
 });
 
 /**
@@ -1651,8 +1800,9 @@ test('says each side’s CP and HP, and how many shields we have left', async ()
   ]);
 
   // One frame of the fight shown throughout lands no hit, and the drop to 9% comes across the prompt, which pauses it.
+  // Nothing is counted until the battle's first read is back to name the opponent.
   expect(new Set(report.fights.map(({ energy }) => energy && `${energy.energy} by ${energy.fast}`))).toEqual(
-    new Set(['0 by Wing Attack']),
+    new Set([undefined, '0 by Wing Attack']),
   );
 });
 
