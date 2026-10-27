@@ -373,10 +373,13 @@ if (command === 'run') {
     video = undefined;
 
     if (fd !== undefined) {
+      // A close that fails is told apart from a write that did: what was written before it may be whole.
+      let closeFailed: string | undefined;
+
       try {
         closeSync(fd);
       } catch (error) {
-        videoFailed ??= `on closing: ${error instanceof Error ? error.message : String(error)}`;
+        closeFailed = error instanceof Error ? error.message : String(error);
       }
 
       fd = undefined;
@@ -394,6 +397,10 @@ if (command === 'run') {
             ? `kept the screen in ${videoFile}`
             : `kept the screen in ${videoFile} only until a write failed ${videoFailed}`,
         );
+      }
+
+      if (closeFailed !== undefined) {
+        console.error(`closing ${videoFile} failed: ${closeFailed}`);
       }
     }
   };
