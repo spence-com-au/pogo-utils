@@ -78,21 +78,22 @@ for text and done every few seconds.
 - **[`play.mts`](play.mts)**' `Player` turns a frame's state into an action: a swipe, a tap or a wait. A swipe across
   the field fires a fast move, about six a second. A charged move is tapped the moment the chosen button lights; with
   none chosen, whichever lit first. A state must hold for a few frames before it is answered, because a prompt sliding
-  in matches for a frame or two on its own. A tap isn't repeated within a second. A charged move is tapped in a burst of
-  four, and again every second its button stays lit. The throw waits for the fast move under way, its button lit
-  meanwhile, but a dropped tap looks the same, and a Pokémon low on HP can faint while it waits. Nothing is swiped for
-  0.7s after a charged-move tap, since a swipe straight after one could cost the throw. A bench card to switch to is
-  tapped ahead of a lit move, since the switch is made to keep that move's energy.
+  in matches for a frame or two on its own. A tap isn't repeated within a second, but a charged move's is repeated every
+  second its button stays lit. The throw waits for the fast move under way, its button lit meanwhile, but a dropped tap
+  looks the same, and a Pokémon low on HP can faint while it waits. Nothing is swiped for 0.7s after a charged-move tap,
+  since a swipe straight after one could cost the throw. A bench card to switch to is tapped ahead of a lit move, since
+  the switch is made to keep that move's energy.
 - **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts)), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
   ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
-  report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
-  touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included. Over a Training
-  battle on a Pixel 4 XL, the time a swipe takes beyond its own 80ms fell from a median of 30ms (p95 42ms) with `input`
-  to 12ms (p95 19ms), and a tap's from 23ms to 3ms. Part of the tail was the held shell answering each command in two
-  writes, the second waiting up to 40ms on the `adb` client's delayed ACK of the first. The shell exiting, as it does
-  when the phone is unplugged, stops the run with the command it was sending, cut short, as
+  report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. `run` sends each
+  charged-move tap as a burst of four, 50ms apart, paced the same way, so a tap the game drops costs no second's wait.
+  The phone's own touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included.
+  Over a Training battle on a Pixel 4 XL, the time a swipe takes beyond its own 80ms fell from a median of 30ms (p95
+  42ms) with `input` to 12ms (p95 19ms), and a tap's from 23ms to 3ms. Part of the tail was the held shell answering
+  each command in two writes, the second waiting up to 40ms on the `adb` client's delayed ACK of the first. The shell
+  exiting, as it does when the phone is unplugged, stops the run with the command it was sending, cut short, as
   `adb shell print -nu3 '\0014\0000\0000\0000\0010\0000\0001\0001\0000\00…: adb shell exited; is the phone still connected?`,
   and a phone that stops answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type

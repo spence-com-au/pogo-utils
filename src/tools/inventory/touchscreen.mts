@@ -144,8 +144,8 @@ export function swipe(from: readonly [number, number], to: readonly [number, num
 }
 
 /**
- * How long apart the taps of a burst are, in milliseconds: two frames at 60Hz and more than one at 30Hz, so that the game
- * sees each tap as one of its own rather than a touch held.
+ * How long apart the taps of a burst are, in milliseconds: three frames at 60Hz and more than one at 30Hz, each tap's
+ * down and up written back to back, so that no two taps fall in the one frame, to be merged into one or missed.
  */
 const BURST_MS = 50;
 

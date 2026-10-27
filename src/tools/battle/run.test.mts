@@ -76,12 +76,19 @@ function scripted(
   scenes: Record<string, Scene>,
   start: string,
   ocrMs: (at: number) => number = () => OCR_MS,
-): { phone: Phone; clock: Clock; taps: string[]; strokes: { scene: string; from: Point; to: Point; at: number }[] } {
+): {
+  phone: Phone;
+  clock: Clock;
+  taps: string[];
+  bursts: { scene: string; times: number }[];
+  strokes: { scene: string; from: Point; to: Point; at: number }[];
+} {
   let time = 0;
   let current = start;
   let entered = 0;
   let swiped = 0;
   const taps: string[] = [];
+  const bursts: { scene: string; times: number }[] = [];
   const strokes: { scene: string; from: Point; to: Point; at: number }[] = [];
 
   // Screenshots taken and OCR begun, not yet handed back: each takes time on the run's clock, a screenshot a second and
@@ -170,10 +177,11 @@ function scripted(
         developing.push({ due: time + 1000, deliver: () => resolve(screenshot ?? frame) }),
       );
     },
-    tap: async ([x, y]) => {
+    tap: async ([x, y], times = 1) => {
       await advance(30);
       const { tap } = scene();
       taps.push(current);
+      bursts.push({ scene: current, times });
 
       if (tap && Math.abs(tap.at[0] - x) < 0.05 && Math.abs(tap.at[1] - y) < 0.04) {
         go(tap.to);
@@ -192,7 +200,7 @@ function scripted(
 
   const clock: Clock = { now: () => time, sleep: advance };
 
-  return { phone, clock, taps, strokes };
+  return { phone, clock, taps, bursts, strokes };
 }
 
 /** One battle and the way back round to the next, as recorded against Blanche in the Ultra League. */
@@ -217,8 +225,9 @@ function battleAndBack(): Record<string, Scene> {
   };
 }
 
+/** The menus' taps are one each, and only the charged move's is a burst, which a lost tap there costs a throw. */
 test('plays a battle from the Battle tab and taps its way back round', async () => {
-  const { phone, clock, taps } = scripted(battleAndBack(), 'training');
+  const { phone, clock, taps, bursts } = scripted(battleAndBack(), 'training');
 
   const battles = await run(
     phone,
@@ -234,6 +243,7 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
 
   expect(battles).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(['training', 'intro', 'league', 'party', 'charged', 'result']);
+  expect(bursts.map(({ times }) => times)).toEqual([1, 1, 1, 1, 4, 1]);
 });
 
 /** The map's Poké Ball, BATTLE on the main menu, and the Battle tab scrolled from GO Battle League to Training. */
@@ -427,7 +437,7 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     stuck: { frame: fixture('other-loss') },
     next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
   };
-  const { phone, clock, taps } = scripted(scenes, 'party');
+  const { phone, clock, taps, bursts } = scripted(scenes, 'party');
   const sceneOf = (frame: Image) => Object.keys(scenes).find((name) => scenes[name]?.frame === frame);
   const report = recorder();
   const kept: [string | undefined, number, string][] = [];
@@ -452,6 +462,10 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     ['again', 8240, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
+  expect(
+    bursts.filter(({ scene }) => scene === 'fainted' || scene === 'again').map(({ times }) => times),
+    'a card tapped once, never switched to twice',
+  ).toEqual([1, 1]);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([
     "own: Zeraora fainted; sending in Gyarados: the only one safe from Glaceon's moves",
   ]);
@@ -604,7 +618,7 @@ test('aims the minigame’s swipes at its bubbles', async () => {
  * the one throw twice. Whether the tap took or not, it is tried again each second the button stays lit, and told once.
  */
 test.each([
-  ['waits out a throw', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'queued', 'result']],
+  ['retaps a throw still waiting', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'queued', 'result']],
   ['retries a tap that did not take', undefined, ['fight', 'fight', 'fight', 'fight', 'result']],
 ])('%s with the button still lit, telling the throw once', async (_, tap, tapped) => {
   const { phone, clock, taps } = scripted(

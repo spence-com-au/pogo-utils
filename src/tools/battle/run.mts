@@ -141,10 +141,12 @@ const PLAYING_MS = 3_500;
 const RELIT_MS = 1_000;
 
 /**
- * How many times over a charged move's button is tapped at once, a burst taking about 150ms. A tap the game drops costs
- * the second `Player` waits before tapping a button still lit again, where a Pokémon low on HP may have none to spare,
- * and tapping the button more has been seen to cost nothing: retapped a second on, a throw waiting was still one throw.
- * Swipes are what cost a throw, and none are made for a while after the tap.
+ * How many times over a charged move's button is tapped at once, a burst taking about 150ms: `Player` answers a lit
+ * button with one tap, and it is made a burst here, where the phone is touched. A tap the game drops costs the second
+ * `Player` waits before tapping a button still lit again, where a Pokémon low on HP may have none to spare. Tapping the
+ * button more has not yet been seen to cost a throw: retapped a second on, a throw waiting was still one throw, though
+ * taps 50ms apart are untried. What looked to cost one was a swipe straight after the tap, and none is made for a while
+ * after it.
  */
 const BURST = 4;
 
