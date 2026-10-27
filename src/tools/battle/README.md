@@ -32,6 +32,17 @@ flowchart LR
 - **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
   decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen` keeps one recording going after
   another, since `screenrecord` stops after 180s, and always answers the latest frame.
+- **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
+  which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
+  until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
+  composited it. The stamps were read off about 600 decoded frames and set against when each arrived, the phone's clock
+  taken against the computer's from the quickest of 40 round trips of `echo $EPOCHREALTIME` through a held `adb shell`,
+  to within 0.3ms. The stamp costs the phone a drawing pass of its own, so the plain stream may be a little quicker.
+- **What is left of it:** about a frame is `ffmpeg` waiting for the next picture to begin, since raw H.264 doesn't mark
+  where a picture ends. On a screen that keeps moving that is 33ms, but a change the screen then holds still isn't seen
+  until something next moves, since `screenrecord` sends nothing for a still screen. Cutting it needs a source that
+  frames its pictures, as scrcpy's server does with each packet's size. `adb`'s reads don't: 13 of 612 carried the tail
+  of a picture, up to 5ms after its start, so a marker added after each read would cut one picture in fifty in two.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
