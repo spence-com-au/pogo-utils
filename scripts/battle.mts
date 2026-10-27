@@ -212,7 +212,7 @@ if (command === 'run') {
   await device.check();
   useEngine(tesseractCli);
 
-  // Which move is worth the most, out of the game master `pnpm inventory` downloads and caches for a week.
+  // Which move is worth the most per energy, out of the game master `pnpm inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
   const icons = await silhouettes(data);
   const types = await typeIcons(data);
