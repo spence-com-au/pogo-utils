@@ -186,11 +186,17 @@ export function panel(fight: Fight | undefined, width: number): string {
 const DRAW_MS = 100;
 
 /**
- * How often the phone is looked at for a new frame, in milliseconds, and drawn alone if there is one: twice
- * `screenrecord`'s 30 a second, so each frame shows within half a frame of coming. Drawn with the rest it was held to
- * `DRAW_MS`, and stood still through every wait of the run's that sends no status, a menu's 1.5s among them.
+ * How often the phone is looked at for a new frame, in milliseconds, which is drawn alone if there is one; a redraw of
+ * the rest in between keeps the frame drawn last. Drawn only with the rest, it stood still through every wait of the
+ * run's that sends no status, a menu's 1.5s among them.
+ *
+ * Ten a second rather than every frame `screenrecord` sends. Replaying a 208s GO Battle League recording through `run`
+ * in Ghostty, all 30 a second left the terminal up to 12 frames behind and too busy to read the rest of what was
+ * written, and stderr, which Node writes to a terminal synchronously, held the run up for 5.0s in all, 181ms at once:
+ * the slowest 1% of frames waited 160ms to be read, against 89ms with no picture. Ten a second it was never more than
+ * one frame behind, no write was held up more than 1.6ms, and the slowest 1% waited 86ms to 97ms, against 84ms.
  */
-const FRAME_MS = 1000 / 60;
+const PICTURE_MS = 100;
 
 /** Events kept of each kind: more than any terminal is tall. */
 const KEPT_EVENTS = 1_000;
@@ -311,9 +317,10 @@ export function live(
   let pictured: { image: Image; rows: number; beside: number } | undefined;
 
   // The frame to draw down the left edge and the columns it takes with the gap, or none where there is no frame yet or
-  // the table would be narrower than `TABLE_MIN` beside it.
-  const fit = (columns: number, rows: number) => {
-    const image = phone?.frame();
+  // the table would be narrower than `TABLE_MIN` beside it. The `latest` frame only for a look, and otherwise the one
+  // last drawn while there is one, so that redrawing the rest never draws the phone more often than `PICTURE_MS`.
+  const fit = (columns: number, rows: number, latest = false) => {
+    const image = latest || !pictured ? phone?.frame() : pictured.image;
     const beside = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
 
     return image && beside > 0 && columns - beside >= TABLE_MIN ? { image, beside } : undefined;
@@ -346,7 +353,7 @@ export function live(
     ].slice(0, rows);
   };
 
-  const draw = () => {
+  const draw = (latest = false) => {
     clearTimeout(pending);
     pending = undefined;
     drawnAt = Date.now();
@@ -362,7 +369,7 @@ export function live(
     }
 
     const { columns, rows } = stream;
-    const { image: shown, beside } = fit(columns, rows) ?? { beside: 0 };
+    const { image: shown, beside } = fit(columns, rows, latest) ?? { beside: 0 };
     let picture = '';
 
     if (phone && shown && (shown !== pictured?.image || rows !== pictured.rows)) {
@@ -403,7 +410,7 @@ export function live(
       return;
     }
 
-    const fitted = fit(stream.columns, stream.rows);
+    const fitted = fit(stream.columns, stream.rows, true);
 
     if (fitted && pictured && stream.rows === pictured.rows && fitted.beside === pictured.beside) {
       if (fitted.image !== pictured.image) {
@@ -411,11 +418,11 @@ export function live(
         pictured = { image: fitted.image, rows: stream.rows, beside: fitted.beside };
       }
     } else if (fitted || pictured) {
-      draw();
+      draw(true);
     }
   };
 
-  const looking = phone && setInterval(look, FRAME_MS).unref();
+  const looking = phone && setInterval(look, PICTURE_MS).unref();
 
   stream.on('resize', draw);
 

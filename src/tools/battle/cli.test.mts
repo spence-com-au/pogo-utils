@@ -49,12 +49,21 @@ test('refuses a flag it does not know', async () => {
 
 test.each([
   ['record', ['--verbose', 'out.h264'], '--verbose'],
+  ['record', ['--no-graphics', 'out.h264'], '--no-graphics'],
   ['run', ['--leader', 'spark', '--league', 'great', '--seconds', '5'], '--seconds'],
 ])('refuses a flag %s does not act on', async (command, args, flag) => {
   const { code, stderr } = await battle(command, ...args);
 
   expect(code).toBe(1);
   expect(stderr).toContain(`${command} does not act on ${flag}`);
+});
+
+test('run acts on --no-graphics', async () => {
+  // Refused for the league it lacks, which is asked after the flags each command acts on.
+  const { code, stderr } = await battle('run', '--no-graphics', '--leader', 'spark');
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('--league takes one of great, ultra, master');
 });
 
 test.each([
