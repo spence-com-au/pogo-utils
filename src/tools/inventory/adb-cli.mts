@@ -136,8 +136,10 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
           current = { resolve, reject, timer };
 
           // `echo` rather than `printf`, which is no builtin of the phone's shell but a process of its own, 14ms a call.
-          // The marker on a line of its own, so that a `#` in the command comments out none of it.
-          child.stdin.write(`${args.join(' ')}\ns=$?; echo; echo ${marker} $s\n`);
+          // The marker on a line of its own, so that a `#` in the command comments out none of it. One `echo` for the
+          // newline before it and the marker both, since two small writes in a row can wait on the `adb` client's
+          // delayed ACK of the first: 1 command in 6 answered 40ms late, through 300 swipes on a Pixel 4 XL, as two.
+          child.stdin.write(`${args.join(' ')}\ns=$?; echo "\n${marker} $s"\n`);
         }),
     );
 
