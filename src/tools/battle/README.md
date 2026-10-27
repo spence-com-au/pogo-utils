@@ -81,7 +81,9 @@ for text and done every few seconds.
   answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
-  length. Where none are found, rows are swept instead.
+  length. Where none are found, rows are swept instead. `Player` swipes the minigame from a charged-move tap until the
+  throw plays, and from when the run finds a throw [playing](#the-run-loop) that no tap began, as where the opponent's
+  move came first.
 
 ### Between battles
 
@@ -111,7 +113,15 @@ for text and done every few seconds.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
 5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
    whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
-6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait.
+6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait. A charged move tapped is
+   logged as thrown, `threw Fly`, and its stat changes counted only once it plays. In the user's GO Battle League
+   recordings, an opponent throwing on the same turn could drop our tap, its button lighting again with the energy kept,
+   or hold our throw back until after theirs, its minigame then coming with no tap. So a throw is taken to be playing
+   once the fight has shown none of our buttons lit for 3.5s, as its minigame does throughout: every minigame there ran
+   5.1s or more, and nothing else after a tap more than 2.4s. Its bubbles are no sign, Fly's being found on its own lit
+   button and on the sky. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the
+   tap dropped, logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw
+   retried. A faint or a switch of ours before it plays drops it too.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
    `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is
@@ -246,9 +256,9 @@ What goes into "the hardest move the opponent could be throwing":
   - Once the banner has shown both of its moves, only those two.
 - **What it can afford.** Only moves costing no more than its counted energy, plus one fast move's worth for a hit the
   count missed ([below](#the-opponents-energy)).
-- **Stat stages.** Their attack and our defense, as the charged moves thrown so far have moved them: ours as we throw
-  them, theirs off the banners. Only changes that always happen are counted. A side's stages reset when its Pokémon
-  leaves the field. A shield stops the damage, not the stat change.
+- **Stat stages.** Their attack and our defense, as the charged moves thrown so far have moved them: ours as each of our
+  throws [plays](#the-run-loop), theirs off the banners. Only changes that always happen are counted. A side's stages
+  reset when its Pokémon leaves the field. A shield stops the damage, not the stat change.
 
 **Anything unknown takes the shield:** either side's species or CP unread, a CP over the cap (so misread), our HP
 unread, or the cap itself not yet known. A shield spent early costs less than a Pokémon lost. Each shield taken or kept

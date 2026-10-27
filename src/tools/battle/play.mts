@@ -67,6 +67,13 @@ export interface Choices {
   /** Whether a shield offered is taken: declined, the prompt is left to run out. */
   shield?: boolean;
 
+  /**
+   * Whether the frame is a minigame that no tap here began, swiped as one from then until the throw plays: a throw the
+   * opponent's came ahead of plays after theirs with no tap of its own, and a frame of no fight early in a minigame ends
+   * the one a tap began.
+   */
+  minigame?: boolean;
+
   /** Which of the switch prompt's cards to send in. */
   card?: Point;
 
@@ -181,7 +188,7 @@ export class Player {
   next(
     state: State,
     now: number,
-    { ready = [], best, shield = true, card = this.#taps.switch, bench, bubbles }: Choices = {},
+    { ready = [], best, shield = true, minigame = false, card = this.#taps.switch, bench, bubbles }: Choices = {},
   ): Action {
     this.#streak = state === this.#state ? this.#streak + 1 : 1;
     this.#state = state;
@@ -199,9 +206,11 @@ export class Player {
     }
 
     // A charged move thrown is the minigame next, inside frames that read as `battle` throughout, and over once the
-    // throw itself plays, which does not.
+    // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
     if (state !== 'battle' && state !== 'charged') {
       this.#minigame = false;
+    } else if (minigame) {
+      this.#minigame = true;
     }
 
     const throwable = best === undefined ? ready : ready.filter(([x]) => x === best);

@@ -121,6 +121,22 @@ const NEWCOMER = 0.1;
 const THROWN = 3;
 
 /**
+ * How long the fight must show none of our charged-move buttons lit, unbroken, for a throw tapped to be playing, in
+ * milliseconds: its minigame draws none, from `Get Ready!` on. Over the 11 GO Battle League battles the user recorded
+ * on a Pixel 8 Pro, every minigame ran 5.1s at the least and mostly 8–11s, and nothing else after a tap ran longer than
+ * 2.4s, the banner after the opponent's move the longest. The minigame's bubbles are no sign of their own: Fly's are
+ * found on its own lit button in `charged-pixel8-fly`, and on the sky behind `battle-banner-pixel8-charizard`.
+ */
+const PLAYING_MS = 3_500;
+
+/**
+ * How long the button of a throw tapped must stay lit and untapped, once the opponent's move or any other frame that
+ * is not the fight's has come between, for the tap to have been dropped, in milliseconds. A throw the opponent's came
+ * ahead of, and that plays after theirs, shows its button lit for a tenth of a second as the HUD comes back.
+ */
+const RELIT_MS = 1_000;
+
+/**
  * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
  * the Pixel 4 XL, the bench showed the switch by 135.5s and the HUD, hidden behind a banner meanwhile, came back naming
  * the newcomer at 136.3s; a read before then could still find the Pokémon tapped away from.
@@ -399,7 +415,7 @@ export async function run(
   let prompted = 0;
   let unprompted = 0;
 
-  // The colour of the bubbles the minigame now showing draws, that of the move last thrown, where its type is known.
+  // The colour of the bubbles the minigame now showing draws, that of the move last tapped, where its type is known.
   let bubbleColour: Colour | undefined;
   let seen: Sighting = unseen();
   let readAt = -Infinity;
@@ -419,6 +435,22 @@ export async function run(
 
   // Our charged move last thrown, which a shield the opponent takes is taken against.
   let thrown: string | undefined;
+
+  // Our charged move tapped and not yet seen to play, by its button's x, and why it was tapped: told as thrown, and its
+  // stats moved, only once it plays. The opponent's move on the same turn can drop the tap, its button lighting again
+  // with the energy kept, or hold the throw back until after theirs, its minigame coming with no tap of its own; and a
+  // faint of ours before it plays loses it. Since when the fight has shown none of our buttons lit, unbroken, as a
+  // minigame does throughout, and since when the button tapped has shown lit again, untapped.
+  let pending: { move: string | undefined; x: number; why: string | undefined } | undefined;
+  let unlit: number | undefined;
+  let relit: number | undefined;
+
+  const drop = (why: string) => {
+    if (pending) {
+      log(`${pending.move ?? 'our charged move'} not thrown`, 'own', why);
+      pending = undefined;
+    }
+  };
 
   // The attack and defense stages of the Pokémon out on each side, as the charged moves thrown have moved them: ours
   // from each we throw, theirs off the banner after each of their throws.
@@ -492,6 +524,7 @@ export async function run(
     }
 
     last = state;
+    unlit = state === 'battle' ? (unlit ?? clock.now()) : undefined;
 
     if (battling) {
       const now = clock.now();
@@ -515,7 +548,7 @@ export async function run(
         // which puts up no prompt once there is no shield to answer it with.
         const before = off.at(-1)?.state;
         const what = {
-          minigame: `the minigame for our ${thrown ?? 'charged move'}`,
+          minigame: `the minigame for our ${(pending ? pending.move : thrown) ?? 'charged move'}`,
           shield: 'the shield prompt',
           switch: 'the switch prompt',
           other:
@@ -608,6 +641,7 @@ export async function run(
         log(`battle ${battles + 1} started`);
         offered = undefined;
         thrown = undefined;
+        pending = undefined;
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
@@ -664,12 +698,14 @@ export async function run(
         left = counted;
       }
 
-      // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved. A switch of
-      // ours under way is overtaken by the faint, whatever the HUD shows next being the card sent in. Which of the two
-      // fainted cannot be told, the CP that would say whether the switch took being cleared with the HUD, so neither is
-      // trusted to have banked: the one switched from loses what the switch banked, which would have it sent back in to
-      // finish if it was the one that fainted, and the one switched to gets back what it had.
+      // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved, and a throw
+      // of the one before's still to play never will. A switch of ours under way is overtaken by the faint, whatever the
+      // HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would say whether the
+      // switch took being cleared with the HUD, so neither is trusted to have banked: the one switched from loses what
+      // the switch banked, which would have it sent back in to finish if it was the one that fainted, and the one
+      // switched to gets back what it had.
       if (state === 'switch') {
+        drop(`${seen.own ?? 'ours'} fainted first`);
         seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
         steady.forget('own');
         stages = { ...stages, own: NO_STAGES };
@@ -786,6 +822,7 @@ export async function run(
         const gone = activeOf(data, party, fainted, seen.moves.values(), sent);
 
         if (gone !== undefined) {
+          drop(`${seen.own ?? party[gone] ?? 'ours'} fainted first`);
           fainted.add(gone);
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };
 
@@ -860,6 +897,22 @@ export async function run(
       const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
+
+      // The throw pending plays once its minigame has run `PLAYING_MS`, `Player` swiping it as one where the opponent's
+      // move, or a frame of no fight early in the minigame, ended the wait for it that its tap began. Its button lit
+      // again for `RELIT_MS` once that wait has ended, and not tapped again, is the tap dropped, its energy kept.
+      const playing = pending !== undefined && unlit !== undefined && clock.now() - unlit >= PLAYING_MS;
+      relit = pending && !player.minigame && lit.includes(pending.x) ? (relit ?? clock.now()) : undefined;
+
+      if (pending && playing) {
+        const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
+        stages = { own: user, their: target };
+        thrown = pending.move;
+        log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
+        pending = undefined;
+      } else if (relit !== undefined && clock.now() - relit >= RELIT_MS) {
+        drop('its button lit again with no minigame');
+      }
 
       // A lit move that would finish the opponent goes now, whatever is held for: a turn waited is a hit taken. Live, a
       // Swampert held for Earthquake while Hydro Cannon could have finished a Giratina at 12%, and fainted first. Not
@@ -1092,14 +1145,13 @@ export async function run(
       }
 
       const card = prompt?.card;
-      const bubbles = player.minigame && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
-
-      // A charged move tapped before the last one's throw has played is that throw retried, told and counted once.
-      const pending = player.minigame;
+      const bubbles =
+        (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
         ready: spared === undefined ? ready : [],
         best,
         shield,
+        minigame: playing,
         ...(card && { card }),
         ...(counter && { bench: counter.at }),
         ...(bubbles && { bubbles }),
@@ -1113,14 +1165,16 @@ export async function run(
       if (action.kind === 'swipe') {
         await phone.swipe(action.from, action.to, action.ms);
       } else if (action.kind === 'tap') {
-        if (action.what === 'charged' && pending) {
-          log(`tap ${thrown ?? 'a charged move'} again`, 'own', 'its button still lit');
+        // A charged move tapped again before its throw has played is that throw retried, told and counted once; another
+        // tapped instead is a throw of its own.
+        if (action.what === 'charged' && pending?.x === action.at[0]) {
+          log(`tap ${pending.move ?? 'a charged move'} again`, 'own', 'its button still lit');
         } else if (action.what === 'charged') {
-          thrown = seen.moves.get(action.at[0]);
+          const move = seen.moves.get(action.at[0]);
+
+          drop(`${move ?? 'another'} tapped instead`);
           sparing = undefined;
-          const [user, target] = afterThrow(data.combat[thrown ?? ''], stages.own, stages.their);
-          stages = { own: user, their: target };
-          log(`threw ${thrown ?? 'a charged move'}`, 'own', action.at[0] === best ? throwing?.why : undefined);
+          pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!offered?.taken) {
@@ -1133,6 +1187,7 @@ export async function run(
           const to = party[counter.slot] ?? '?';
           const keeping = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
 
+          drop(`switched to ${to} first`);
           log(`switching to ${to} against ${seen.opponent ?? 'the opponent'}${keeping}`, 'own', counter.why);
           switching = {
             from: slot,
