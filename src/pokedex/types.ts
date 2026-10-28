@@ -12,28 +12,31 @@ import { POGO_ASSETS } from './icons.js';
 export type Types = Readonly<Record<string, readonly string[]>>;
 
 /**
- * The game's own type colours, as its type icons and the bands on a Pokémon's detail screen paint them. Keyed by the
- * type's name as the game master spells it.
+ * The game's own type colours, as its type icons and the bands on a Pokémon's detail screen paint them, each beside the
+ * ink its name is written in on it: white or black, whichever stands further from the colour. Black rather than a
+ * softer near-black, because Fighting sits mid-way, where white reaches 4.45:1 and even `#111` less. Written out
+ * rather than worked out in the page, since both halves are constants; `types.test.ts` holds the arithmetic that
+ * checks every ink clears 4.5:1. Keyed by the type's name as the game master spells it.
  */
-export const TYPE_COLOURS: Readonly<Record<string, string>> = {
-  Normal: '#a0a29f',
-  Fire: '#fba54c',
-  Water: '#539ddf',
-  Grass: '#5fbd58',
-  Electric: '#f2d94e',
-  Ice: '#75d0c1',
-  Fighting: '#d3425f',
-  Poison: '#b763cf',
-  Ground: '#da7c4d',
-  Flying: '#a1bbec',
-  Psychic: '#fa8581',
-  Bug: '#92bc2c',
-  Rock: '#c9bb8a',
-  Ghost: '#5f6dbc',
-  Dragon: '#0c69c8',
-  Dark: '#595761',
-  Steel: '#5695a3',
-  Fairy: '#ee90e6',
+export const TYPE_PAINT: Readonly<Record<string, { colour: string; ink: '#ffffff' | '#000000' }>> = {
+  Normal: { colour: '#a0a29f', ink: '#000000' },
+  Fire: { colour: '#fba54c', ink: '#000000' },
+  Water: { colour: '#539ddf', ink: '#000000' },
+  Grass: { colour: '#5fbd58', ink: '#000000' },
+  Electric: { colour: '#f2d94e', ink: '#000000' },
+  Ice: { colour: '#75d0c1', ink: '#000000' },
+  Fighting: { colour: '#d3425f', ink: '#000000' },
+  Poison: { colour: '#b763cf', ink: '#000000' },
+  Ground: { colour: '#da7c4d', ink: '#000000' },
+  Flying: { colour: '#a1bbec', ink: '#000000' },
+  Psychic: { colour: '#fa8581', ink: '#000000' },
+  Bug: { colour: '#92bc2c', ink: '#000000' },
+  Rock: { colour: '#c9bb8a', ink: '#000000' },
+  Ghost: { colour: '#5f6dbc', ink: '#ffffff' },
+  Dragon: { colour: '#0c69c8', ink: '#ffffff' },
+  Dark: { colour: '#595761', ink: '#ffffff' },
+  Steel: { colour: '#5695a3', ink: '#000000' },
+  Fairy: { colour: '#ee90e6', ink: '#000000' },
 };
 
 /**
@@ -43,34 +46,11 @@ export const TYPE_COLOURS: Readonly<Record<string, string>> = {
  */
 export const NO_TYPE = 'var(--go)';
 
-export const colourOf = (type: string | undefined) => (type === undefined ? NO_TYPE : (TYPE_COLOURS[type] ?? NO_TYPE));
+export const colourOf = (type: string | undefined) =>
+  type === undefined ? NO_TYPE : (TYPE_PAINT[type]?.colour ?? NO_TYPE);
 
-/** WCAG's relative luminance of a `#rrggbb` colour. */
-function luminance(hex: string) {
-  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => {
-    const channel = parseInt(hex.slice(at, at + 2), 16) / 255;
-
-    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** Black rather than a softer near-black: Fighting sits mid-way, where white reaches 4.45:1 and even `#111` less. */
-export const DARK_INK = '#000000';
-
-/** The ink a type's name is written in on its own colour: white or black, whichever stands further from it. */
-export function inkOn(type: string) {
-  const colour = TYPE_COLOURS[type];
-
-  if (colour === undefined) {
-    return '#fff';
-  }
-
-  const light = luminance(colour);
-
-  return 1.05 / (light + 0.05) >= (light + 0.05) / (luminance(DARK_INK) + 0.05) ? '#fff' : DARK_INK;
-}
+/** The ink a type's name is written in on its own colour, and white for a type the table does not hold. */
+export const inkOn = (type: string) => TYPE_PAINT[type]?.ink ?? '#ffffff';
 
 /** The round icon `pogo_assets` holds for a type, which is what the battle tool reads a type off the screen by too. */
 export const typeIcon = (type: string) => `${POGO_ASSETS}Images/Types/POKEMON_TYPE_${type.toUpperCase()}.png`;

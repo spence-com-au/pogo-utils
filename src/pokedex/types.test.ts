@@ -5,7 +5,7 @@
 
 import { expect, test } from 'vitest';
 
-import { DARK_INK, inkOn, TYPE_COLOURS } from './types.js';
+import { inkOn, TYPE_PAINT } from './types.js';
 
 /** WCAG's contrast ratio between two `#rrggbb` colours, written out here rather than imported from what it checks. */
 function contrast(a: string, b: string) {
@@ -25,13 +25,13 @@ function contrast(a: string, b: string) {
 }
 
 test('every type writes its name in an ink that reads at 4.5:1 on its colour', () => {
-  for (const [type, colour] of Object.entries(TYPE_COLOURS)) {
-    const ink = inkOn(type) === '#fff' ? '#ffffff' : DARK_INK;
+  for (const [type, { colour }] of Object.entries(TYPE_PAINT)) {
+    const ink = inkOn(type);
 
     expect(contrast(ink, colour), type).toBeGreaterThanOrEqual(4.5);
   }
 
   // The two ends of the palette, so a rule answering one ink for every type cannot pass.
-  expect(inkOn('Electric')).toBe(DARK_INK);
-  expect(inkOn('Dragon')).toBe('#fff');
+  expect(inkOn('Electric')).toBe('#000000');
+  expect(inkOn('Dragon')).toBe('#ffffff');
 });

@@ -196,13 +196,14 @@ function Detail({
   const nextRef = useRef<HTMLButtonElement>(null);
 
   /**
-   * The one place stepping still drops the focus: at either end of the list, where the arrow just pressed is disabled
-   * and hidden, and the focus falls out of the dialog with the arrow keys it carries. Handed to the arrow that is left,
-   * which is where a reader at the end of the list goes next.
+   * A step can still take away the control that had the focus: the arrow just pressed, disabled at either end of the
+   * list, or the Shiny toggle, which a species with no shiny does not draw. The focus then falls out of the dialog,
+   * and the arrow keys with it, so it is handed to an arrow — the previous one at the end of the list and the next one
+   * anywhere else, which is where a reader stepping through goes.
    */
   useEffect(() => {
-    if (document.activeElement === document.body && (first || last)) {
-      (first ? nextRef : prevRef).current?.focus();
+    if (document.activeElement === document.body && prevRef.current?.closest('dialog')?.open) {
+      (last ? prevRef : nextRef).current?.focus();
     }
   }, [entry.dex, first, last]);
   const shiny = entry.shiny && (toggled?.dex === entry.dex ? toggled.shiny : shinyFirst);
@@ -302,14 +303,18 @@ function Detail({
           </dd>
         </dl>
 
-        {/* A species not in the game cannot be in the storage a search string is typed into, so it gets no search. */}
+        {/*
+         * A species not in the game cannot be in the storage a search string is typed into, so it gets no search. The
+         * links are keyed by their words rather than their term, which changes with every species: a link rebuilt on
+         * each step would take the focus with it.
+         */}
         {entry.released && (
           <p class="links">
             {[
               { text: 'Search for it', term: name },
               { text: 'Search its family', term: `+${name}` },
             ].map(({ text, term }) => (
-              <a key={term} class="ghost" href={toHash('search', nameFragment(term))}>
+              <a key={text} class="ghost" href={toHash('search', nameFragment(term))}>
                 {text}
               </a>
             ))}
