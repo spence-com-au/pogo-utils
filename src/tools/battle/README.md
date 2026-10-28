@@ -138,11 +138,12 @@ for text and done every few seconds.
     rows matched as `pnpm inventory` matches the detail screen's moves
     ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. Its types and moves name
     the species, which a nickname hides: the one species whose forms of those types hold every move read.
-  - **Leaving it as found:** the game keeps a search for the next opening, so it is cleared before CANCEL. Every step is
-    checked before the next is tapped. A tap meant for the party screen that lands on the selection screen swaps the
-    Pokémon there in, so where CANCEL leaves anything but the party screen showing, nothing more is tapped. A selection
-    screen not showing after a card's tap is looked for once more, and where it still is not, the screen is read afresh
-    before USE THIS PARTY is tapped, the selection screen perhaps arriving late.
+  - **Leaving it as found:** the game keeps a search for the next opening, so it is cleared before CANCEL. A tap meant
+    for the party screen that lands on the selection screen swaps the Pokémon there in, so the screen is read after the
+    card's tap, after each search and after CANCEL, and the taps between, on the search field, its ⊗ and CANCEL, land
+    above or below the grid, where no tap swaps anything. Where CANCEL leaves anything but the party screen showing,
+    nothing more is tapped. A selection screen not showing after a card's tap is looked for once more, and where it
+    still is not, the screen is read afresh before USE THIS PARTY is tapped, the selection screen perhaps arriving late.
   - **Once per card:** a card waits 8s on the screens drawing and the hold, and takes four screenshots of 0.8–1.9s each,
     so the three take 33s or more. A card is tried again only when the party screen shows another species or CP for it,
     a CP OCR missed matching any, and the moves read of the others are kept. One tried and not read is not tried again,

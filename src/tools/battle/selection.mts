@@ -233,8 +233,9 @@ const CLEARED_MS = 1_000;
  * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp` and its panel's
  * moves matched among first. A silhouette misread names a species the search finds nothing of, so a search by both that
  * shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went unread, and whether the party
- * screen is showing again for certain. Each step is checked before the next is tapped, since a tap meant for the party
- * screen that lands on the selection screen swaps a Pokémon in. A selection screen not showing after the card's tap is
+ * screen is showing again for certain. A tap meant for the party screen that lands on the selection screen swaps a
+ * Pokémon in, so the screen is read after the card's tap, after each search and after CANCEL; the taps between those
+ * reads, on the search field, its ⊗ and CANCEL, land above or below the grid, where no tap swaps anything. A selection screen not showing after the card's tap is
  * looked for once more, a phone at work being slower to draw it, and may yet be on its way after that, so the party
  * screen still showing then is not taken for certain.
  */
