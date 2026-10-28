@@ -372,13 +372,22 @@ to know which species share an evolution family, which is data this repository d
 
 ## Pokédex
 
-The **Pokédex** page ([`src/pages/pokedex.tsx`](src/pages/pokedex.tsx)) is the whole national dex as a grid of tiles,
-narrowed by name or number, by generation, by whether a species is in the game yet, and by toggles for a shiny, a wild
-spawn, a category (Legendary, Mythical, Ultra Beast, Baby, Regional) or a place on one of the hunt lists. A tile is its
-artwork, with the name over the top and the number under it on hover; three figures in the heading count what the
-filters leave. Picking a tile opens the species: its normal and shiny picture, what is true of it, each of its forms and
-regional variants with the same answers, and a link into the **Search** page for it or its family. The arrows step
-through the species the filters left, and the link carries both the filters and the open species.
+The **Pokédex** page ([`src/pages/pokedex.tsx`](src/pages/pokedex.tsx)) is the whole national dex drawn as the game's
+own Pokédex: a grid of glass tiles, each the species' picture over its number, under a card naming the region. A
+**Regions** sheet picks a region — every generation's card carries its starters and how much of it is registered — and a
+search sheet narrows the grid by name or number, by whether a species is in the game yet, and by toggles for a shiny, a
+wild spawn, a category (Legendary, Mythical, Ultra Beast, Baby, Regional) or a place on one of the hunt lists.
+
+The tabs along the foot — Pokémon, Shiny, XXL, XXS and 100% — redraw the grid as that dex. The Pokémon tab fills a tile
+for every species in the game; each of the others fills a tile for a species in the game (with its shiny out, in the
+Shiny dex) that the hunt's list no longer wants, and leaves the rest as an empty numbered tile, as the game shows a slot
+not yet registered. The Shiny dex turns the page gold. The region card counts what is registered in the open mode
+against what the filters leave, with the other modes' counts beneath.
+
+Picking a tile opens the species on a band of its type colour: its normal and shiny picture, its types, what is true of
+it, each of its forms and regional variants with the same answers, and a link into the **Search** page for it or its
+family. The arrows step through the species the filters left, and the link carries the mode, the filters and the open
+species.
 
 Nothing on it is kept by hand. [`src/pokedex/entries.ts`](src/pokedex/entries.ts) reads
 [`src/pokemon/pokedex.ts`](src/pokemon/pokedex.ts) for the flags and the hunt lists in [`src/filters/`](src/filters) for
@@ -391,10 +400,11 @@ The pictures are the game's own, hotlinked from [PokeMiners' `pogo_assets`](http
 the same 256×256 renders [`src/tools/inventory/game-master.mts`](src/tools/inventory/game-master.mts) matches a
 screenshot against, so the two cannot disagree about what a species looks like. Most of the dex is `pm{dex}.icon.png`,
 which the number alone derives; `build:sprites` ([`scripts/build-sprites.mts`](scripts/build-sprites.mts)) writes the
-113 it does not, read out of the committed game master so the build reaches no network. 961 species draw a render that
-way. The other 64 have no artwork in the game at all — 62 of them are species it has not released, the exceptions being
+113 it does not — and beside them, in `data/pokemon-types.json`, each species' types off the same form, which colour its
+entry — read out of the committed game master so the build reaches no network. 961 species draw a render that way. The
+other 64 have no artwork in the game at all — 62 of them are species it has not released, the exceptions being
 Scatterbug and Spewpa — and fall back to [PokeAPI](https://github.com/PokeAPI/sprites), which covers the dex by number.
-A species whose picture does not load keeps its name and number.
+A species whose picture does not load keeps its number.
 
 A species the game draws only as a form — Unown, Burmy, Mimikyu — has no picture of its own, so the table names one of
 its forms. Which one comes from [`src/pokemon/pokedex.ts`](src/pokemon/pokedex.ts): `addForms` lists a species' forms in

@@ -45,6 +45,9 @@ body[data-page='pokedex'] {
   --go-ink: #3d4f5c;
   --number: #155a75;
   --card: rgb(232 248 252);
+
+  /* A mark drawn on the round buttons, which are white in every theme, so it is not the theme's but white's. */
+  --mark: #177a9e;
   --glass: rgb(255 255 255 / 55%);
   --tile: rgb(255 255 255 / 22%);
   --tile-edge: rgb(255 255 255 / 60%);
@@ -81,6 +84,7 @@ body[data-page='pokedex'] {
     --go-deep: #97590a;
     --number: #8a5108;
     --card: rgb(253 244 220);
+    --mark: #97590a;
     --tile: rgb(255 255 255 / 30%);
 
     @media (prefers-color-scheme: dark) {
@@ -447,7 +451,7 @@ body[data-page='pokedex'] {
     height: 12px;
     border: 2px solid #fff;
     border-radius: 50%;
-    background: var(--go);
+    background: var(--mark);
   }
 
   .round .tag {
