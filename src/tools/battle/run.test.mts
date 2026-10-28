@@ -74,7 +74,7 @@ interface Scene {
   lasts?: { ms: number; to: string };
 }
 
-/** How long a hold takes, in milliseconds, as `scripts/battle.mts` holds a Pokémon on the selection screen. */
+/** How long a hold takes, in milliseconds: longer than any `scripts/battle.mts` makes on the selection screen. */
 const HOLD_MS = 4000;
 
 /** Whether a touch at `at` lands on what is drawn at `target`. */

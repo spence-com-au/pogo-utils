@@ -181,8 +181,7 @@ const unread = (card: Card) => card.species === null && !ownMoves(card);
  * Which slot of the party is out: `sent`, the slot last sent in, or before any faint the lead, a battle opening with
  * it. Passed over for the next not fainted, in party order, where its card cannot hold every charged move read under
  * the buttons, which a misread card would show; a card with no species read and not both its charged moves cannot be
- * checked, and stands.
- * Undefined where no slot is left that fits.
+ * checked, and stands. Undefined where no slot is left that fits.
  */
 export function activeOf(
   data: GameData,
