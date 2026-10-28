@@ -335,11 +335,14 @@ export async function run(
   let fainted = new Set<number>();
   let sent = 0;
 
-  // The cards the party screen last showed, by silhouette and CP, of which `party` holds what was read: a GO Battle
-  // League set comes back to the party screen before every battle, and reading three cards takes 40s or more. A card is
-  // the one shown before where its silhouette names the same species and its CP is the same or went unread either time,
-  // OCR having missed one CP of 24.
-  let shown: Card[] = [];
+  // Each card as the party screen showed it when it was last tried on the selection screen, by silhouette and CP, of
+  // which `party` holds what was read: a GO Battle League set comes back to the party screen before every battle, and
+  // reading three cards takes 40s or more. A card is the one tried before where its silhouette names the same species
+  // and its CP is the same or went unread either time, OCR having missed one CP of 24. One tried and not read is not
+  // tried again, a search or a panel that failed once being likely to fail again at some 13s a battle; nor are those
+  // after one that stopped the reading, the selection screen not opening or not closing being what they would meet too.
+  // One passed over for its CP going unread was never tried, and is tried once its CP is read.
+  let shown: (Card | undefined)[] = [];
 
   const sameCard = (was: Card | undefined, card: Card) =>
     was !== undefined && was.species === card.species && (was.cp === null || card.cp === null || was.cp === card.cp);
@@ -1426,16 +1429,18 @@ export async function run(
         search = carousel();
       }
 
-      // The party to be used, each card read off the selection screen unless it is the card last read there, whose moves
-      // are kept. Where a card left anything but the party screen showing, the screen is read afresh rather than USE
-      // THIS PARTY tapped at it. The CPs are off the read `readMenu` made, where it made one.
+      // The party to be used, each card read off the selection screen unless it is the card last tried there, whose
+      // moves, if any were read, are kept. Where a card left anything but the party screen showing, the screen is read
+      // afresh rather than USE THIS PARTY tapped at it. The CPs are off the read `readMenu` made, where it made one.
       if (menu.screen === 'party' && 'tap' in menu) {
         const cps = menu.cps ?? (await readCps(screenshot));
         const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
         const kept = cards.map((card, slot) => (sameCard(shown[slot], card) ? party[slot] : undefined));
         const stale = cards.flatMap((_, slot) => (kept[slot] ? [] : [slot]));
 
-        shown = cards.map((card, slot) => (kept[slot] ? { ...card, cp: card.cp ?? shown[slot]?.cp ?? null } : card));
+        shown = cards.map((card, slot) =>
+          kept[slot] ? { ...card, cp: card.cp ?? shown[slot]?.cp ?? null } : card.cp === null ? undefined : card,
+        );
         party = cards.map((card, slot) => kept[slot] ?? card);
 
         if (stale.length > 0) {

@@ -604,7 +604,7 @@ while a weaker one is ready instead. It reads the moves off the labels under the
 names along the top, every few seconds. A nicknamed Pokémon of yours is named by the party screen instead, whose
 pictures it matches against the game's icons, as the lead and then whichever it sent in after a faint, passing over any
 that cannot hold the moves read; one it still cannot name, or an opponent it cannot read, counts as neutral. Before it
-uses a party it reads each card's moves off the game, once for each party it has not read: it taps the card for the
+uses a party it reads each card's moves off the game, once for each card it has not tried: it taps the card for the
 selection screen, searches for it by species and CP, holds it to show its moves, then clears the search and cancels,
 leaving the party as it was. The moves name a nicknamed Pokémon its picture did not, and judge each benched one by the
 charged moves it has rather than all its species can learn. After a faint it sends in one the opponent cannot hit super

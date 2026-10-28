@@ -477,6 +477,29 @@ test('reads each card’s moves off the selection screen before using the party,
   ]);
 });
 
+/**
+ * Xerneas's CP unread the first time round, so its card is passed over untried, and read the second time, its CP read:
+ * Palkia, read, and Metagross, tried and not read, are not tried again.
+ */
+test('tries a card passed over for its CP once its CP is read', async () => {
+  const { phone, clock, searches } = scripted(
+    { ...masterParty(), league: { frame: fixture('menu-league'), tap: { at: [0.55, 0.58], to: 'party' } } },
+    'again',
+  );
+  const report = recorder();
+
+  expect(
+    await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
+  ).toEqual({ battles: 2, won: 2, lost: 0 });
+  expect(report.events.filter((line) => /^run: .*( CP \d|unread)/.test(line))).toEqual([
+    'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
+    'run: card 2 unread: no pink cell for metagross&cp3986 or cp3986',
+    'run: card 3 unread: its CP unread',
+    'run: Xerneas CP 4275: Geomancy / Moonblast, Close Combat',
+  ]);
+  expect(searches).toEqual(['mamoswine&cp4673', 'cp4673', 'metagross&cp3986', 'cp3986', 'xerneas&cp4275']);
+});
+
 // The selection screen 2s behind Palkia's card's tap, as a phone at work can draw it: looked for again, and read.
 test('reads a card whose selection screen opens late', async () => {
   const { phone, clock, holds } = scripted(
