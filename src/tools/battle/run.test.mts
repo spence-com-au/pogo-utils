@@ -7,8 +7,9 @@
 
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
-import { useEngine } from '../inventory/ocr.mts';
+import { useEngine, type Engine } from '../inventory/ocr.mts';
 import { tesseractCli } from '../inventory/ocr-cli.mts';
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { setImmediate } from 'node:timers/promises';
@@ -22,6 +23,26 @@ import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
 
 /** How long Tesseract takes over a band of a battle's frame, in milliseconds: `readBattle` reads two, about 220ms. */
 const OCR_MS = 110;
+
+/**
+ * Tesseract's answer to each read, by the band and how it was asked, kept across the file's tests: the scripted battles
+ * read the same few fixture frames over and over, 1316 reads of 74 distinct bands, and the CLI answers a band the same
+ * way every time, so asking it again would spend some 350 of the file's 430 seconds on answers already had. A
+ * remembered read still takes `ocrMs` on the scripted clock, which is the only time a run sees.
+ */
+const READS = new Map<string, Promise<string>>();
+
+const tsv: Engine['tsv'] = (image, psm, whitelist) => {
+  const key = `${createHash('sha1').update(image.data).digest('hex')} ${image.width} ${psm} ${whitelist}`;
+  let read = READS.get(key);
+
+  if (!read) {
+    read = tesseractCli.tsv(image, psm, whitelist);
+    READS.set(key, read);
+  }
+
+  return read;
+};
 
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
@@ -127,7 +148,7 @@ function scripted(
 
   useEngine({
     tsv: (...args) => {
-      const read = tesseractCli.tsv(...args);
+      const read = tsv(...args);
       const due = time + ocrMs(time);
 
       // Failing before it is due, a read fails where it is handed back rather than as a rejection nothing handles.
