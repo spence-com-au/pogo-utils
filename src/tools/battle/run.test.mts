@@ -1361,26 +1361,91 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
  * The opponent switches Glaceon out for Golem, its three Poké Balls still red, with no type icons to read its form by:
  * either Golem it could be, and a Kantonian one's Earthquake threatens the Pokémon we have out. Latias, second of the
  * party and so the bench's top card, is safe from either Golem's moves, and its Aura Sphere hits both super
- * effectively: it is switched in at once. Taken where the HUD's CP has changed by the next read, and refused where it
- * has not, the switch timer still running, which leaves the one tapped away from out.
+ * effectively: it is switched in once Golem has flown in. Golem's first frame follows a stretch of `other`, so is read
+ * at once, its last read being `READ_MS` ago; and it flies in for `flying` milliseconds after, taking no tap meanwhile,
+ * which a tap through it, bench or throw, shows as one of `flying`'s. Taken where the next read, naming neither Gengar
+ * nor Latias, finds our CP changed. Flying in for longer than the run waits, the tap is dropped, which the next read
+ * shows by the HUD naming Gengar still, its `CP` painted out so that its CP goes unread, as Palkia's did live: no
+ * switch of ours having started the switch timer, it is told as dropped and tapped again. Zeraora's icon stands for
+ * Gengar on the party screen, so that it is Gengar, Latias and Gyarados.
  */
 test.each([
-  ['taken', 'battle-crunch-entei', []],
-  ['refused', 'battle-gengar-label-short', ['own: Latias not sent in: the switch timer is running']],
-])('switches to a counter the moment the opponent switches: %s', async (_, after, told) => {
+  ['taken', 1500, [], []],
+  [
+    'dropped by a longer flight',
+    3000,
+    ['flying'],
+    [
+      'own: Latias not sent in: taken as dropped, no switch of ours in the last 45s',
+      "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
+    ],
+  ],
+])('switches to a counter once the opponent switched in has flown in: %s', async (_, flying, dropped, told) => {
   const bench: Point = [0.903, 0.608];
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Zeraora' ? 'Gengar' : icon.species }));
+  const golem = painted(fixture('battle-gengar-label-short'), [244, 249, 251], [0.27, 0.148, 0.315, 0.185]);
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),
       party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
       loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+      glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
+      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'flying' } },
+      flying: { frame: golem, lasts: { ms: flying, to: 'golem' } },
+      golem: { frame: golem, tap: { at: bench, to: 'after' }, lasts: { ms: 6000, to: 'won' } },
+      after: { frame: fixture('battle-crunch-entei'), lasts: { ms: 6000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons,
+      typeIcons: {},
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const switching = report.events.filter((line) => line.startsWith('own: switching') || line.includes('not sent in'));
+
+  expect(taps.filter((scene) => scene === 'flying' || scene === 'golem')).toEqual([...dropped, 'golem']);
+  expect(switching).toEqual([
+    "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
+    ...told,
+  ]);
+});
+
+const ZERAORA =
+  "own: switching to Zeraora against Glaceon: Latias is hit super effectively; Dynamic Punch is, and nothing of Glaceon's is";
+const DROPPED = 'own: Zeraora not sent in: taken as dropped, no switch of ours in the last 45s';
+
+/**
+ * Latias switched in against Golem as above, Entei comes in for `entei` milliseconds, Latias's Psychic read against it,
+ * and then Glaceon, its moves super effective against Latias: Zeraora, whose Dynamic Punch is against Glaceon, is
+ * tapped once it has flown in. Glaceon's frame names no species of ours, only CP 2458, so the next read judges the tap
+ * by that CP, unchanged. Within `TIMER_MS` of Latias's switch, that is the timer refusing the tap. After it, the tap
+ * was dropped, and is tapped once more; dropped again, it is left.
+ */
+test.each([
+  ['running', 10_000, [ZERAORA, 'own: Zeraora not sent in: the switch timer is running']],
+  ['run out', 50_000, [ZERAORA, DROPPED, ZERAORA, DROPPED]],
+])('tells a switch refused with our switch timer %s', async (_, entei, told) => {
+  const bench: Point = [0.903, 0.608];
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
       glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'golem' } },
-      golem: {
-        frame: fixture('battle-gengar-label-short'),
-        tap: { at: bench, to: 'after' },
-        lasts: { ms: 6000, to: 'won' },
-      },
-      after: { frame: fixture(after), lasts: { ms: 6000, to: 'won' } },
+      golem: { frame: fixture('battle-gengar-label-short'), tap: { at: bench, to: 'entei' } },
+      entei: { frame: fixture('battle-night'), lasts: { ms: entei, to: 'back' } },
+      back: { frame: fixture('battle-latias'), lasts: { ms: 8000, to: 'won' } },
     },
     'party',
   );
@@ -1399,13 +1464,9 @@ test.each([
     report,
   );
 
-  const switching = report.events.filter((line) => line.startsWith('own: switching') || line.includes('not sent in'));
-
-  expect(taps.filter((scene) => scene === 'golem')).toEqual(['golem']);
-  expect(switching).toEqual([
-    "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
-    ...told,
-  ]);
+  expect(
+    report.events.filter((line) => line.startsWith('own: Zeraora') || line.startsWith('own: switching to Zeraora')),
+  ).toEqual(told);
 });
 
 /** The same Golem read by its type icons, Rock and Electric: an Alolan one, nothing of which threatens Gengar. */
@@ -1463,6 +1524,9 @@ test('stays in when nothing benched counters the opponent switched in', async ()
   expect(taps.filter((scene) => scene === 'sneasel')).toEqual([]);
 });
 
+const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
+const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints';
+
 /**
  * The opponent switches Glaceon out for Mamoswine while our Giratina has Shadow Sneak lit. Mamoswine's Avalanche
  * threatens Giratina, and nothing benched counters Mamoswine, but Umbreon is safe from all of its moves: Giratina
@@ -1474,21 +1538,25 @@ test('stays in when nothing benched counters the opponent switched in', async ()
  * `READ_MS` ago.
  *
  * Giratina's own shields are spent on the frame as recorded, and Mamoswine's moves would faint it: doomed, it stays in
- * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks.
+ * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks. Painted held only
+ * for the first second, as though spent while Mamoswine flies in, the switch decided on is given up as Giratina comes
+ * to be doomed, before its tap, and it stays in and throws.
  */
 test.each([
-  ['spent', [], ['own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints'], []],
+  ['spent', [], undefined, [STAYED], []],
   [
     'held',
-    [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]),
+    HELD,
+    undefined,
     [],
     [
       "own: switching to Umbreon against Mamoswine, banking Shadow Sneak: Giratina is hit super effectively and banks its energy; Umbreon is safe from Mamoswine's moves",
     ],
   ],
+  ['spent as it flies in', HELD, 1000, [STAYED], []],
 ])(
   'with our shields %s, a lit move against an opponent switched in is thrown or banked',
-  async (_, held, stayed, switched) => {
+  async (_, held, spentAfter, stayed, switched) => {
     const stand = { Zeraora: 'Umbreon', Gyarados: 'Giratina' } as Record<string, string>;
     const icons = ICONS.map((icon) => ({ ...icon, species: stand[icon.species] ?? icon.species }));
     const balls = [0.058, 0.111, 0.161, 0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
@@ -1502,7 +1570,12 @@ test.each([
         loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
         glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
         coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
-        mamoswine: { frame: mamoswine, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+        mamoswine: {
+          frame: mamoswine,
+          tap: { at: bench, to: 'won' },
+          lasts: spentAfter === undefined ? { ms: 6000, to: 'won' } : { ms: spentAfter, to: 'spent' },
+        },
+        spent: { frame: red, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
       },
       'party',
     );
@@ -1521,7 +1594,7 @@ test.each([
       report,
     );
 
-    expect(taps).toContain('mamoswine');
+    expect(taps).toContain(spentAfter === undefined ? 'mamoswine' : 'spent');
     expect(report.events.filter((line) => line.startsWith('own: staying'))).toEqual(stayed);
     expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
   },

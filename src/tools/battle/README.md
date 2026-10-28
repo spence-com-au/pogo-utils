@@ -258,9 +258,13 @@ cancel out. Where a species' forms differ in type, as a Galarian Moltres does fr
 each side's panel say which form it is ([`typing.mts`](typing.mts)). Where they weren't read, or show a typing no form
 of the species has, a move is valued against the typing it does worst against.
 
-**Stat changes.** Worth is adjusted for the stat stages a move may move, each priced as if it touched one more hit of
-the same size, and weighted by its chance. So Close Combat's certain −2 to its user's defense halves its worth, and
-Ancient Power's one-in-ten buff adds about 5%.
+**Stat changes.** Worth is adjusted for the stat stages a move may move on our hits, our attack and their defense, each
+priced as if it touched one more hit of the same size, and weighted by its chance. So Ancient Power's one-in-ten +1 to
+its user's attack adds 2.5%. Stages on the opponent's hits, our defense and their attack, are left out: what Close
+Combat's −2 costs, or Icy Wind's −1 to their attack saves, is the opponent's hits for as long as both stay out, which
+the move's own damage is no measure of. Priced against it, a Close Combat super effective on a Regigigas would lose half
+its damage however little Regigigas hits for, and Icy Wind would gain more than twice as much into a Dragon type as into
+a Steel type, however hard either hits back. PvPoke's battle AI leaves them out too (`Pokemon.js`, `ActionLogic.js`).
 
 **On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
 stats count for nothing, since there's no next hit for them to matter on.
@@ -277,6 +281,15 @@ Beam: worth per energy matches 8 of their 10 such choices, where worth alone mat
 opponent counting as the one choice. Snorlax's two Body Slams at an unshielded Garchomp are one, and Garchomp fainted
 without throwing a charged move in its 29s out. The two choices that don't match were both against a Sylveon: holding
 Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch, twice, where Hyper Beam gets more per energy.
+
+**Lowering our defense.** A move that always lowers our defense gives way to one that doesn't, where that one costs
+within **10** energy of it either way and is worth more than **0.7** of it per energy, with or without shields. Not on
+our last hit, where Brave Bird and Close Combat are thrown as they are. The numbers are PvPoke's (`ActionLogic.js`), its
+simulations being what the meta is ranked by, but its battle AI makes this trade only for a move costing more, and only
+while the opponent has a shield; with none, it holds a Pokémon above half its HP to its cheapest move rather than a
+self-debuffing one costing over 50. The one rule stands in for both. So Xerneas throws Close Combat at a Regigigas, 3.56
+a point to Moonblast's 2.16, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
+its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
@@ -397,18 +410,25 @@ nothing named is safe or hits at all.
 ### When the opponent switches
 
 An opponent that switches out (rather than faints) has spent its switch timer, so it can't answer a switch of ours
-straight away. If the newcomer's allowed moves can hit ours super effectively, it switches at once to a benched Pokémon
-that counters it outright: safe from every one of those moves, and holding a charged move that is super effective
-against every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that
-hits hardest; with none, it stays in. Like `nextOut`, it judges a benched Pokémon by its two charged moves where its
-card was read, and otherwise by every move its species can learn. Unread species never switch, and nor does one with a
-lit move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move,
-nor one [doomed](#banking-energy) with a move lit to throw into a shield.
+straight away. If the newcomer's allowed moves can hit ours super effectively, it switches to a benched Pokémon that
+counters it outright: safe from every one of those moves, and holding a charged move that is super effective against
+every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that hits
+hardest; with none, it stays in. Like `nextOut`, it judges a benched Pokémon by its two charged moves where its card was
+read, and otherwise by every move its species can learn. Unread species never switch, and nor does one with a lit move
+that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor one
+[doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
-once, with nothing to confirm, and does nothing while our own switch timer runs. Rather than model the timer, the run
-reads our HUD again 2s after the tap: a CP unchanged means the tap was refused, logged as
-`Latias not sent in: the switch timer is running`, and the Pokémon tapped away from is taken to still be out.
+once, with nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the
+field, or while our own switch timer runs. The switch is decided the moment a read names the newcomer, and tapped 2s
+later (`FLY_IN_MS`), with nothing thrown meanwhile, so that it still banks a lit move. On recordings of both phones the
+banner was last drawn 1.5–2.0s after the HUD first named the newcomer; the game master's fly-in is three turns, 1.5s.
+The run reads our HUD again 2s after the tap: still naming the Pokémon tapped away from, or where it names neither,
+showing the same CP, means the tap was refused, and that Pokémon is taken to still be out. Within 45s of our last switch
+(the game master's `quickSwapCooldownDurationSeconds`), that is logged as
+`Latias not sent in: the switch timer is running`. Otherwise it's taken as dropped, logged as
+`Latias not sent in: taken as dropped, no switch of ours in the last 45s`, and the switch is decided and tapped once
+more; a second drop against the same newcomer is left.
 
 ### Banking energy
 
@@ -434,8 +454,9 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
   Fly took Kyogre's last shield, and it had none for the rest of the battle.
 
-Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One the timer refuses all
-the same gives the bank back, and neither is tried again for 10s.
+Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One refused all the same
+gives the bank back. Refused by the timer, or dropped a second time, neither is tried again for 10s; dropped the first
+time, it's tried again at once.
 
 ### Knowing who is out
 
