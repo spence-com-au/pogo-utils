@@ -59,7 +59,7 @@
     "globals": "^17.13.0",
     "html-validate": "11.16.4",
     "leaflet": "^1.9.4",
-    "npm-run-all2": "^9.0.3",
+    "npm-run-all2": "^9.0.4",
     "postcss": "8.5.31",
     "preact": "^11.0.1",
     "prettier": "3.9.10",
