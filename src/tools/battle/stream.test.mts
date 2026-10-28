@@ -209,14 +209,20 @@ test('keeps the whole screen as video across the hand-over, the first recording 
   ]);
   const times = probed.toString().trim().split('\n').map(Number.parseFloat);
   const frame = width * height * 3;
-  const pictures = Array.from({ length: pixels.length / frame }, (_, i) =>
-    (pixels[i * frame] ?? 0) > 200 ? 'red' : 'blue',
-  );
+
+  // Strictly red or strictly blue, so a grey, black or broken picture at the cut is neither.
+  const pictures = Array.from({ length: pixels.length / frame }, (_, i) => {
+    const red = pixels[i * frame] ?? 0;
+    const blue = pixels[i * frame + 2] ?? 0;
+
+    return red > 200 && blue < 40 ? 'red' : blue > 200 && red < 40 ? 'blue' : '?';
+  });
 
   const over = pictures.indexOf('blue');
 
   expect(pictures).toHaveLength(times.length);
   expect(over).toBeGreaterThan(0);
+  expect(pictures.slice(0, over).every((colour) => colour === 'red')).toBe(true);
   expect(pictures.slice(over).every((colour) => colour === 'blue')).toBe(true);
   expect(times.every((time, i) => i === 0 || time > (times[i - 1] ?? Infinity))).toBe(true);
 
