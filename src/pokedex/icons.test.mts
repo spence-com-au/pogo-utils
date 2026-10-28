@@ -55,13 +55,14 @@ test('a species the game has no artwork for falls back to a pixel sprite', () =>
 
 /**
  * `build:sprites` run once for the two tests that read what it writes: one run writes both tables, and each run is a
- * Node process parsing the whole game master. Its log is kept for the report the icons test reads.
+ * Node process parsing the whole game master. Its log is kept for the report the icons test reads. Given the minute a
+ * test has rather than a hook's ten seconds, which a loaded runner parsing the game master can run past.
  */
 let stderr = '';
 
 beforeAll(async () => {
   ({ stderr } = await run('node', ['scripts/build-sprites.mts'], { cwd: ROOT }));
-});
+}, 60_000);
 
 test('`build:sprites` names every species whose icon the dex number cannot derive', () => {
   const icons: Icons = JSON.parse(readFileSync(new URL(POKEMON_ICONS, new URL('../../', import.meta.url)), 'utf8'));

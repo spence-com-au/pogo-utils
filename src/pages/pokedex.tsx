@@ -199,10 +199,19 @@ function Detail({
    * A step can still take away the control that had the focus: the arrow just pressed, disabled at either end of the
    * list, or the Shiny toggle, which a species with no shiny does not draw. The focus then falls out of the dialog,
    * and the arrow keys with it, so it is handed to an arrow — the previous one at the end of the list and the next one
-   * anywhere else, which is where a reader stepping through goes.
+   * anywhere else, which is where a reader stepping through goes. With one species left both arrows are disabled, and
+   * the dialog's close button takes it instead.
    */
   useEffect(() => {
-    if (document.activeElement === document.body && prevRef.current?.closest('dialog')?.open) {
+    const dialog = prevRef.current?.closest('dialog');
+
+    if (document.activeElement !== document.body || !dialog?.open) {
+      return;
+    }
+
+    if (first && last) {
+      dialog.querySelector<HTMLButtonElement>('.close')?.focus();
+    } else {
       (last ? prevRef : nextRef).current?.focus();
     }
   }, [entry.dex, first, last]);
