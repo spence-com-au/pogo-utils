@@ -143,11 +143,33 @@ export function swipe(from: readonly [number, number], to: readonly [number, num
   return [write(report(true, from)), ...moves.flat(), write(report(false, to))].join('; ');
 }
 
-/** Whether `dumpsys input` lists the device as a touchscreen, `AINPUT_SOURCE_TOUCHSCREEN` among its sources. */
+/**
+ * Whether `dumpsys input` lists the device as a touchscreen, `AINPUT_SOURCE_TOUCHSCREEN` among its sources: as a mask,
+ * `Sources: 0x00001002`, on a Pixel 4 XL with Android 13, and by name, `Sources: TOUCHSCREEN`, on a Pixel 8 Pro with
+ * Android 17. Read a line at a time, the entry ending at the first line indented no deeper than its heading, rather than
+ * by one pattern over the dump, which where the sources do not match backtracks through every way of splitting each
+ * line's indent: on a Pixel 8 Pro's dump of 1,325 lines, it does not return.
+ */
 export function listed(dump: string): boolean {
-  const sources = new RegExp(`Device \\d+: ${NAME}\\n(?:[ \\t]+.*\\n)*?[ \\t]+Sources: 0x([0-9a-f]+)`).exec(dump)?.[1];
+  const lines = dump.split('\n');
+  const start = lines.findIndex((line) => /^\s*Device \d+: (.*)$/.exec(line)?.[1] === NAME);
+  const indent = (line: string) => line.length - line.trimStart().length;
 
-  return sources !== undefined && (parseInt(sources, 16) & 0x1002) === 0x1002;
+  for (const line of lines.slice(start + 1)) {
+    if (start < 0 || indent(line) <= indent(lines[start] ?? '')) {
+      break;
+    }
+
+    const sources = /^\s*Sources: (.*)$/.exec(line)?.[1];
+
+    if (sources !== undefined) {
+      return /^0x[0-9a-f]+$/i.test(sources)
+        ? (parseInt(sources, 16) & 0x1002) === 0x1002
+        : sources.split(' | ').includes('TOUCHSCREEN');
+    }
+  }
+
+  return false;
 }
 
 export interface Touchscreen {

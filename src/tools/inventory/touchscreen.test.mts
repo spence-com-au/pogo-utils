@@ -54,10 +54,34 @@ test('reports a point as fractions of the range, clamped to its edges', () => {
   expect(at(false, [1, -0.1])).toEqual({ down: 0, x: 0x7fff, y: 0 });
 });
 
+/** The Pixel 4 XL's entry with its sources by name, as a Pixel 8 Pro on Android 17 lists them. */
+const NAMED = LISTED.replace('Sources: 0x00001002', 'Sources: TOUCHSCREEN');
+
 test('is ready once Android lists it as a touchscreen, and not as anything else', () => {
   expect(listed(LISTED)).toBe(true);
+  expect(listed(NAMED)).toBe(true);
+  expect(listed(NAMED.replace('TOUCHSCREEN', 'KEYBOARD | TOUCHSCREEN')), 'a touchscreen among others').toBe(true);
   expect(listed(LISTED.replace('0x00001002', '0x00002002')), 'a mouse').toBe(false);
+  expect(listed(NAMED.replace('TOUCHSCREEN', 'KEYBOARD | MOUSE')), 'a mouse, by name').toBe(false);
   expect(listed('    4: pogo-utils touch\n      Classes: TOUCH | TOUCH_MT\n'), 'EventHub alone').toBe(false);
+});
+
+test('reads the sources of its own entry, not those of the device after it', () => {
+  const unlisted = LISTED.replace('    Sources: 0x00001002\n', '');
+
+  expect(listed(`${unlisted}${NAMED.replace('Device 5: pogo-utils touch', 'Device 6: other')}`)).toBe(false);
+});
+
+/**
+ * An entry with no sources it can read, followed by the rest of a dump: the whole of a Pixel 8 Pro's `dumpsys input`
+ * runs to 1,325 lines, which a pattern backtracking over each line's leading whitespace never got through.
+ */
+test('answers at once where the entry has no sources it can read', () => {
+  const rest = Array.from({ length: 2000 }, (_, i) => `      Line ${i}: some  value  here`).join('\n');
+  const started = performance.now();
+
+  expect(listed(`${NAMED.replace('Sources: TOUCHSCREEN', 'Sources:')}${rest}\n`)).toBe(false);
+  expect(performance.now() - started).toBeLessThan(100);
 });
 
 test('swipes as one command, moving along the line every 8ms or so of the time asked', () => {
