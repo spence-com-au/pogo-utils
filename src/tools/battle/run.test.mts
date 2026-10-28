@@ -1228,8 +1228,9 @@ const DROPPED = 'own: Zeraora not sent in: the tap was dropped, the switch timer
 /**
  * Latias switched in against Golem as above, Entei comes in for `entei` milliseconds, Latias's Psychic read against it,
  * and then Glaceon, its moves super effective against Latias: Zeraora, whose Dynamic Punch is against Glaceon, is
- * tapped once it has flown in, and our CP is unchanged at the next read. Within `TIMER_MS` of Latias's switch, that is
- * the timer refusing the tap. After it, the tap was dropped, and is tapped once more; dropped again, it is left.
+ * tapped once it has flown in. Glaceon's frame names no species of ours, only CP 2458, so the next read judges the tap
+ * by that CP, unchanged. Within `TIMER_MS` of Latias's switch, that is the timer refusing the tap. After it, the tap
+ * was dropped, and is tapped once more; dropped again, it is left.
  */
 test.each([
   ['running', 10_000, [ZERAORA, 'own: Zeraora not sent in: the switch timer is running']],

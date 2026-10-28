@@ -807,9 +807,9 @@ export async function run(
               banked.set(switching.slot, switching.bank);
             }
 
-            // Refused by the timer, the next switch to bank energy waits it out, as it does a second tap dropped
-            // against the same newcomer, something besides its flying in being in the way. The first dropped, the
-            // switch is decided again as though never tapped, an opponent switched in answered afresh.
+            // Refused by the timer, the next switch to bank energy waits `REFUSED_MS`, as it does after a second tap
+            // dropped against the same newcomer, something besides its flying in being in the way. The first dropped,
+            // the switch is decided again as though never tapped, an opponent switched in answered afresh.
             const timer = switching.at - swappedAt < TIMER_MS;
             const retry = !timer && !dropped;
 
