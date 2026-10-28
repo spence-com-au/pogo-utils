@@ -151,7 +151,7 @@ test('`build:sprites` names every species whose icon the dex number cannot deriv
  * The types written beside the icons, which colour each entry. Read off the same form as the picture, so a species
  * whose ordinary form and regional one differ is drawn in the colour of the one shown.
  */
-test('`build:sprites` writes every species the game master holds a form for its types, from the form its picture is', () => {
+test('`build:sprites` writes the types of every species the game master holds, from the form its picture is', () => {
   const types: Types = JSON.parse(readFileSync(new URL(POKEMON_TYPES, new URL('../../', import.meta.url)), 'utf8'));
 
   // Every type named is one the page has a colour for, or that entry would be drawn in the page's fallback colour.
