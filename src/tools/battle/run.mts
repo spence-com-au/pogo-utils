@@ -795,7 +795,9 @@ export async function run(
             log(
               `${switching.to} not sent in`,
               'own',
-              timer ? 'the switch timer is running' : 'the tap was dropped, the switch timer not running',
+              timer
+                ? 'the switch timer is running'
+                : `taken as dropped, no switch of ours in the last ${TIMER_MS / 1_000}s`,
             );
           }
 

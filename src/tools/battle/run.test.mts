@@ -1176,7 +1176,7 @@ test.each([
     3000,
     ['flying'],
     [
-      'own: Latias not sent in: the tap was dropped, the switch timer not running',
+      'own: Latias not sent in: taken as dropped, no switch of ours in the last 45s',
       "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
     ],
   ],
@@ -1223,7 +1223,7 @@ test.each([
 
 const ZERAORA =
   "own: switching to Zeraora against Glaceon: Latias is hit super effectively; Dynamic Punch is, and nothing of Glaceon's is";
-const DROPPED = 'own: Zeraora not sent in: the tap was dropped, the switch timer not running';
+const DROPPED = 'own: Zeraora not sent in: taken as dropped, no switch of ours in the last 45s';
 
 /**
  * Latias switched in against Golem as above, Entei comes in for `entei` milliseconds, Latias's Psychic read against it,

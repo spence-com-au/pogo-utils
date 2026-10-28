@@ -396,8 +396,8 @@ The run reads our HUD again 2s after the tap: still naming the Pokémon tapped a
 showing the same CP, means the tap was refused, and that Pokémon is taken to still be out. Within 45s of our last switch
 (the game master's `quickSwapCooldownDurationSeconds`), that is logged as
 `Latias not sent in: the switch timer is running`. Otherwise it's taken as dropped, logged as
-`Latias not sent in: the tap was dropped, the switch timer not running`, and the switch is decided and tapped once more;
-a second drop against the same newcomer is left.
+`Latias not sent in: taken as dropped, no switch of ours in the last 45s`, and the switch is decided and tapped once
+more; a second drop against the same newcomer is left.
 
 ### Banking energy
 
