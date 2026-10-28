@@ -25,7 +25,14 @@ import type Pokemon from '../pokemon/pokemon.js';
  */
 export type Flag = { [K in keyof Pokemon]: Pokemon[K] extends boolean ? K : never }[keyof Pokemon];
 
-type Hunt = { id: string; label: string; members: ReadonlySet<Pokemon>; watched: Predicate; fillable: Predicate };
+type Hunt = {
+  id: string;
+  label: string;
+  members: ReadonlySet<Pokemon>;
+  watched: Predicate;
+  fillable: Predicate;
+  perForm: boolean;
+};
 type EntryHunt = { id: string; watched: boolean };
 type Variant = { name: string; pokemon: Pokemon; hunts: EntryHunt[] };
 
@@ -69,6 +76,10 @@ const inGame: Predicate = (pokemon) => pokemon.released;
  *
  * `fillable` is what a slot of the hunt's dex has to be before it can be filled at all: in the game, and for the shiny
  * hunt with its shiny out too, since a shiny nobody can catch is not one the dex is missing.
+ *
+ * `perForm` is how the list is written. The shiny list names a regional variant apart, as the game's shinies differ by
+ * region; the other three hold one entry per species, as their headers say, so a bare Meowth there stands for the
+ * Alolan and Galarian ones too.
  */
 export const HUNTS = [
   {
@@ -77,10 +88,18 @@ export const HUNTS = [
     members: SHINY_POKEMON,
     watched: allOf(SHINY_HUNTING_FILTERS),
     fillable: (pokemon) => pokemon.released && pokemon.shinyEligible,
+    perForm: true,
   },
-  { id: 'xxl', label: 'XXL wanted', members: XXL_POKEMON, watched: feedable, fillable: inGame },
-  { id: 'xxs', label: 'XXS wanted', members: XXS_POKEMON, watched: feedable, fillable: inGame },
-  { id: 'perfect', label: '100% wanted', members: PERFECT_IV_POKEMON, watched: feedable, fillable: inGame },
+  { id: 'xxl', label: 'XXL wanted', members: XXL_POKEMON, watched: feedable, fillable: inGame, perForm: false },
+  { id: 'xxs', label: 'XXS wanted', members: XXS_POKEMON, watched: feedable, fillable: inGame, perForm: false },
+  {
+    id: 'perfect',
+    label: '100% wanted',
+    members: PERFECT_IV_POKEMON,
+    watched: feedable,
+    fillable: inGame,
+    perForm: false,
+  },
 ] as const satisfies readonly Hunt[];
 
 /**
@@ -141,34 +160,31 @@ export function huntsOf(pokemon: readonly Pokemon[], hunts: readonly Hunt[] = HU
 }
 
 /**
- * The slots a hunt's dex has for a species, each with whether the hunt's list still wants it — the unit the lists are
- * written in. A list names what it still wants: a regional variant or a single form where only that is wanted, and the
- * bare species where every form of it is (Keldeo, Burmy). So a listed species carries its forms with it, and a species
- * declared as forms is those forms rather than a slot of its own; a regional variant is its own slot either way, the
- * game's dex filing it apart and the lists naming it apart when they want it.
+ * The slots a hunt's dex has for a species, each with whether the hunt's list still wants it. A list names what it
+ * still wants: a single form where only that is wanted, and the bare species where every form of it is (Keldeo,
+ * Burmy). So a listed species carries its forms with it, and a species declared as forms is those forms rather than a
+ * slot of its own. A regional variant is its own slot, as the game's dex files it apart, and carries the species'
+ * answer only where the list is one entry per species — the shiny list names Galarian Weezing apart when it wants it.
  */
-function slotsOf(
-  pokemon: Pokemon,
-  members: ReadonlySet<Pokemon>,
-  inherited = false,
-): { pokemon: Pokemon; wanted: boolean }[] {
-  const wanted = inherited || members.has(pokemon);
+function slotsOf(hunt: Hunt, pokemon: Pokemon, inherited = false): { pokemon: Pokemon; wanted: boolean }[] {
+  const wanted = inherited || hunt.members.has(pokemon);
   const forms = pokemon.variants.filter(({ region }) => region === null);
   const regions = pokemon.variants.filter(({ region }) => region !== null);
 
   return [
-    ...(forms.length > 0 ? forms.flatMap((form) => slotsOf(form.pokemon, members, wanted)) : [{ pokemon, wanted }]),
-    ...regions.flatMap((variant) => slotsOf(variant.pokemon, members)),
+    ...(forms.length > 0 ? forms.flatMap((form) => slotsOf(hunt, form.pokemon, wanted)) : [{ pokemon, wanted }]),
+    ...regions.flatMap((variant) => slotsOf(hunt, variant.pokemon, !hunt.perForm && wanted)),
   ];
 }
 
 /**
  * Whether a hunt's dex holds a species: some slot of it is one the hunt can fill — its `fillable` — and no longer
  * wanted by the list, as the game fills a species' tile once any of its forms is registered. Galarian Weezing on the
- * shiny list leaves the Kantonian one held; Keldeo listed bare leaves neither of its forms.
+ * shiny list leaves the Kantonian one held; Keldeo listed bare leaves neither of its forms, and Meowth on the XXL list
+ * none of its regions.
  */
 export function heldIn(species: Pokemon, hunt: Hunt) {
-  return slotsOf(species, hunt.members).some(({ pokemon, wanted }) => !wanted && hunt.fillable(pokemon));
+  return slotsOf(hunt, species).some(({ pokemon, wanted }) => !wanted && hunt.fillable(pokemon));
 }
 
 /**
