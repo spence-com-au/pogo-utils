@@ -87,13 +87,12 @@ for text and done every few seconds.
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
   ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
-  report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. `run` sends each
-  charged-move tap as a burst of four, 50ms apart, paced the same way, so a tap the game drops costs no second's wait.
-  The phone's own touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included.
-  Over a Training battle on a Pixel 4 XL, the time a swipe takes beyond its own 80ms fell from a median of 30ms (p95
-  42ms) with `input` to 12ms (p95 19ms), and a tap's from 23ms to 3ms. Part of the tail was the held shell answering
-  each command in two writes, the second waiting up to 40ms on the `adb` client's delayed ACK of the first. The shell
-  exiting, as it does when the phone is unplugged, stops the run with the command it was sending, cut short, as
+  report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
+  touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included. Over a Training
+  battle on a Pixel 4 XL, the time a swipe takes beyond its own 80ms fell from a median of 30ms (p95 42ms) with `input`
+  to 12ms (p95 19ms), and a tap's from 23ms to 3ms. Part of the tail was the held shell answering each command in two
+  writes, the second waiting up to 40ms on the `adb` client's delayed ACK of the first. The shell exiting, as it does
+  when the phone is unplugged, stops the run with the command it was sending, cut short, as
   `adb shell print -nu3 '\0014\0000\0000\0000\0010\0000\0001\0001\0000\00…: adb shell exited; is the phone still connected?`,
   and a phone that stops answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type

@@ -55,9 +55,7 @@ export interface Phone {
   /** The latest frame of the stream, or `undefined` before the first. */
   frame(): Image | undefined;
   screenshot(): Promise<Image>;
-
-  /** A tap at `at`, or `times` of them in a burst. */
-  tap(at: Point, times?: number): Promise<void>;
+  tap(at: Point): Promise<void>;
   swipe(from: Point, to: Point, ms: number): Promise<void>;
 }
 
@@ -139,16 +137,6 @@ const PLAYING_MS = 3_500;
  * ahead of, and that plays after theirs, shows its button lit for a tenth of a second as the HUD comes back.
  */
 const RELIT_MS = 1_000;
-
-/**
- * How many times over a charged move's button is tapped at once, a burst taking about 150ms: `Player` answers a lit
- * button with one tap, and it is made a burst here, where the phone is touched. A tap the game drops costs the second
- * `Player` waits before tapping a button still lit again, where a Pokémon low on HP may have none to spare. Tapping the
- * button more has not yet been seen to cost a throw: retapped a second on, a throw waiting was still one throw, though
- * taps 50ms apart are untried. What looked to cost one was a swipe straight after the tap, and none is made for a while
- * after it.
- */
-const BURST = 4;
 
 /**
  * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
@@ -1265,7 +1253,7 @@ export async function run(
           log(`tap ${action.what}`, 'own');
         }
 
-        await phone.tap(action.at, action.what === 'charged' ? BURST : 1);
+        await phone.tap(action.at);
 
         if (action.what === 'charged') {
           const type = data.combat[seen.moves.get(action.at[0]) ?? '']?.type;
