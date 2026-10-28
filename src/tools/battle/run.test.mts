@@ -1324,6 +1324,9 @@ test('stays in when nothing benched counters the opponent switched in', async ()
   expect(taps.filter((scene) => scene === 'sneasel')).toEqual([]);
 });
 
+const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
+const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints';
+
 /**
  * The opponent switches Glaceon out for Mamoswine while our Giratina has Shadow Sneak lit. Mamoswine's Avalanche
  * threatens Giratina, and nothing benched counters Mamoswine, but Umbreon is safe from all of its moves: Giratina
@@ -1339,9 +1342,6 @@ test('stays in when nothing benched counters the opponent switched in', async ()
  * for the first second, as though spent while Mamoswine flies in, the switch decided on is given up as Giratina comes
  * to be doomed, before its tap, and it stays in and throws.
  */
-const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
-const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints';
-
 test.each([
   ['spent', [], undefined, [STAYED], []],
   [
