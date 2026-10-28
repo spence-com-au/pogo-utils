@@ -1335,21 +1335,28 @@ test('stays in when nothing benched counters the opponent switched in', async ()
  * `READ_MS` ago.
  *
  * Giratina's own shields are spent on the frame as recorded, and Mamoswine's moves would faint it: doomed, it stays in
- * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks.
+ * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks. Painted held only
+ * for the first second, as though spent while Mamoswine flies in, the switch decided on is given up as Giratina comes
+ * to be doomed, before its tap, and it stays in and throws.
  */
+const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
+const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints';
+
 test.each([
-  ['spent', [], ['own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints'], []],
+  ['spent', [], undefined, [STAYED], []],
   [
     'held',
-    [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]),
+    HELD,
+    undefined,
     [],
     [
       "own: switching to Umbreon against Mamoswine, banking Shadow Sneak: Giratina is hit super effectively and banks its energy; Umbreon is safe from Mamoswine's moves",
     ],
   ],
+  ['spent as it flies in', HELD, 1000, [STAYED], []],
 ])(
   'with our shields %s, a lit move against an opponent switched in is thrown or banked',
-  async (_, held, stayed, switched) => {
+  async (_, held, spentAfter, stayed, switched) => {
     const stand = { Zeraora: 'Umbreon', Gyarados: 'Giratina' } as Record<string, string>;
     const icons = ICONS.map((icon) => ({ ...icon, species: stand[icon.species] ?? icon.species }));
     const balls = [0.058, 0.111, 0.161, 0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
@@ -1363,7 +1370,12 @@ test.each([
         loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
         glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
         coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
-        mamoswine: { frame: mamoswine, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+        mamoswine: {
+          frame: mamoswine,
+          tap: { at: bench, to: 'won' },
+          lasts: spentAfter === undefined ? { ms: 6000, to: 'won' } : { ms: spentAfter, to: 'spent' },
+        },
+        spent: { frame: red, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
       },
       'party',
     );
@@ -1382,7 +1394,7 @@ test.each([
       report,
     );
 
-    expect(taps).toContain('mamoswine');
+    expect(taps).toContain(spentAfter === undefined ? 'mamoswine' : 'spent');
     expect(report.events.filter((line) => line.startsWith('own: staying'))).toEqual(stayed);
     expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
   },

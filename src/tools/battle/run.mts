@@ -165,7 +165,10 @@ const FLY_IN_MS = 2_000;
  */
 const TIMER_MS = 45_000;
 
-/** How long after the switch timer refused a switch of ours another to bank energy is not tried, in milliseconds. */
+/**
+ * How long after the switch timer refused a switch of ours, or a second tap was dropped against the same newcomer,
+ * another to bank energy is not tried, in milliseconds.
+ */
 const REFUSED_MS = 10_000;
 
 /**
@@ -760,42 +763,15 @@ export async function run(
           throw read.error;
         }
 
-        const named = seen.opponent;
-        const before = named ?? departed;
-
-        seen = merge(seen, read);
-
-        if (seen.opponent !== null && seen.opponent !== before) {
-          // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
-          // standing: Gengar went on at Charizard's CP 2285 for fifteen reads. One read alongside the new name is its.
-          if (named !== null) {
-            seen = { ...seen, opponentCp: read.opponentCp, opponentTypes: read.opponentTypes };
-          }
-
-          if (before !== null) {
-            const gone = leftAtName !== null && left.opponent !== null && left.opponent < leftAtName;
-
-            log(gone ? `${before} fainted; sent in ${seen.opponent}` : `switched to ${seen.opponent}`, 'opponent');
-            stages = { ...stages, their: NO_STAGES };
-            answer = !gone;
-            switchedIn = !gone;
-            counter = undefined;
-            landing = at + FLY_IN_MS;
-            dropped = false;
-          }
-
-          leftAtName = left.opponent;
-          departed = null;
-        }
-
         // Judged by which of the two our HUD names, where the read names either and they differ, before our CP:
         // Palkia's `CP 4673` read as `CP 44673`, and so as no CP at all, for 16s after its switch was dropped, its name
-        // read throughout. A read begun too soon to judge by has the next begin as soon as one can.
+        // read throughout. Judged ahead of a newcomer of theirs the same read names, so that a drop counts against the
+        // one it was tapped against. A read begun too soon to judge by has the next begin as soon as one can.
         if (switching && at - switching.at >= SWITCHED_MS) {
           const { own, ownCp } = read;
           const was = party[switching.from];
-          const named = own !== null && was !== switching.to && (own === was || own === switching.to);
-          const stayed = named ? own === was : ownCp === null ? undefined : ownCp === switching.cp;
+          const byName = own !== null && was !== switching.to && (own === was || own === switching.to);
+          const stayed = byName ? own === was : ownCp === null ? undefined : ownCp === switching.cp;
 
           if (stayed) {
             sent = switching.from;
@@ -832,6 +808,34 @@ export async function run(
           }
         } else if (switching) {
           readAt = Math.min(readAt, switching.at + SWITCHED_MS - READ_MS);
+        }
+
+        const named = seen.opponent;
+        const before = named ?? departed;
+
+        seen = merge(seen, read);
+
+        if (seen.opponent !== null && seen.opponent !== before) {
+          // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
+          // standing: Gengar went on at Charizard's CP 2285 for fifteen reads. One read alongside the new name is its.
+          if (named !== null) {
+            seen = { ...seen, opponentCp: read.opponentCp, opponentTypes: read.opponentTypes };
+          }
+
+          if (before !== null) {
+            const gone = leftAtName !== null && left.opponent !== null && left.opponent < leftAtName;
+
+            log(gone ? `${before} fainted; sent in ${seen.opponent}` : `switched to ${seen.opponent}`, 'opponent');
+            stages = { ...stages, their: NO_STAGES };
+            answer = !gone;
+            switchedIn = !gone;
+            counter = undefined;
+            landing = at + FLY_IN_MS;
+            dropped = false;
+          }
+
+          leftAtName = left.opponent;
+          departed = null;
         }
       }
 
@@ -1253,7 +1257,12 @@ export async function run(
       }
 
       // A switch decided on while the opponent's newcomer flies in is tapped once it has, nothing thrown meanwhile: the
-      // energy lit is the switch's to bank.
+      // energy lit is the switch's to bank. Given up where a lit move comes to finish the newcomer, or ours comes to be
+      // doomed, meanwhile, which none of the switches is decided on; doomed, it is told as staying in.
+      if (counter && clock.now() < landing && (finish || doomed)) {
+        counter = doomed ? stay(counter) : undefined;
+      }
+
       const flying = counter !== undefined && clock.now() < landing;
       const card = prompt?.card;
       const bubbles =
