@@ -43,7 +43,7 @@ jobs:
           # `postinst`, through `update-alternatives`.
           execute_install_scripts: true
 
-      - uses: 'pnpm/setup@v3.1.1'
+      - uses: 'pnpm/setup@v3.1.2'
         with:
           cache: true
       - run: 'pnpm test:${{ matrix.project }}'
