@@ -25,7 +25,10 @@ import type Pokemon from '../pokemon/pokemon.js';
  */
 export type Flag = { [K in keyof Pokemon]: Pokemon[K] extends boolean ? K : never }[keyof Pokemon];
 
-/** The hunt lists by id, which the Pokédex's modes name too — typed, so a mode naming one that is not here fails to compile. */
+/**
+ * The hunt lists by id, which the Pokédex's modes name too — typed, so a mode naming one that is not here fails to
+ * compile.
+ */
 export type HuntId = 'shiny' | 'xxl' | 'xxs' | 'perfect';
 
 type Hunt = { id: HuntId; label: string; members: ReadonlySet<Pokemon>; watched: Predicate };

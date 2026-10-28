@@ -60,8 +60,8 @@ export const availabilityOf = (value: string | null): Availability => (value ===
 
 /**
  * The modes in the order the game's tabs run. Every one but the plain dex is a hunt list's id, the list whose absence
- * counts as registered: a hunt list is what is still wanted, so a species off the XXL list is one the XXL dex already holds — which is the same reading
- * the game's own XXL tab makes of the storage it looks at.
+ * counts as registered: a hunt list is what is still wanted, so a species off the XXL list is one the XXL dex already
+ * holds — which is the same reading the game's own XXL tab makes of the storage it looks at.
  */
 export const MODES: readonly { id: Mode; label: string }[] = [
   { id: 'pokemon', label: 'Pokémon' },

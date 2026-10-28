@@ -649,9 +649,9 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
       </dialog>
 
       {/*
-       * The game's region list: a card per region with its starters, how much of it is registered in this mode and a bar
-       * for the rest — "Complete!" once there is none. Counted over the whole region rather than what a search leaves,
-       * since it is the dex's progress the card reports and not the search's.
+       * The game's region list: a card per region with its starters, how much of it is registered in this mode and a
+       * bar for the rest — "Complete!" once there is none. Counted over the whole region rather than what a search
+       * leaves, since it is the dex's progress the card reports and not the search's.
        */}
       <dialog
         ref={regionsRef}
@@ -764,7 +764,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               />
             </div>
 
-            {/* The round close button the game puts at the foot of every screen, pinned there while the entry scrolls. */}
+            {/*
+             * The round close button the game puts at the foot of every screen, pinned there while the entry
+             * scrolls.
+             */}
             <div class="foot">
               <button
                 type="button"

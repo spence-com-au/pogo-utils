@@ -1043,8 +1043,8 @@ body[data-page='pokedex'] {
   }
 
   /**
-   * The game's close button: a disc with the mode's colour for its cross, centred at the foot of the screen. Sticky, so it stays
-   * where a thumb expects it however far down the forms the entry has been scrolled.
+   * The game's close button: a disc with the mode's colour for its cross, centred at the foot of the screen. Sticky, so
+   * it stays where a thumb expects it however far down the forms the entry has been scrolled.
    */
 
   .detail .foot {
