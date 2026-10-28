@@ -7,7 +7,7 @@
  * A picture's time is when it arrived, in milliseconds since `origin` — the run's start, which the log is timed from —
  * so a moment the log names is that moment in the video. The very first picture is shown from 0, there being nothing
  * earlier to show. One recording overlaps the next by however long the hand-over takes, and the video goes over to the
- * next where its first picture begins, so nothing is shown twice and nothing is missed.
+ * next from `HELD_MS` before its first byte, about the moment its first picture shows, so nothing is shown twice.
  */
 
 import { type Recording } from './stream.mts';
@@ -102,6 +102,14 @@ const TICKS_PER_MS = 90;
  * picture's time, so this moves nothing in what it shows.
  */
 const DELAY_MS = 100;
+
+/**
+ * How long before its first byte the next recording's first picture shows the screen. `screenrecord` holds its first
+ * pictures while it starts and then sends them in a rush, so the first shows what the last recording sent 38–98ms (a
+ * median of 63ms) earlier, across 14 hand-overs on a Pixel 4 XL. Cutting the last recording this far back means none
+ * of that is shown twice, at the cost of the odd frame where the next was quicker.
+ */
+export const HELD_MS = 100;
 
 const AUD = Uint8Array.of(0, 0, 0, 1, 9, 0xf0);
 
@@ -247,9 +255,10 @@ interface Segment {
 }
 
 /**
- * A run's screen as one video, out of each recording `watch` is handed in the order they start. Pictures are written as
- * soon as they are known whole and known to be the video's: a recording's go out until the next recording's first
- * byte, and the next's once the last has sent a picture from there on or has ended, held until then.
+ * A run's screen as one video, out of each recording `watch` is handed in the order they start. A recording's pictures
+ * go out until `HELD_MS` before the next recording's first byte, and the next's once the last has sent a picture from
+ * there on or has ended, held until then. Since that first byte can come at any moment, each picture is written only
+ * once `HELD_MS` have gone by since it came, or a cut is known, or the video is closed.
  */
 export class Video {
   readonly #stream: TransportStream;
@@ -291,9 +300,8 @@ export class Video {
     this.#segments.push(segment);
     this.#cutters.push(cutter);
 
-    // The cut comes where the next recording's first picture begins, which is its first byte, the parameter sets
-    // `screenrecord` leads with. Its being whole would come a picture later, by which time the last recording's
-    // pictures since would have gone out.
+    // The cut is measured from the next recording's first byte, the parameter sets `screenrecord` leads with, rather
+    // than from its first picture being whole, which comes a picture later and later still in the rush it starts with.
     recording.stdout.on('data', (chunk: Buffer) => {
       if (!this.#closed) {
         const at = this.#now() - this.#origin;
@@ -328,8 +336,8 @@ export class Video {
       }
     }
 
-    this.#pump();
     this.#closed = true;
+    this.#pump();
   }
 
   #pump(): void {
@@ -341,10 +349,16 @@ export class Video {
       }
 
       const later = this.#segments.slice(this.#writing + 1);
-      const cut = later.find((next) => next.first !== undefined)?.first ?? Infinity;
+      const next = later.find(({ first }) => first !== undefined)?.first;
+      const cut = next === undefined ? Infinity : next - HELD_MS;
+
+      // Until a cut is known, one could still come `HELD_MS` after now and fall before any picture since then.
+      const settled = next !== undefined || this.#closed ? Infinity : this.#now() - this.#origin - HELD_MS;
       let over = false;
 
-      for (let picture = segment.pictures.shift(); picture; picture = segment.pictures.shift()) {
+      for (let picture = segment.pictures[0]; picture && picture.at <= settled; picture = segment.pictures[0]) {
+        segment.pictures.shift();
+
         if (picture.at < cut) {
           this.#emit(picture);
         } else {

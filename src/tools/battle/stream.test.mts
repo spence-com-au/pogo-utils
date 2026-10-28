@@ -10,7 +10,7 @@ import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from 'vitest';
 import { decodeFrames, Screen, streamSize, type Recording } from './stream.mts';
-import { Video } from './video.mts';
+import { HELD_MS, Video } from './video.mts';
 
 /** The stream a Pixel 4 XL sends, which these clips stand in for. */
 const size = streamSize({ width: 1440, height: 3040 });
@@ -220,9 +220,10 @@ test('keeps the whole screen as video across the hand-over, each picture once an
   expect(pictures.slice(over).every((colour) => colour === 'blue')).toBe(true);
   expect(times.every((time, i) => i === 0 || time > (times[i - 1] ?? Infinity))).toBe(true);
 
-  // Thirty a second from each, the one handing over to the other within a frame or two, with nothing missed between.
+  // Thirty a second from each, but for the `HELD_MS` before the next's first byte, which the phone's next recording
+  // shows again and these clips do not.
   const gaps = times.slice(2).map((time, i) => time - (times[i + 1] ?? 0));
-  expect(Math.max(...gaps)).toBeLessThan(0.1);
+  expect(Math.max(...gaps)).toBeLessThan((HELD_MS + 50) / 1000);
 });
 
 test('fails when a recording ends without a later one taking over', async () => {

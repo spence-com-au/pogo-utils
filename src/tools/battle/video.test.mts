@@ -9,7 +9,7 @@ import { PassThrough } from 'node:stream';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 import { type Recording } from './stream.mts';
-import { Pictures, Video } from './video.mts';
+import { HELD_MS, Pictures, Video } from './video.mts';
 
 const width = 64;
 const height = 128;
@@ -132,8 +132,18 @@ test('times each picture by when it arrived since the run began, the first from 
   expect(shown.map(({ time }) => Math.round((time - start) * 1000))).toEqual([0, 3500, 5500, 7500, 9500]);
 });
 
-test('goes over to the next recording at its first picture, without a gap or a picture twice', async () => {
+test('goes over to the next recording before its first byte, by as long as its first pictures were held', async () => {
   const [red, blue] = await Promise.all([clip('red', 20), clip('blue', 20)]);
+
+  const cut = (h264: Buffer) => {
+    const pictures: Uint8Array[] = [];
+    const cutter = new Pictures(({ bytes }) => pictures.push(bytes));
+    cutter.push(h264, 0);
+    cutter.end();
+    return pictures;
+  };
+
+  const [reds, blues] = [cut(red), cut(blue)];
   const written: Uint8Array[] = [];
   let now = 0;
   const video = new Video(
@@ -144,25 +154,41 @@ test('goes over to the next recording at its first picture, without a gap or a p
   const first = recording();
   const second = recording();
 
-  const send = async (stdout: PassThrough, h264: Buffer, from: number, until: number, at: number) => {
-    for (let i = from; i < until; i += 500) {
-      now = at + i / 10;
-      stdout.write(h264.subarray(i, Math.min(i + 500, until)));
+  const send = async (stdout: PassThrough, pictures: Uint8Array[], times: number[]) => {
+    for (const [i, picture] of pictures.entries()) {
+      now = times[i] ?? NaN;
+      stdout.write(picture);
       await new Promise(setImmediate);
     }
   };
 
+  // Red thirty a second from 1000. The next recording's first byte comes at 1350, its first five pictures in a rush,
+  // as the phone's held ones do, and the last goes on sending through the hand-over before it is stopped.
+  const next = 1350;
   video.watch(first.recording);
-  await send(first.stdout, red, 0, red.length / 2, 1000);
-
-  // The next starts, sends half of what it has, and the last goes on sending through the hand-over before it is
-  // stopped: what it sends from there is not shown.
+  await send(
+    first.stdout,
+    reds.slice(0, 11),
+    reds.slice(0, 11).map((_, i) => 1000 + 33 * i),
+  );
   video.watch(second.recording);
-  await send(second.stdout, blue, 0, blue.length / 2, 1000 + red.length / 20);
-  await send(first.stdout, red, red.length / 2, red.length, 1000 + red.length / 10);
+  await send(
+    second.stdout,
+    blues.slice(0, 5),
+    [0, 1, 2, 3, 4].map((i) => next + i),
+  );
+  await send(
+    first.stdout,
+    reds.slice(11),
+    reds.slice(11).map((_, i) => next + 10 + 33 * i),
+  );
   first.stdout.destroy();
   await new Promise(setImmediate);
-  await send(second.stdout, blue, blue.length / 2, blue.length, 1000 + red.length / 10 + blue.length / 20);
+  await send(
+    second.stdout,
+    blues.slice(5),
+    blues.slice(5).map((_, i) => next + 33 * (i + 1)),
+  );
   video.close();
 
   const shown = await watch(Buffer.concat(written));
@@ -170,10 +196,45 @@ test('goes over to the next recording at its first picture, without a gap or a p
     red > 200 && blue < 40 ? 'red' : blue > 200 && red < 40 ? 'blue' : '?',
   );
   const over = colours.indexOf('blue');
+  const start = shown[0]?.time ?? NaN;
 
-  expect(over).toBeGreaterThan(0);
-  expect(colours.slice(0, over).every((colour) => colour === 'red')).toBe(true);
-  expect(colours.slice(over)).toEqual(Array(20).fill('blue'));
+  // The reds that came within `HELD_MS` of the next's first byte are what its first pictures show again.
+  const kept = reds.slice(0, 11).filter((_, i) => 1000 + 33 * i < next - HELD_MS).length;
+  expect(colours).toEqual([...Array<string>(kept).fill('red'), ...Array<string>(20).fill('blue')]);
   expect(shown.every(({ time }, i) => i === 0 || time > (shown[i - 1]?.time ?? Infinity))).toBe(true);
-  expect((shown[over]?.time ?? 0) - (shown[0]?.time ?? 0)).toBeCloseTo((1000 + red.length / 20) / 1000, 2);
+  expect((shown[over]?.time ?? NaN) - start).toBeCloseTo(next / 1000, 2);
+});
+
+test('writes a picture only once the next recording could no longer cut it', async () => {
+  const pictures: Uint8Array[] = [];
+  const cutter = new Pictures(({ bytes }) => pictures.push(bytes));
+  cutter.push(await clip('red', 5), 0);
+  cutter.end();
+
+  const written: Uint8Array[] = [];
+  let now = 0;
+  const video = new Video(
+    (bytes) => written.push(bytes),
+    0,
+    () => now,
+  );
+  const { recording: one, stdout } = recording();
+  video.watch(one);
+
+  // Each picture is whole once the next begins: the first at 33, the second at 66.
+  for (const [i, picture] of pictures.slice(0, 3).entries()) {
+    now = 33 * i;
+    stdout.write(picture);
+    await new Promise(setImmediate);
+  }
+
+  expect(written).toHaveLength(0);
+
+  now = HELD_MS + 40;
+  stdout.write(pictures[3] ?? new Uint8Array());
+  await new Promise(setImmediate);
+
+  // One write a picture: the two from more than `HELD_MS` ago.
+  expect(written).toHaveLength(2);
+  video.close();
 });
