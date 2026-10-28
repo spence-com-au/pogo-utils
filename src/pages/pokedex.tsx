@@ -12,8 +12,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, numbered, type Entry } from '../pokedex/entries.js';
-import { spriteOf, type Icons } from '../pokedex/icons.js';
-import { colourOf, inkOn, typeIcon, type Types } from '../pokedex/types.js';
+import { spriteOf, typeIcon, type Icons } from '../pokedex/icons.js';
+import { colourOf, inkOn, type Types } from '../pokedex/types.js';
 import {
   availabilityOf,
   emptyState,
@@ -70,7 +70,7 @@ function Sprite({ src, size, eager }: { src: string; size: number; eager?: boole
  * One of the tables `build:sprites` writes, empty until it arrives.
  *
  * The icons are most of a page visit's wait on anything. A fetch that fails leaves the derived name on every tile —
- * right for 912 of the 1025, and the rest keep their number — and the types only colour an entry, so neither
+ * right for 912 of the 1025, and the rest keep their number — and an entry without its types loses only its colour and badges, so neither
  * missing table is worth withholding the grid over.
  */
 function useTable<T extends object>(path: string, without: string): T | Record<string, never> {
@@ -340,7 +340,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const [state, setState] = useState<State>(() => fromFragment(fragment));
 
   const icons: Icons = useTable<Icons>(POKEMON_ICONS, 'some species will show no picture');
-  const types: Types = useTable<Types>(POKEMON_TYPES, 'entries will not be coloured by type');
+  const types: Types = useTable<Types>(POKEMON_TYPES, 'entries will show no types');
 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const searchRef = useRef<HTMLDialogElement>(null);
@@ -464,7 +464,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 onClick={() => setState((was) => ({ ...was, mode: was.mode === id ? 'pokemon' : id }))}
               >
                 <span class="figure">{visible.filter((entry) => registered(entry, id)).length}</span>
-                <span class="label">{id === 'perfect' ? '★ 100%' : label}</span>
+                <span class="label">
+                  {id === 'perfect' && <span aria-hidden="true">★ </span>}
+                  {label}
+                </span>
               </button>
             </li>
           ))}

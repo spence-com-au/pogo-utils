@@ -381,8 +381,8 @@ wild spawn, a category (Legendary, Mythical, Ultra Beast, Baby, Regional) or a p
 The tabs along the foot — Pokémon, Shiny, XXL, XXS and 100% — redraw the grid as that dex. The Pokémon tab fills a tile
 for every species in the game; each of the others fills a tile for a species in the game (with its shiny out, in the
 Shiny dex) that the hunt's list no longer wants, and leaves the rest as an empty numbered tile, as the game shows a slot
-not yet registered. The Shiny dex turns the page gold. The region card counts what is registered in the open mode
-against what the filters leave, with the counts for the four hunt modes — Shiny, XXL, XXS and 100% — beneath.
+not yet registered. The Shiny dex turns the page gold. The card heading the grid counts what is registered in the open
+mode against what the filters leave, with the counts for the four hunt modes — Shiny, XXL, XXS and 100% — beneath.
 
 Picking a tile opens the species on a band of its type colour: its normal and shiny picture, its types, what is true of
 it, each of its forms and regional variants with the same answers, and a link into the **Search** page for it or its

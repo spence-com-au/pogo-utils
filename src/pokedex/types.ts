@@ -1,9 +1,7 @@
 /**
- * A species' types, as the Pokédex entry shows them: the colour the game tints the entry with, and the round icon it
- * draws beside each type's name.
+ * A species' types, as the Pokédex entry shows them: the colour the game tints the entry with, and the ink each type's
+ * name is written in on it. The round icon beside the name is `icons.ts`'s, with the game's other pictures.
  */
-
-import { POGO_ASSETS } from './icons.js';
 
 /**
  * Each species' types by dex number, which `build:sprites` reads off the same form as its picture. A species missing
@@ -51,6 +49,3 @@ export const colourOf = (type: string | undefined) =>
 
 /** The ink a type's name is written in on its own colour, and white for a type the table does not hold. */
 export const inkOn = (type: string) => TYPE_PAINT[type]?.ink ?? '#ffffff';
-
-/** The round icon `pogo_assets` holds for a type, which is what the battle tool reads a type off the screen by too. */
-export const typeIcon = (type: string) => `${POGO_ASSETS}Images/Types/POKEMON_TYPE_${type.toUpperCase()}.png`;

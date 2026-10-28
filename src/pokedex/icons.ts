@@ -17,6 +17,12 @@ export const POGO_ASSETS = 'https://raw.githubusercontent.com/PokeMiners/pogo_as
 
 export const ICON_BASE = `${POGO_ASSETS}${encodeURI(ICON_DIR)}/`;
 
+/** The file `pogo_assets` holds a type's round icon in, which the battle tool caches under the same name. */
+export const typeIconFile = (type: string) => `POKEMON_TYPE_${type.toUpperCase()}.png`;
+
+/** Where a type's round icon is fetched from: by the Pokédex's type badges, and by the battle tool reading the HUD. */
+export const typeIcon = (type: string) => `${POGO_ASSETS}Images/Types/${typeIconFile(type)}`;
+
 /** PokeAPI's pixel sprites, which cover the national dex by number with a shiny beside each. */
 const PIXEL_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
 
