@@ -80,6 +80,12 @@ interface Template {
        * Halloween 2026 costume, the week it arrived.
        */
       form?: string | number;
+
+      /** The forms this one changes into, and the charged moves each change hands over: Kyurem's Freeze Shock. */
+      formChange?: {
+        availableForm: string[];
+        moveReassignment?: { cinematicMoves?: { replacementMoves?: string[] }[] };
+      }[];
     };
     formSettings?: {
       pokemon: string;
@@ -131,6 +137,16 @@ const SCALAR_ORDER = [
 
 /** What a form has to be called to be the species' ordinary one, which decides its display name and its icon alike. */
 const ORDINARY = /(^|_)NORMAL$/;
+
+/**
+ * The charged moves a form gains with the change into it where no `formChange` says so, by the form's name. The game
+ * master gives Origin Forme Dialga and Palkia the Altered Forme's pools and no change into either, but they hold Roar of
+ * Time and Spacial Rend: a Pixel 8 Pro showed Palkia's, and PvPoke's `dialga_origin` and `palkia_origin` list both.
+ */
+const GRANTED: Record<string, string[]> = {
+  DIALGA_ORIGIN: ['ROAR_OF_TIME'],
+  PALKIA_ORIGIN: ['SPACIAL_REND'],
+};
 
 /**
  * Which file holds a form's artwork, or null where the directory holds none.
@@ -270,6 +286,21 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  // What a change of form hands over, by the form changed into: Black Kyurem's Freeze Shock is in neither its pools nor
+  // Kyurem's, only in the `moveReassignment` of the change from one to the other, which Kyurem's bare template and its
+  // `_NORMAL` one both carry. Hence a set of the pool's moves, which also holds Keldeo's Sacred Sword only once.
+  const granted = new Map(Object.entries(GRANTED));
+
+  for (const { data } of templates) {
+    for (const change of data.pokemonSettings?.formChange ?? []) {
+      const moves = (change.moveReassignment?.cinematicMoves ?? []).flatMap((m) => m.replacementMoves ?? []);
+
+      for (const form of change.availableForm) {
+        granted.set(form, [...(granted.get(form) ?? []), ...moves]);
+      }
+    }
+  }
+
   const forms: Form[] = [];
   const bare = new Map<number, Form>();
 
@@ -308,12 +339,15 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       // reader falls back on the whole list when nothing in the pool fits, which is also what covers a move the game
       // has since dropped from the pool of a Pokémon still holding it.
       moves: [
-        ...(settings.quickMoves ?? []),
-        ...(settings.eliteQuickMove ?? []),
-        ...(settings.cinematicMoves ?? []),
-        ...(settings.eliteCinematicMove ?? []),
-        ...(settings.nonTmCinematicMoves ?? []),
-        ...[settings.shadow?.shadowChargeMove, settings.shadow?.purifiedChargeMove].filter((m) => m !== undefined),
+        ...new Set([
+          ...(settings.quickMoves ?? []),
+          ...(settings.eliteQuickMove ?? []),
+          ...(settings.cinematicMoves ?? []),
+          ...(settings.eliteCinematicMove ?? []),
+          ...(settings.nonTmCinematicMoves ?? []),
+          ...[settings.shadow?.shadowChargeMove, settings.shadow?.purifiedChargeMove].filter((m) => m !== undefined),
+          ...(granted.get(name ?? '') ?? []),
+        ]),
       ]
         .map((id) => byId.get(id))
         .filter((m) => m !== undefined),
