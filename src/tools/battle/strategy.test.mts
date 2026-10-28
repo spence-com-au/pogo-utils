@@ -398,6 +398,19 @@ test('tells which slot is out by the charged moves its card was read with', () =
   ).toBe(0);
 });
 
+/**
+ * One charged move read is no surer than the species, a row OCR missed looking the same as a second move locked: Kyogre
+ * read with Surf alone may hold Blizzard and counters Salamence by it, and Mamoswine read with Avalanche alone may hold
+ * Stone Edge.
+ */
+test('judges a card read with one charged move by every one its species can hold', () => {
+  const one = (species: string, charged: string[]) => ({ species, cp: null, moves: { fast: null, charged } });
+  const kyogre = [...cards(['Tyranitar']), one('Kyogre', ['Surf']), ...cards(['Giratina'])];
+
+  expect(counterOf(DATA, kyogre, 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.slot).toBe(1);
+  expect(activeOf(DATA, [...cards(['Latias']), one('Mamoswine', ['Avalanche'])], new Set(), ['Stone Edge'])).toBe(1);
+});
+
 test('a counter says why it was switched to', () => {
   expect(
     counterOf(DATA, cards(['Tyranitar', 'Kyogre']), 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })

@@ -133,28 +133,37 @@ export function chargedOf(form: Form, moveset?: Moveset): string[] {
 }
 
 /**
- * Every charged move a party card can hold, by name: its own, where the panel the selection screen shows for it held
- * was read, and otherwise every one any form of its species can hold.
+ * A card's two charged moves, where the panel the selection screen shows for it held read both. One read alone is no
+ * surer than its species: a Pokémon whose second move is locked has one, but so does a panel whose other row OCR missed.
  */
-function chargedMoves(data: GameData, { species, moves }: Card): Set<string> {
-  if (moves && moves.charged.length > 0) {
-    return new Set(moves.charged);
+const ownMoves = ({ moves }: Card) => (moves && moves.charged.length >= 2 ? moves.charged : undefined);
+
+/**
+ * Every charged move a party card can hold, by name: its own two, where read, and otherwise every one any form of its
+ * species can hold, with any one read among them.
+ */
+function chargedMoves(data: GameData, card: Card): Set<string> {
+  const own = ownMoves(card);
+
+  if (own) {
+    return new Set(own);
   }
 
-  const forms = data.forms.filter((form) => form.species === species);
+  const forms = data.forms.filter((form) => form.species === card.species);
+  const pool = forms.flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
 
-  return new Set(forms.flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name)));
+  return new Set([...pool, ...(card.moves?.charged ?? [])]);
 }
 
 /**
- * The charged moves a benched card is judged by: its own where they were read, Frustration or Return among them if it
- * has one, and otherwise every one its species can hold bar those two, whose 130 power for Return would tie every
- * species with a shadow form, few of ours being purified.
+ * The charged moves a benched card is judged by: its own two where read, Frustration or Return among them if it has
+ * one, and otherwise every one it can hold bar those two, unless read, whose 130 power for Return would tie every species
+ * with a shadow form, few of ours being purified.
  */
 const judgedBy = (data: GameData, card: Card): string[] =>
-  card.moves && card.moves.charged.length > 0
-    ? [...card.moves.charged]
-    : [...chargedMoves(data, card)].filter((move) => !SHADOW_AND_PURIFIED.has(move));
+  [...(ownMoves(card) ?? chargedMoves(data, card))].filter(
+    (move) => !SHADOW_AND_PURIFIED.has(move) || card.moves?.charged.includes(move),
+  );
 
 /** Whether nothing at all was read of a card: no species, and no moves to judge it by. */
 const unread = (card: Card) => card.species === null && !card.moves;
@@ -193,8 +202,10 @@ export function activeOf(
  * cannot hit super effectively, then the one with the hardest hit on it, then the first. A banked finish comes before
  * safety, the opponent gone before it can land what we would be unsafe from: live, a Galarian Moltres at a tenth of its
  * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of the moves
- * `judgedBy` gives it. A card whose species was not read is neither safe nor known to hit, so it goes in only where its
- * banked energy finishes, where nothing named is left, or where it is first and nothing named is safe or hits at all.
+ * `judgedBy` gives it. A card whose species was not read is never safe, its types unknown, and hits for what its moves
+ * land without STAB where they were read. One of which nothing at all was read is not known to hit either, so it goes in
+ * only where its banked energy finishes, where nothing named is left, or where it is first and nothing named is safe or
+ * hits at all.
  */
 export function nextOut(
   data: GameData,
