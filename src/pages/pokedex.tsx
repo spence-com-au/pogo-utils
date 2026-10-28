@@ -69,7 +69,7 @@ function Sprite({ src, size, eager }: { src: string; size: number; eager?: boole
  * One of the tables `build:sprites` writes, empty until it arrives.
  *
  * The icons are most of a page visit's wait on anything. A fetch that fails leaves the derived name on every card —
- * right for 912 of the 1025, and the rest keep their name and number — and the types only colour an entry, so neither
+ * right for 912 of the 1025, and the rest keep their number — and the types only colour an entry, so neither
  * missing table is worth withholding the grid over.
  */
 function useTable<T extends object>(path: string, without: string): T | Record<string, never> {

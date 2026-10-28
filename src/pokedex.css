@@ -255,8 +255,9 @@ body[data-page='pokedex'] {
     background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
   }
 
+  /* In the page's ink, since the ring is drawn on the bare sky, where the blue and the gold are both under 3:1. */
   .card:focus-visible {
-    outline: 3px solid var(--go);
+    outline: 3px solid var(--go-ink);
     outline-offset: 2px;
   }
 
@@ -519,7 +520,7 @@ body[data-page='pokedex'] {
 
   .controls input:focus-visible,
   .controls select:focus-visible {
-    outline: 3px solid var(--go);
+    outline: 3px solid var(--go-ink);
     outline-offset: 1px;
   }
 
@@ -565,7 +566,7 @@ body[data-page='pokedex'] {
 
   .controls .matched {
     flex: 1;
-    color: var(--go-deep);
+    color: var(--go-ink);
     font-weight: 700;
   }
 
@@ -664,6 +665,9 @@ body[data-page='pokedex'] {
     flex-direction: column;
     justify-content: center;
     gap: 4px;
+
+    /* Held to the light side of the panel's cut, so a long name wraps there rather than running onto the starters. */
+    max-width: 46%;
     padding: 12px 18px;
   }
 
@@ -850,7 +854,8 @@ body[data-page='pokedex'] {
   }
 
   /* A ring of black outside one of white, so whichever end of the palette the band is, one of the two stands off it. */
-  .hero button:focus-visible {
+  .hero button:focus-visible,
+  .hero .shiny:focus-visible {
     outline: 3px solid #000;
     outline-offset: 2px;
     box-shadow: 0 0 0 2px #fff;
@@ -1075,8 +1080,20 @@ body[data-page='pokedex'] {
       padding: 14px 14px 4px;
     }
 
+    /**
+     * The name takes the width it needs on one line rather than an equal share with the spacer that centres the pill:
+     * a phone has no room for both, and "Galar & Hisui" would otherwise wrap behind the pill.
+     */
     .dexhead h1 {
+      flex: 0 1 auto;
+      overflow: hidden;
       font-size: 20px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dexhead .top::after {
+      display: none;
     }
 
     .dexhead .count {
