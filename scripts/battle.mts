@@ -449,6 +449,10 @@ if (command === 'run') {
       swipe: (from, to, ms) => touch.swipe(from, to, ms),
       hold: async (point) => {
         const holding = touch.swipe(point, point, HOLD_MS);
+
+        // Failing while the screenshot is taken, the hold fails where it is awaited, or goes with the screenshot's own
+        // failure, rather than as a rejection nothing handles, which ends the process mid-restore.
+        holding.catch(() => {});
         await sleep(HELD_MS);
         const shown = await device.screenshot();
         await holding;
