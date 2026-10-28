@@ -14414,7 +14414,8 @@
         { "name": "Iron Head", "fast": false },
         { "name": "Thunder", "fast": false },
         { "name": "Frustration", "fast": false },
-        { "name": "Return", "fast": false }
+        { "name": "Return", "fast": false },
+        { "name": "Roar of Time", "fast": false }
       ]
     },
     {
@@ -14456,7 +14457,8 @@
         { "name": "Hydro Pump", "fast": false },
         { "name": "Aqua Tail", "fast": false },
         { "name": "Frustration", "fast": false },
-        { "name": "Return", "fast": false }
+        { "name": "Return", "fast": false },
+        { "name": "Spacial Rend", "fast": false }
       ]
     },
     {
@@ -18530,7 +18532,8 @@
         { "name": "Blizzard", "fast": false },
         { "name": "Stone Edge", "fast": false },
         { "name": "Outrage", "fast": false },
-        { "name": "Fusion Bolt", "fast": false }
+        { "name": "Fusion Bolt", "fast": false },
+        { "name": "Freeze Shock", "fast": false }
       ]
     },
     {
@@ -18570,7 +18573,8 @@
         { "name": "Blizzard", "fast": false },
         { "name": "Ancient Power", "fast": false },
         { "name": "Focus Blast", "fast": false },
-        { "name": "Fusion Flare", "fast": false }
+        { "name": "Fusion Flare", "fast": false },
+        { "name": "Ice Burn", "fast": false }
       ]
     },
     {
@@ -18610,7 +18614,8 @@
         { "name": "Close Combat", "fast": false },
         { "name": "Hydro Pump", "fast": false },
         { "name": "X-Scissor", "fast": false },
-        { "name": "Sacred Sword", "fast": false }
+        { "name": "Sacred Sword", "fast": false },
+        { "name": "Secret Sword", "fast": false }
       ]
     },
     {
@@ -24258,7 +24263,8 @@
         { "name": "Dark Pulse", "fast": false },
         { "name": "Future Sight", "fast": false },
         { "name": "Iron Head", "fast": false },
-        { "name": "Outrage", "fast": false }
+        { "name": "Outrage", "fast": false },
+        { "name": "Moongeist Beam", "fast": false }
       ]
     },
     {
@@ -24278,7 +24284,8 @@
         { "name": "Dark Pulse", "fast": false },
         { "name": "Future Sight", "fast": false },
         { "name": "Iron Head", "fast": false },
-        { "name": "Outrage", "fast": false }
+        { "name": "Outrage", "fast": false },
+        { "name": "Sunsteel Strike", "fast": false }
       ]
     },
     {
@@ -26195,7 +26202,8 @@
         { "name": "Air Slash", "fast": true },
         { "name": "Play Rough", "fast": false },
         { "name": "Close Combat", "fast": false },
-        { "name": "Giga Impact", "fast": false }
+        { "name": "Giga Impact", "fast": false },
+        { "name": "Behemoth Blade", "fast": false }
       ]
     },
     {
@@ -26234,7 +26242,8 @@
         { "name": "Ice Fang", "fast": true },
         { "name": "Moonblast", "fast": false },
         { "name": "Close Combat", "fast": false },
-        { "name": "Giga Impact", "fast": false }
+        { "name": "Giga Impact", "fast": false },
+        { "name": "Behemoth Bash", "fast": false }
       ]
     },
     {
