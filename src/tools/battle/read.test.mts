@@ -102,20 +102,14 @@ const label = (image: { width: number }, text: string, x: number): Line => {
   return { text, left: (x - width / 2 - 0.05) * image.width * 3, top: 0, width: width * image.width * 3, height: 30 };
 };
 
-// Palkia in Origin Forme gains Spacial Rend with the form, which the game master's moves for it leave out: live, its
-// label never matched, and Palkia was weighed as having Aqua Tail alone against a Dragonite. Outside the species' moves
-// a label must be a move's whole name, which `SPACIAL RE` is not, and must not be the start of one of the species' own:
-// Tesseract reads Gengar's committed `SLUDGE BOMB` as `SLUDGE`, the whole name of a move Gengar cannot hold.
-test.each([
-  ['Palkia', 'SPACIAL REND', 'Spacial Rend', 'AQUA TAIL', 'Aqua Tail'],
-  ['Palkia', 'SPACIAL RE', undefined, 'AQUA TAIL', 'Aqua Tail'],
-  ['Gengar', 'SLUDGE', undefined, 'SHADOW BALL', 'Shadow Ball'],
-])('under %s, reads %s as %s', async (species, text, move, other, otherMove) => {
+// The labels a Pixel 8 Pro showed under Palkia in Origin Forme, whose Spacial Rend comes with the form rather than from
+// its pools: unmatched, Palkia was weighed as having Aqua Tail alone against a Dragonite.
+test("reads a move the species' form change hands over", async () => {
   const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8.png', import.meta.url)));
-  const bands = [[], [label(image, text, 0.31), label(image, other, 0.69)]];
-  const sighting = await readBattle(image, DATA, () => Promise.resolve(bands.shift() ?? []), species);
+  const bands = [[], [label(image, 'SPACIAL REND', 0.31), label(image, 'AQUA TAIL', 0.69)]];
+  const sighting = await readBattle(image, DATA, () => Promise.resolve(bands.shift() ?? []), 'Palkia');
 
-  expect(Object.fromEntries(sighting.moves)).toEqual({ 0.31: move, 0.69: otherMove });
+  expect(Object.fromEntries(sighting.moves)).toEqual({ 0.31: 'Spacial Rend', 0.69: 'Aqua Tail' });
 });
 
 // Gengar's `SLUDGE BOMB` read short as `SLUDGE B`, which was nearer Sludge than Sludge Bomb among every charged move.

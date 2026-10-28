@@ -209,6 +209,7 @@ test('the slot out is the first not fainted whose species can hold the moves rea
   expect(activeOf(DATA, party, new Set([0]), []), 'the first of the rest after a faint').toBe(1);
   expect(activeOf(DATA, party, none, ['Avalanche']), 'Latias cannot hold Avalanche; Mamoswine can').toBe(1);
   expect(activeOf(DATA, party, none, ['Shadow Sneak'])).toBe(2);
+  expect(activeOf(DATA, ['Latias', 'Palkia'], none, ['Spacial Rend']), 'Origin Forme Palkia’s, with the form').toBe(1);
   expect(activeOf(DATA, [null, 'Mamoswine'], none, ['Shadow Sneak']), 'an unread card cannot be ruled out').toBe(0);
   expect(activeOf(DATA, party, none, ['Hydro Pump']), 'none of them').toBe(undefined);
   expect(activeOf(DATA, party, new Set([0, 1, 2]), [])).toBe(undefined);

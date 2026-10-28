@@ -8,7 +8,7 @@
  * every frame.
  */
 
-import { closest, distance, type GameData } from '../inventory/game-master.mts';
+import { closest, type GameData } from '../inventory/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
 import { crop, scale, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, TOP } from './layout.mts';
@@ -92,9 +92,9 @@ const across = (line: Line, { left, factor }: { left: number; factor: number }, 
 /**
  * What the battle's text says on `image`. `species` is ours where an earlier frame's HUD named it, which the labels are
  * matched among, as the name on this frame is: Gengar's `SLUDGE BOMB` read short as `SLUDGE B` was nearer Sludge, which
- * Gengar cannot hold, than Sludge Bomb, and the move thrown flipped between them read to read. A label outside its moves
- * counts only as a move's whole name that begins none of them. Unnamed — nicknamed, the species no more than the
- * party's guess, which the labels are what correct — every charged move is a label it could be.
+ * Gengar cannot hold, than Sludge Bomb, and the move thrown flipped between them read to read. Unnamed — nicknamed, the
+ * species no more than the party's guess, which the labels are what correct — every charged move is a label it could
+ * be.
  */
 export async function readBattle(
   image: Image,
@@ -125,25 +125,15 @@ export async function readBattle(
   }
 
   const own = sighting.own ?? species;
-  const chargedOf = (moves: GameData['moves']) =>
-    moves.filter((move) => !move.fast && move.name in data.combat).map((move) => move.name);
-  const every = chargedOf(data.moves);
-  const charged =
-    own === null ? every : chargedOf(data.forms.filter((form) => form.species === own).flatMap((f) => f.moves));
+  const charged = (
+    own === null ? data.moves : data.forms.filter((form) => form.species === own).flatMap((f) => f.moves)
+  )
+    .filter((move) => !move.fast && move.name in data.combat)
+    .map((move) => move.name);
 
-  // Beneath each move is how effective it is, which matches no move and so drops out here. A label outside the
-  // species' moves counts only where it reads as a move's whole name, and not as the start of one of the species' own,
-  // which is what a label cut short reads as: Tesseract reads Gengar's committed `SLUDGE BOMB` as `SLUDGE`, where live
-  // it read `SLUDGE B`. Palkia in Origin Forme gains Spacial Rend with the form, which the game master's moves for it
-  // leave out.
-  const bare = (text: string) => fold(text).replaceAll(' ', '');
-  const outside = (text: string) =>
-    charged.some((name) => bare(name).startsWith(bare(text)))
-      ? undefined
-      : every.find((name) => distance(text, name) === 0);
-
+  // Beneath each move is how effective it is, which matches no move and so drops out here.
   for (const line of await read(labels.image)) {
-    const move = closest(line.text, charged, (name) => name) ?? outside(line.text);
+    const move = closest(line.text, charged, (name) => name);
 
     if (!move) {
       continue;
