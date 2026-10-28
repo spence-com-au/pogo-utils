@@ -58,8 +58,14 @@ interface Scene {
   frame: Image;
   screenshot?: Image;
 
-  /** Where a tap moves the phone on from here, and to which scene. */
-  tap?: { at: Point; to: string };
+  /** Where a tap moves the phone on from here, and to which scene: one place, or each of several. */
+  tap?: { at: Point; to: string } | readonly { at: Point; to: string }[];
+
+  /** Where a hold here shows something, and what. */
+  hold?: { at: Point; shows: Image };
+
+  /** What a search typed here finds, and to which scene that moves the phone on. */
+  search?: { text: string; to: string } | readonly { text: string; to: string }[];
 
   /** How many swipes move the phone on from here, and to which scene. */
   swipes?: { count: number; to: string };
@@ -67,6 +73,12 @@ interface Scene {
   /** How long the scene lasts on its own before moving on, in milliseconds. */
   lasts?: { ms: number; to: string };
 }
+
+/** How long a hold takes, in milliseconds, as `scripts/battle.mts` holds a Pokémon on the selection screen. */
+const HOLD_MS = 4000;
+
+/** Whether a touch at `at` lands on what is drawn at `target`. */
+const near = (target: Point, at: Point) => Math.abs(target[0] - at[0]) < 0.05 && Math.abs(target[1] - at[1]) < 0.04;
 
 /**
  * A phone playing `scenes` from `start`, and the clock it runs on. Each OCR read takes `ocrMs` of it, given the time the
@@ -76,12 +88,21 @@ function scripted(
   scenes: Record<string, Scene>,
   start: string,
   ocrMs: (at: number) => number = () => OCR_MS,
-): { phone: Phone; clock: Clock; taps: string[]; strokes: { scene: string; from: Point; to: Point; at: number }[] } {
+): {
+  phone: Phone;
+  clock: Clock;
+  taps: string[];
+  holds: string[];
+  searches: string[];
+  strokes: { scene: string; from: Point; to: Point; at: number }[];
+} {
   let time = 0;
   let current = start;
   let entered = 0;
   let swiped = 0;
   const taps: string[] = [];
+  const holds: string[] = [];
+  const searches: string[] = [];
   const strokes: { scene: string; from: Point; to: Point; at: number }[] = [];
 
   // Screenshots taken and OCR begun, not yet handed back: each takes time on the run's clock, a screenshot a second and
@@ -170,13 +191,29 @@ function scripted(
         developing.push({ due: time + 1000, deliver: () => resolve(screenshot ?? frame) }),
       );
     },
-    tap: async ([x, y]) => {
+    tap: async (at) => {
       await advance(30);
-      const { tap } = scene();
+      const target = [scene().tap ?? []].flat().find((tap) => near(tap.at, at));
       taps.push(current);
 
-      if (tap && Math.abs(tap.at[0] - x) < 0.05 && Math.abs(tap.at[1] - y) < 0.04) {
-        go(tap.to);
+      if (target) {
+        go(target.to);
+      }
+    },
+    hold: async (at) => {
+      const { hold, frame, screenshot } = scene();
+      holds.push(current);
+      await advance(HOLD_MS);
+
+      return hold && near(hold.at, at) ? hold.shows : (screenshot ?? frame);
+    },
+    search: async (text) => {
+      await advance(30);
+      const found = [scene().search ?? []].flat().find((search) => search.text === text);
+      searches.push(text);
+
+      if (found) {
+        go(found.to);
       }
     },
     swipe: async (from, to, ms) => {
@@ -192,7 +229,7 @@ function scripted(
 
   const clock: Clock = { now: () => time, sleep: advance };
 
-  return { phone, clock, taps, strokes };
+  return { phone, clock, taps, holds, searches, strokes };
 }
 
 /** One battle and the way back round to the next, as recorded against Blanche in the Ultra League. */
@@ -217,6 +254,7 @@ function battleAndBack(): Record<string, Scene> {
   };
 }
 
+// The party screen is tapped twice: its first card, for the selection screen these scenes never open, and USE THIS PARTY.
 test('plays a battle from the Battle tab and taps its way back round', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
 
@@ -233,7 +271,7 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
   );
 
   expect(battles).toEqual({ battles: 1, won: 1, lost: 0 });
-  expect(taps).toEqual(['training', 'intro', 'league', 'party', 'charged', 'result']);
+  expect(taps).toEqual(['training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
 });
 
 /** The map's Poké Ball, BATTLE on the main menu, and the Battle tab scrolled from GO Battle League to Training. */
@@ -343,6 +381,104 @@ test('stops rather than battle where no party has the name', async () => {
   expect(taps).toEqual([]);
 });
 
+/**
+ * A Pixel 8 Pro's Master League party, each card opening the selection screen: its search field, CANCEL, the ⊗ that
+ * clears a search, the cards on the party screen and the pink cell of a search's first result, as the reader places
+ * them on its 1008×2244.
+ */
+const SELECTION = {
+  card: (slot: number): Point => [[0.231, 0.5, 0.769][slot] ?? 0.5, 0.732],
+  use: [0.5, 0.872] as Point,
+  search: [0.556, 0.241] as Point,
+  clear: [0.92, 0.241] as Point,
+  cancel: [0.278, 0.93] as Point,
+  first: [0.185, 0.397] as Point,
+};
+
+/**
+ * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. The committed
+ * icons read Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by
+ * its CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
+ * cleared goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside its search field:
+ * CANCEL, back to the party screen, unless a test has it answer another.
+ */
+function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<string, Scene> {
+  const unsearched = fixture('menu-pixel8-selection');
+  const nothing = fixture('menu-pixel8-selection-searched');
+  const selection = (slot: number, searches: { text: string; to: string }[]): Scene => ({
+    frame: unsearched,
+    tap: [{ at: SELECTION.search, to: `select${slot}` }, cancel],
+    search: searches,
+  });
+  const found = (slot: number, frame: Image, held?: string): Scene => ({
+    frame,
+    tap: { at: SELECTION.clear, to: `select${slot}` },
+    ...(held && { hold: { at: SELECTION.first, shows: fixture(held) } }),
+  });
+
+  return {
+    ...battleAndBack(),
+    party: {
+      frame: fixture('menu-pixel8-party-master'),
+      tap: [
+        ...[0, 1, 2].map((slot) => ({ at: SELECTION.card(slot), to: `select${slot}` })),
+        { at: SELECTION.use, to: 'loading' },
+      ],
+    },
+    select0: selection(0, [
+      { text: 'mamoswine&cp4673', to: 'none0' },
+      { text: 'cp4673', to: 'found0' },
+    ]),
+    none0: found(0, nothing),
+    found0: found(0, fixture('menu-pixel8-search-palkia'), 'menu-pixel8-held-palkia'),
+    select1: selection(1, [
+      { text: 'metagross&cp3986', to: 'none1' },
+      { text: 'cp3986', to: 'none1' },
+    ]),
+    none1: found(1, nothing),
+    select2: selection(2, [{ text: 'xerneas&cp4275', to: 'found2' }]),
+    found2: found(2, fixture('menu-pixel8-search-xerneas'), 'menu-pixel8-held-xerneas'),
+  };
+}
+
+const ULTRA = { mode: 'training', leader: 'blanche', league: 'ultra' } as const;
+
+test('reads each card’s moves off the selection screen before using the party, and only once', async () => {
+  const { phone, clock, taps, holds, searches } = scripted(masterParty(), 'party');
+  const report = recorder();
+
+  expect(
+    await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
+  ).toEqual({ battles: 2, won: 2, lost: 0 });
+  expect(
+    report.events.filter((line) => line.startsWith('run: party: M') || /^run: .*( CP \d|unread)/.test(line)),
+  ).toEqual([
+    'run: party: Mamoswine, Metagross, Xerneas',
+    'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
+    'run: card 2 unread: no pink cell for metagross&cp3986 or cp3986',
+    'run: Xerneas CP 4275: Geomancy / Moonblast, Close Combat',
+    'run: party: Mamoswine, Metagross, Xerneas',
+  ]);
+  expect(searches).toEqual(['mamoswine&cp4673', 'cp4673', 'metagross&cp3986', 'cp3986', 'xerneas&cp4275']);
+  expect(holds).toEqual(['found0', 'found2']);
+  expect(taps.filter((scene) => scene === 'party')).toEqual(['party', 'party', 'party', 'party', 'party']);
+});
+
+/**
+ * CANCEL tapped and the selection screen still showing, as where the tap missed: USE THIS PARTY falls on its grid, where
+ * a tap swaps the Pokémon there into the party, so nothing more is tapped, and the screen nothing recognises ends the
+ * run `Lost`. Here a tap there starts the battle, so tapping it would play one rather than end lost.
+ */
+test('taps nothing more where CANCEL leaves the selection screen showing', async () => {
+  const { phone, clock } = scripted(masterParty({ at: SELECTION.use, to: 'loading' }), 'party');
+
+  await expect(
+    run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
+  ).rejects.toBeInstanceOf(Lost);
+});
+
+// The party's first card is tapped for its moves only the first time round: the same cards the second time are not read
+// again.
 test('plays GO Battle League battles from the map, waiting out matchmaking', async () => {
   const { phone, clock, taps } = scripted(league(), 'map');
 
@@ -352,7 +488,7 @@ test('plays GO Battle League battles from the map, waiting out matchmaking', asy
     lost: 2,
   });
   expect(taps).toEqual([
-    ...['map', 'main', 'tab', 'welcome', 'league', 'party', 'charged', 'result'],
+    ...['map', 'main', 'tab', 'welcome', 'league', 'party', 'party', 'charged', 'result'],
     ...['league', 'party', 'charged', 'result'],
   ]);
 });
@@ -385,7 +521,7 @@ test('stops at the end of a GO Battle League set, leaving its reward to be colle
     won: 1,
     lost: 0,
   });
-  expect(taps).toEqual(['party', 'charged', 'result']);
+  expect(taps).toEqual(['party', 'party', 'charged', 'result']);
 });
 
 // The Battle tab sliding in, its BATTLE caught not yet green by the first read: the second finds it lit, and plays.
@@ -411,7 +547,8 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
  *
  * The faint is caught once, on the prompt's first frame, by the prompt and by the Poké Balls it leaves in view, so the
  * frames kept are the prompt's two: the fight's was first seen more than a second before it, and Mamoswine's more than
- * a second after.
+ * a second after. Each is kept at its time on the run's clock, 2.75s of it the first card's tap for the selection
+ * screen, which these scenes never open.
  */
 test('retaps the card it chose when the first tap on the switch prompt does not land', async () => {
   const scenes: Record<string, Scene> = {
@@ -448,8 +585,8 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(kept).toEqual([
-    ['fainted', 7630, 'faint-own'],
-    ['again', 8240, 'faint-own'],
+    ['fainted', 10380, 'faint-own'],
+    ['again', 10990, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([

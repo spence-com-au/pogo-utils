@@ -18,8 +18,9 @@ import {
   type Mode,
   type Outcome,
 } from './menus.mts';
-import { readParty, type Icon } from './party.mts';
-import { BOTTOM, place } from './layout.mts';
+import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
+import { BOTTOM, place, type Size } from './layout.mts';
+import { readCard } from './selection.mts';
 import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS, type Point } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
@@ -57,6 +58,12 @@ export interface Phone {
   screenshot(): Promise<Image>;
   tap(at: Point): Promise<void>;
   swipe(from: Point, to: Point, ms: number): Promise<void>;
+
+  /** A screenshot of what shows while `at` is held, taken mid-hold, the hold let go after. */
+  hold(at: Point): Promise<Image>;
+
+  /** `text` typed into whatever has focus, and Enter pressed. */
+  search(text: string): Promise<void>;
 }
 
 export interface Clock {
@@ -324,9 +331,46 @@ export async function run(
     keeping = { event, until: clock.now() + AROUND_MS };
   };
 
-  let party: (string | null)[] = [];
+  let party: Card[] = [];
   let fainted = new Set<number>();
   let sent = 0;
+
+  // The cards the party screen last showed, by species and CP, whose moves `party` holds as far as they were read: a GO
+  // Battle League set comes back to the party screen before every battle, and reading three cards takes 40s or more.
+  let partyRead: string | undefined;
+
+  // Each card's moves read off the selection screen, as `readCard` reads them, in turn. Stops at a card whose selection
+  // screen did not open, as none would, and at one that left the party screen not showing again, nothing more being
+  // tapped then.
+  const readCards = async (cards: readonly Card[], screen: Size): Promise<{ cards: Card[]; back: boolean }> => {
+    const read = [...cards];
+
+    for (const [slot, card] of cards.entries()) {
+      if (card.cp === null) {
+        log(`card ${slot + 1} unread: its CP unread`);
+        continue;
+      }
+
+      const sleep = (ms: number) => clock.sleep(ms);
+      const shown = { species: card.species, cp: card.cp };
+      const { panel, why, opened, back } = await readCard(phone, sleep, cardAt(slot, screen), shown, data);
+      known = clock.now();
+
+      if (panel) {
+        const { species, ...moves } = panel;
+        read[slot] = { ...card, species: species ?? card.species, moves };
+        log(`${species ?? card.species ?? '?'} CP ${card.cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
+      } else {
+        log(`card ${slot + 1} unread: ${why ?? '?'}`);
+      }
+
+      if (!opened || !back) {
+        return { cards: read, back };
+      }
+    }
+
+    return { cards: read, back: true };
+  };
 
   // What the switch prompt showing was decided to be answered with, once, on its first frame: who fainted and who goes
   // in, and why. Decided again on a later frame, the first tap having moved `sent`, a retap would go to another card.
@@ -855,7 +899,7 @@ export async function run(
         !prompt.told &&
         fainted.has(prompt.fainted)
       ) {
-        log(`${party[prompt.fainted] ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
+        log(`${party[prompt.fainted]?.species ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
       }
 
       prompt = state === 'switch' ? prompt : undefined;
@@ -872,21 +916,24 @@ export async function run(
           activeOf(data, party, fainted, seen.moves.values(), sent) ?? activeOf(data, party, fainted, [], sent);
 
         if (gone !== undefined) {
-          drop(`${seen.own ?? party[gone] ?? 'ours'} fainted first`);
+          drop(`${seen.own ?? party[gone]?.species ?? 'ours'} fainted first`);
           fainted.add(gone);
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };
 
           // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
           if (state !== 'switch') {
-            log(`${seen.own ?? party[gone] ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            log(`${seen.own ?? party[gone]?.species ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
             forgetOwn();
           }
         }
       }
 
-      // A nickname in the HUD leaves the species to the party: whichever slot is out.
+      // A nickname in the HUD leaves the species to the party: whichever slot is out. Its card's moves are ours only
+      // where the HUD names no other species than the card.
       const slot = activeOf(data, party, fainted, seen.moves.values(), sent);
-      const own = seen.own ?? (slot === undefined ? null : (party[slot] ?? null));
+      const ourCard = slot === undefined ? undefined : party[slot];
+      const own = seen.own ?? ourCard?.species ?? null;
+      const ours = ourCard && (seen.own === null || seen.own === ourCard.species) ? ourCard.moves : undefined;
       const us = { species: own, types: seen.ownTypes };
       const them = { species: seen.opponent, types: seen.opponentTypes };
       const facing: Matchup = {
@@ -1012,6 +1059,7 @@ export async function run(
               steps: { ours: hits.step, theirs: energy.step },
               estimate,
               seen: theirMoves.get(seen.opponent ?? ''),
+              fast: ours?.fast,
             },
             meta,
           )
@@ -1235,7 +1283,7 @@ export async function run(
           offered = { why: verdict.why, taken: true };
         } else if (action.what === 'bench' && counter && slot !== undefined) {
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
-          const to = party[counter.slot] ?? '?';
+          const to = party[counter.slot]?.species ?? '?';
           const keeping = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
 
           drop(`switched to ${to} first`);
@@ -1280,9 +1328,10 @@ export async function run(
             sent = prompt.next;
             banked.delete(prompt.next);
             stripping = undefined;
-            const gone = prompt.fainted === undefined || prompt.told ? '' : `${party[prompt.fainted] ?? '?'} fainted; `;
+            const gone =
+              prompt.fainted === undefined || prompt.told ? '' : `${party[prompt.fainted]?.species ?? '?'} fainted; `;
 
-            log(`${gone}sending in ${party[prompt.next] ?? '?'}`, 'own', prompt.why);
+            log(`${gone}sending in ${party[prompt.next]?.species ?? '?'}`, 'own', prompt.why);
           }
         }
       } else {
@@ -1338,14 +1387,14 @@ export async function run(
         noBattle = 0;
       }
 
-      if (menu.screen === 'party' && 'tap' in menu) {
-        party = readParty(screenshot, icons);
+      const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
 
+      if (menu.screen === 'party' && 'tap' in menu) {
         if (mode.mode === 'gbl' && menu.cap !== undefined) {
           cap = menu.cap;
         }
 
-        log(`party: ${party.map((species) => species ?? '?').join(', ')}`);
+        log(`party: ${silhouettes.map((species) => species ?? '?').join(', ')}`);
       }
 
       // A party named is looked for along the carousel before its party is used, the search starting afresh each time the
@@ -1369,6 +1418,22 @@ export async function run(
               : { screen: 'party', swipe: CAROUSEL[step] };
       } else if (menu.screen !== 'party') {
         search = carousel();
+      }
+
+      // The party to be used, its cards read off the selection screen unless they are the cards last read. Where a card
+      // left the party screen not showing again, the screen is read afresh rather than USE THIS PARTY tapped at it.
+      if (menu.screen === 'party' && 'tap' in menu) {
+        const cps = await readCps(screenshot);
+        const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
+        const key = JSON.stringify(cards);
+
+        if (key !== partyRead) {
+          partyRead = key;
+
+          const read = await readCards(cards, screenshot);
+          party = read.cards;
+          menu = read.back ? menu : { screen: 'unknown' };
+        }
       }
 
       // A scroll is not progress: a tab already at its foot whose portraits go unmatched would be scrolled for ever, so

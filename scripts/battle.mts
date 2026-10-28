@@ -52,7 +52,7 @@ import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, Screen, screenrecord, streamSize } from '../src/tools/battle/stream.mts';
 import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
-import { Device } from '../src/tools/inventory/adb.mts';
+import { Device, KEY } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
@@ -112,6 +112,14 @@ function fail(message: string): never {
 if (ignored.length > 0) {
   fail(`${command} does not act on ${ignored.map((flag) => `--${flag}`).join(', ')}`);
 }
+
+/**
+ * How long a Pokémon on the selection screen is held for its panel, and how far into the hold it is screenshot, in
+ * milliseconds: the panel goes as the hold is let go. Screenshots 1.8s into a hold of 3.5s showed it on a Pixel 8 Pro,
+ * and a screenshot takes 0.8–1.9s, so the hold outlasts the slowest of them begun at 1.5s.
+ */
+const HOLD_MS = 4_000;
+const HELD_MS = 1_500;
 
 /**
  * The game's own icon for each type, which the minigame's bubbles and the HUD's type icons are told by: 18 small files,
@@ -433,11 +441,24 @@ if (command === 'run') {
     screen = recording;
     const touch = await touchscreen(held);
 
+    // A hold screenshots what it shows as it goes on, a screenshot being a process of its own beside the held shell.
     const phone: Phone = {
       frame: () => recording.latest()?.image,
       screenshot: () => device.screenshot(),
       tap: (point) => touch.tap(point),
       swipe: (from, to, ms) => touch.swipe(from, to, ms),
+      hold: async (point) => {
+        const holding = touch.swipe(point, point, HOLD_MS);
+        await sleep(HELD_MS);
+        const shown = await device.screenshot();
+        await holding;
+
+        return shown;
+      },
+      search: async (text) => {
+        await device.type(text);
+        await device.key(KEY.ENTER);
+      },
     };
 
     await recording.first();

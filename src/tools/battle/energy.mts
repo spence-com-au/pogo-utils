@@ -442,6 +442,9 @@ export interface Standing {
 
   /** The charged moves the opponent has been seen to use. */
   seen?: ReadonlySet<string>;
+
+  /** Our fast move, where its card's panel was read on the selection screen. */
+  fast?: string | null;
 }
 
 /**
@@ -457,13 +460,13 @@ export interface Standing {
  * - It has another Pokémon to come. With its last, a finish is a finish however it comes.
  * - Our hits on its bar have been measured, and `SPARE_HITS` of them at most take what it has left and the bar's wander.
  * - Its energy, as counted, affords none of its charged moves after the fast moves of its that land meanwhile and one
- *   more for a hit the count missed. Meanwhile is our hits at the longest of our forms' fast moves, and never counts
- *   fewer of its fast moves than of ours, whatever the turns say.
+ *   more for a hit the count missed. Meanwhile is our hits at our fast move where it was read, and otherwise at the
+ *   longest of our forms' fast moves, and never counts fewer of its fast moves than of ours, whatever the turns say.
  * - Those fast moves of its, at what one was measured to take of our bar, leave us standing: a Pokémon fainted carries
  *   no energy on.
  */
 export function spare(data: GameData, standing: Standing, meta?: Meta | null): string | undefined {
-  const { matchup, hp, shields, left, steps, estimate, seen = new Set<string>() } = standing;
+  const { matchup, hp, shields, left, steps, estimate, seen = new Set<string>(), fast } = standing;
   const { species } = matchup.opponent;
 
   if (
@@ -482,9 +485,11 @@ export function spare(data: GameData, standing: Standing, meta?: Meta | null): s
 
   const turns = (name: string) => data.combat[name]?.turns ?? 0;
   const ours = Math.ceil((hp.opponent + WANDER) / steps.ours);
-  const ourTurns = Math.max(
-    ...formsOf(data, matchup.own).flatMap((form) => form.moves.filter((m) => m.fast).map((m) => turns(m.name))),
-  );
+  const ourTurns = fast
+    ? turns(fast)
+    : Math.max(
+        ...formsOf(data, matchup.own).flatMap((form) => form.moves.filter((m) => m.fast).map((m) => turns(m.name))),
+      );
   const theirTurns = turns(estimate.fast);
 
   if (ours > SPARE_HITS || !(ourTurns > 0) || !(theirTurns > 0)) {

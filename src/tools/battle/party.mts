@@ -11,8 +11,21 @@
  * own species a card's nearest others crowd within 0.04 of each other, and `MARGIN` sits between that and 0.11.
  */
 
+import { type Moves } from '../inventory/moves.mts';
+import { ocr, type Line } from '../inventory/ocr.mts';
 import { rgb, type Image } from '../inventory/png.mts';
-import { down } from './layout.mts';
+import { down, place, type Size } from './layout.mts';
+import { type Point } from './play.mts';
+
+/**
+ * What is known of a party card: its species, null where neither its silhouette nor its panel named one; the CP it
+ * shows, null where unread; and its moves, where the panel the selection screen shows for it held was read.
+ */
+export interface Card {
+  species: string | null;
+  cp: number | null;
+  moves?: Moves;
+}
 
 /** A form's outline as a card draws it, cell by cell across the card: 1 where the Pokémon is. */
 export type Silhouette = Uint8Array;
@@ -125,5 +138,32 @@ export function readParty(image: Image, icons: readonly Icon[]): (string | null)
     const [first, second] = [...best].sort(([, a], [, b]) => b - a);
 
     return first && first[1] - (second?.[1] ?? 0) >= MARGIN ? first[0] : null;
+  });
+}
+
+/** Where each card is tapped to open the selection screen for it, at its centre. */
+export const cardAt = (card: number, screen: Size): Point => place([CARD_XS[card] ?? 0.5, CARD_Y], CARD_ANCHOR, screen);
+
+/**
+ * The CP each card shows above it, `CP 4673`, at -0.130 to -0.135 widths from the cards' centres across eight committed
+ * party screens off both phones and over each card's centre. OCR reads the digits whole and the `CP` as it likes —
+ * `ce 4673`, `ce4275`, `a 2495` — so a card's CP is the last number on its line; one of the 24 went unread.
+ */
+const CP_ABOVE = -0.133;
+const CP_REACH = 0.04;
+
+export async function readCps(image: Image, read: (image: Image) => Promise<Line[]> = ocr): Promise<(number | null)[]> {
+  const lines = await read(image);
+  const row = down(CARD_Y, CARD_ANCHOR, image) * image.height;
+
+  return CARD_XS.map((x) => {
+    const line = lines.find(
+      ({ left, top, width, height }) =>
+        Math.abs((top + height / 2 - row) / image.width - CP_ABOVE) <= CP_REACH &&
+        Math.abs((left + width / 2) / image.width - x) <= HALF,
+    );
+    const cp = /(\d{2,4})\D*$/.exec(line?.text ?? '')?.[1];
+
+    return cp === undefined ? null : Number(cp);
   });
 }

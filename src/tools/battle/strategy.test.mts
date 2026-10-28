@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
+import { type Card } from './party.mts';
 import {
   activeOf,
   beforeFainting,
@@ -27,6 +28,9 @@ import {
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
 ) as GameData;
+
+/** A party of cards whose silhouettes named `species`, and of which nothing else was read. */
+const cards = (species: readonly (string | null)[]): Card[] => species.map((name) => ({ species: name, cp: null }));
 
 /** A meta in which `species` is run with `chargedMoves` alone. */
 const metaOf = (species: string, chargedMoves: string[]): Meta => ({
@@ -205,15 +209,20 @@ test('the slot out is the first not fainted whose species can hold the moves rea
   const party = ['Latias', 'Mamoswine', 'Giratina'];
   const none = new Set<number>();
 
-  expect(activeOf(DATA, party, none, []), 'the lead, before anything is read').toBe(0);
-  expect(activeOf(DATA, party, new Set([0]), []), 'the first of the rest after a faint').toBe(1);
-  expect(activeOf(DATA, party, none, ['Avalanche']), 'Latias cannot hold Avalanche; Mamoswine can').toBe(1);
-  expect(activeOf(DATA, party, none, ['Shadow Sneak'])).toBe(2);
-  expect(activeOf(DATA, ['Latias', 'Palkia'], none, ['Spacial Rend']), 'Origin Forme Palkia’s, with the form').toBe(1);
-  expect(activeOf(DATA, [null, 'Mamoswine'], none, ['Shadow Sneak']), 'an unread card cannot be ruled out').toBe(0);
-  expect(activeOf(DATA, party, none, ['Hydro Pump']), 'none of them').toBe(undefined);
-  expect(activeOf(DATA, party, new Set([0, 1, 2]), [])).toBe(undefined);
-  expect(activeOf(DATA, [], none, []), 'a run started mid-battle, past the party screen').toBe(undefined);
+  expect(activeOf(DATA, cards(party), none, []), 'the lead, before anything is read').toBe(0);
+  expect(activeOf(DATA, cards(party), new Set([0]), []), 'the first of the rest after a faint').toBe(1);
+  expect(activeOf(DATA, cards(party), none, ['Avalanche']), 'Latias cannot hold Avalanche; Mamoswine can').toBe(1);
+  expect(activeOf(DATA, cards(party), none, ['Shadow Sneak'])).toBe(2);
+  expect(
+    activeOf(DATA, cards(['Latias', 'Palkia']), none, ['Spacial Rend']),
+    'Origin Forme Palkia’s, with the form',
+  ).toBe(1);
+  expect(activeOf(DATA, cards([null, 'Mamoswine']), none, ['Shadow Sneak']), 'an unread card cannot be ruled out').toBe(
+    0,
+  );
+  expect(activeOf(DATA, cards(party), none, ['Hydro Pump']), 'none of them').toBe(undefined);
+  expect(activeOf(DATA, cards(party), new Set([0, 1, 2]), [])).toBe(undefined);
+  expect(activeOf(DATA, cards([]), none, []), 'a run started mid-battle, past the party screen').toBe(undefined);
 });
 
 test('a shield is taken unless none of the opponent’s charged moves is super effective', () => {
@@ -319,7 +328,7 @@ test.each<[(string | null)[], number[], string, number | undefined, string]>([
   ],
   [['Kyogre', 'Tyranitar', 'Giratina'], [0, 1, 2], 'Entei', undefined, 'nobody left'],
 ])('after a faint, %o less %o against %s sends in slot %s: %s', (party, fainted, opponent, slot) => {
-  expect(nextOut(DATA, party, new Set(fainted), { species: opponent })?.slot).toBe(slot);
+  expect(nextOut(DATA, cards(party), new Set(fainted), { species: opponent })?.slot).toBe(slot);
 });
 
 test.each<[(string | null)[], number[], string, string]>([
@@ -329,7 +338,7 @@ test.each<[(string | null)[], number[], string, string]>([
   [['Latias', 'Mamoswine', 'Giratina'], [0], 'Glaceon', "none safe from Glaceon's moves; hits hardest (Stone Edge)"],
   [['Tyranitar', 'Kyogre', 'Tyranitar'], [1], 'Moltres', 'first card, nothing to choose between them'],
 ])('after a faint, %o less %o against %s says why it sends in whom it does: %s', (party, fainted, opponent, why) => {
-  expect(nextOut(DATA, party, new Set(fainted), { species: opponent })?.why).toBe(why);
+  expect(nextOut(DATA, cards(party), new Set(fainted), { species: opponent })?.why).toBe(why);
 });
 
 test.each<[(string | null)[], number, number[], string | null, number | undefined, string]>([
@@ -352,13 +361,47 @@ test.each<[(string | null)[], number, number[], string | null, number | undefine
   [[null, 'Kyogre'], 0, [], 'Salamence', undefined, 'ours not read'],
 ])('with %o, slot %s out, less %o, against %s switches to slot %s: %s', (party, out, fainted, opponent, slot) => {
   expect(
-    counterOf(DATA, party, out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
+    counterOf(DATA, cards(party), out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
   ).toBe(slot);
+});
+
+/**
+ * Kyogre counters Salamence by Blizzard, which its species can hold. Its card's panel read Surf and Thunder, neither
+ * super effective against a Dragon, and Giratina, the other benched, is hit by Outrage: nobody counters it.
+ */
+test('judges a benched card by the charged moves its panel was read with', () => {
+  const read = cards(['Tyranitar', 'Kyogre', 'Giratina']).map((card) =>
+    card.species === 'Kyogre' ? { ...card, moves: { fast: 'Waterfall', charged: ['Surf', 'Thunder'] } } : card,
+  );
+
+  expect(
+    counterOf(DATA, cards(['Tyranitar', 'Kyogre', 'Giratina']), 0, { species: 'Tyranitar' }, new Set(), {
+      species: 'Salamence',
+    })?.slot,
+  ).toBe(1);
+  expect(counterOf(DATA, read, 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })).toBe(undefined);
+});
+
+// Stone Edge under the buttons: Mamoswine's species holds it, but its card's panel read Avalanche and High Horsepower.
+test('tells which slot is out by the charged moves its card was read with', () => {
+  const mamoswine = {
+    species: 'Mamoswine',
+    cp: 2500,
+    moves: { fast: 'Powder Snow', charged: ['Avalanche', 'High Horsepower'] },
+  };
+
+  expect(activeOf(DATA, cards(['Latias', 'Mamoswine']), new Set(), ['Stone Edge'])).toBe(1);
+  expect(activeOf(DATA, [{ species: 'Latias', cp: null }, mamoswine], new Set(), ['Stone Edge'])).toBe(undefined);
+  expect(
+    activeOf(DATA, [{ species: null, cp: null, moves: mamoswine.moves }], new Set(), ['Avalanche']),
+    'a nickname read by its moves',
+  ).toBe(0);
 });
 
 test('a counter says why it was switched to', () => {
   expect(
-    counterOf(DATA, ['Tyranitar', 'Kyogre'], 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.why,
+    counterOf(DATA, cards(['Tyranitar', 'Kyogre']), 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })
+      ?.why,
   ).toBe("Tyranitar is hit super effectively; Blizzard is, and nothing of Salamence's is");
 });
 
@@ -370,11 +413,13 @@ test('after a faint, sends in the one whose banked energy finishes the opponent,
   const party = ['Tyranitar', 'Giratina', 'Kyogre'];
   const banked = new Map([[1, 'Dragon Pulse']]);
 
-  expect(nextOut(DATA, party, new Set([0]), { species: 'Salamence' }, null, banked)).toEqual({
+  expect(nextOut(DATA, cards(party), new Set([0]), { species: 'Salamence' }, null, banked)).toEqual({
     slot: 1,
     why: 'its banked Dragon Pulse finishes Salamence',
   });
-  expect(nextOut(DATA, party, new Set([0, 1]), { species: 'Salamence' }, null, banked)?.slot, 'it fainted').toBe(2);
+  expect(nextOut(DATA, cards(party), new Set([0, 1]), { species: 'Salamence' }, null, banked)?.slot, 'it fainted').toBe(
+    2,
+  );
 });
 
 test.each<[(string | null)[], number, number[], string | null, number | undefined, string]>([
@@ -390,15 +435,15 @@ test.each<[(string | null)[], number, number[], string | null, number | undefine
   'with %o, slot %s out, less %o, against %s banks by switching to slot %s: %s',
   (party, out, fainted, opponent, slot) => {
     expect(
-      refugeOf(DATA, party, out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
+      refugeOf(DATA, cards(party), out, { species: party[out] ?? null }, new Set(fainted), { species: opponent })?.slot,
     ).toBe(slot);
   },
 );
 
 test('a refuge says why it was switched to', () => {
-  expect(refugeOf(DATA, ['Latias', 'Kyogre'], 0, { species: 'Latias' }, new Set(), { species: 'Glaceon' })?.why).toBe(
-    "Latias is hit super effectively and banks its energy; Kyogre is safe from Glaceon's moves",
-  );
+  expect(
+    refugeOf(DATA, cards(['Latias', 'Kyogre']), 0, { species: 'Latias' }, new Set(), { species: 'Glaceon' })?.why,
+  ).toBe("Latias is hit super effectively and banks its energy; Kyogre is safe from Glaceon's moves");
 });
 
 test.each<[number[], [number, string[]][], string | null, number | undefined, string]>([
@@ -419,15 +464,16 @@ test.each<[number[], [number, string[]][], string | null, number | undefined, st
   [[], [[1, ['Dragon Pulse']]], null, undefined, 'theirs not read'],
 ])('less %o, with %o banked, against %s draws the shield with slot %s: %s', (fainted, banked, opponent, slot) => {
   expect(
-    stripperOf(DATA, ['Tyranitar', 'Giratina', 'Kyogre'], 0, new Set(fainted), new Map(banked), { species: opponent })
-      ?.slot,
+    stripperOf(DATA, cards(['Tyranitar', 'Giratina', 'Kyogre']), 0, new Set(fainted), new Map(banked), {
+      species: opponent,
+    })?.slot,
   ).toBe(slot);
 });
 
 test('a shield drawer says why it was switched to', () => {
   const banked = new Map([[1, ['Surf', 'Blizzard']]]);
 
-  expect(stripperOf(DATA, ['Tyranitar', 'Kyogre'], 0, new Set(), banked, { species: 'Salamence' })?.why).toBe(
+  expect(stripperOf(DATA, cards(['Tyranitar', 'Kyogre']), 0, new Set(), banked, { species: 'Salamence' })?.why).toBe(
     "Kyogre has Surf and Blizzard banked to draw Salamence's shield",
   );
 });
@@ -564,7 +610,7 @@ test('a shield and who goes in allow for only what the opponent’s players run'
     'a meta without Glaceon',
   ).toBe(true);
   expect(
-    nextOut(DATA, party, new Set([0]), { species: 'Glaceon' }, pulse)?.slot,
+    nextOut(DATA, cards(party), new Set([0]), { species: 'Glaceon' }, pulse)?.slot,
     'Giratina takes Water Pulse; Mamoswine does not',
   ).toBe(2);
 });
