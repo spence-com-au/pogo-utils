@@ -1480,6 +1480,44 @@ test('forgets the moves of one of ours fainting with no switch prompt', async ()
 });
 
 /**
+ * Latias leads with Hydro Pump read under its buttons, which none of our party can hold, as a label misread: live, our
+ * name unread, `TIVE` beneath Xerneas's Moonblast read as Dive. It faints with no switch prompt, and Mamoswine comes in
+ * with one of our Poké Balls grey. Counted only where the moves read fit one of ours, the faint went untold, and the
+ * misread moves stood for Mamoswine's.
+ */
+test('counts a faint off our Poké Balls where the moves read fit none of ours', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-two-unlit'), swipes: { count: 10, to: 'next' } },
+      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const fights = new Set(report.fights.map(({ own, moves }) => `${own.species}: ${moves.join(', ') || '?'}`));
+
+  expect(report.events.filter((line) => line.startsWith('own: ') && line.includes('fainted'))).toEqual([
+    'own: Latias fainted: one fewer of our Poké Balls',
+  ]);
+  expect([...fights]).toEqual(['Latias: ?', 'null: Hydro Pump, Avalanche', 'Mamoswine: ?']);
+});
+
+/**
  * A shield prompt is tapped while we have a shield left, and left to run out once both are spent: tapped, it would be
  * a tap at a prompt with nothing behind it. Latias leads with both shields up; Charizard has spent both.
  */
