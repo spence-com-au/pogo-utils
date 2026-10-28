@@ -1444,6 +1444,42 @@ test('counts a faint off our Poké Balls where no switch prompt is answered for 
 });
 
 /**
+ * Kyogre leads, Hydro Pump and Avalanche read under its buttons, and faints with no switch prompt to answer, as the last
+ * one of ours is sent in without one: Mamoswine comes in with one of our Poké Balls grey. Kept, Kyogre's moves stood
+ * for the last one sent in for its whole fight, live, and fitting none still standing, named none of them. Latias's icon
+ * stands for Kyogre's, there being no committed party with it.
+ */
+test('forgets the moves of one of ours fainting with no switch prompt', async () => {
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Latias' ? 'Kyogre' : icon.species }));
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-two-unlit'), swipes: { count: 10, to: 'next' } },
+      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const fights = new Set(report.fights.map(({ own, moves }) => `${own.species}: ${moves.join(', ') || '?'}`));
+
+  expect([...fights]).toEqual(['Kyogre: ?', 'Kyogre: Hydro Pump, Avalanche', 'Mamoswine: ?']);
+});
+
+/**
  * A shield prompt is tapped while we have a shield left, and left to run out once both are spent: tapped, it would be
  * a tap at a prompt with nothing behind it. Latias leads with both shields up; Charizard has spent both.
  */

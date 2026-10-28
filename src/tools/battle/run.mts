@@ -469,6 +469,16 @@ export async function run(
   // from each we throw, theirs off the banner after each of their throws.
   let stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES };
 
+  // The Pokémon of ours sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved, all
+  // read again at once. A read finding no label keeps the moves it merges onto, so any left would stand for its own.
+  const forgetOwn = () => {
+    seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
+    steady.forget('own');
+    stages = { ...stages, own: NO_STAGES };
+    readAt = -Infinity;
+    counter = undefined;
+  };
+
   // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
   // field is back, if it ran `OFF_MS`, and dropped with the battle's end, the menus after it being no stretch of it.
   let off: { state: State | 'minigame'; what: string; from: number }[] = [];
@@ -770,19 +780,14 @@ export async function run(
         }
       }
 
-      // The Pokémon sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved, and a throw
-      // of the one before's still to play never will. A switch of ours under way is overtaken by the faint, whatever the
-      // HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would say whether the
-      // switch took being cleared with the HUD, so neither is trusted to have banked: the one switched from loses what
-      // the switch banked, which would have it sent back in to finish if it was the one that fainted, and the one
-      // switched to gets back what it had.
+      // A throw of the one before's still to play never will. A switch of ours under way is overtaken by the faint,
+      // whatever the HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would
+      // say whether the switch took being cleared with the HUD, so neither is trusted to have banked: the one switched
+      // from loses what the switch banked, which would have it sent back in to finish if it was the one that fainted,
+      // and the one switched to gets back what it had.
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
-        seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
-        steady.forget('own');
-        stages = { ...stages, own: NO_STAGES };
-        readAt = -Infinity;
-        counter = undefined;
+        forgetOwn();
 
         if (switching) {
           banked.delete(switching.from);
@@ -867,8 +872,10 @@ export async function run(
           fainted.add(gone);
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };
 
+          // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
           if (state !== 'switch') {
             log(`${seen.own ?? party[gone] ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            forgetOwn();
           }
         }
       }
@@ -1244,10 +1251,7 @@ export async function run(
           stripping = counter.strip ? counter.slot : undefined;
           calmAt = clock.now() + TIMER_MS;
           sent = counter.slot;
-          counter = undefined;
-          seen = { ...seen, own: null, ownCp: null, ownTypes: null, moves: new Map() };
-          steady.forget('own');
-          stages = { ...stages, own: NO_STAGES };
+          forgetOwn();
           readAt = clock.now() - READ_MS + SWITCHED_MS;
         } else {
           log(`tap ${action.what}`, 'own');
