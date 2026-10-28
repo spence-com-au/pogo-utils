@@ -139,11 +139,15 @@ export function levelsOf(data: GameData, form: Form, iv: IVs, hp: number): numbe
   return data.cpm.filter(([, m]) => hpOf(form, iv, m) === hp).map(([level]) => level);
 }
 
-/** Levenshtein distance over folded text, so case, accents and OCR's stray punctuation cost nothing. */
-export function distance(a: string, b: string): number {
+/**
+ * Levenshtein distance over folded text, so case, accents and OCR's stray punctuation cost nothing. `within` measures
+ * `a` against the nearest stretch of `b` rather than all of it, which costs nothing for what it leaves off either end:
+ * `TIVE` is no distance within SUPER EFFECTIVE.
+ */
+export function distance(a: string, b: string, within = false): number {
   const s = fold(a).replaceAll(' ', '');
   const t = fold(b).replaceAll(' ', '');
-  let previous = Array.from({ length: t.length + 1 }, (_, i) => i);
+  let previous = Array.from({ length: t.length + 1 }, (_, i) => (within ? 0 : i));
 
   for (let i = 1; i <= s.length; i++) {
     const current = [i];
@@ -156,7 +160,7 @@ export function distance(a: string, b: string): number {
     previous = current;
   }
 
-  return previous[t.length] ?? 0;
+  return within ? Math.min(...previous) : (previous[t.length] ?? 0);
 }
 
 /**
