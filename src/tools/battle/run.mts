@@ -398,12 +398,12 @@ export async function run(
   // The energy each of ours left the field with by a switch, as the charged moves lit as it went, and the Pokémon as it
   // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
   // slot sent in to draw a shield with its own, which is not switched away again to draw another. And how soon another
-  // switch to bank energy may be tried, by our switch timer and its refusals, and whether a switch of ours has gone
-  // through this battle, which alone starts the timer: a tap refused before then was dropped.
+  // switch to bank energy may be tried, by our switch timer and its refusals, and when a switch of ours last went
+  // through, which alone starts the timer: a tap refused more than `TIMER_MS` after one, or with none, was dropped.
   let banked = new Map<number, Bank>();
   let stripping: number | undefined;
   let calmAt = -Infinity;
-  let swapped = false;
+  let swappedAt = -Infinity;
 
   // How many Pokémon each side has left as the HUD's Poké Balls last showed it, never more than the last count, a faint
   // being for good; null until read. `leftAtName` is the opponent's count when its name was first read, which a lower
@@ -706,7 +706,7 @@ export async function run(
         banked = new Map();
         stripping = undefined;
         calmAt = -Infinity;
-        swapped = false;
+        swappedAt = -Infinity;
         left = { own: null, opponent: null };
         leftAtName = null;
         promptedAt = 3;
@@ -807,22 +807,24 @@ export async function run(
             // Refused by the timer, the next switch to bank energy waits it out, as it does a second tap dropped
             // against the same newcomer, something besides its flying in being in the way. The first dropped, the
             // switch is decided again as though never tapped, an opponent switched in answered afresh.
-            const retry = !swapped && !dropped;
+            const timer = switching.at - swappedAt < TIMER_MS;
+            const retry = !timer && !dropped;
 
-            dropped ||= !swapped;
+            dropped ||= !timer;
             calmAt = retry ? switching.calm : clock.now() + REFUSED_MS;
             answer ||= retry && switchedIn;
             log(
               `${switching.to} not sent in`,
               'own',
-              swapped
-                ? 'the switch timer is running'
-                : 'the tap was dropped, no switch of ours having started the switch timer',
+              timer ? 'the switch timer is running' : 'the tap was dropped, the switch timer not running',
             );
           }
 
+          if (stayed === false) {
+            swappedAt = switching.at;
+          }
+
           if (stayed !== undefined) {
-            swapped ||= !stayed;
             switching = undefined;
           }
         } else if (switching) {
@@ -834,12 +836,13 @@ export async function run(
       // whatever the HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would
       // say whether the switch took being cleared with the HUD, so neither is trusted to have banked: the one switched
       // from loses what the switch banked, which would have it sent back in to finish if it was the one that fainted,
-      // and the one switched to gets back what it had.
+      // and the one switched to gets back what it had. The switch timer is taken to run from it, as it does if it took.
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
         forgetOwn();
 
         if (switching) {
+          swappedAt = switching.at;
           banked.delete(switching.from);
 
           if (switching.bank) {

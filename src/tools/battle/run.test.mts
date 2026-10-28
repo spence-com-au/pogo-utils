@@ -1176,7 +1176,7 @@ test.each([
     3000,
     ['flying'],
     [
-      'own: Latias not sent in: the tap was dropped, no switch of ours having started the switch timer',
+      'own: Latias not sent in: the tap was dropped, the switch timer not running',
       "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
     ],
   ],
@@ -1221,12 +1221,20 @@ test.each([
   ]);
 });
 
+const ZERAORA =
+  "own: switching to Zeraora against Glaceon: Latias is hit super effectively; Dynamic Punch is, and nothing of Glaceon's is";
+const DROPPED = 'own: Zeraora not sent in: the tap was dropped, the switch timer not running';
+
 /**
- * Latias switched in against Golem as above, Glaceon comes back in, its moves super effective against Latias, and
- * Zeraora, whose Dynamic Punch is against Glaceon, is tapped once it has flown in; but Latias's switch has started the
- * switch timer, and our CP unchanged at the next read is the timer refusing the tap rather than the tap dropped.
+ * Latias switched in against Golem as above, Entei comes in for `entei` milliseconds, Latias's Psychic read against it,
+ * and then Glaceon, its moves super effective against Latias: Zeraora, whose Dynamic Punch is against Glaceon, is
+ * tapped once it has flown in, and our CP is unchanged at the next read. Within `TIMER_MS` of Latias's switch, that is
+ * the timer refusing the tap. After it, the tap was dropped, and is tapped once more; dropped again, it is left.
  */
-test('tells a switch refused while our switch timer runs', async () => {
+test.each([
+  ['running', 10_000, [ZERAORA, 'own: Zeraora not sent in: the switch timer is running']],
+  ['run out', 50_000, [ZERAORA, DROPPED, ZERAORA, DROPPED]],
+])('tells a switch refused with our switch timer %s', async (_, entei, told) => {
   const bench: Point = [0.903, 0.608];
   const { phone, clock } = scripted(
     {
@@ -1234,7 +1242,8 @@ test('tells a switch refused while our switch timer runs', async () => {
       party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
       loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
       glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'golem' } },
-      golem: { frame: fixture('battle-gengar-label-short'), tap: { at: bench, to: 'back' } },
+      golem: { frame: fixture('battle-gengar-label-short'), tap: { at: bench, to: 'entei' } },
+      entei: { frame: fixture('battle-night'), lasts: { ms: entei, to: 'back' } },
       back: { frame: fixture('battle-latias'), lasts: { ms: 8000, to: 'won' } },
     },
     'party',
@@ -1254,9 +1263,9 @@ test('tells a switch refused while our switch timer runs', async () => {
     report,
   );
 
-  expect(report.events.filter((line) => line.includes('not sent in'))).toEqual([
-    'own: Zeraora not sent in: the switch timer is running',
-  ]);
+  expect(
+    report.events.filter((line) => line.startsWith('own: Zeraora') || line.startsWith('own: switching to Zeraora')),
+  ).toEqual(told);
 });
 
 /** The same Golem read by its type icons, Rock and Electric: an Alolan one, nothing of which threatens Gengar. */
