@@ -3,6 +3,7 @@
  * the four hunt modes, a grid of glassy tiles holding a picture and a number, and the bar that floats over the foot
  * with the mode tabs and the round search, clear and regions buttons. The shiny mode turns all of it gold, as the game
  * does.
+ *
  * Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages; everything below is this
  * page's own.
  */
@@ -38,6 +39,7 @@ body[data-page='pokedex'] {
    * sky is fixed behind a scrolling grid — all clear 4.5:1 rather than the 2–3:1 the game's colours give.
    *
    * `--card` is the ground of a region card, which is solid rather than glass so its starters' panel reads beside it.
+   * `--art-from`, `--art-to` and `--art-grid` paint that panel: a slanted gradient under a fine grid, as the game's.
    */
   --sky: linear-gradient(180deg, #84cfe3 0, #a6dded 45%, #c4ebf3 100%);
   --go: #177a9e;
@@ -54,6 +56,9 @@ body[data-page='pokedex'] {
   --tile-edge: rgb(255 255 255 / 60%);
   --pill: rgb(255 255 255 / 88%);
   --pill-ink: #5b5f63;
+  --art-from: #1fa3dc;
+  --art-to: #46c1ea;
+  --art-grid: rgb(255 255 255 / 12%);
 
   background: var(--sky);
   background-attachment: fixed;
@@ -70,6 +75,9 @@ body[data-page='pokedex'] {
     --tile-edge: rgb(255 255 255 / 16%);
     --pill: rgb(255 255 255 / 14%);
     --pill-ink: #d7e4e8;
+    --art-from: #135d78;
+    --art-to: #1d7e9f;
+    --art-grid: rgb(255 255 255 / 8%);
   }
 
   /**
@@ -87,6 +95,9 @@ body[data-page='pokedex'] {
     --card: rgb(253 244 220);
     --mark: #97590a;
     --tile: rgb(255 255 255 / 30%);
+    --art-from: #f0a52a;
+    --art-to: #f6c45a;
+    --art-grid: rgb(255 255 255 / 14%);
 
     @media (prefers-color-scheme: dark) {
       --sky: linear-gradient(180deg, #3a2c0e 0, #42331a 45%, #47381f 100%);
@@ -95,6 +106,9 @@ body[data-page='pokedex'] {
       --number: #f0bb55;
       --card: #3d3018;
       --tile: rgb(255 255 255 / 5%);
+      --art-from: #7a5410;
+      --art-to: #9a6c1c;
+      --art-grid: rgb(255 255 255 / 8%);
     }
   }
 
@@ -736,9 +750,9 @@ body[data-page='pokedex'] {
     justify-content: flex-end;
     padding-right: 6px;
     background:
-      repeating-linear-gradient(0deg, rgb(255 255 255 / 12%) 0 3px, transparent 3px 9px),
-      repeating-linear-gradient(90deg, rgb(255 255 255 / 12%) 0 3px, transparent 3px 9px),
-      linear-gradient(135deg, #1fa3dc, #46c1ea);
+      repeating-linear-gradient(0deg, var(--art-grid) 0 3px, transparent 3px 9px),
+      repeating-linear-gradient(90deg, var(--art-grid) 0 3px, transparent 3px 9px),
+      linear-gradient(135deg, var(--art-from), var(--art-to));
     clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
   }
 
@@ -752,13 +766,6 @@ body[data-page='pokedex'] {
     transform: scale(1.5);
     transform-origin: 50% 85%;
     filter: drop-shadow(0 3px 3px rgb(0 0 0 / 22%));
-  }
-
-  .dexroot[data-mode='shiny'] .regioncard .art {
-    background:
-      repeating-linear-gradient(0deg, rgb(255 255 255 / 14%) 0 3px, transparent 3px 9px),
-      repeating-linear-gradient(90deg, rgb(255 255 255 / 14%) 0 3px, transparent 3px 9px),
-      linear-gradient(135deg, #f0a52a, #f6c45a);
   }
 
   /**

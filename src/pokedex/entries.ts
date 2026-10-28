@@ -25,7 +25,7 @@ import type Pokemon from '../pokemon/pokemon.js';
  */
 export type Flag = { [K in keyof Pokemon]: Pokemon[K] extends boolean ? K : never }[keyof Pokemon];
 
-type Hunt = { id: string; label: string; members: ReadonlySet<Pokemon>; watched: Predicate };
+type Hunt = { id: string; label: string; members: ReadonlySet<Pokemon>; watched: Predicate; fillable: Predicate };
 type EntryHunt = { id: string; watched: boolean };
 type Variant = { name: string; pokemon: Pokemon; hunts: EntryHunt[] };
 
@@ -57,6 +57,8 @@ export interface Entry {
  */
 const feedable = allOf(WILD_SPAWN_FILTERS);
 
+const inGame: Predicate = (pokemon) => pokemon.released;
+
 /**
  * The hunt lists, in the order the page shows them. A list names a species or one of its forms, so an entry is on a
  * hunt when anything it holds is a member.
@@ -64,6 +66,9 @@ const feedable = allOf(WILD_SPAWN_FILTERS);
  * A list is a checklist of what is still wanted, where the feed PGSharp is handed is that list narrowed to what it can
  * alert on. `watched` is that narrowing, so the page can tell "wanted, and the feed is looking" from "wanted, but only
  * a raid or an egg will turn one up".
+ *
+ * `fillable` is what a slot of the hunt's dex has to be before it can be filled at all: in the game, and for the shiny
+ * hunt with its shiny out too, since a shiny nobody can catch is not one the dex is missing.
  */
 export const HUNTS = [
   {
@@ -71,10 +76,11 @@ export const HUNTS = [
     label: 'Shiny hunt',
     members: SHINY_POKEMON,
     watched: allOf(SHINY_HUNTING_FILTERS),
+    fillable: (pokemon) => pokemon.released && pokemon.shinyEligible,
   },
-  { id: 'xxl', label: 'XXL wanted', members: XXL_POKEMON, watched: feedable },
-  { id: 'xxs', label: 'XXS wanted', members: XXS_POKEMON, watched: feedable },
-  { id: 'perfect', label: '100% wanted', members: PERFECT_IV_POKEMON, watched: feedable },
+  { id: 'xxl', label: 'XXL wanted', members: XXL_POKEMON, watched: feedable, fillable: inGame },
+  { id: 'xxs', label: 'XXS wanted', members: XXS_POKEMON, watched: feedable, fillable: inGame },
+  { id: 'perfect', label: '100% wanted', members: PERFECT_IV_POKEMON, watched: feedable, fillable: inGame },
 ] as const satisfies readonly Hunt[];
 
 /**
@@ -157,14 +163,12 @@ function slotsOf(
 }
 
 /**
- * Whether a hunt's dex holds a species: some slot of it is in the game — with its shiny out, for the shiny hunt — and
- * no longer wanted by the list, as the game fills a species' tile once any of its forms is registered. Galarian Weezing
- * on the shiny list leaves the Kantonian one held; Keldeo listed bare leaves neither of its forms.
+ * Whether a hunt's dex holds a species: some slot of it is one the hunt can fill — its `fillable` — and no longer
+ * wanted by the list, as the game fills a species' tile once any of its forms is registered. Galarian Weezing on the
+ * shiny list leaves the Kantonian one held; Keldeo listed bare leaves neither of its forms.
  */
 export function heldIn(species: Pokemon, hunt: Hunt) {
-  return slotsOf(species, hunt.members).some(
-    ({ pokemon, wanted }) => !wanted && pokemon.released && (hunt.id !== 'shiny' || pokemon.shinyEligible),
-  );
+  return slotsOf(species, hunt.members).some(({ pokemon, wanted }) => !wanted && hunt.fillable(pokemon));
 }
 
 /**

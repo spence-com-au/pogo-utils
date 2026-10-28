@@ -45,13 +45,7 @@ export const regionOf = (dex: number) =>
   null;
 
 /** Every region a generation covers, joined as one name — `Galar & Hisui` — for a control that picks by generation. */
-export const regionsOf = (generation: number) => {
-  const row = GENERATIONS.find(({ number }) => number === generation);
-
-  return row === undefined
-    ? `Generation ${generation}`
-    : [
-        row.region,
-        ...SUB_REGIONS.filter(({ first }) => first >= row.first && first <= row.last).map((r) => r.region),
-      ].join(' & ');
-};
+export const regionsOf = (row: (typeof GENERATIONS)[number]) =>
+  [row.region, ...SUB_REGIONS.filter(({ first }) => first >= row.first && first <= row.last).map((r) => r.region)].join(
+    ' & ',
+  );

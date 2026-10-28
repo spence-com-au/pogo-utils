@@ -46,8 +46,17 @@ test('a sub-region sits inside one generation, and names its species and that ge
   }
 
   expect([898, 899, 905, 906].map(regionOf)).toEqual(['Galar', 'Hisui', 'Hisui', 'Paldea']);
-  expect(regionsOf(8)).toBe('Galar & Hisui');
-  expect(regionsOf(1)).toBe('Kanto');
+  expect(GENERATIONS.map(regionsOf)).toEqual([
+    'Kanto',
+    'Johto',
+    'Hoenn',
+    'Sinnoh',
+    'Unova',
+    'Kalos',
+    'Alola',
+    'Galar & Hisui',
+    'Paldea',
+  ]);
   expect(regionOf(1026)).toBe(null);
 });
 

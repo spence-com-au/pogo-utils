@@ -75,8 +75,7 @@ export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id 
 
 /**
  * Whether a species fills its tile in a mode: in the plain dex once it is in the game, and in a hunt's once some form
- * of it is in the game, with its shiny out for the shiny hunt, and off the hunt's list — `heldIn`, which `ENTRIES`
- * reads for every hunt as it is built.
+ * of it the hunt can fill is off the hunt's list — `heldIn`, which `ENTRIES` reads for every hunt as it is built.
  */
 export function registered(entry: Entry, mode: Mode) {
   return mode === 'pokemon' ? entry.released : entry.held[mode];

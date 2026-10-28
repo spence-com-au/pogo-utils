@@ -11,15 +11,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-import {
-  CATEGORIES,
-  ENTRIES,
-  GENERATION_NUMBERS,
-  HUNTS,
-  numbered,
-  tileNumber,
-  type Entry,
-} from '../pokedex/entries.js';
+import { CATEGORIES, ENTRIES, HUNTS, numbered, tileNumber, type Entry } from '../pokedex/entries.js';
 import { spriteOf, typeIcon, type Icons } from '../pokedex/icons.js';
 import { colourOf, inkOn, type Types } from '../pokedex/types.js';
 import {
@@ -42,6 +34,9 @@ import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
+
+/** The whole dex, as the header names it and the region list draws it: under Pikachu, Eevee and Mew, as in the game. */
+const ALL_REGIONS = { name: 'All regions', starters: [25, 133, 151] } as const;
 
 /**
  * A sprite that says nothing when it fails. The number under it is the tile; a hotlinked picture that does not arrive
@@ -434,7 +429,8 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
    */
   const searching = state.q.trim() !== '' || state.availability !== '' || state.flags.size > 0;
 
-  const region = state.generation === null ? 'All regions' : regionsOf(state.generation);
+  const generation = GENERATIONS.find(({ number }) => number === state.generation);
+  const region = generation === undefined ? ALL_REGIONS.name : regionsOf(generation);
   const held = visible.filter((entry) => registered(entry, state.mode)).length;
 
   return (
@@ -685,13 +681,11 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           <p>Registered: {ENTRIES.filter((entry) => registered(entry, state.mode)).length}</p>
         </div>
         <ul>
-          {[null, ...GENERATION_NUMBERS].map((generation) => {
+          {[null, ...GENERATIONS].map((row) => {
+            const generation = row?.number ?? null;
             const of = ENTRIES.filter((entry) => generation === null || entry.generation === generation);
             const got = of.filter((entry) => registered(entry, state.mode)).length;
-            const starters =
-              generation === null
-                ? [25, 133, 151]
-                : (GENERATIONS.find(({ number }) => number === generation)?.starters ?? []);
+            const starters = row?.starters ?? ALL_REGIONS.starters;
 
             return (
               <li key={generation ?? 'all'}>
@@ -706,7 +700,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                   }}
                 >
                   <span class="words">
-                    <span class="name">{generation === null ? 'All regions' : regionsOf(generation)}</span>
+                    <span class="name">{row === null ? ALL_REGIONS.name : regionsOf(row)}</span>
                     {got === of.length ? (
                       <span class="done">Complete!</span>
                     ) : (
