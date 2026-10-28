@@ -62,7 +62,7 @@ export interface Phone {
   /** A screenshot of what shows while `at` is held, taken mid-hold, the hold let go after. */
   hold(at: Point): Promise<Image>;
 
-  /** `text` typed into whatever has focus, and Enter pressed. */
+  /** `text` typed into whatever has focus, in place of whatever it held, and Enter pressed. */
   search(text: string): Promise<void>;
 }
 

@@ -423,7 +423,7 @@ const MASTER_CP_UNREAD = painted(fixture('menu-pixel8-party-master'), [255, 255,
  * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. The committed
  * icons read Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by
  * its CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
- * cleared goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside its search field:
+ * cleared or searched over goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside its search field:
  * CANCEL, back to the party screen, unless a test has it answer another. The way back round comes to the party screen
  * again with Xerneas's CP painted out, as OCR misses one now and then.
  */
@@ -437,7 +437,10 @@ function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<str
   });
   const found = (slot: number, frame: Image, held?: string): Scene => ({
     frame,
-    tap: { at: SELECTION.clear, to: `select${slot}` },
+    tap: [
+      { at: SELECTION.clear, to: `select${slot}` },
+      { at: SELECTION.search, to: `select${slot}` },
+    ],
     ...(held && { hold: { at: SELECTION.first, shows: fixture(held) } }),
   });
 

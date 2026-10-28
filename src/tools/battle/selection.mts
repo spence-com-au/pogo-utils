@@ -267,12 +267,6 @@ export async function readCard(
   }
 
   for (const term of terms) {
-    // A search in force, left from before or the last term's, which the term typed would run on from.
-    if (searched(lines)) {
-      await hands.tap(at(CLEAR, TOP));
-      await sleep(CLEARED_MS);
-    }
-
     await hands.tap(at(SEARCH, TOP));
     await sleep(KEYBOARD_MS);
     await hands.search(term);

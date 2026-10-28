@@ -53,6 +53,7 @@ import { RECORD_LIMIT_S, Screen, screenrecord, streamSize } from '../src/tools/b
 import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device, KEY } from '../src/tools/inventory/adb.mts';
+import { CLEAR_KEYS } from '../src/tools/inventory/storage.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
@@ -458,6 +459,7 @@ if (command === 'run') {
         }
       },
       search: async (text) => {
+        await device.key(KEY.MOVE_END, ...Array<number>(CLEAR_KEYS).fill(KEY.DEL));
         await device.type(text);
         await device.key(KEY.ENTER);
       },
