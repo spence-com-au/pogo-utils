@@ -20,13 +20,7 @@ export interface Moves {
  * a screen without it is read as showing no moves at all. Bounding the region below matters as much: `CAUGHT IN THE
  * WILD` and the rest are ordinary prose a fuzzy match will take for a short move.
  *
- * Each row is matched against the moves that form can hold before the whole list is considered, which is a choice
- * among a median of seven rather than 328 and affords far more slack: `oO Tackle`, where the type icon came through as
- * two letters, is two edits from `Tackle` and is rejected outright against the full list. A row that still does not
- * match is cropped and read again on its own, and that rescue answers only to the pool.
- *
- * A move is the fast one or a charged one by the game master's say rather than by the row it sits in. The rows are
- * where OCR is unreliable — one lost, split or read twice moves every row below it — where a move's kind is a fact.
+ * How each row is matched is `readMoves`'.
  */
 export async function parseMoves(
   lines: readonly Line[],
@@ -34,10 +28,30 @@ export async function parseMoves(
   form: Form | null,
   image: Image,
 ): Promise<Moves> {
-  const pool = form?.moves ?? [];
+  return readMoves(moveRows(lines), data, form?.moves ?? [], image);
+}
+
+/**
+ * The moves `rows` name, each row a move's icon, name, energy bar and power, as the detail screen draws them and the
+ * panel a held Pokémon shows in a trainer battle's party.
+ *
+ * Each row is matched against `pool`, the moves its form can hold, before the whole list is considered, which is a
+ * choice among a median of seven rather than 328 and affords far more slack: `oO Tackle`, where the type icon came
+ * through as two letters, is two edits from `Tackle` and is rejected outright against the full list. A row that still
+ * does not match is cropped out of `image` and read again on its own, and that rescue answers only to the pool.
+ *
+ * A move is the fast one or a charged one by the game master's say rather than by the row it sits in. The rows are
+ * where OCR is unreliable — one lost, split or read twice moves every row below it — where a move's kind is a fact.
+ */
+export async function readMoves(
+  rows: readonly Line[],
+  data: GameData,
+  pool: readonly Move[],
+  image: Image,
+): Promise<Moves> {
   const found: Move[] = [];
 
-  for (const row of moveRows(lines)) {
+  for (const row of rows) {
     // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece.
     if (found.some((m) => m.fast) && found.filter((m) => !m.fast).length >= 2) {
       break;
