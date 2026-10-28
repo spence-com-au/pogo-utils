@@ -1163,11 +1163,11 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
  * party and so the bench's top card, is safe from either Golem's moves, and its Aura Sphere hits both super
  * effectively: it is switched in once Golem has flown in. Golem's first frame follows a stretch of `other`, so is read
  * at once, its last read being `READ_MS` ago; and it flies in for `flying` milliseconds after, taking no tap meanwhile,
- * which a tap through it, bench or throw, shows as one of `flying`'s. Taken where the HUD's CP has changed by the next
- * read. Flying in for longer than the run waits, the tap is dropped, which the next read shows by the HUD naming Gengar
- * still, its `CP` painted out so that its CP goes unread, as Palkia's did live: no switch of ours having started the
- * switch timer, it is told as dropped and tapped again. Zeraora's icon stands for Gengar on the party screen, so that
- * it is Gengar, Latias and Gyarados.
+ * which a tap through it, bench or throw, shows as one of `flying`'s. Taken where the next read, naming neither Gengar
+ * nor Latias, finds our CP changed. Flying in for longer than the run waits, the tap is dropped, which the next read
+ * shows by the HUD naming Gengar still, its `CP` painted out so that its CP goes unread, as Palkia's did live: no
+ * switch of ours having started the switch timer, it is told as dropped and tapped again. Zeraora's icon stands for
+ * Gengar on the party screen, so that it is Gengar, Latias and Gyarados.
  */
 test.each([
   ['taken', 1500, [], []],

@@ -157,9 +157,11 @@ const SWITCHED_MS = 2_000;
 const FLY_IN_MS = 2_000;
 
 /**
- * How long after a switch of ours another to bank energy is not tried, in milliseconds: our switch timer, which is not
- * read, and a tap it refuses costs the turn it is made in. Live, the bench's cards were still half dark with it 40s
- * after a switch; a timer running longer is caught by the refusal, after which `REFUSED_MS` more go by.
+ * How long after a switch of ours another to bank energy is not tried, and a tap refused is taken as the switch timer's
+ * rather than dropped, in milliseconds: our switch timer, which is not read off the screen, and a tap it refuses costs
+ * the turn it is made in. The game master's `quickSwapCooldownDurationSeconds` is 45. Live, the bench's cards were
+ * still half dark with it 40s after a switch, so it may stand still through charged moves; a timer running longer has
+ * its refusal taken as a dropped tap, tried once more at the cost of a turn, after which `REFUSED_MS` more go by.
  */
 const TIMER_MS = 45_000;
 
@@ -399,7 +401,8 @@ export async function run(
   // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
   // slot sent in to draw a shield with its own, which is not switched away again to draw another. And how soon another
   // switch to bank energy may be tried, by our switch timer and its refusals, and when a switch of ours last went
-  // through, which alone starts the timer: a tap refused more than `TIMER_MS` after one, or with none, was dropped.
+  // through, which alone starts the timer: a tap refused more than `TIMER_MS` after one, or with none, is taken as
+  // dropped.
   let banked = new Map<number, Bank>();
   let stripping: number | undefined;
   let calmAt = -Infinity;
