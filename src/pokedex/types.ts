@@ -36,8 +36,11 @@ export const TYPE_COLOURS: Readonly<Record<string, string>> = {
   Fairy: '#ee90e6',
 };
 
-/** The colour a species without known types is drawn in: the game's own Pokédex teal. */
-export const NO_TYPE = '#4fbfab';
+/**
+ * The colour a species without known types is drawn in: the page's own teal, as a reference to its token rather than a
+ * value, so it follows the theme. Only ever handed to a custom property, which is what lets a `var()` stand here.
+ */
+export const NO_TYPE = 'var(--go)';
 
 export const colourOf = (type: string | undefined) => (type === undefined ? NO_TYPE : (TYPE_COLOURS[type] ?? NO_TYPE));
 

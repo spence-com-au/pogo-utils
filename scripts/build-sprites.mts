@@ -97,8 +97,9 @@ const { first: declared, last, split } = readSpecies();
 const guessed: number[] = [];
 
 /**
- * The picture that stands for a species, out of the forms the game has artwork for. A costume is never it, Pikachu
- * having 70 of them and no reason to be shown in a party hat.
+ * The form that stands for a species, out of the forms the game has artwork for: its picture is the species' picture,
+ * and its types the ones the entry is coloured by. A costume is never it, Pikachu having 70 of them and no reason to be
+ * shown in a party hat.
  *
  * The ordinary form where the species has one. Otherwise the form `pokedex.ts` declares first, matched by name: the
  * game master abbreviates what that table spells in full, so `PLANT_CLOAK` is offered `Plant` and `SHIELD_FORME` is

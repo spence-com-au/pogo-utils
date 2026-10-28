@@ -34,10 +34,26 @@ const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
 /**
  * The region each generation is named by, which is how the game's own Pokédex divides itself: a row of region tabs
  * across the top rather than generation numbers.
+ *
+ * Generation 8 is two regions: Galar, and Hisui from Wyrdeer (899) to Enamorus (905). The tabs filter by generation, so
+ * that one tab is named for both — splitting it would change what `g=8` means in a link already shared — while an entry
+ * names the one region it is from.
  */
-const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar', 'Paldea'];
+const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar & Hisui', 'Paldea'];
+
+const FIRST_HISUIAN = 899;
+const LAST_HISUIAN = 905;
 
 const regionOf = (generation: number) => REGIONS[generation - 1] ?? `Generation ${generation}`;
+
+const regionOfEntry = ({ dex, generation }: Entry) =>
+  generation === null
+    ? '?'
+    : dex >= FIRST_HISUIAN && dex <= LAST_HISUIAN
+      ? 'Hisui'
+      : generation === 8
+        ? 'Galar'
+        : regionOf(generation);
 
 /**
  * A sprite that says nothing when it fails. The name over it is the card; a hotlinked picture that does not arrive —
@@ -182,17 +198,21 @@ function Detail({
    * The shiny is offered only where the game has one, and this flag is what says so rather than a missing file:
    * PokeAPI draws a shiny for every species, so each of the 64 falling back to it would offer one. The game's own
    * assets are stricter and agree — Hoopa, Volcanion, Cosmog, Kubfu, Urshifu and Zarude have no shiny render, and are
-   * exactly the six `pokedex.ts` marks `isNotShinyEligible`. Reset per species, which keying the dialog's body by dex
-   * number is what arranges.
+   * exactly the six `pokedex.ts` marks `isNotShinyEligible`.
+   *
+   * Held as the species it was turned on for, so stepping to the next one shows its ordinary picture. Not by keying
+   * this component by dex number, which would remount the step buttons inside it and drop the focus off the one just
+   * pressed — and with it the dialog's arrow keys, until the reader tabbed back in.
    */
-  const [shiny, setShiny] = useState(false);
+  const [shinyDex, setShinyDex] = useState<number | null>(null);
+  const shiny = shinyDex === entry.dex;
   const name = entry.name.toLowerCase();
 
   return (
     <>
       {/*
        * The band is the first type's colour fading into the second's, as the game blends a dual type; a species whose
-       * types have not arrived is drawn in the Pokédex's own teal until they do.
+       * types have not arrived is drawn in the page's own teal until they do.
        */}
       <div class="hero" style={{ '--type': colourOf(types[0]), '--type2': colourOf(types[1] ?? types[0]) }}>
         <button type="button" class="step prev" aria-label="Previous species" disabled={first} onClick={() => step(-1)}>
@@ -211,7 +231,7 @@ function Detail({
             aria-pressed={shiny}
             aria-label="Shiny"
             title="Shiny"
-            onClick={() => setShiny(!shiny)}
+            onClick={() => setShinyDex(shiny ? null : entry.dex)}
           >
             ✨
           </button>
@@ -233,7 +253,7 @@ function Detail({
       <div class="grid2">
         <dl class="facts">
           <dt>Region</dt>
-          <dd>{entry.generation === null ? '?' : `${regionOf(entry.generation)} — generation ${entry.generation}`}</dd>
+          <dd>{entry.generation === null ? '?' : `${regionOfEntry(entry)} — generation ${entry.generation}`}</dd>
 
           <dt>In Pokémon GO</dt>
           <dd>{entry.released ? 'Yes' : 'Not yet'}</dd>
@@ -566,7 +586,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           <>
             <div class="body">
               <Detail
-                key={open.dex}
                 entry={open}
                 icons={icons}
                 types={types[open.dex] ?? []}
