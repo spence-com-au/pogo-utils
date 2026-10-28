@@ -10,6 +10,7 @@ import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from 'vitest';
 import { decodeFrames, Screen, streamSize, type Recording } from './stream.mts';
+import { HELD_MS, Video } from './video.mts';
 
 /** The stream a Pixel 4 XL sends, which these clips stand in for. */
 const size = streamSize({ width: 1440, height: 3040 });
@@ -41,6 +42,20 @@ const clip = (colour: string, seconds: number): Recording =>
     ],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
+
+/** What `command` writes to stdout, given `input` on stdin. */
+function output(command: string, args: string[], input: Uint8Array): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+    const chunks: Buffer[] = [];
+    child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+    child.once('error', reject);
+    child.once('close', (code) =>
+      code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`${command} exited ${code}`)),
+    );
+    child.stdin.end(input);
+  });
+}
 
 test.each([
   [{ width: 1440, height: 3040 }, 760],
@@ -155,6 +170,66 @@ test('hands the screen to the next recording without going back to the last', as
   } finally {
     screen.close();
   }
+});
+
+test('keeps the whole screen as video across the hand-over, the first recording then the next, in order', async () => {
+  const recordings: Recording[] = [];
+  const colours = ['red', 'blue'];
+  const written: Uint8Array[] = [];
+  const started = performance.now();
+  const video = new Video((bytes) => written.push(bytes), started);
+
+  const screen = new Screen(
+    () => {
+      const recording = clip(colours[recordings.length] ?? 'blue', 3);
+      recordings.push(recording);
+      return video.watch(recording);
+    },
+    size,
+    1000,
+  );
+
+  try {
+    await screen.first();
+    await sleep(1800);
+  } finally {
+    screen.close();
+    video.close();
+  }
+
+  // What a player shows: each picture's time, and whether it is the first recording's red or the second's blue.
+  const ts = Buffer.concat(written);
+  const [probed, pixels] = await Promise.all([
+    output('ffprobe', ['-v', 'error', '-show_entries', 'frame=pts_time', '-of', 'csv=p=0', '-'], ts),
+    output(
+      'ffmpeg',
+      ['-v', 'error', '-i', '-', '-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'],
+      ts,
+    ),
+  ]);
+  const times = probed.toString().trim().split('\n').map(Number.parseFloat);
+  const frame = width * height * 3;
+
+  // Strictly red or strictly blue, so a grey, black or broken picture at the cut is neither.
+  const pictures = Array.from({ length: pixels.length / frame }, (_, i) => {
+    const red = pixels[i * frame] ?? 0;
+    const blue = pixels[i * frame + 2] ?? 0;
+
+    return red > 200 && blue < 40 ? 'red' : blue > 200 && red < 40 ? 'blue' : '?';
+  });
+
+  const over = pictures.indexOf('blue');
+
+  expect(pictures).toHaveLength(times.length);
+  expect(over).toBeGreaterThan(0);
+  expect(pictures.slice(0, over).every((colour) => colour === 'red')).toBe(true);
+  expect(pictures.slice(over).every((colour) => colour === 'blue')).toBe(true);
+  expect(times.every((time, i) => i === 0 || time > (times[i - 1] ?? Infinity))).toBe(true);
+
+  // Thirty a second from each, but for the `HELD_MS` before the next's first byte, which the phone's next recording
+  // shows again and these clips do not.
+  const gaps = times.slice(2).map((time, i) => time - (times[i + 1] ?? 0));
+  expect(Math.max(...gaps)).toBeLessThan((HELD_MS + 50) / 1000);
 });
 
 test('fails when a recording ends without a later one taking over', async () => {

@@ -606,6 +606,15 @@ round — the result's ✓, the leader, BATTLE, the league, then USE THIS PARTY 
 the screen awake while it runs and puts the setting back after. Where nothing on screen has been recognised for 20
 seconds it stops rather than tap at a screen it does not know, and `--keep-frames DIR` saves the last few frames it saw.
 
+`--keep-video FILE` keeps the whole of the screen the run watched, battles and the menus between them, as MPEG-TS video
+that `mpv` or `ffplay` plays, so any moment the log names can be looked at afterwards, not only those around a faint or
+a shield prompt. A moment's time in the video is its time in the log, seconds since the run began, across the restarts
+`screenrecord`'s three-minute limit makes. It is the H.264 the run already decodes, kept rather than recorded a second
+time, so it costs the phone nothing more; the run does a little more work, cutting it into pictures and writing about 30
+of them a second to disk, at most about 15 MB a minute and less for a still screen. A browser does not play MPEG-TS;
+`ffmpeg -i run.ts -c copy run.mp4` makes one it does, its times the same. Like any capture of the phone it shows the
+account's trainer names, so it is not to be committed as it is.
+
 How it is put together, and the strategy it plays by in full, is in
 [`src/tools/battle/README.md`](src/tools/battle/README.md).
 

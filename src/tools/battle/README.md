@@ -43,6 +43,18 @@ flowchart LR
   until something next moves, since `screenrecord` sends nothing for a still screen. Cutting it needs a source that
   frames its pictures, as scrcpy's server does with each packet's size. `adb`'s reads don't: 13 of 612 carried the tail
   of a picture, up to 5ms after its start, so a marker added after each read would cut one picture in fifty in two.
+- **[`video.mts`](video.mts)** keeps the same H.264 for `--keep-video`, heard beside the decoder's pipe so nothing is
+  recorded twice. It cuts the bytes into pictures as they come, by the NAL units that open one, stamps each with when it
+  arrived since the run began, and writes it as MPEG-TS, raw H.264 having no times of its own: a still screen sends
+  nothing, so a picture's place in the video is only its stamp. `screenrecord` holds its first pictures while it starts
+  and sends them in a rush, the first showing what the last recording sent 38–98ms earlier across 14 hand-overs, so the
+  video goes over to the next recording 100ms before its first byte, dropping what the last sent from there and holding
+  the next's pictures until the last has sent one from there on or has ended: a restart shows nothing twice, and at most
+  a frame or two goes missing where the next was quicker. Each picture is written once those 100ms are up, the cut not
+  being known until the next recording's first byte, bar the last before the screen goes still, which is known to be
+  whole only once the screen next changes. The first picture is shown from 0, there being nothing earlier, so a player's
+  clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
+  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
