@@ -1,6 +1,8 @@
 /**
- * The Pokédex. Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages; everything below
- * is this page's own.
+ * The Pokédex, drawn after the one in Pokémon GO: a teal banner, the region tabs across the top, a grid of white
+ * rounded tiles on a pale mint ground, and an entry screen on a band of the species' own type colour with the round
+ * close button at its foot. Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages;
+ * everything below is this page's own.
  */
 
 /**
@@ -23,6 +25,30 @@ body[data-page='pokedex'] {
   --content-w: 1100px;
 
   /**
+   * The game's own palette for its menus: the teal its buttons and headings are drawn in, a deeper one for text on a
+   * light ground, and the mint the Pokédex grid sits on. Page tokens rather than theme ones, since no other page is
+   * dressed as the game.
+   */
+  --go: #3cb7a3;
+  --go-deep: #2a7f7a;
+  --go-ink: #3d4f5c;
+  --dex-ground: linear-gradient(180deg, #d9f3e8 0, #eef9f3 320px, #f6fbf8 100%);
+  --tile: #fff;
+  --tile-shadow: 0 2px 4px rgb(42 127 122 / 14%);
+
+  background: var(--dex-ground);
+  background-attachment: fixed;
+
+  @media (prefers-color-scheme: dark) {
+    --go: #4fcfb9;
+    --go-deep: #7fded0;
+    --go-ink: #d7e4e8;
+    --dex-ground: linear-gradient(180deg, #10302c 0, #121c1f 320px, #12141a 100%);
+    --tile: #1d2a2d;
+    --tile-shadow: 0 2px 6px rgb(0 0 0 / 45%);
+  }
+
+  /**
    * Everything the script shows and hides is toggled with `hidden`, and the UA's `[hidden] {display: none}` loses to
    * any author `display` on the same element — the grid's list items and the empty message both carry one.
    */
@@ -42,10 +68,36 @@ body[data-page='pokedex'] {
     white-space: nowrap;
   }
 
+  /**
+   * The banner the game titles its Pokédex with: the word in capitals, heavy and spaced, on the teal. The page's own
+   * header carries it, so the counts under it stay where the other pages keep theirs.
+   */
+
+  header.banner {
+    max-width: none;
+    padding: 18px max(22px, calc((100vw - var(--content-w)) / 2 + 22px)) 16px;
+    background: linear-gradient(135deg, var(--go) 0%, #2fa58f 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgb(42 127 122 / 25%);
+  }
+
+  header.banner h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+  }
+
+  header.banner .sub {
+    max-width: 640px;
+    color: rgb(255 255 255 / 88%);
+  }
+
   .dex {
     max-width: var(--content-w);
     margin: 0 auto;
-    padding: 8px 22px 40px;
+    padding: 14px 22px 40px;
     font-size: 13px;
   }
 
@@ -61,12 +113,12 @@ body[data-page='pokedex'] {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 14px;
-    padding: 14px 16px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--panel);
-    box-shadow: var(--shadow-lift);
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--tile) 94%, transparent);
+    box-shadow: var(--tile-shadow);
+    backdrop-filter: blur(8px);
   }
 
   .controls .row {
@@ -75,25 +127,79 @@ body[data-page='pokedex'] {
     gap: 8px;
   }
 
+  /* The game's search box: a white pill with the glass ahead of the words. */
+
   .controls input,
   .controls select {
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text);
+    padding: 9px 14px;
+    border: 2px solid color-mix(in srgb, var(--go) 35%, transparent);
+    border-radius: 999px;
+    background: var(--tile);
+    color: var(--go-ink);
     font: inherit;
+    font-weight: 600;
   }
 
   .controls input {
     flex: 1 1 200px;
     min-width: 0;
+    padding-left: 36px;
+    background: var(--tile)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233cb7a3' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3Cpath d='M15 15l5.5 5.5'/%3E%3C/svg%3E")
+      no-repeat 13px center / 16px;
+  }
+
+  .controls input::placeholder {
+    color: color-mix(in srgb, var(--go-ink) 50%, transparent);
   }
 
   .controls input:focus-visible,
   .controls select:focus-visible {
-    outline: 2px solid var(--track);
-    outline-offset: 1px;
+    border-color: var(--go);
+    outline: none;
+  }
+
+  /**
+   * The region tabs, which scroll sideways on a phone rather than wrapping into a block of buttons: the game's own row
+   * is one line, and ten of them wrapped would be a third of the screen.
+   */
+
+  .regions {
+    display: flex;
+    gap: 6px;
+    margin: 0 -4px;
+    padding: 2px 4px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .regions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .region {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--go) 12%, var(--tile));
+    color: var(--go-deep);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .region:hover {
+    background: color-mix(in srgb, var(--go) 24%, var(--tile));
+  }
+
+  .region[aria-pressed='true'] {
+    background: var(--go);
+    color: #fff;
+    box-shadow: 0 2px 0 var(--go-deep);
   }
 
   .chips {
@@ -107,31 +213,31 @@ body[data-page='pokedex'] {
     align-items: center;
     gap: 6px;
     padding: 5px 12px;
-    border: 1px solid var(--border);
+    border: 2px solid color-mix(in srgb, var(--go) 30%, transparent);
     border-radius: 999px;
-    background: var(--bg);
-    color: var(--muted);
+    background: var(--tile);
+    color: var(--go-ink);
     font: inherit;
     font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     user-select: none;
   }
 
   .chip:hover {
-    border-color: var(--track);
-    color: var(--text);
+    border-color: var(--go);
   }
 
+  .region:focus-visible,
   .chip:focus-visible {
-    outline: 2px solid var(--track);
+    outline: 2px solid var(--go-deep);
     outline-offset: 2px;
   }
 
   .chip[aria-pressed='true'] {
-    border-color: var(--track);
-    background: color-mix(in srgb, var(--track) 16%, var(--panel));
-    color: var(--text);
-    font-weight: 600;
+    border-color: var(--go);
+    background: var(--go);
+    color: #fff;
   }
 
   .controls .meta {
@@ -140,13 +246,13 @@ body[data-page='pokedex'] {
     justify-content: flex-end;
     gap: 10px;
     font-size: 11px;
-    color: var(--muted);
   }
 
   /**
-   * The counts over what the filters leave, read as three figures rather than a sentence. In the page header rather
-   * than among the controls: it is the answer to them, and the controls are pinned over a scrolling grid where a
-   * number that changed under the pointer would be the one thing moving.
+   * The counts over what the filters leave, read as three figures rather than a sentence, on the banner as the game
+   * puts its seen and caught counts. In the page header rather than among the controls: it is the answer to them, and
+   * the controls are pinned over a scrolling grid where a number that changed under the pointer would be the one thing
+   * moving.
    */
 
   .tally {
@@ -169,90 +275,98 @@ body[data-page='pokedex'] {
   .tally dd {
     margin: 0;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
   }
 
   .tally dt {
-    color: var(--muted);
+    color: rgb(255 255 255 / 85%);
     font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .ghost {
-    padding: 3px 10px;
-    border: 1px solid var(--border);
+    padding: 5px 14px;
+    border: 2px solid var(--go);
     border-radius: 999px;
     background: transparent;
-    color: var(--muted);
+    color: var(--go-deep);
     font: inherit;
     font-size: 12px;
+    font-weight: 700;
     text-decoration: none;
     cursor: pointer;
   }
 
   .ghost:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
+    background: var(--go);
+    color: #fff;
   }
 
   .ghost:disabled {
-    opacity: 0.5;
+    border-color: color-mix(in srgb, var(--go) 30%, transparent);
+    opacity: 0.6;
     cursor: default;
   }
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   /**
-   * The artwork is the tile: square, filled edge to edge, with the name laid over it rather than under. Across 1025 of
-   * them the picture is what a reader scans by, so it gets the whole tile and everything else sits on top of it.
+   * A tile as the game's grid draws one: white and rounded, the number over the picture and the name under it, with a
+   * wash of the species' first type rising from the foot so a row reads by colour before any name is.
    */
 
   .card {
     position: relative;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 100%;
-    aspect-ratio: 1;
-    padding: 0;
+    padding: 6px 6px 8px;
     overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--panel);
-    box-shadow: var(--shadow);
-    color: var(--text);
+    border: 0;
+    border-radius: 16px;
+    background:
+      radial-gradient(ellipse 70% 30% at 50% 74%, color-mix(in srgb, var(--type) 30%, transparent), transparent 100%),
+      var(--tile);
+    box-shadow: var(--tile-shadow);
+    color: var(--go-ink);
     font: inherit;
     cursor: pointer;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
   }
 
   .card:hover {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-lift);
+    box-shadow:
+      0 0 0 2px var(--go),
+      var(--tile-shadow);
+    transform: translateY(-2px);
   }
 
   .card:focus-visible {
-    outline: 2px solid var(--track);
+    outline: 3px solid var(--go-deep);
     outline-offset: 2px;
   }
 
-  /**
-   * A species not in the game yet stays in the list — it is still in the dex — but reads as set back from the ones a
-   * reader can go and catch.
-   */
-
-  .card.unreleased .sprite {
-    filter: grayscale(1);
-    opacity: 0.45;
-  }
-
-  .card.unreleased .name {
-    color: var(--muted);
+  .card .num {
+    order: -1;
+    align-self: flex-start;
+    color: color-mix(in srgb, var(--go-ink) 60%, transparent);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   /**
@@ -267,77 +381,53 @@ body[data-page='pokedex'] {
   .sprite {
     display: block;
     width: 100%;
-    height: 100%;
+    height: auto;
+    aspect-ratio: 1;
     object-fit: contain;
+  }
+
+  .card .sprite {
+    width: 88%;
   }
 
   .sprite.missing {
     visibility: hidden;
   }
 
-  /**
-   * The name over the top of the picture, on a scrim that fades out rather than ending on a line: the artwork behind it
-   * is a different colour on every card, and a flat band would be a bar across all 1025.
-   */
-
-  .card .label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    padding: 5px 7px 14px;
-    background: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--panel) 92%, transparent) 0%,
-      color-mix(in srgb, var(--panel) 45%, transparent) 55%,
-      transparent 100%
-    );
-    text-align: left;
-  }
-
-  /* A long name wraps rather than being cut, the scrim growing with it: the tile below is artwork either way. */
+  /* A long name wraps rather than being cut: the tile grows by a line before it loses the end of a species. */
 
   .card .name {
+    order: 1;
     display: block;
-    font-size: 11px;
-    font-weight: 600;
+    max-width: 100%;
+    font-size: 12px;
+    font-weight: 700;
     line-height: 1.15;
+    text-align: center;
   }
 
   /**
-   * Shown on hover and on focus, as the box above filters on it: it is worth a glance and not worth a line of the tile
-   * when the picture and the name have already said which species this is.
+   * A species not in the game yet stays in the list — it is still in the dex — but drawn as the game draws one it has
+   * not caught: a shadow of itself, with no colour under it.
    */
 
-  .card .num {
-    display: block;
-    color: var(--muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 10px;
-    opacity: 0;
+  .card.unreleased {
+    background: color-mix(in srgb, var(--tile) 70%, transparent);
   }
 
-  .card:hover .num,
-  .card:focus-visible .num {
-    opacity: 1;
+  .card.unreleased .sprite {
+    filter: brightness(0);
+    opacity: 0.22;
   }
 
-  /**
-   * A phone has no hover and a tap on a button is no `:focus-visible`, so the reveal above never fires there and the
-   * number would go unpainted for the whole visit — on the narrowest screen, where the tiles are smallest and it is
-   * the other thing the box above filters on. Shown outright instead.
-   */
-
-  @media (hover: none) {
-    .card .num {
-      opacity: 1;
-    }
+  .card.unreleased .name {
+    color: color-mix(in srgb, var(--go-ink) 50%, transparent);
   }
 
   .card .marks {
     position: absolute;
-    right: 5px;
-    bottom: 4px;
+    top: 5px;
+    right: 7px;
     display: flex;
     gap: 2px;
     font-size: 12px;
@@ -345,106 +435,56 @@ body[data-page='pokedex'] {
 
   .empty {
     padding: 40px 0;
-    color: var(--muted);
+    color: var(--go-deep);
+    font-weight: 600;
     text-align: center;
   }
 
+  /**
+   * The entry screen. Its picture sits on a band of the species' type colour, which is what the dialog's top is; the
+   * facts and forms follow on the ordinary panel, and the close button is pinned under all of it.
+   */
+
   .detail {
-    width: min(720px, calc(100vw - 24px));
+    width: min(560px, calc(100vw - 24px));
     max-height: calc(100vh - 48px);
     padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    overflow: hidden auto;
+    border: 0;
+    border-radius: 24px;
     background: var(--panel);
     color: var(--text);
-    box-shadow: var(--shadow-lift);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 35%);
   }
 
   .detail::backdrop {
-    background: rgb(0 0 0 / 45%);
+    background: rgb(20 50 48 / 55%);
+    backdrop-filter: blur(2px);
   }
 
-  .detail .head {
-    position: sticky;
-    top: 0;
+  .hero {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    background: var(--panel);
+    justify-content: center;
+    padding: 24px 12px 8px;
+    background:
+      radial-gradient(ellipse 46% 9% at 50% 88%, rgb(0 0 0 / 16%), transparent 100%),
+      linear-gradient(160deg, var(--type) 0%, var(--type2) 100%);
   }
 
-  .detail .title {
-    display: flex;
-    flex: 1;
-    align-items: baseline;
-    gap: 10px;
-    min-width: 0;
-  }
+  /* A pale light behind the picture, as the game sets a species on a lit spot rather than on the flat colour. */
 
-  .detail .title .num {
-    color: var(--muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 13px;
-  }
-
-  .detail h2 {
-    margin: 0;
-    overflow: hidden;
-    font-size: 20px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .detail .head button {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text);
-    font: inherit;
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .detail .head button:disabled {
-    opacity: 0.35;
-    cursor: default;
-  }
-
-  .detail .head .close {
-    margin-left: 6px;
-    font-size: 14px;
-  }
-
-  .detail .body {
-    padding: 16px;
-    font-size: 13px;
-  }
-
-  /**
-   * The picture spans both rows and is the taller column, and grid shares a spanning item's excess height out over
-   * every row it crosses. Pinning the first to its content is what keeps that height off the facts, so it lands under
-   * the links instead of opening a gap in the middle of them.
-   */
-
-  .detail .grid2 {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: min-content 1fr;
-    gap: 4px 20px;
-    align-items: start;
+  .hero::before {
+    position: absolute;
+    inset: 10% 20% 6%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(255 255 255 / 45%) 0%, transparent 70%);
+    content: '';
   }
 
   .detail .picture {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    grid-row: span 2;
+    position: relative;
     margin: 0;
   }
 
@@ -457,21 +497,150 @@ body[data-page='pokedex'] {
   .detail .picture .sprite {
     width: 240px;
     height: 240px;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 22%));
+  }
+
+  .hero button {
+    position: relative;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .hero .step {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 30%);
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .hero .step:hover:not(:disabled) {
+    background: rgb(255 255 255 / 50%);
+  }
+
+  .hero .step:disabled {
+    visibility: hidden;
+  }
+
+  .hero .shiny {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 85%);
+    font-size: 18px;
+    line-height: 1;
+    filter: grayscale(1);
+    opacity: 0.75;
+  }
+
+  .hero .shiny[aria-pressed='true'] {
+    background: #fff;
+    box-shadow: 0 0 0 3px #f5c542;
+    filter: none;
+    opacity: 1;
+  }
+
+  .hero button:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .detail .title {
+    padding: 14px 16px 4px;
+    text-align: center;
+  }
+
+  .detail .title .num {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .detail h2 {
+    margin: 0;
+    color: var(--go-ink);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .types {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+
+  .type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px 3px 3px;
+    border-radius: 999px;
+    background: var(--type);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 1px rgb(0 0 0 / 30%);
+  }
+
+  .type img {
+    display: block;
+    border-radius: 50%;
+  }
+
+  .detail .body {
+    font-size: 13px;
+  }
+
+  .detail .grid2 {
+    padding: 12px 18px 4px;
   }
 
   .facts {
     display: grid;
     grid-template-columns: max-content 1fr;
-    gap: 6px 14px;
+    gap: 0;
     margin: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--go) 7%, var(--panel));
+  }
+
+  .facts dt,
+  .facts dd {
+    padding: 8px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--go) 14%, transparent);
+  }
+
+  .facts dt:last-of-type,
+  .facts dd:last-of-type {
+    border-bottom: 0;
   }
 
   .facts dt {
     color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 
   .facts dd {
     margin: 0;
+    color: var(--go-ink);
+    font-weight: 600;
   }
 
   .facts ul.hunts {
@@ -482,18 +651,28 @@ body[data-page='pokedex'] {
 
   .hunts .unwatched .note {
     color: var(--muted);
+    font-weight: 400;
   }
 
   .links {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
-    margin: 10px 0 0;
+    margin: 12px 0 0;
+  }
+
+  .variants {
+    padding: 0 18px 8px;
   }
 
   .variants h3 {
     margin: 18px 0 8px;
-    font-size: 13px;
+    color: var(--go-deep);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   /**
@@ -547,29 +726,77 @@ body[data-page='pokedex'] {
     color: var(--muted);
   }
 
+  /**
+   * The game's close button: a white disc with a teal cross, centred at the foot of the screen. Sticky, so it stays
+   * where a thumb expects it however far down the forms the entry has been scrolled.
+   */
+
+  .detail .foot {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    padding: 14px 0 16px;
+    background: linear-gradient(to top, var(--panel) 60%, transparent);
+  }
+
+  .detail .close {
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--go);
+    font: inherit;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--go) 25%, transparent),
+      0 4px 10px rgb(0 0 0 / 20%);
+    cursor: pointer;
+  }
+
+  .detail .close:focus-visible {
+    outline: 3px solid var(--go-deep);
+    outline-offset: 3px;
+  }
+
   @media (width <= 560px) {
+    header.banner {
+      padding-inline: 16px;
+    }
+
     /**
      * Stacked for a phone, the controls are a third of its screen, which is too much to keep pinned over the list. They
      * scroll away with the page instead.
      */
     .controls {
       position: static;
-      border-radius: 0;
-      margin-inline: -22px;
-      padding-inline: 22px;
     }
 
+    .dex {
+      padding-inline: 12px;
+    }
+
+    /* Three to a row, which is what the game itself fits across a phone. */
     .grid {
-      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-      gap: 5px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
     }
 
-    .detail .grid2 {
-      grid-template-columns: 1fr;
+    /* The entry takes the whole screen, as it does in the game, rather than floating over a sliver of the grid. */
+    .detail {
+      width: 100vw;
+      max-width: none;
+      height: 100dvh;
+      max-height: none;
+      border-radius: 0;
     }
 
-    .detail .picture {
-      grid-row: auto;
+    .detail .picture .sprite {
+      width: 200px;
+      height: 200px;
     }
   }
 }

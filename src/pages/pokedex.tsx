@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, numbered, type Entry } from '../pokedex/entries.js';
 import { spriteOf, type Icons } from '../pokedex/icons.js';
+import { colourOf, typeIcon, type Types } from '../pokedex/types.js';
 import {
   availabilityOf,
   emptyState,
@@ -23,12 +24,20 @@ import {
   type State,
 } from '../pokedex/state.js';
 import { said } from '../errors.js';
-import { POKEMON_ICONS } from '../generated.js';
+import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
 import { replaceQuery, toHash } from '../router.js';
 import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
+
+/**
+ * The region each generation is named by, which is how the game's own Pokédex divides itself: a row of region tabs
+ * across the top rather than generation numbers.
+ */
+const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar', 'Paldea'];
+
+const regionOf = (generation: number) => REGIONS[generation - 1] ?? `Generation ${generation}`;
 
 /**
  * A sprite that says nothing when it fails. The name over it is the card; a hotlinked picture that does not arrive —
@@ -59,30 +68,42 @@ function Sprite({ src, size, eager }: { src: string; size: number; eager?: boole
 }
 
 /**
- * The icons the dex number cannot derive, which is most of a page visit's wait on anything. A fetch that fails leaves
- * the derived name on every card — right for 912 of the 1025, and the rest keep their name and number — so a missing
- * table is not worth withholding the grid over.
+ * One of the tables `build:sprites` writes, empty until it arrives.
+ *
+ * The icons are most of a page visit's wait on anything. A fetch that fails leaves the derived name on every card —
+ * right for 912 of the 1025, and the rest keep their name and number — and the types only colour an entry, so neither
+ * missing table is worth withholding the grid over.
  */
-function useIcons(): Icons {
-  const [icons, setIcons] = useState<Icons>({});
+function useTable<T extends object>(path: string, without: string): T | Record<string, never> {
+  const [table, setTable] = useState<T | Record<string, never>>({});
 
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch(POKEMON_ICONS);
+        const res = await fetch(path);
 
         if (!res.ok) {
           throw new Error(`${res.status} ${res.statusText}`.trim());
         }
 
-        setIcons(await res.json());
+        setTable(await res.json());
       } catch (e) {
-        console.error(`${POKEMON_ICONS}: ${said(e)} — some species will show no picture`);
+        console.error(`${path}: ${said(e)} — ${without}`);
       }
     })();
-  }, []);
+  }, [path, without]);
 
-  return icons;
+  return table;
+}
+
+/** A type as the game's entry screen draws one: its round icon in a pill of its own colour, with its name beside it. */
+function TypeBadge({ type }: { type: string }) {
+  return (
+    <span class="type" style={{ '--type': colourOf(type) }}>
+      <img src={typeIcon(type)} alt="" width={20} height={20} decoding="async" />
+      {type}
+    </span>
+  );
 }
 
 /** A mark whose glyph is for the eye and whose words are for a screen reader. */
@@ -138,8 +159,25 @@ function Variants({ entry }: { entry: Entry }) {
   );
 }
 
-/** What the dialog shows for one species: its picture, the facts about it, and its forms. */
-function Detail({ entry, icons }: { entry: Entry; icons: Icons }) {
+/**
+ * What the dialog shows for one species, laid out as the game's entry screen is: the picture on a band of the species'
+ * own colour with the arrows either side of it, the number and name under it, its types, then the facts and forms.
+ */
+function Detail({
+  entry,
+  icons,
+  types,
+  step,
+  first,
+  last,
+}: {
+  entry: Entry;
+  icons: Icons;
+  types: readonly string[];
+  step: (by: number) => void;
+  first: boolean;
+  last: boolean;
+}) {
   /**
    * The shiny is offered only where the game has one, and this flag is what says so rather than a missing file:
    * PokeAPI draws a shiny for every species, so each of the 64 falling back to it would offer one. The game's own
@@ -152,19 +190,50 @@ function Detail({ entry, icons }: { entry: Entry; icons: Icons }) {
 
   return (
     <>
-      <div class="grid2">
+      {/*
+       * The band is the first type's colour fading into the second's, as the game blends a dual type; a species whose
+       * types have not arrived is drawn in the Pokédex's own teal until they do.
+       */}
+      <div class="hero" style={{ '--type': colourOf(types[0]), '--type2': colourOf(types[1] ?? types[0]) }}>
+        <button type="button" class="step prev" aria-label="Previous species" disabled={first} onClick={() => step(-1)}>
+          ‹
+        </button>
         <figure class="picture">
           <Sprite src={spriteOf(entry.dex, shiny, icons)} size={240} eager />
-          {entry.shiny && (
-            <button type="button" class="chip" aria-pressed={shiny} onClick={() => setShiny(!shiny)}>
-              ✨ Shiny
-            </button>
-          )}
         </figure>
+        <button type="button" class="step next" aria-label="Next species" disabled={last} onClick={() => step(1)}>
+          ›
+        </button>
+        {entry.shiny && (
+          <button
+            type="button"
+            class="shiny"
+            aria-pressed={shiny}
+            aria-label="Shiny"
+            title="Shiny"
+            onClick={() => setShiny(!shiny)}
+          >
+            ✨
+          </button>
+        )}
+      </div>
 
+      <div class="title">
+        <span class="num">{numbered(entry.dex)}</span>
+        <h2 id="detailName">{entry.name}</h2>
+        {types.length > 0 && (
+          <p class="types">
+            {types.map((type) => (
+              <TypeBadge key={type} type={type} />
+            ))}
+          </p>
+        )}
+      </div>
+
+      <div class="grid2">
         <dl class="facts">
-          <dt>Generation</dt>
-          <dd>{String(entry.generation ?? '?')}</dd>
+          <dt>Region</dt>
+          <dd>{entry.generation === null ? '?' : `${regionOf(entry.generation)} — generation ${entry.generation}`}</dd>
 
           <dt>In Pokémon GO</dt>
           <dd>{entry.released ? 'Yes' : 'Not yet'}</dd>
@@ -222,7 +291,8 @@ function Detail({ entry, icons }: { entry: Entry; icons: Icons }) {
 export default function PokedexPage({ query: fragment }: { query: string }) {
   const [state, setState] = useState<State>(() => fromFragment(fragment));
 
-  const icons = useIcons();
+  const icons: Icons = useTable<Icons>(POKEMON_ICONS, 'some species will show no picture');
+  const types: Types = useTable<Types>(POKEMON_TYPES, 'entries will not be coloured by type');
 
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -299,8 +369,8 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
   return (
     <>
-      <header class="page">
-        <h1>Pokémon GO Pokédex</h1>
+      <header class="page banner">
+        <h1>Pokédex</h1>
         <p class="sub">
           Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. Pick one
           to see its forms.
@@ -331,6 +401,34 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
       <main class="dex">
         <section class="controls" aria-label="Filter the Pokédex">
+          {/*
+           * The region tabs the game's Pokédex opens on, each standing for its generation. Toggles rather than tabs to
+           * a screen reader: they narrow the one list below rather than switching between panels, and pressing the
+           * pressed one again goes back to the whole dex.
+           */}
+          <div class="regions" role="group" aria-label="Region">
+            <button
+              type="button"
+              class="region"
+              aria-pressed={state.generation === null}
+              onClick={() => setState((was) => ({ ...was, generation: null }))}
+            >
+              All
+            </button>
+            {GENERATION_NUMBERS.map((number) => (
+              <button
+                key={number}
+                type="button"
+                class="region"
+                aria-pressed={state.generation === number}
+                title={`Generation ${number}`}
+                onClick={() => setState((was) => ({ ...was, generation: was.generation === number ? null : number }))}
+              >
+                {regionOf(number)}
+              </button>
+            ))}
+          </div>
+
           <div class="row">
             <input
               type="search"
@@ -341,20 +439,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               value={state.q}
               onInput={(event) => setState((was) => ({ ...was, q: event.currentTarget.value }))}
             />
-            <select
-              aria-label="Generation"
-              value={String(state.generation ?? '')}
-              onChange={(event) =>
-                setState((was) => ({ ...was, generation: Number(event.currentTarget.value) || null }))
-              }
-            >
-              <option value="">All generations</option>
-              {GENERATION_NUMBERS.map((number) => (
-                <option key={number} value={String(number)}>
-                  Generation {number}
-                </option>
-              ))}
-            </select>
             <select
               aria-label="In Pokémon GO"
               value={state.availability}
@@ -409,6 +493,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               <button
                 type="button"
                 class={entry.released ? 'card' : 'card unreleased'}
+                style={{ '--type': colourOf(types[entry.dex]?.[0]) }}
                 ref={(node) => {
                   if (node === null) {
                     cards.current.delete(entry.dex);
@@ -418,17 +503,13 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 }}
                 onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
               >
-                <Sprite src={spriteOf(entry.dex, false, icons)} size={112} />
-
                 {/*
-                 * The name sits over the picture rather than under it, so the artwork is the tile. The number goes
-                 * with it and is shown on hover: it is what the box above filters on, so it stays in the markup for a
-                 * screen reader to read out whether or not the pointer is anywhere near.
+                 * The number above the picture and the name under it, as the game's own grid has them. The name is
+                 * first in the markup all the same, so a screen reader says the species before its number.
                  */}
-                <span class="label">
-                  <span class="name">{entry.name}</span>
-                  <span class="num">{numbered(entry.dex)}</span>
-                </span>
+                <span class="name">{entry.name}</span>
+                <span class="num">{numbered(entry.dex)}</span>
+                <Sprite src={spriteOf(entry.dex, false, icons)} size={112} />
 
                 <span class="marks">
                   {entry.shiny && <Mark kind="shiny" glyph="✨" words="shiny available" />}
@@ -483,29 +564,20 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
       >
         {open !== null && (
           <>
-            <div class="head">
-              <button
-                type="button"
-                class="step"
-                aria-label="Previous species"
-                disabled={at <= 0}
-                onClick={() => step(-1)}
-              >
-                ‹
-              </button>
-              <div class="title">
-                <span class="num">{numbered(open.dex)}</span>
-                <h2 id="detailName">{open.name}</h2>
-              </div>
-              <button
-                type="button"
-                class="step"
-                aria-label="Next species"
-                disabled={at === -1 || at >= visible.length - 1}
-                onClick={() => step(1)}
-              >
-                ›
-              </button>
+            <div class="body">
+              <Detail
+                key={open.dex}
+                entry={open}
+                icons={icons}
+                types={types[open.dex] ?? []}
+                step={step}
+                first={at <= 0}
+                last={at === -1 || at >= visible.length - 1}
+              />
+            </div>
+
+            {/* The round close button the game puts at the foot of every screen, pinned there while the entry scrolls. */}
+            <div class="foot">
               <button
                 type="button"
                 class="close"
@@ -515,9 +587,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               >
                 ✕
               </button>
-            </div>
-            <div class="body">
-              <Detail key={open.dex} entry={open} icons={icons} />
             </div>
           </>
         )}

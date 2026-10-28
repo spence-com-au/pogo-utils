@@ -19,6 +19,7 @@
 /data/entries-by-event.json
 /data/gpx-paths.json
 /data/pokemon-icons.json
+/data/pokemon-types.json
 
 # NodeJS
 /node_modules/

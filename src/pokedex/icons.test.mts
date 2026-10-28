@@ -17,7 +17,8 @@ import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 
 import { ICON_BASE, ordinaryIcon, spriteOf, type Icons } from './icons.js';
-import { POKEMON_ICONS } from '../generated.js';
+import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
+import { TYPE_COLOURS, type Types } from './types.js';
 
 const run = promisify(execFile);
 
@@ -135,4 +136,31 @@ test('`build:sprites` names every species whose icon the dex number cannot deriv
 
   // And the ordinary case is absent, so the derivation above is what those cards actually use.
   expect(Object.keys(icons)).not.toContain('25');
+});
+
+/**
+ * The types written beside the icons, which colour each entry. Read off the same form as the picture, so a species
+ * whose ordinary form and regional one differ is drawn in the colour of the one shown.
+ */
+test('`build:sprites` writes every species its types, from the form its picture is', async () => {
+  await run('node', ['scripts/build-sprites.mts'], { cwd: ROOT });
+
+  const types: Types = JSON.parse(readFileSync(new URL(POKEMON_TYPES, new URL('../../', import.meta.url)), 'utf8'));
+
+  // Every type named is one the page has a colour for, or that entry would be drawn in the fallback teal.
+  expect([...new Set(Object.values(types).flat())].sort()).toEqual(Object.keys(TYPE_COLOURS).sort());
+
+  expect(types).toMatchObject({
+    1: ['Grass', 'Poison'],
+    25: ['Electric'],
+
+    // The plain Unovan Darmanitan rather than the Galarian one, whose ice would tint the fire species.
+    555: ['Fire'],
+
+    // Aegislash in its shield stance, which the picture shows.
+    681: ['Steel', 'Ghost'],
+  });
+
+  // Basculegion has no form in the game master, so no types either; the entry is simply drawn without them.
+  expect(types).not.toHaveProperty('902');
 });
