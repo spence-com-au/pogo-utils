@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, numbered, type Entry } from '../pokedex/entries.js';
 import { spriteOf, type Icons } from '../pokedex/icons.js';
-import { colourOf, typeIcon, type Types } from '../pokedex/types.js';
+import { colourOf, inkOn, typeIcon, type Types } from '../pokedex/types.js';
 import {
   availabilityOf,
   emptyState,
@@ -27,30 +27,15 @@ import {
 } from '../pokedex/state.js';
 import { said } from '../errors.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
+import { regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
 import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
 
-/**
- * The region each generation is named by, which is how the game's own Pokédex divides itself: a row of region tabs
- * across the top rather than generation numbers.
- *
- * Generation 8 is two regions: Galar, and Hisui from Wyrdeer (899) to Enamorus (905). The tabs filter by generation, so
- * that one tab is named for both — splitting it would change what `g=8` means in a link already shared — while an entry
- * names the one region it is from.
- */
-const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar & Hisui', 'Paldea'];
-
-const FIRST_HISUIAN = 899;
-const LAST_HISUIAN = 905;
-
-const regionOf = (generation: number) => REGIONS[generation - 1] ?? `Generation ${generation}`;
-
-/** The one region an entry is from, which for generation 8 is Galar or Hisui rather than the tab's "Galar & Hisui". */
-const regionOfEntry = (dex: number, generation: number) =>
-  dex >= FIRST_HISUIAN && dex <= LAST_HISUIAN ? 'Hisui' : generation === 8 ? 'Galar' : regionOf(generation);
+/** A tile's number as the game prints it under the picture: four digits and no `#`. */
+const tileNumber = (dex: number) => String(dex).padStart(4, '0');
 
 /**
  * A sprite that says nothing when it fails. The number under it is the tile; a hotlinked picture that does not arrive
@@ -112,7 +97,7 @@ function useTable<T extends object>(path: string, without: string): T | Record<s
 /** A type as the game's entry screen draws one: its round icon in a pill of its own colour, with its name beside it. */
 function TypeBadge({ type }: { type: string }) {
   return (
-    <span class="type" style={{ '--type': colourOf(type) }}>
+    <span class="type" style={{ '--type': colourOf(type), '--type-ink': inkOn(type) }}>
       <img src={typeIcon(type)} alt="" width={20} height={20} decoding="async" />
       {type}
     </span>
@@ -212,7 +197,7 @@ function Detail({
     <>
       {/*
        * The band is the first type's colour fading into the second's, as the game blends a dual type; a species whose
-       * types have not arrived is drawn in the page's own teal until they do.
+       * types have not arrived is drawn in the page's own colour — blue, or gold in the shiny dex — until they do.
        */}
       <div class="hero" style={{ '--type': colourOf(types[0]), '--type2': colourOf(types[1] ?? types[0]) }}>
         <button type="button" class="step prev" aria-label="Previous species" disabled={first} onClick={() => step(-1)}>
@@ -253,11 +238,7 @@ function Detail({
       <div class="info">
         <dl class="facts">
           <dt>Region</dt>
-          <dd>
-            {entry.generation === null
-              ? '?'
-              : `${regionOfEntry(entry.dex, entry.generation)} — generation ${entry.generation}`}
-          </dd>
+          <dd>{entry.generation === null ? '?' : `${regionOf(entry.dex) ?? '?'} — generation ${entry.generation}`}</dd>
 
           <dt>In Pokémon GO</dt>
           <dd>{entry.released ? 'Yes' : 'Not yet'}</dd>
@@ -320,6 +301,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
   const dialogRef = useRef<HTMLDialogElement>(null);
   const searchRef = useRef<HTMLDialogElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
   const regionsRef = useRef<HTMLDialogElement>(null);
 
   /** Each card's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
@@ -380,6 +362,11 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
     }
   }
 
+  /** Clear the search and the filters, keeping the region and the mode, which are where the reader is. */
+  function clearFilters() {
+    setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }));
+  }
+
   function toggleFlag(id: string) {
     setState((was) => {
       const flags = new Set(was.flags);
@@ -398,15 +385,16 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
    */
   const searching = state.q.trim() !== '' || state.availability !== '' || state.flags.size > 0;
 
-  const region = state.generation === null ? 'All regions' : regionOf(state.generation);
+  const region = state.generation === null ? 'All regions' : regionsOf(state.generation);
   const held = visible.filter((entry) => registered(entry, state.mode)).length;
 
   return (
     <div class="dexroot" data-mode={state.mode}>
       {/*
        * The card the game heads a region's grid with: the region's name, how many of it are registered in this mode
-       * against how many there are, and the counts for each of the other modes beneath — each of which switches to it,
-       * as the tabs along the foot do.
+       * against how many there are, and beneath that the counts for every mode but the plain one. Pressing a count
+       * switches to its mode, and pressing the one already on goes back to the plain dex — a count is a toggle, where
+       * a tab along the foot only ever selects.
        *
        * The counts are over what the filters leave, which is also how the page says a filter did anything, so the card
        * carries the live region rather than a second line of text saying the same number again.
@@ -445,6 +433,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 <button
                   type="button"
                   class={filled ? 'card' : 'card empty'}
+                  aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
                   ref={(node) => {
                     if (node === null) {
                       cards.current.delete(entry.dex);
@@ -455,32 +444,28 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                   onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
                 >
                   {/*
-                   * The game draws a tile as the picture and the number, and an empty one as the number alone. The name
-                   * is for a screen reader, which is told whether the slot is filled in words rather than by a picture.
+                   * The game draws a tile as the picture and the number, and an empty one as the number alone. The
+                   * label leads with that number, so a voice command can name the tile by what it shows, and adds the
+                   * species and whether the slot is filled, which the picture says to the eye.
                    */}
-                  <span class="sr">
-                    {entry.name}
-                    {filled ? '' : ' — not registered'}
-                  </span>
                   {filled && <Sprite src={spriteOf(entry.dex, state.mode === 'shiny', icons)} size={112} />}
-                  <span class="num" aria-hidden="true">
-                    {String(entry.dex).padStart(4, '0')}
-                  </span>
+                  <span class="num">{tileNumber(entry.dex)}</span>
                 </button>
               </li>
             );
           })}
         </ul>
 
-        <p class="empty" hidden={visible.length > 0}>
+        <p class="nomatch" hidden={visible.length > 0}>
           No species match those filters.
         </p>
       </main>
 
       {/*
        * The bar that floats over the foot of the game's Pokédex: the mode tabs, and under them the round search, close
-       * and regions buttons. The close button clears a search, which is the one thing here there is to close; with none
-       * it is left out rather than drawn doing nothing.
+       * and regions buttons. The close button clears the search and filters — the name, the availability control and
+       * the toggles, but not the region or the mode — which is the one thing here there is to close; with none of them
+       * set it is left out rather than drawn doing nothing.
        */}
       <nav class="dexbar" aria-label="Pokédex">
         <div class="modes" role="group" aria-label="Mode">
@@ -498,6 +483,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
         </div>
         <div class="actions">
           <button
+            ref={searchButtonRef}
             type="button"
             class="round search"
             aria-label={searching ? 'Search and filter (filters on)' : 'Search and filter'}
@@ -514,7 +500,13 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               type="button"
               class="round clear"
               aria-label="Clear search and filters"
-              onClick={() => setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }))}
+              onClick={() => {
+                clearFilters();
+
+                // The button is gone once there is nothing to clear, and the focus with it; the search beside it is
+                // where a reader who has just cleared a search goes next.
+                searchButtonRef.current?.focus();
+              }}
             >
               ✕
             </button>
@@ -595,12 +587,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             <span class="matched">
               {visible.length} of {ENTRIES.length} species
             </span>
-            <button
-              type="button"
-              class="ghost"
-              disabled={!searching}
-              onClick={() => setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }))}
-            >
+            <button type="button" class="ghost" disabled={!searching} onClick={clearFilters}>
               Reset
             </button>
             <button type="button" class="ghost done" onClick={() => searchRef.current?.close()}>
@@ -649,7 +636,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                   }}
                 >
                   <span class="words">
-                    <span class="name">{generation === null ? 'All regions' : regionOf(generation)}</span>
+                    <span class="name">{generation === null ? 'All regions' : regionsOf(generation)}</span>
                     {got === of.length ? (
                       <span class="done">Complete!</span>
                     ) : (

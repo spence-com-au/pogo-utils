@@ -32,15 +32,19 @@ body[data-page='pokedex'] {
    *
    * `--go`, `--go-deep` and `--go-ink` are the names the entry dialog paints with, so it follows the mode too.
    *
-   * Each a shade or two deeper than the game's own, which sets pale blue on pale blue: `--on-go` on `--go`, and
-   * `--go-deep` and `--number` on the glass, all clear 4.5:1 rather than the 2–3:1 the game's colours give.
+   * Each a shade or two deeper than the game's own, which sets pale blue on pale blue: `--on-go` on `--go`, `--go-deep`
+   * on the glass, and `--number` on a tile — the thinnest glass, at the top of the sky where it is darkest, since the
+   * sky is fixed behind a scrolling grid — all clear 4.5:1 rather than the 2–3:1 the game's colours give.
+   *
+   * `--card` is the ground of a region card, which is solid rather than glass so its starters' panel reads beside it.
    */
   --sky: linear-gradient(180deg, #84cfe3 0, #a6dded 45%, #c4ebf3 100%);
   --go: #177a9e;
   --on-go: #fff;
   --go-deep: #1b6d8e;
   --go-ink: #3d4f5c;
-  --number: #1b6d8e;
+  --number: #155a75;
+  --card: rgb(232 248 252);
   --glass: rgb(255 255 255 / 55%);
   --tile: rgb(255 255 255 / 22%);
   --tile-edge: rgb(255 255 255 / 60%);
@@ -56,6 +60,7 @@ body[data-page='pokedex'] {
     --go-deep: #7fd0ec;
     --go-ink: #d7e4e8;
     --number: #7cc3dc;
+    --card: #173f4f;
     --glass: rgb(255 255 255 / 9%);
     --tile: rgb(255 255 255 / 5%);
     --tile-edge: rgb(255 255 255 / 16%);
@@ -74,7 +79,8 @@ body[data-page='pokedex'] {
     --go: #f0a52a;
     --on-go: #3b2600;
     --go-deep: #97590a;
-    --number: #97590a;
+    --number: #8a5108;
+    --card: rgb(253 244 220);
     --tile: rgb(255 255 255 / 30%);
 
     @media (prefers-color-scheme: dark) {
@@ -82,6 +88,7 @@ body[data-page='pokedex'] {
       --go: #d48e1c;
       --go-deep: #f5c15c;
       --number: #f0bb55;
+      --card: #3d3018;
       --tile: rgb(255 255 255 / 5%);
     }
   }
@@ -211,7 +218,7 @@ body[data-page='pokedex'] {
   .dex {
     max-width: var(--content-w);
     margin: 0 auto;
-    padding: 16px 22px 190px;
+    padding: 16px 22px 24px;
     font-size: 13px;
   }
 
@@ -291,7 +298,7 @@ body[data-page='pokedex'] {
     line-height: 1;
   }
 
-  .empty {
+  .nomatch {
     padding: 40px 0;
     color: var(--go-deep);
     font-size: 15px;
@@ -633,7 +640,7 @@ body[data-page='pokedex'] {
     overflow: hidden;
     border: 4px solid rgb(255 255 255 / 70%);
     border-radius: 22px;
-    background: rgb(232 248 252);
+    background: var(--card);
     color: var(--go-deep);
     font: inherit;
     text-align: left;
@@ -725,10 +732,6 @@ body[data-page='pokedex'] {
     filter: drop-shadow(0 3px 3px rgb(0 0 0 / 22%));
   }
 
-  .dexroot[data-mode='shiny'] .regioncard {
-    background: rgb(253 244 220);
-  }
-
   .dexroot[data-mode='shiny'] .regioncard .art {
     background:
       repeating-linear-gradient(0deg, rgb(255 255 255 / 14%) 0 3px, transparent 3px 9px),
@@ -803,11 +806,15 @@ body[data-page='pokedex'] {
     cursor: pointer;
   }
 
+  /**
+   * The arrows on a dark disc of their own rather than a pale one on the band, which runs from Dragon's deep blue to
+   * Electric's pale yellow: white on a 55% black disc reads on either end of it.
+   */
   .hero .step {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: rgb(255 255 255 / 30%);
+    background: rgb(0 0 0 / 55%);
     color: #fff;
     font-size: 28px;
     font-weight: 700;
@@ -815,7 +822,7 @@ body[data-page='pokedex'] {
   }
 
   .hero .step:hover:not(:disabled) {
-    background: rgb(255 255 255 / 50%);
+    background: rgb(0 0 0 / 70%);
   }
 
   .hero .step:disabled {
@@ -843,9 +850,11 @@ body[data-page='pokedex'] {
     opacity: 1;
   }
 
+  /* A ring of black outside one of white, so whichever end of the palette the band is, one of the two stands off it. */
   .hero button:focus-visible {
-    outline: 3px solid #fff;
+    outline: 3px solid #000;
     outline-offset: 2px;
+    box-shadow: 0 0 0 2px #fff;
   }
 
   .detail .title {
@@ -883,12 +892,11 @@ body[data-page='pokedex'] {
     padding: 3px 12px 3px 3px;
     border-radius: 999px;
     background: var(--type);
-    color: #fff;
+    color: var(--type-ink);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    text-shadow: 0 1px 1px rgb(0 0 0 / 30%);
   }
 
   .type img {
@@ -1023,7 +1031,7 @@ body[data-page='pokedex'] {
   }
 
   /**
-   * The game's close button: a white disc with a teal cross, centred at the foot of the screen. Sticky, so it stays
+   * The game's close button: a disc with the mode's colour for its cross, centred at the foot of the screen. Sticky, so it stays
    * where a thumb expects it however far down the forms the entry has been scrolled.
    */
 
@@ -1041,7 +1049,7 @@ body[data-page='pokedex'] {
     height: 56px;
     border: 0;
     border-radius: 50%;
-    background: #fff;
+    background: var(--panel);
     color: var(--go-deep);
     font: inherit;
     font-size: 24px;
@@ -1124,5 +1132,16 @@ body[data-page='pokedex'] {
       width: 200px;
       height: 200px;
     }
+  }
+
+  /**
+   * The footer runs on under the bar floating over the foot of the screen, so the room the last of it needs to scroll
+   * clear of that bar is below it rather than below the grid. Its words are in the page's ink: the theme's muted grey
+   * is under 4.5:1 on the sky.
+   */
+
+  footer {
+    padding-bottom: 190px;
+    color: var(--go-ink);
   }
 }

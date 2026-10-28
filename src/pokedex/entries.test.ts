@@ -131,14 +131,16 @@ test('a hunt is watched where any member it wants is, not where every one of the
   // shown as finished.
   const species = POKEMON.TAUROS;
   const variant = species.region(PALDEA);
+
+  // A real id, since a hunt's id is one of the lists the page's modes can name; the members are this case's own.
   const hunt = {
-    id: 'split',
+    id: 'xxl' as const,
     label: 'Split',
     members: new Set([species, variant]),
     watched: (p: Pokemon) => p === species,
   };
 
-  expect(huntsOf([species, variant], [hunt])).toEqual([{ id: 'split', watched: true }]);
+  expect(huntsOf([species, variant], [hunt])).toEqual([{ id: 'xxl', watched: true }]);
 });
 
 test('a hunt is watched for exactly the species the PGSharp feed built from its list carries', () => {

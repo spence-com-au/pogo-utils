@@ -4,7 +4,7 @@
  * state, and a hand-edited fragment can only produce one the controls could have. Nothing here touches the DOM.
  */
 
-import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry } from './entries.js';
+import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry, type HuntId } from './entries.js';
 import { fold } from '../pokemon/names.js';
 
 export type Availability = '' | 'in' | 'out';
@@ -63,7 +63,7 @@ export const availabilityOf = (value: string | null): Availability => (value ===
  * is what is still wanted, so a species off the XXL list is one the XXL dex already holds — which is the same reading
  * the game's own XXL tab makes of the storage it looks at.
  */
-export const MODES: readonly { id: Mode; label: string; hunt: string | null }[] = [
+export const MODES: readonly { id: Mode; label: string; hunt: HuntId | null }[] = [
   { id: 'pokemon', label: 'Pokémon', hunt: null },
   { id: 'shiny', label: 'Shiny', hunt: 'shiny' },
   { id: 'xxl', label: 'XXL', hunt: 'xxl' },

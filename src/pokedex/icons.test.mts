@@ -147,7 +147,7 @@ test('`build:sprites` writes every species its types, from the form its picture 
 
   const types: Types = JSON.parse(readFileSync(new URL(POKEMON_TYPES, new URL('../../', import.meta.url)), 'utf8'));
 
-  // Every type named is one the page has a colour for, or that entry would be drawn in the fallback teal.
+  // Every type named is one the page has a colour for, or that entry would be drawn in the page's fallback colour.
   expect([...new Set(Object.values(types).flat())].sort()).toEqual(Object.keys(TYPE_COLOURS).sort());
 
   expect(types).toMatchObject({
@@ -157,7 +157,7 @@ test('`build:sprites` writes every species its types, from the form its picture 
     // The plain Unovan Darmanitan rather than the Galarian one, whose ice would tint the fire species.
     555: ['Fire'],
 
-    // Aegislash in its shield stance, which the picture shows.
+    // A dual type comes through in its order, which is what the band blends from and the badges read in.
     681: ['Steel', 'Ghost'],
   });
 

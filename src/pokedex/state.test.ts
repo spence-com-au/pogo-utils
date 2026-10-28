@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { ENTRIES, GENERATION_NUMBERS, type Entry } from './entries.js';
+import { ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry } from './entries.js';
 import {
   availabilityOf,
   emptyState,
@@ -264,6 +264,23 @@ test('a mode fills the tiles of what its hunt list no longer wants', () => {
       expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(possible && !wanted);
     }
   }
+
+  // Every list a mode reads is one that exists. The type says so too, but a list renamed under a mode is the failure
+  // that marks a whole dex registered, so it is pinned here beside the cases it would break.
+  expect(
+    MODES.flatMap(({ hunt }) => (hunt === null ? [] : [hunt])).every((hunt) => HUNTS.some((h) => h.id === hunt)),
+  ).toBe(true);
+
+  // Hoopa is in the game with no shiny, so the shiny dex leaves it empty however the lists read.
+  expect(entryAt(720).released).toBe(true);
+  expect(registered(entryAt(720), 'shiny')).toBe(false);
+  expect(registered(entryAt(720), 'pokemon')).toBe(true);
+
+  // A species the XXL list still wants is empty in the XXL dex and filled in the plain one.
+  const wantedXxl = ENTRIES.find((entry) => entry.released && entry.hunts.some(({ id }) => id === 'xxl'));
+
+  expect(wantedXxl && registered(wantedXxl, 'xxl')).toBe(false);
+  expect(wantedXxl && registered(wantedXxl, 'pokemon')).toBe(true);
 
   // Not yet in the game is empty in every mode, however few lists name it.
   const unreleased = ENTRIES.find((entry) => !entry.released);
