@@ -39,8 +39,9 @@ export interface Form {
   /**
    * Every move this form can hold: the ordinary pools, the elite ones a legacy Pokémon may carry, Rayquaza's
    * untradeable Dragon Ascent, the Frustration and Return a shadow or purified one has, and what a change into the form
-   * hands over, as Black Kyurem's Freeze Shock and Origin Forme Palkia's Spacial Rend. Reading a move against this
-   * rather than all 328 is the difference between choosing among three and among hundreds.
+   * hands over, as Black Kyurem's Freeze Shock, or a grant kept by hand where the game master records no change, as
+   * Origin Forme Palkia's Spacial Rend. Reading a move against this rather than all 328 is the difference between
+   * choosing among three and among hundreds.
    */
   moves: readonly Move[];
 }
