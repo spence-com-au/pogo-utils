@@ -379,10 +379,11 @@ search sheet narrows the grid by name or number, by whether a species is in the 
 wild spawn, a category (Legendary, Mythical, Ultra Beast, Baby, Regional) or a place on one of the hunt lists.
 
 The tabs along the foot — Pokémon, Shiny, XXL, XXS and 100% — redraw the grid as that dex. The Pokémon tab fills a tile
-for every species in the game; each of the others fills a tile for a species in the game (with its shiny out, in the
-Shiny dex) that the hunt's list no longer wants, and leaves the rest as an empty numbered tile, as the game shows a slot
-not yet registered. The Shiny dex turns the page gold. The card heading the grid counts what is registered in the open
-mode against what the filters leave, with the counts for the four hunt modes — Shiny, XXL, XXS and 100% — beneath.
+for every species in the game; each of the others fills a tile once some form of the species is in the game (with its
+shiny out, in the Shiny dex) and off the hunt's list — the lists name forms, and the game fills a tile once any form is
+registered — and leaves the rest as an empty numbered tile, as the game shows a slot not yet registered. The Shiny dex
+turns the page gold. The card heading the grid counts what is registered in the open mode against what the filters
+leave, with the counts for the four hunt modes — Shiny, XXL, XXS and 100% — beneath.
 
 Picking a tile opens the species on a band of its type colour: its normal and shiny picture, its types, what is true of
 it, each of its forms and regional variants with the same answers, and a link into the **Search** page for it or its

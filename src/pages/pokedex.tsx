@@ -40,7 +40,7 @@ import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
 import { nameFragment } from '../search/query.js';
 
-const HUNT_LABELS = new Map(HUNTS.map(({ id, label }) => [id, label]));
+const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
 
 /**
@@ -804,8 +804,9 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
         <p>
           Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. The
           Pokémon tab fills a tile for every species in the game; each of the others redraws the grid as that hunt's
-          dex, filling a tile for a species that is in the game — with its shiny out, in the Shiny dex — and that the
-          hunt's list no longer wants. Anything else is left as an empty tile.
+          dex, filling a tile once some form of the species is in the game — with its shiny out, in the Shiny dex — and
+          off that hunt's list, as the game fills a tile once any form is registered. Anything else is left as an empty
+          tile.
         </p>
         <p>
           Read from the same Pokédex and hunt lists the PGSharp backup is built from, so the two cannot disagree.

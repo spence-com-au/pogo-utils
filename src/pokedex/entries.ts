@@ -25,14 +25,8 @@ import type Pokemon from '../pokemon/pokemon.js';
  */
 export type Flag = { [K in keyof Pokemon]: Pokemon[K] extends boolean ? K : never }[keyof Pokemon];
 
-/**
- * The hunt lists by id, which the Pokédex's modes name too — typed, so a mode naming one that is not here fails to
- * compile.
- */
-export type HuntId = 'shiny' | 'xxl' | 'xxs' | 'perfect';
-
-type Hunt = { id: HuntId; label: string; members: ReadonlySet<Pokemon>; watched: Predicate };
-type EntryHunt = { id: HuntId; watched: boolean };
+type Hunt = { id: string; label: string; members: ReadonlySet<Pokemon>; watched: Predicate };
+type EntryHunt = { id: string; watched: boolean };
 type Variant = { name: string; pokemon: Pokemon; hunts: EntryHunt[] };
 
 /**
@@ -52,6 +46,9 @@ export interface Entry {
   spawns: boolean;
   categories: Flag[];
   hunts: EntryHunt[];
+
+  /** Each hunt's dex: whether it holds this species, which is filled in that hunt's tab. See `heldIn`. */
+  held: Readonly<Record<HuntId, boolean>>;
 }
 
 /**
@@ -68,7 +65,7 @@ const feedable = allOf(WILD_SPAWN_FILTERS);
  * alert on. `watched` is that narrowing, so the page can tell "wanted, and the feed is looking" from "wanted, but only
  * a raid or an egg will turn one up".
  */
-export const HUNTS: readonly Hunt[] = [
+export const HUNTS = [
   {
     id: 'shiny',
     label: 'Shiny hunt',
@@ -78,7 +75,13 @@ export const HUNTS: readonly Hunt[] = [
   { id: 'xxl', label: 'XXL wanted', members: XXL_POKEMON, watched: feedable },
   { id: 'xxs', label: 'XXS wanted', members: XXS_POKEMON, watched: feedable },
   { id: 'perfect', label: '100% wanted', members: PERFECT_IV_POKEMON, watched: feedable },
-];
+] as const satisfies readonly Hunt[];
+
+/**
+ * The hunt lists by id, which the Pokédex's modes name too. Read off `HUNTS` itself, so a mode can name only a list
+ * that is there, and a list renamed or dropped there is a compile error at every mode that named it.
+ */
+export type HuntId = (typeof HUNTS)[number]['id'];
 
 /**
  * The categories a species can belong to, as the getter on `Pokemon` that says so. Legendary, Mythical, Ultra Beast and
@@ -132,6 +135,39 @@ export function huntsOf(pokemon: readonly Pokemon[], hunts: readonly Hunt[] = HU
 }
 
 /**
+ * The slots a hunt's dex has for a species, each with whether the hunt's list still wants it — the unit the lists are
+ * written in. A list names what it still wants: a regional variant or a single form where only that is wanted, and the
+ * bare species where every form of it is (Keldeo, Burmy). So a listed species carries its forms with it, and a species
+ * declared as forms is those forms rather than a slot of its own; a regional variant is its own slot either way, the
+ * game's dex filing it apart and the lists naming it apart when they want it.
+ */
+function slotsOf(
+  pokemon: Pokemon,
+  members: ReadonlySet<Pokemon>,
+  inherited = false,
+): { pokemon: Pokemon; wanted: boolean }[] {
+  const wanted = inherited || members.has(pokemon);
+  const forms = pokemon.variants.filter(({ region }) => region === null);
+  const regions = pokemon.variants.filter(({ region }) => region !== null);
+
+  return [
+    ...(forms.length > 0 ? forms.flatMap((form) => slotsOf(form.pokemon, members, wanted)) : [{ pokemon, wanted }]),
+    ...regions.flatMap((variant) => slotsOf(variant.pokemon, members)),
+  ];
+}
+
+/**
+ * Whether a hunt's dex holds a species: some slot of it is in the game — with its shiny out, for the shiny hunt — and
+ * no longer wanted by the list, as the game fills a species' tile once any of its forms is registered. Galarian Weezing
+ * on the shiny list leaves the Kantonian one held; Keldeo listed bare leaves neither of its forms.
+ */
+export function heldIn(species: Pokemon, hunt: Hunt) {
+  return slotsOf(species, hunt.members).some(
+    ({ pokemon, wanted }) => !wanted && pokemon.released && (hunt.id !== 'shiny' || pokemon.shinyEligible),
+  );
+}
+
+/**
  * One row per species, in dex order.
  *
  * The species-level answers ask the species and its variants together: an entry is in the game if any of it is, and
@@ -157,6 +193,7 @@ export const ENTRIES: readonly Entry[] = Object.entries(POKEMON).map(([constant,
     spawns: released.some((pokemon) => pokemon.spawns),
     categories: CATEGORIES.filter(({ id }) => all.some((pokemon) => pokemon[id])).map(({ id }) => id),
     hunts: huntsOf(all),
+    held: Object.fromEntries(HUNTS.map((hunt) => [hunt.id, heldIn(species, hunt)])) as Record<HuntId, boolean>,
   };
 });
 

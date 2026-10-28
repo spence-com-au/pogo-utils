@@ -252,18 +252,31 @@ test.for([
 
 /**
  * Every mode but the plain one reads a hunt list, and a mode's tile is filled only for a species the game could have
- * registered: one released, and in the shiny dex one whose shiny is. A hunt list wanting a species is what leaves it
- * empty, so each mode's filled tiles are exactly the released ones its list no longer wants.
+ * registered: one released, and in the shiny dex one whose shiny is. A species no list names at all is held in every
+ * hunt's dex it could be, and the lists, which name forms, are read a form at a time: a tile fills once any form of the
+ * species is off the list, as the game fills it once any form is registered.
  */
-test('a mode fills the tiles of what its hunt list no longer wants', () => {
+test('a mode fills the tiles of what its hunt list no longer wants, a form at a time', () => {
   for (const { id } of MODES) {
     for (const entry of ENTRIES) {
-      const wanted = entry.hunts.some((h) => h.id === id);
       const possible = entry.released && (id !== 'shiny' || entry.shiny);
 
-      expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(possible && !wanted);
+      if (!possible) {
+        expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(false);
+      } else if (!entry.hunts.some((h) => h.id === id)) {
+        expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(true);
+      }
     }
   }
+
+  // The shiny list wants only Galarian Weezing, so the Kantonian one leaves the species held.
+  expect(registered(entryAt(110), 'shiny')).toBe(true);
+
+  // It names Keldeo bare, which carries both its forms with it, so neither leaves the species held.
+  expect(registered(entryAt(647), 'shiny')).toBe(false);
+
+  // And Unown a letter at a time, leaving a released letter off it, so the species is held.
+  expect(registered(entryAt(201), 'shiny')).toBe(true);
 
   // Hoopa is in the game with no shiny, so the shiny dex leaves it empty however the lists read.
   expect(entryAt(720).released).toBe(true);

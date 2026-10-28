@@ -74,15 +74,12 @@ export const MODES: readonly { id: Mode; label: string }[] = [
 export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id === value)?.id ?? 'pokemon';
 
 /**
- * Whether a species fills its tile in a mode. In the game a species can only be registered once it is in the game, and
- * a shiny once its shiny is; past that, it is registered unless its hunt list still wants it.
+ * Whether a species fills its tile in a mode: in the plain dex once it is in the game, and in a hunt's once some form
+ * of it is in the game, with its shiny out for the shiny hunt, and off the hunt's list — `heldIn`, which `ENTRIES`
+ * reads for every hunt as it is built.
  */
 export function registered(entry: Entry, mode: Mode) {
-  if (!entry.released || (mode === 'shiny' && !entry.shiny)) {
-    return false;
-  }
-
-  return !entry.hunts.some(({ id }) => id === mode);
+  return mode === 'pokemon' ? entry.released : entry.held[mode];
 }
 
 export function emptyState(): State {
