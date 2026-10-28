@@ -598,8 +598,8 @@ main menu's BATTLE and scrolls the Battle tab down to the Training card. It swip
 While the opponent has shields left, read off the hexagons along the top, it throws its cheapest charged move to draw
 them; once they are gone, the one worth the most for each point of energy it costs, and of two worth as much, the
 cheaper, which fires sooner — a move's worth being power, times STAB, times its effectiveness against the opponent,
-adjusted for the chance it raises or drops either side's attack or defense as though that touched one more hit of its
-size, bar our own side's where their next charged move would faint us with no shield left — keeping the energy for it
+adjusted for the chance it raises or drops our own attack or their defense as though that touched one more hit of its
+size, bar our attack's where their next charged move would faint us with no shield left — keeping the energy for it
 while a weaker one is ready instead. It reads the moves off the labels under their buttons and the two Pokémon off the
 names along the top, every few seconds. A nicknamed Pokémon of yours is named by the party screen instead, whose
 pictures it matches against the game's icons, as the lead and then whichever it sent in after a faint, passing over any
