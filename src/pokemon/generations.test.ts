@@ -52,7 +52,7 @@ test('a sub-region sits inside one generation, and names its species and that ge
 });
 
 /**
- * Each region's starters are its own, and three of them a generation apart in the dex. Written out rather than counted
+ * Each region's starters are its own, and three dex numbers apart from each other. Written out rather than counted
  * from `first` because Unova opens on Victini: counting would put Victini, Serperior and Emboar on its card.
  */
 test("a generation's starters sit inside it, and Unova's are Snivy, Tepig and Oshawott", () => {

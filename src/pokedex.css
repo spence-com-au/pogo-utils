@@ -152,7 +152,10 @@ body[data-page='pokedex'] {
     text-transform: uppercase;
   }
 
-  /* The count, in the pill the game sets it in, held to the middle of the card whatever the region is called. */
+  /**
+   * The count, in the pill the game sets it in, held to the middle of the card on wider screens whatever the region is
+   * called. A phone gives the name its width instead, and the pill follows it.
+   */
 
   .dexhead .count {
     flex: 0 0 auto;

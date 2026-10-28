@@ -1,5 +1,6 @@
 /**
- * The Pokédex page: a card per species, narrowed by the controls above them, and a dialog for the one picked.
+ * The Pokédex page: a tile per species, narrowed by the search behind the button at its foot, and a dialog for the one
+ * picked.
  *
  * Every card is rendered and the filtered-out ones hidden, rather than the grid being rebuilt from what survives: 1025
  * of them is enough that rebuilding on every keystroke would drop their sprites and the reader's scroll position.
@@ -190,6 +191,20 @@ function Detail({
    * one just pressed — and with it the dialog's arrow keys, until the reader tabbed back in.
    */
   const [toggled, setToggled] = useState<{ dex: number; shiny: boolean } | null>(null);
+
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * The one place stepping still drops the focus: at either end of the list, where the arrow just pressed is disabled
+   * and hidden, and the focus falls out of the dialog with the arrow keys it carries. Handed to the arrow that is left,
+   * which is where a reader at the end of the list goes next.
+   */
+  useEffect(() => {
+    if (document.activeElement === document.body && (first || last)) {
+      (first ? nextRef : prevRef).current?.focus();
+    }
+  }, [entry.dex, first, last]);
   const shiny = entry.shiny && (toggled?.dex === entry.dex ? toggled.shiny : shinyFirst);
   const name = entry.name.toLowerCase();
 
@@ -200,13 +215,27 @@ function Detail({
        * types have not arrived is drawn in the page's own colour — blue, or gold in the shiny dex — until they do.
        */}
       <div class="hero" style={{ '--type': colourOf(types[0]), '--type2': colourOf(types[1] ?? types[0]) }}>
-        <button type="button" class="step prev" aria-label="Previous species" disabled={first} onClick={() => step(-1)}>
+        <button
+          ref={prevRef}
+          type="button"
+          class="step prev"
+          aria-label="Previous species"
+          disabled={first}
+          onClick={() => step(-1)}
+        >
           ‹
         </button>
         <figure class="picture">
           <Sprite src={spriteOf(entry.dex, shiny, icons)} size={240} eager />
         </figure>
-        <button type="button" class="step next" aria-label="Next species" disabled={last} onClick={() => step(1)}>
+        <button
+          ref={nextRef}
+          type="button"
+          class="step next"
+          aria-label="Next species"
+          disabled={last}
+          onClick={() => step(1)}
+        >
           ›
         </button>
         {entry.shiny && (
@@ -432,7 +461,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               <li key={entry.dex} hidden={!shown.has(entry.dex)}>
                 <button
                   type="button"
-                  class={filled ? 'card' : 'card empty'}
+                  class="card"
                   aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
                   ref={(node) => {
                     if (node === null) {

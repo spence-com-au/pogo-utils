@@ -19,7 +19,7 @@ export const PUBLISHED = [
   '*.html',
   'favicon.svg',
 
-  // `src/generated.ts`'s three indexes are in here, so none is named separately: `publish` throws rather than copying
+  // `src/generated.ts`'s four indexes are in here, so none is named separately: `publish` throws rather than copying
   // a path twice, and the directory is what the pages fetch them under.
   'data',
 
