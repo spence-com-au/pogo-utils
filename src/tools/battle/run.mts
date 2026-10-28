@@ -738,7 +738,14 @@ export async function run(
         const named = seen.opponent;
         const before = named ?? departed;
 
-        seen = merge(seen, read);
+        // The HUD goes on naming one of ours after it faints, through the switch prompt and the frames between the
+        // prompt's that read as the fight: live, Palkia's name stood 2.7s after its Poké Ball went grey, until half a
+        // second after the prompt was answered. Our side of a read naming one fainted is of that HUD, and is dropped as
+        // `forgetOwn` drops it: merged, Palkia's name stood for Xerneas for as long as it fought, `Xemeas` matching no
+        // species to replace it, and Xerneas's labels were matched among Palkia's moves, none of them read.
+        const fallen = read.own !== null && [...fainted].some((slot) => party[slot] === read.own);
+
+        seen = merge(seen, fallen ? { ...read, own: null, ownCp: null, ownTypes: null, moves: new Map() } : read);
 
         if (seen.opponent !== null && seen.opponent !== before) {
           // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
