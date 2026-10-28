@@ -57,7 +57,7 @@
     "eslint-config-prettier": "10.1.8",
     "fflate": "^0.8.3",
     "globals": "^17.13.0",
-    "html-validate": "11.16.4",
+    "html-validate": "11.17.0",
     "leaflet": "^1.9.4",
     "npm-run-all2": "^9.0.4",
     "postcss": "8.5.31",
