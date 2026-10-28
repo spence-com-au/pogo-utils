@@ -409,6 +409,11 @@ test('judges a card read with one charged move by every one its species can hold
 
   expect(counterOf(DATA, kyogre, 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.slot).toBe(1);
   expect(activeOf(DATA, [...cards(['Latias']), one('Mamoswine', ['Avalanche'])], new Set(), ['Stone Edge'])).toBe(1);
+
+  // With no species to add the rest it can hold, a nickname read with one move cannot be checked, and stands.
+  const nickname = { species: null, cp: null, moves: { fast: null, charged: ['Avalanche'] } };
+
+  expect(activeOf(DATA, [nickname, ...cards(['Mamoswine'])], new Set(), ['Stone Edge'])).toBe(0);
 });
 
 test('a counter says why it was switched to', () => {

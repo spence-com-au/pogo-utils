@@ -298,11 +298,11 @@ export async function readCard(
   await sleep(OPENS_MS);
 
   const back = onParty(await hands.screenshot());
-  const why = !took
-    ? 'the search did not take'
-    : !cell
+  const why = cell
+    ? 'its panel went unread'
+    : took
       ? `no pink cell for ${terms.join(' or ')}`
-      : 'its panel went unread';
+      : 'the search did not take';
 
   return panel ? { panel, back } : { why, back };
 }

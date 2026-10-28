@@ -165,13 +165,17 @@ const judgedBy = (data: GameData, card: Card): string[] =>
     (move) => !SHADOW_AND_PURIFIED.has(move) || card.moves?.charged.includes(move),
   );
 
-/** Whether nothing at all was read of a card: no species, and no moves to judge it by. */
-const unread = (card: Card) => card.species === null && !card.moves;
+/**
+ * Whether too little was read of a card to judge it by: no species, and not both its charged moves, which alone would
+ * leave it judged by the one move read where a species would add the rest it can hold.
+ */
+const unread = (card: Card) => card.species === null && !ownMoves(card);
 
 /**
  * Which slot of the party is out: `sent`, the slot last sent in, or before any faint the lead, a battle opening with
  * it. Passed over for the next not fainted, in party order, where its card cannot hold every charged move read under
- * the buttons, which a misread card would show; a card of which nothing was read cannot be checked, and stands.
+ * the buttons, which a misread card would show; a card with no species read and not both its charged moves cannot be
+ * checked, and stands.
  * Undefined where no slot is left that fits.
  */
 export function activeOf(
@@ -202,10 +206,10 @@ export function activeOf(
  * cannot hit super effectively, then the one with the hardest hit on it, then the first. A banked finish comes before
  * safety, the opponent gone before it can land what we would be unsafe from: live, a Galarian Moltres at a tenth of its
  * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of the moves
- * `judgedBy` gives it. A card whose species was not read is never safe, its types unknown, and hits for what its moves
- * land without STAB where they were read. One of which nothing at all was read is not known to hit either, so it goes in
- * only where its banked energy finishes, where nothing named is left, or where it is first and nothing named is safe or
- * hits at all.
+ * `judgedBy` gives it. A card whose species was not read is never safe, its types unknown, and hits for what its two
+ * charged moves land without STAB where both were read. Short of both it is not known to hit either, so it goes in only
+ * where its banked energy finishes, where nothing named is left, or where it is first and nothing named is safe or hits
+ * at all.
  */
 export function nextOut(
   data: GameData,

@@ -389,8 +389,9 @@ allowed moves can hit super effectively. Among those, or among all of them if no
 hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
 Its hardest move is of its two charged moves where its card was read, and otherwise of every one its species can learn
 bar Frustration and Return. The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species
-wasn't read goes in only when its banked energy finishes the opponent, when nothing named is left, or when it is first
-and nothing named is safe or hits at all.
+wasn't read is never safe; where both its charged moves were read it hits for what they land without STAB, and short of
+both it goes in only when its banked energy finishes the opponent, when nothing named is left, or when it is first and
+nothing named is safe or hits at all.
 
 ### When the opponent switches
 
