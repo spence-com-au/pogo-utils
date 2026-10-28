@@ -436,7 +436,8 @@ export async function run(
   let seen: Sighting = unseen();
   let readAt = -Infinity;
 
-  // When we last had a faint or a switch prompt, after which for `STALE_MS` the HUD may name the one that fainted.
+  // When we last had a faint, a switch prompt or its answer, after which for `STALE_MS` the HUD may name the one that
+  // fainted.
   let faintAt = -Infinity;
 
   // The battle's names, CPs, move labels and types being read, if they are: off the frame of `at`, and onto the `seen`
@@ -752,12 +753,17 @@ export async function run(
 
         // The HUD goes on naming one of ours after it faints, through the switch prompt and the frames between the
         // prompt's that read as the fight. Our side of a read begun then naming one fainted is of that HUD, and is
-        // dropped as `forgetOwn` drops it: merged, Palkia's name stood for Xerneas for as long as it fought, `Xemeas`
-        // matching no species to replace it, and Xerneas's labels were matched among Palkia's moves, none of them read.
+        // dropped and read again at once, as `forgetOwn` has it: merged, Palkia's name stood for Xerneas for as long as
+        // it fought, `Xemeas` matching no species to replace it, and Xerneas's labels were matched among Palkia's moves,
+        // none of them read. Left to `READ_MS`, the one sent in would go unnamed until it was up.
         const fallen =
           at - faintAt < STALE_MS && read.own !== null && [...fainted].some((slot) => party[slot] === read.own);
 
         seen = merge(seen, fallen ? { ...read, own: null, ownCp: null, ownTypes: null, moves: new Map() } : read);
+
+        if (fallen) {
+          readAt = -Infinity;
+        }
 
         if (seen.opponent !== null && seen.opponent !== before) {
           // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves

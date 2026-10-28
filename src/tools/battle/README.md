@@ -138,12 +138,12 @@ for text and done every few seconds.
 3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels, and with them each side's type
    icons. The read runs beside the battle rather than holding it up, the fight swiped and prompts answered meanwhile,
    and is merged on the first frame after it is back. One begun before a newcomer of theirs, a faint or switch of ours
-   or the next battle is of the Pokémon before, and is dropped. So is our side of one begun within 3s of a faint or
-   switch prompt of ours naming a Pokémon of ours that has fainted, which the HUD goes on naming until after the next is
-   sent in. While a read is under way, no lit button is thrown if any is unnamed, unless a named one is to go now, a
-   finish or a throw for fear of fainting: that covers ours sent in after a faint, read at once, but not one switched in
-   from the bench, whose first read waits 2s. After the opponent's throw, a shield prompt or its countdown, the banner
-   is looked for for 8s, beside the battle too.
+   or the next battle is of the Pokémon before, and is dropped. So is our side of one naming a Pokémon of ours that has
+   fainted, begun within 3s of a faint of ours, a switch prompt or its answer: the HUD goes on naming it until after the
+   next is sent in, which is read again at once. While a read is under way, no lit button is thrown if any is unnamed,
+   unless a named one is to go now, a finish or a throw for fear of fainting: that covers ours sent in after a faint,
+   read at once, but not one switched in from the bench, whose first read waits 2s. After the opponent's throw, a shield
+   prompt or its countdown, the banner is looked for for 8s, beside the battle too.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
 5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
    whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
