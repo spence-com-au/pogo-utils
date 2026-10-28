@@ -1576,13 +1576,13 @@ test('takes a read naming a fainted species once the HUD has had time to change'
     species: icon.species === 'Latias' || icon.species === 'Mamoswine' ? 'Gengar' : icon.species,
   }));
   const gengar = fixture('battle-gengar-label-short');
-  const grey = painted(gengar, [105, 65, 68], FIRST_BALL);
+  const greyed = painted(gengar, [105, 65, 68], FIRST_BALL);
   const { phone, clock } = scripted(
     {
       ...battleAndBack(),
       fight: { frame: gengar, swipes: { count: 10, to: 'fainting' } },
-      fainting: { frame: grey, lasts: { ms: 1000, to: 'next' } },
-      next: { frame: grey, swipes: { count: 40, to: 'won' } },
+      fainting: { frame: greyed, lasts: { ms: 1000, to: 'next' } },
+      next: { frame: greyed, swipes: { count: 40, to: 'won' } },
     },
     'party',
   );
@@ -1601,10 +1601,10 @@ test('takes a read naming a fainted species once the HUD has had time to change'
     report,
   );
 
-  const fainted = report.events.findIndex((line) => line === 'own: Gengar fainted: one fewer of our Poké Balls');
+  const told = report.events.includes('own: Gengar fainted: one fewer of our Poké Balls');
   const after = report.fights.slice(-1).map(({ own }) => `${own.species} at CP ${own.cp}`);
 
-  expect(fainted).not.toBe(-1);
+  expect(told).toBe(true);
   expect(after).toEqual(['Gengar at CP 2392']);
 });
 
