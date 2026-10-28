@@ -336,6 +336,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const searchRef = useRef<HTMLDialogElement>(null);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const queryRef = useRef<HTMLInputElement>(null);
   const regionsRef = useRef<HTMLDialogElement>(null);
 
   /** Each card's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
@@ -435,7 +436,11 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
        */}
       <header class="page dexhead">
         <div class="top">
-          <h1>{region}</h1>
+          {/* Named as the page for a screen reader moving by heading, where the eye has the tab bar to say so. */}
+          <h1>
+            <span class="sr">Pokédex: </span>
+            {region}
+          </h1>
           <p class="count" aria-live="polite">
             <span class="sr">{MODES.find(({ id }) => id === state.mode)?.label} registered: </span>
             {held} / {visible.length}
@@ -573,6 +578,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
         <section class="controls">
           <div class="row">
             <input
+              ref={queryRef}
               type="search"
               placeholder="Name or number"
               autocomplete="off"
@@ -621,7 +627,18 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             <span class="matched">
               {visible.length} of {ENTRIES.length} species
             </span>
-            <button type="button" class="ghost" disabled={!searching} onClick={clearFilters}>
+            <button
+              type="button"
+              class="ghost"
+              disabled={!searching}
+              onClick={() => {
+                clearFilters();
+
+                // Reset disables itself, which drops the focus out of the open sheet; the box it has just emptied is
+                // where to start again.
+                queryRef.current?.focus();
+              }}
+            >
               Reset
             </button>
             <button type="button" class="ghost done" onClick={() => searchRef.current?.close()}>
@@ -765,9 +782,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
       <footer>
         <p>
-          Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. A tab
-          along the foot redraws the grid as that hunt's dex: a species its list no longer wants is drawn as registered,
-          and one it still wants is left as an empty tile.
+          Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. The
+          Pokémon tab fills a tile for every species in the game; each of the others redraws the grid as that hunt's
+          dex, filling a tile for a species that is in the game — with its shiny out, in the Shiny dex — and that the
+          hunt's list no longer wants. Anything else is left as an empty tile.
         </p>
         <p>
           Read from the same Pokédex and hunt lists the PGSharp backup is built from, so the two cannot disagree.
