@@ -272,7 +272,9 @@ export class Video {
   #last: number | undefined;
   #closed = false;
 
-  /** Writes the pictures still held once they come due, when no picture or recording ending comes to. */
+  /**
+   * Writes the pictures still held once they come due, when no picture or recording's end comes along to write them.
+   */
   #due: NodeJS.Timeout | undefined;
 
   /** `write` takes whole packets, `origin` is when the run began and `now` the clock it began by. */
@@ -382,7 +384,9 @@ export class Video {
 
   /**
    * Comes back for `held` once its `HELD_MS` are up, so the pictures before a screen goes still are written then rather
-   * than at whatever next arrives, which a crash would never see. Unreferenced, so it never keeps a run's process alive.
+   * than at whatever next arrives, which a crash would never see. All but the last of them: that one is whole only once
+   * the screen next changes, its recording ends or the video closes, `Pictures` having no way to tell sooner, so a crash
+   * on a still screen loses it. Unreferenced, so it never keeps a run's process alive.
    */
   #hold(held: Picture | undefined): void {
     clearTimeout(this.#due);

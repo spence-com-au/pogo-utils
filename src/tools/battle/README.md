@@ -50,11 +50,11 @@ flowchart LR
   and sends them in a rush, the first showing what the last recording sent 38–98ms earlier across 14 hand-overs, so the
   video goes over to the next recording 100ms before its first byte, dropping what the last sent from there and holding
   the next's pictures until the last has sent one from there on or has ended: a restart shows nothing twice, and at most
-  a frame or two goes missing where the next was quicker. Each picture waits those 100ms before it is written, the cut
-  not being known until the next recording's first byte. The first picture is shown from 0, there being nothing earlier,
-  so a player's clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of
-  each key picture, so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it
-  stopped.
+  a frame or two goes missing where the next was quicker. Each picture is written once those 100ms are up, the cut not
+  being known until the next recording's first byte, bar the last before the screen goes still, which is known to be
+  whole only once the screen next changes. The first picture is shown from 0, there being nothing earlier, so a player's
+  clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
+  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths

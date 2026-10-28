@@ -330,9 +330,10 @@ if (command === 'run') {
     mkdirSync(dir, { recursive: true });
   }
 
-  // The whole of the screen, written a picture at a time as each is known whole: synchronously, at about 8 KB a
-  // picture, so that a run stopped by Ctrl-C, which exits without waiting on a stream, still leaves all it saw. Opened
-  // here rather than at the first picture, so a FILE that cannot be written fails before the run changes the phone.
+  // The whole of the screen, written a picture at a time once each is known whole and `HELD_MS` have gone by since it
+  // came, or a cut is known: synchronously, at about 8 KB a picture, so that a run stopped by Ctrl-C, which exits
+  // without waiting on a stream, still leaves all it saw. Opened here rather than at the first picture, so a FILE that
+  // cannot be written fails before the run changes the phone.
   const videoFile = options['keep-video'];
   let video: Video | undefined;
   let fd: number | undefined;
@@ -348,9 +349,10 @@ if (command === 'run') {
       process.exit(1);
     }
 
-    // A write that fails — the disk full — stops the video and nothing else. It is heard from `screenrecord`'s stdout
-    // and from the ways out, where a throw would be uncaught or skip putting the phone's setting back, so it is kept
-    // to be told once the run is over rather than thrown, and nothing more is written after it.
+    // A write that fails — the disk full — stops the video and nothing else. It is heard from `screenrecord`'s stdout,
+    // from `Video`'s timer for pictures held, and from the ways out, where a throw would be uncaught or skip putting
+    // the phone's setting back, so it is kept to be told once the run is over rather than thrown, and nothing more is
+    // written after it.
     video = new Video(
       (bytes) => {
         if (fd === undefined || videoFailed !== undefined) {

@@ -172,7 +172,7 @@ test('hands the screen to the next recording without going back to the last', as
   }
 });
 
-test('keeps the whole screen as video across the hand-over, each picture once and in order', async () => {
+test('keeps the whole screen as video across the hand-over, the first recording then the next, in order', async () => {
   const recordings: Recording[] = [];
   const colours = ['red', 'blue'];
   const written: Uint8Array[] = [];
