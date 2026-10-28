@@ -38,10 +38,21 @@
     "eventType": "event",
     "heading": "Event",
     "link": "https://leekduck.com/events/dynamax-trails-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-16-dynamax-trails-2026/dynamax-trails-2026.jpg",
     "start": "2026-11-16T10:00:00.000",
     "end": "2026-11-23T20:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
+  },
+  {
+    "eventID": "eternamax-eternatus-max-battles-2026",
+    "name": "Eternamax Eternatus Returns",
+    "eventType": "max-battles",
+    "heading": "Max Battles",
+    "link": "https://leekduck.com/events/eternamax-eternatus-max-battles-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-16-dynamax-trails-2026/dynamax-trails-2026.jpg",
+    "start": "2026-11-21T11:00:00.000",
+    "end": "2026-11-21T14:00:00.000",
+    "added": "2026-10-28T19:48:47.378Z"
   },
   {
     "eventID": "gbl-twilight-trails_great-league-mega-edition_ultra-league-mega-edition_master-league-mega-edition-split-3",
@@ -105,8 +116,8 @@
     "heading": "GO Battle League",
     "link": "https://leekduck.com/events/gbl-twilight-trails_ultra-league_master-league-mega-edition_fantasy-cup-great-league-edition/",
     "image": "https://cdn.leekduck.com/assets/img/events/go-battle-league-ultra-league-machamp-swampert.jpg",
-    "start": "2026-10-20T20:00:00.000Z",
-    "end": "2026-10-27T20:00:00.000Z",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -187,17 +198,6 @@
     "added": "2026-10-14T22:33:58.294Z"
   },
   {
-    "eventID": "max-mondays-2026-10-26",
-    "name": "Dynamax Sableye during Max Monday",
-    "eventType": "max-mondays",
-    "heading": "Max Mondays",
-    "link": "https://leekduck.com/events/max-mondays-2026-10-26/",
-    "image": "https://cdn.leekduck.com/assets/img/events/max-battles-kanto.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "max-mondays-2026-11-02",
     "name": "Dynamax Machop during Max Monday",
     "eventType": "max-mondays",
@@ -259,8 +259,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/mega-charizard-x-mega-charizard-y-in-mega-raids-october-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/mega-default.jpg",
-    "start": "2026-10-21T06:00:00.000",
-    "end": "2026-10-27T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -358,8 +358,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/palkia-in-5-star-raid-battles-october-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/palkiaraid.jpg",
-    "start": "2026-10-21T06:00:00.000",
-    "end": "2026-10-27T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -471,6 +471,17 @@
     "start": "2026-11-05T18:00:00.000",
     "end": "2026-11-05T19:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
+  },
+  {
+    "eventID": "pokemonspotlighthour2026-11-19",
+    "name": "Grookey, Scorbunny, and Sobble Spotlight Hour",
+    "eventType": "pokemon-spotlight-hour",
+    "heading": "Pokémon Spotlight Hour",
+    "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-19/",
+    "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
+    "start": "2026-11-19T18:00:00.000",
+    "end": "2026-11-19T19:00:00.000",
+    "added": "2026-10-28T19:48:47.378Z"
   },
   {
     "eventID": "pokemonspotlighthour2026-11-26",
