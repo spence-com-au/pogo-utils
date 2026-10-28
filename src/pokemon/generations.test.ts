@@ -58,6 +58,7 @@ test('a sub-region sits inside one generation, and names its species and that ge
 test("a generation's starters sit inside it, and Unova's are Snivy, Tepig and Oshawott", () => {
   for (const { first, last, starters } of GENERATIONS) {
     expect(starters.every((dex) => dex >= first && dex <= last)).toBe(true);
+    expect(starters.slice(1).map((dex, at) => dex - (starters[at] ?? 0))).toEqual([3, 3]);
   }
 
   expect(GENERATIONS.find(({ number }) => number === 5)?.starters).toEqual([495, 498, 501]);
