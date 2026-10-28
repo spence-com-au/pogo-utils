@@ -1161,26 +1161,81 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
  * The opponent switches Glaceon out for Golem, its three Poké Balls still red, with no type icons to read its form by:
  * either Golem it could be, and a Kantonian one's Earthquake threatens the Pokémon we have out. Latias, second of the
  * party and so the bench's top card, is safe from either Golem's moves, and its Aura Sphere hits both super
- * effectively: it is switched in at once. Taken where the HUD's CP has changed by the next read, and refused where it
- * has not, the switch timer still running, which leaves the one tapped away from out.
+ * effectively: it is switched in once Golem has flown in. Golem's first frame follows a stretch of `other`, so is read
+ * at once, its last read being `READ_MS` ago; and it flies in for `flying` milliseconds after, taking no tap meanwhile,
+ * which a tap through it, bench or throw, shows as one of `flying`'s. Taken where the HUD's CP has changed by the next
+ * read. Flying in for longer than the run waits, the tap is dropped, which the next read shows by the HUD naming Gengar
+ * still, its `CP` painted out so that its CP goes unread, as Palkia's did live: no switch of ours having started the
+ * switch timer, it is told as dropped and tapped again. Zeraora's icon stands for Gengar on the party screen, so that
+ * it is Gengar, Latias and Gyarados.
  */
 test.each([
-  ['taken', 'battle-crunch-entei', []],
-  ['refused', 'battle-gengar-label-short', ['own: Latias not sent in: the switch timer is running']],
-])('switches to a counter the moment the opponent switches: %s', async (_, after, told) => {
+  ['taken', 1500, [], []],
+  [
+    'dropped by a longer flight',
+    3000,
+    ['flying'],
+    [
+      'own: Latias not sent in: the tap was dropped, no switch of ours having started the switch timer',
+      "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
+    ],
+  ],
+])('switches to a counter once the opponent switched in has flown in: %s', async (_, flying, dropped, told) => {
   const bench: Point = [0.903, 0.608];
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Zeraora' ? 'Gengar' : icon.species }));
+  const golem = painted(fixture('battle-gengar-label-short'), [244, 249, 251], [0.27, 0.148, 0.315, 0.185]);
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),
       party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
       loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+      glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
+      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'flying' } },
+      flying: { frame: golem, lasts: { ms: flying, to: 'golem' } },
+      golem: { frame: golem, tap: { at: bench, to: 'after' }, lasts: { ms: 6000, to: 'won' } },
+      after: { frame: fixture('battle-crunch-entei'), lasts: { ms: 6000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons,
+      typeIcons: {},
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const switching = report.events.filter((line) => line.startsWith('own: switching') || line.includes('not sent in'));
+
+  expect(taps.filter((scene) => scene === 'flying' || scene === 'golem')).toEqual([...dropped, 'golem']);
+  expect(switching).toEqual([
+    "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
+    ...told,
+  ]);
+});
+
+/**
+ * Latias switched in against Golem as above, Glaceon comes back in, its moves super effective against Latias, and
+ * Zeraora, whose Dynamic Punch is against Glaceon, is tapped once it has flown in; but Latias's switch has started the
+ * switch timer, and our CP unchanged at the next read is the timer refusing the tap rather than the tap dropped.
+ */
+test('tells a switch refused while our switch timer runs', async () => {
+  const bench: Point = [0.903, 0.608];
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
       glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'golem' } },
-      golem: {
-        frame: fixture('battle-gengar-label-short'),
-        tap: { at: bench, to: 'after' },
-        lasts: { ms: 6000, to: 'won' },
-      },
-      after: { frame: fixture(after), lasts: { ms: 6000, to: 'won' } },
+      golem: { frame: fixture('battle-gengar-label-short'), tap: { at: bench, to: 'back' } },
+      back: { frame: fixture('battle-latias'), lasts: { ms: 8000, to: 'won' } },
     },
     'party',
   );
@@ -1199,12 +1254,8 @@ test.each([
     report,
   );
 
-  const switching = report.events.filter((line) => line.startsWith('own: switching') || line.includes('not sent in'));
-
-  expect(taps.filter((scene) => scene === 'golem')).toEqual(['golem']);
-  expect(switching).toEqual([
-    "own: switching to Latias against Golem: Gengar is hit super effectively; Aura Sphere is, and nothing of Golem's is",
-    ...told,
+  expect(report.events.filter((line) => line.includes('not sent in'))).toEqual([
+    'own: Zeraora not sent in: the switch timer is running',
   ]);
 });
 
