@@ -20,9 +20,9 @@
  *                       `0012.437s-shield.png`, and the last frames before a run stops for nothing recognised.
  *                       `FILE` is given the whole of the screen the run watched, battles and menus alike, as the
  *                       MPEG-TS video `mpv FILE` or `ffplay FILE` plays, its time the seconds since the run began
- *                       that `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, saved
- *                       as it arrives: about 15 MB a minute at most, and less for a still screen. Like the frames, it
- *                       shows the account's trainer names, and is not to be committed as it is.
+ *                       that `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, kept
+ *                       rather than recorded twice: about 15 MB a minute at most, and less for a still screen. Like
+ *                       the frames, it shows the account's trainer names, and is not to be committed as it is.
  *                       `LEAGUE` is how the title of one league on now starts, as `ultra` or `fantasy cup`, and
  *                       `NAME` a party saved for it, which is battled with rather than whichever the screen opens
  *                       on; one not saved stops the run.
