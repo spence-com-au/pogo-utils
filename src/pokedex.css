@@ -1,7 +1,8 @@
 /**
  * The Pokédex, drawn after the one in Pokémon GO: a sky-blue ground under a region's card, its count and the counts of
- * the other modes, a grid of glassy tiles holding a picture and a number, and the bar that floats over the foot with
- * the mode tabs and the round search, close and regions buttons. The shiny mode turns all of it gold, as the game does.
+ * the four hunt modes, a grid of glassy tiles holding a picture and a number, and the bar that floats over the foot
+ * with the mode tabs and the round search, clear and regions buttons. The shiny mode turns all of it gold, as the game
+ * does.
  * Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages; everything below is this
  * page's own.
  */
@@ -441,7 +442,7 @@ body[data-page='pokedex'] {
     margin-right: 40px;
   }
 
-  /* A filter left on shows on the glass, so a grid with tiles missing from it says why. */
+  /* A filter left on shows as a dot on the search button, so a grid with tiles missing from it says why. */
 
   .round .dot {
     position: absolute;

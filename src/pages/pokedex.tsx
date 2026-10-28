@@ -501,10 +501,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
       </main>
 
       {/*
-       * The bar that floats over the foot of the game's Pokédex: the mode tabs, and under them the round search, close
-       * and regions buttons. The close button clears the search and filters — the name, the availability control and
-       * the toggles, but not the region or the mode — which is the one thing here there is to close; with none of them
-       * set it is left out rather than drawn doing nothing.
+       * The bar that floats over the foot of the game's Pokédex: the mode tabs, and under them the round search, clear
+       * and regions buttons. The clear button, the ✕ in the game's close button's place, clears the search and filters
+       * — the name, the availability control and the toggles, but not the region or the mode; with none of them set it
+       * is left out rather than drawn doing nothing.
        */}
       <nav class="dexbar" aria-label="Pokédex">
         <div class="modes" role="group" aria-label="Mode">
