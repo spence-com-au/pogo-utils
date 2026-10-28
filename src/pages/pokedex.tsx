@@ -48,18 +48,13 @@ const LAST_HISUIAN = 905;
 
 const regionOf = (generation: number) => REGIONS[generation - 1] ?? `Generation ${generation}`;
 
-const regionOfEntry = ({ dex, generation }: Entry) =>
-  generation === null
-    ? '?'
-    : dex >= FIRST_HISUIAN && dex <= LAST_HISUIAN
-      ? 'Hisui'
-      : generation === 8
-        ? 'Galar'
-        : regionOf(generation);
+/** The one region an entry is from, which for generation 8 is Galar or Hisui rather than the tab's "Galar & Hisui". */
+const regionOfEntry = (dex: number, generation: number) =>
+  dex >= FIRST_HISUIAN && dex <= LAST_HISUIAN ? 'Hisui' : generation === 8 ? 'Galar' : regionOf(generation);
 
 /**
- * A sprite that says nothing when it fails. The name over it is the card; a hotlinked picture that does not arrive —
- * offline, or blocked — should leave a blank tile rather than the browser's broken-image glyph.
+ * A sprite that says nothing when it fails. The number under it is the tile; a hotlinked picture that does not arrive
+ * — offline, or blocked — should leave it looking like an empty slot rather than the browser's broken-image glyph.
  *
  * What failed is remembered as the URL rather than as a boolean, because a fresh `src` deserves a fresh chance to load
  * and a flag would deny it one. `key` on the `<img>` cannot do that job: it replaces the child node while this
@@ -255,10 +250,14 @@ function Detail({
         )}
       </div>
 
-      <div class="grid2">
+      <div class="info">
         <dl class="facts">
           <dt>Region</dt>
-          <dd>{entry.generation === null ? '?' : `${regionOfEntry(entry)} — generation ${entry.generation}`}</dd>
+          <dd>
+            {entry.generation === null
+              ? '?'
+              : `${regionOfEntry(entry.dex, entry.generation)} — generation ${entry.generation}`}
+          </dd>
 
           <dt>In Pokémon GO</dt>
           <dd>{entry.released ? 'Yes' : 'Not yet'}</dd>

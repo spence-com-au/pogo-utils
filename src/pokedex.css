@@ -31,12 +31,16 @@ body[data-page='pokedex'] {
    * rather than theme ones, since no other page is dressed as the game.
    *
    * `--go`, `--go-deep` and `--go-ink` are the names the entry dialog paints with, so it follows the mode too.
+   *
+   * Each a shade or two deeper than the game's own, which sets pale blue on pale blue: `--on-go` on `--go`, and
+   * `--go-deep` and `--number` on the glass, all clear 4.5:1 rather than the 2–3:1 the game's colours give.
    */
   --sky: linear-gradient(180deg, #84cfe3 0, #a6dded 45%, #c4ebf3 100%);
-  --go: #1d89b0;
-  --go-deep: #2a8db5;
+  --go: #177a9e;
+  --on-go: #fff;
+  --go-deep: #1b6d8e;
   --go-ink: #3d4f5c;
-  --number: #4aa3c6;
+  --number: #1b6d8e;
   --glass: rgb(255 255 255 / 55%);
   --tile: rgb(255 255 255 / 22%);
   --tile-edge: rgb(255 255 255 / 60%);
@@ -48,7 +52,7 @@ body[data-page='pokedex'] {
 
   @media (prefers-color-scheme: dark) {
     --sky: linear-gradient(180deg, #0f3442 0, #113a49 45%, #123f4e 100%);
-    --go: #1d89b0;
+    --go: #14708f;
     --go-deep: #7fd0ec;
     --go-ink: #d7e4e8;
     --number: #7cc3dc;
@@ -65,9 +69,12 @@ body[data-page='pokedex'] {
    */
   &:has(.dexroot[data-mode='shiny']) {
     --sky: linear-gradient(180deg, #f2d48a 0, #f6e0a6 45%, #f9eac0 100%);
+
+    /* The game's gold kept as the fill, which white on it would fail; a dark brown is what reads on it instead. */
     --go: #f0a52a;
-    --go-deep: #e9a227;
-    --number: #e3a03a;
+    --on-go: #3b2600;
+    --go-deep: #97590a;
+    --number: #97590a;
     --tile: rgb(255 255 255 / 30%);
 
     @media (prefers-color-scheme: dark) {
@@ -146,7 +153,7 @@ body[data-page='pokedex'] {
     padding: 2px 26px;
     border-radius: 999px;
     background: var(--go);
-    color: #fff;
+    color: var(--on-go);
     font-size: 24px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
@@ -352,7 +359,7 @@ body[data-page='pokedex'] {
 
   .mode[aria-pressed='true'] {
     background: var(--go);
-    color: #fff;
+    color: var(--on-go);
     box-shadow:
       0 0 0 3px rgb(255 255 255 / 70%),
       0 2px 8px rgb(0 0 0 / 14%);
@@ -540,7 +547,7 @@ body[data-page='pokedex'] {
 
   .chip[aria-pressed='true'] {
     background: var(--go);
-    color: #fff;
+    color: var(--on-go);
   }
 
   .controls .meta {
@@ -573,7 +580,7 @@ body[data-page='pokedex'] {
 
   .ghost.done {
     background: var(--go);
-    color: #fff;
+    color: var(--on-go);
   }
 
   .ghost:disabled {
@@ -893,7 +900,7 @@ body[data-page='pokedex'] {
     font-size: 13px;
   }
 
-  .detail .grid2 {
+  .detail .info {
     padding: 12px 18px 4px;
   }
 
@@ -1035,7 +1042,7 @@ body[data-page='pokedex'] {
     border: 0;
     border-radius: 50%;
     background: #fff;
-    color: var(--go);
+    color: var(--go-deep);
     font: inherit;
     font-size: 24px;
     font-weight: 800;
