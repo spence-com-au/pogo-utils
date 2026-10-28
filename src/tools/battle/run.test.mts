@@ -1566,6 +1566,49 @@ test('takes no read naming one of ours that has fainted for the one sent in', as
 });
 
 /**
+ * Gengar leads and faints as before, but the one sent in is a second Gengar, Mamoswine's icon standing for it, so the
+ * HUD naming the fainted one's species is also naming the one out. Once the stale HUD's while has gone by, its reads
+ * stand: dropped for naming a fainted species, the second Gengar's CP would never have been read.
+ */
+test('takes a read naming a fainted species once the HUD has had time to change', async () => {
+  const icons = ICONS.map((icon) => ({
+    ...icon,
+    species: icon.species === 'Latias' || icon.species === 'Mamoswine' ? 'Gengar' : icon.species,
+  }));
+  const gengar = fixture('battle-gengar-label-short');
+  const grey = painted(gengar, [105, 65, 68], FIRST_BALL);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: gengar, swipes: { count: 10, to: 'fainting' } },
+      fainting: { frame: grey, lasts: { ms: 1000, to: 'next' } },
+      next: { frame: grey, swipes: { count: 40, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const fainted = report.events.findIndex((line) => line === 'own: Gengar fainted: one fewer of our Poké Balls');
+  const after = report.fights.slice(-1).map(({ own }) => `${own.species} at CP ${own.cp}`);
+
+  expect(fainted).not.toBe(-1);
+  expect(after).toEqual(['Gengar at CP 2392']);
+});
+
+/**
  * A shield prompt is tapped while we have a shield left, and left to run out once both are spent: tapped, it would be
  * a tap at a prompt with nothing behind it. Latias leads with both shields up; Charizard has spent both.
  */
