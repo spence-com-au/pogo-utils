@@ -865,7 +865,11 @@ export async function run(
       // only off our taps, every slot named after it was the one before. Told here unless a prompt is showing, whose
       // answer tells it, and kept for the prompt only where none has shown yet.
       if (left.own !== null && left.own < party.length - fainted.size) {
-        const gone = activeOf(data, party, fainted, seen.moves.values(), sent);
+        // A move read that none of ours still standing can hold is a misread, which says nothing of who is out, and
+        // leaves it to the one last sent in: with our name unread a label is matched among every move, and live `TIVE`,
+        // the end of SUPER EFFECTIVE beneath Xerneas's Moonblast, read as Dive.
+        const gone =
+          activeOf(data, party, fainted, seen.moves.values(), sent) ?? activeOf(data, party, fainted, [], sent);
 
         if (gone !== undefined) {
           drop(`${seen.own ?? party[gone] ?? 'ours'} fainted first`);
