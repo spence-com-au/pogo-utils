@@ -381,18 +381,25 @@ or hits at all.
 ### When the opponent switches
 
 An opponent that switches out (rather than faints) has spent its switch timer, so it can't answer a switch of ours
-straight away. If the newcomer's allowed moves can hit ours super effectively, it switches at once to a benched Pokémon
-that counters it outright: safe from every one of those moves, and holding a charged move that is super effective
-against every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that
-hits hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can
-learn, since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit
-move that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor
-one [doomed](#banking-energy) with a move lit to throw into a shield.
+straight away. If the newcomer's allowed moves can hit ours super effectively, it switches to a benched Pokémon that
+counters it outright: safe from every one of those moves, and holding a charged move that is super effective against
+every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that hits
+hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can learn,
+since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit move that
+would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor one
+[doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
-once, with nothing to confirm, and does nothing while our own switch timer runs. Rather than model the timer, the run
-reads our HUD again 2s after the tap: a CP unchanged means the tap was refused, logged as
-`Latias not sent in: the switch timer is running`, and the Pokémon tapped away from is taken to still be out.
+once, with nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the
+field, or while our own switch timer runs. The switch is decided the moment a read names the newcomer, and tapped 2s
+later (`FLY_IN_MS`), with nothing thrown meanwhile, so that it still banks a lit move. On recordings of both phones the
+banner was last drawn 1.5–2.0s after the HUD first named the newcomer; the game master's fly-in is three turns, 1.5s.
+The run reads our HUD again 2s after the tap: still naming the Pokémon tapped away from, or where it names neither,
+showing the same CP, means the tap was refused, and that Pokémon is taken to still be out. Within 45s of our last switch
+(the game master's `quickSwapCooldownDurationSeconds`), that is logged as
+`Latias not sent in: the switch timer is running`. Otherwise it's taken as dropped, logged as
+`Latias not sent in: taken as dropped, no switch of ours in the last 45s`, and the switch is decided and tapped once
+more; a second drop against the same newcomer is left.
 
 ### Banking energy
 
@@ -418,8 +425,9 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
   Fly took Kyogre's last shield, and it had none for the rest of the battle.
 
-Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One the timer refuses all
-the same gives the bank back, and neither is tried again for 10s.
+Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One refused all the same
+gives the bank back. Refused by the timer, or dropped a second time, neither is tried again for 10s; dropped the first
+time, it's tried again at once.
 
 ### Knowing who is out
 
