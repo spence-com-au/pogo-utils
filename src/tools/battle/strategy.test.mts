@@ -204,7 +204,10 @@ test('a move whose energy is not known is worth nothing per energy', () => {
 
 test('a move is worth its damage, moved by the stat stages it may change as if each touched one more hit', () => {
   expect(worth(DATA, 'Rock Slide', [], []), 'no stages').toBe(75);
-  expect(worth(DATA, 'Ancient Power', [], []), 'a tenth of a chance at +1 attack, and defense').toBeCloseTo(60 * 1.025);
+  expect(
+    worth(DATA, 'Ancient Power', [], []),
+    'a tenth of a chance at +1 attack, its +1 defense uncounted',
+  ).toBeCloseTo(60 * 1.025);
   expect(worth(DATA, 'Rock Tomb', [], []), 'their attack −1 every time').toBeCloseTo(75 * 1.2);
   expect(worth(DATA, 'Overheat', [], []), 'our attack −2 every time').toBeCloseTo((130 * 2) / 3);
   expect(worth(DATA, 'Close Combat', [], []), 'our defense −2 left to `bestButton`').toBe(100);

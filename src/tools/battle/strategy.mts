@@ -82,8 +82,8 @@ export function damage(data: GameData, move: string, own: readonly Typing[], opp
  *
  * Bar those on our own defense, up or down: what Close Combat's −2 costs is the opponent's hits for as long as ours
  * stays out, which this hit is no measure of. Priced against it, a Close Combat super effective on a Regigigas, 160 to
- * Moonblast's 108, would lose half its damage however little Regigigas hits for. `bestButton` weighs a move that lowers
- * our defense instead, and Ancient Power's chance at +1 defense goes uncounted.
+ * Moonblast's 108, would lose half its damage however little Regigigas hits for. `bestButton` weighs a move that always
+ * lowers our defense instead; High Jump Kick's tenth of a chance at −4, and Ancient Power's at +1, go uncounted.
  *
  * On our `lastHit`, the stages it moves on our attack count for nothing either way: there is no next throw for Ancient
  * Power's attack to help. Those it moves on theirs still count, lasting on the opponent into whichever of ours goes in
@@ -433,10 +433,17 @@ export const BAIT_SAVES = 10;
  * How near a move that leaves our defense alone must come to one that lowers it, the move worth the most per energy,
  * to be held for in its place: costing within 10 energy of it either way, and worth more than 0.7 of it per energy.
  * What Close Combat's −2 costs is the opponent's hits for as long as its user stays out, which nothing here models, so
- * this is PvPoke's rule, whose simulations rank the meta: its battle AI makes the same trade while the opponent has a
- * shield (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js`), and has rules of its own for one with none.
- * So a Galarian Moltres holds for Fly, 2.13 per energy, rather than Brave Bird, 2.84 and −3 to its defense, and a
- * Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.20.
+ * this takes PvPoke's numbers, whose simulations rank the meta (pvpoke/pvpoke@d98f521,
+ * `src/js/battle/actions/ActionLogic.js`). Its battle AI makes the trade only for a move costing up to 10 more, and
+ * only while the opponent has a shield; with none, a self-debuffing move costing over 50 gives way to the cheapest
+ * while ours has over half its HP and the move would take under 80% of what the opponent has left. One rule, both
+ * ways, stands in for the two: a Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.20, as
+ * PvPoke's first would, and a Galarian Moltres holds for Fly, 2.13, rather than Brave Bird, 2.84 and −3 to its
+ * defense, as its second would with Moltres healthy.
+ *
+ * Otherwise unlike PvPoke's: a move that only may lower our defense, as High Jump Kick's tenth of a chance at −4, goes
+ * unpriced, as PvPoke's leaves one under half a chance; Overheat's −2 to our attack is `worth`'s to price, not this
+ * rule's; and a move that would finish the opponent is `finisher`'s to throw whatever this rule holds for.
  */
 const SPARES_DEFENSE = { energy: 10, perEnergy: 0.7 } as const;
 

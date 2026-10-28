@@ -253,12 +253,14 @@ opponent counting as the one choice. Snorlax's two Body Slams at an unshielded G
 without throwing a charged move in its 29s out. The two choices that don't match were both against a Sylveon: holding
 Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch, twice, where Hyper Beam gets more per energy.
 
-**Lowering our defense.** A move that lowers our defense gives way to one that doesn't, where that one costs within
-**10** energy of it and is worth more than **0.7** of it per energy, with or without shields. That is the trade PvPoke's
-battle AI makes while the opponent has a shield (`ActionLogic.js`), its simulations being what the meta is ranked by; it
-has rules of its own for an opponent with none. So Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird,
-2.84 and −3 to its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
-Xerneas throws Close Combat at a Regigigas, 3.56 a point to Moonblast's 2.20.
+**Lowering our defense.** A move that always lowers our defense gives way to one that doesn't, where that one costs
+within **10** energy of it either way and is worth more than **0.7** of it per energy, with or without shields. Not on
+our last hit, where Brave Bird and Close Combat are thrown as they are. The numbers are PvPoke's (`ActionLogic.js`), its
+simulations being what the meta is ranked by, but its battle AI makes this trade only for a move costing more, and only
+while the opponent has a shield; with none, it holds a Pokémon above half its HP to its cheapest move rather than a
+self-debuffing one costing over 50. The one rule stands in for both. So Xerneas throws Close Combat at a Regigigas, 3.56
+a point to Moonblast's 2.20, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
+its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
