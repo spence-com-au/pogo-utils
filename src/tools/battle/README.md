@@ -232,8 +232,10 @@ each side's panel say which form it is ([`typing.mts`](typing.mts)). Where they 
 of the species has, a move is valued against the typing it does worst against.
 
 **Stat changes.** Worth is adjusted for the stat stages a move may move, each priced as if it touched one more hit of
-the same size, and weighted by its chance. So Close Combat's certain −2 to its user's defense halves its worth, and
-Ancient Power's one-in-ten buff adds about 5%.
+the same size, and weighted by its chance. So Ancient Power's one-in-ten +1 to its user's attack adds 2.5%. Stages on
+our own defense are left out: what Close Combat's −2 costs is the opponent's hits for as long as ours stays out, which
+Close Combat's own damage is no measure of. Priced against it, a Close Combat super effective on a Regigigas would lose
+half its damage however little Regigigas hits for.
 
 **On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
 stats count for nothing, since there's no next hit for them to matter on.
@@ -250,6 +252,13 @@ Beam: worth per energy matches 8 of their 10 such choices, where worth alone mat
 opponent counting as the one choice. Snorlax's two Body Slams at an unshielded Garchomp are one, and Garchomp fainted
 without throwing a charged move in its 29s out. The two choices that don't match were both against a Sylveon: holding
 Body Slam for Earthquake with Snorlax at 20%, and throwing Dynamic Punch, twice, where Hyper Beam gets more per energy.
+
+**Lowering our defense.** A move that lowers our defense gives way to one that doesn't, where that one costs within
+**10** energy of it and is worth more than **0.7** of it per energy, with or without shields. That is the trade PvPoke's
+battle AI makes while the opponent has a shield (`ActionLogic.js`), its simulations being what the meta is ranked by; it
+has rules of its own for an opponent with none. So Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird,
+2.84 and −3 to its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
+Xerneas throws Close Combat at a Regigigas, 3.56 a point to Moonblast's 2.20.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth

@@ -106,7 +106,6 @@ const heldFor = (own: Shown, opponent: Shown, [left, right]: readonly [string, s
 test('with no shield to bait, the move held for is the one worth the most per energy', () => {
   const snorlax = ['Earthquake', 'Body Slam'] as const;
   const melmetal = ['Hyper Beam', 'Dynamic Punch'] as const;
-  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
 
   expect(heldFor({ species: 'Snorlax' }, { species: 'Garchomp' }, snorlax), '1.95 per energy to 1.85').toBe(
     'Body Slam',
@@ -124,13 +123,59 @@ test('with no shield to bait, the move held for is the one worth the most per en
   expect(heldFor({ species: 'Melmetal' }, { species: 'Sylveon' }, melmetal), 'Fighting resisted, 1.25 to 1.88').toBe(
     'Hyper Beam',
   );
-  expect(heldFor(moltres, { species: null }, ['Fly', 'Brave Bird']), 'Brave Bird’s defense −3, 0.71 to 2.13').toBe(
-    'Fly',
-  );
+});
+
+test('a move that lowers our defense gives way to one within 10 energy and worth more than 0.7 of it per energy', () => {
+  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
+  const fly = new Map([
+    [0.31, 'Fly'],
+    [0.69, 'Brave Bird'],
+  ]);
+  const machamp = typesOf(DATA, { species: 'Machamp' });
+  const combat = new Map([
+    [0.31, 'Close Combat'],
+    [0.69, 'Rock Slide'],
+  ]);
+
   expect(
-    heldFor(moltres, { species: null }, ['Fly', 'Brave Bird'], { lastHit: true }),
-    'on our last hit, 2.84 to 2.13',
-  ).toBe('Brave Bird');
+    bestButton(DATA, fly, typesOf(DATA, moltres), []),
+    'Fly, 2.13 per energy, 0.75 of Brave Bird’s 2.84 and 10 cheaper',
+  ).toEqual({ x: 0.31, bait: false, why: 'Brave Bird lowers our defense; Fly is worth 75% of it per energy' });
+  expect(bestButton(DATA, fly, typesOf(DATA, moltres), [], { lastHit: true })?.x, 'on our last hit').toBe(0.69);
+  expect(bestButton(DATA, combat, machamp, [])?.x, 'Close Combat, 2.67 to Rock Slide’s 1.67, 0.63 of it').toBe(0.31);
+  expect(
+    bestButton(
+      DATA,
+      new Map([
+        [0.31, 'Wild Charge'],
+        [0.69, 'Thunderbolt'],
+      ]),
+      typesOf(DATA, { species: 'Raikou' }),
+      [],
+      { bait: true },
+    ),
+    'Raikou’s Thunderbolt, 0.74 of Wild Charge per energy, and Wild Charge saving only 10 as the bait',
+  ).toEqual({
+    x: 0.69,
+    bait: false,
+    why: 'Wild Charge lowers our defense; Thunderbolt is worth 74% of it per energy; not baiting: Wild Charge costs only 10 less than Thunderbolt',
+  });
+});
+
+/** Battle 2 of a Master League set on a Pixel 8 Pro, 2026-10-29, in which Xerneas threw Moonblast at Regigigas twice. */
+test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast’s 2.20', () => {
+  const xerneas = new Map([
+    [0.31, 'Moonblast'],
+    [0.69, 'Close Combat'],
+  ]);
+  const own = typesOf(DATA, { species: 'Xerneas' });
+  const regigigas = typesOf(DATA, { species: 'Regigigas' });
+
+  expect(bestButton(DATA, xerneas, own, regigigas, { bait: true }), 'the cheaper, and the bait').toEqual({
+    x: 0.69,
+    bait: true,
+  });
+  expect(bestButton(DATA, xerneas, own, regigigas), 'with no shield to bait').toEqual({ x: 0.69, bait: false });
 });
 
 test('of two worth as much per energy, the cheaper is held for, whatever the last bit of the arithmetic says', () => {
@@ -159,12 +204,11 @@ test('a move whose energy is not known is worth nothing per energy', () => {
 
 test('a move is worth its damage, moved by the stat stages it may change as if each touched one more hit', () => {
   expect(worth(DATA, 'Rock Slide', [], []), 'no stages').toBe(75);
-  expect(worth(DATA, 'Ancient Power', [], []), 'a tenth of a chance at +1 attack and defense').toBeCloseTo(60 * 1.045);
+  expect(worth(DATA, 'Ancient Power', [], []), 'a tenth of a chance at +1 attack, and defense').toBeCloseTo(60 * 1.025);
   expect(worth(DATA, 'Rock Tomb', [], []), 'their attack −1 every time').toBeCloseTo(75 * 1.2);
-  expect(worth(DATA, 'Close Combat', [], []), 'our defense −2 every time').toBeCloseTo(100 * 0.5);
-  expect(worth(DATA, 'Close Combat', typesOf(DATA, { species: 'Machamp' }), []), 'on top of STAB').toBeCloseTo(
-    100 * 1.2 * 0.5,
-  );
+  expect(worth(DATA, 'Overheat', [], []), 'our attack −2 every time').toBeCloseTo((130 * 2) / 3);
+  expect(worth(DATA, 'Close Combat', [], []), 'our defense −2 left to `bestButton`').toBe(100);
+  expect(worth(DATA, 'Superpower', [], []), 'its attack −1 counted, its defense −1 not').toBeCloseTo(85 * 0.8);
   expect(worth(DATA, 'Not A Move', [], [])).toBe(0);
 });
 
@@ -173,32 +217,28 @@ test('the best button counts what a move does to either side’s stats as well a
     [0.31, 'Rock Tomb'],
     [0.69, 'Power Gem'],
   ]);
-  const combat = new Map([
-    [0.31, 'Close Combat'],
-    [0.69, 'Rock Slide'],
+  const fire = new Map([
+    [0.31, 'Overheat'],
+    [0.69, 'Flamethrower'],
   ]);
 
   expect(bestButton(DATA, tomb, [], [])?.x, 'Rock Tomb, 75 and their attack −1, over Power Gem’s 85').toBe(0.31);
-  expect(
-    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [])?.x,
-    'Rock Slide over a Close Combat that leaves Machamp taking half again',
-  ).toBe(0.69);
+  expect(bestButton(DATA, fire, [], [])?.x, 'Flamethrower, 90, over an Overheat that leaves ours −2 to attack').toBe(
+    0.69,
+  );
 });
 
 test('on our last hit, a move’s stages on our side count for nothing, and those on theirs still count', () => {
   const lastHit = { lastHit: true };
-  const combat = new Map([
-    [0.31, 'Close Combat'],
-    [0.69, 'Rock Slide'],
+  const fire = new Map([
+    [0.31, 'Overheat'],
+    [0.69, 'Flamethrower'],
   ]);
 
-  expect(worth(DATA, 'Close Combat', [], [], lastHit), 'no next hit for our defense −2 to cost').toBe(100);
-  expect(worth(DATA, 'Ancient Power', [], [], lastHit), 'nor a next throw for our attack +1 to help').toBe(60);
+  expect(worth(DATA, 'Overheat', [], [], lastHit), 'no next throw for our attack −2 to cost').toBe(130);
+  expect(worth(DATA, 'Ancient Power', [], [], lastHit), 'nor for our attack +1 to help').toBe(60);
   expect(worth(DATA, 'Rock Tomb', [], [], lastHit), 'their attack −1 lasts on them').toBeCloseTo(75 * 1.2);
-  expect(
-    bestButton(DATA, combat, typesOf(DATA, { species: 'Machamp' }), [], lastHit)?.x,
-    'Close Combat, 120 to 75',
-  ).toBe(0.31);
+  expect(bestButton(DATA, fire, [], [], lastHit)?.x, 'Overheat, 130 to 90').toBe(0.31);
 });
 
 test('the slot out is the first not fainted whose species can hold the moves read', () => {
@@ -440,9 +480,13 @@ test('no button is best while one of a pair has no move read under it', () => {
 test('of the lit buttons, the one worth the most is thrown now', () => {
   const kyogre = typesOf(DATA, { species: 'Kyogre' });
   const entei = typesOf(DATA, { species: 'Entei' });
-  const combat = new Map([
-    [0.31, 'Close Combat'],
-    [0.69, 'Rock Slide'],
+  const fire = new Map([
+    [0.31, 'Overheat'],
+    [0.69, 'Flamethrower'],
+  ]);
+  const fly = new Map([
+    [0.31, 'Fly'],
+    [0.69, 'Brave Bird'],
   ]);
 
   expect(bestLit(DATA, KYOGRE, [0.69], kyogre, entei), 'Avalanche, the only one lit').toBe(0.69);
@@ -451,11 +495,12 @@ test('of the lit buttons, the one worth the most is thrown now', () => {
   expect(bestLit(DATA, new Map([[0.31, 'Hydro Pump']]), [0.69], kyogre, entei), 'no move read under it').toBe(
     undefined,
   );
-  expect(bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), []), 'Rock Slide').toBe(0.69);
+  expect(bestLit(DATA, fire, [0.31, 0.69], [], []), 'Flamethrower over an Overheat that leaves ours −2').toBe(0.69);
+  expect(bestLit(DATA, fire, [0.31, 0.69], [], [], { lastHit: true }), 'Overheat, on our last hit').toBe(0.31);
   expect(
-    bestLit(DATA, combat, [0.31, 0.69], typesOf(DATA, { species: 'Machamp' }), [], { lastHit: true }),
-    'Close Combat, on our last hit',
-  ).toBe(0.31);
+    bestLit(DATA, fly, [0.31, 0.69], typesOf(DATA, { species: 'Moltres', types: ['Dark', 'Flying'] }), []),
+    'Brave Bird, 156 to Fly’s 96, a throw that may be our last being worth what it hits for',
+  ).toBe(0.69);
   expect(bestLit(DATA, GLACEON, [0.31, 0.69], typesOf(DATA, { species: 'Glaceon' }), []), 'Avalanche, 45 to 55').toBe(
     0.69,
   );
