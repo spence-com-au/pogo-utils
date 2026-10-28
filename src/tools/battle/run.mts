@@ -335,36 +335,42 @@ export async function run(
   let fainted = new Set<number>();
   let sent = 0;
 
-  // The cards the party screen last showed, by species and CP, whose moves `party` holds as far as they were read: a GO
-  // Battle League set comes back to the party screen before every battle, and reading three cards takes 40s or more.
-  let partyRead: string | undefined;
+  // The cards the party screen last showed, by silhouette and CP, of which `party` holds what was read: a GO Battle
+  // League set comes back to the party screen before every battle, and reading three cards takes 40s or more. A card is
+  // the one shown before where its silhouette names the same species and its CP is the same or went unread either time,
+  // OCR having missed one CP of 24.
+  let shown: Card[] = [];
 
-  // Each card's moves read off the selection screen, as `readCard` reads them, in turn. Stops at a card whose selection
-  // screen did not open, as none would, and at one that left the party screen not showing again, nothing more being
-  // tapped then.
-  const readCards = async (cards: readonly Card[], screen: Size): Promise<{ cards: Card[]; back: boolean }> => {
+  const sameCard = (was: Card | undefined, card: Card) =>
+    was !== undefined && was.species === card.species && (was.cp === null || card.cp === null || was.cp === card.cp);
+
+  // The moves of each card in `slots` read off the selection screen, as `readCard` reads them, in turn, onto `cards`.
+  // Stops at one that left anything but the party screen showing, nothing more being tapped then.
+  const readCards = async (cards: readonly Card[], slots: readonly number[], screen: Size) => {
     const read = [...cards];
 
-    for (const [slot, card] of cards.entries()) {
-      if (card.cp === null) {
+    for (const slot of slots) {
+      const card = read[slot];
+
+      if (card?.cp === null || card === undefined) {
         log(`card ${slot + 1} unread: its CP unread`);
         continue;
       }
 
       const sleep = (ms: number) => clock.sleep(ms);
-      const shown = { species: card.species, cp: card.cp };
-      const { panel, why, opened, back } = await readCard(phone, sleep, cardAt(slot, screen), shown, data);
+      const { species, cp } = card;
+      const { panel, why, back } = await readCard(phone, sleep, cardAt(slot, screen), { species, cp }, data);
       known = clock.now();
 
       if (panel) {
-        const { species, ...moves } = panel;
-        read[slot] = { ...card, species: species ?? card.species, moves };
-        log(`${species ?? card.species ?? '?'} CP ${card.cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
+        const { species: named, ...moves } = panel;
+        read[slot] = { ...card, species: named ?? species, moves };
+        log(`${named ?? species ?? '?'} CP ${cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
       } else {
         log(`card ${slot + 1} unread: ${why ?? '?'}`);
       }
 
-      if (!opened || !back) {
+      if (!back) {
         return { cards: read, back };
       }
     }
@@ -1420,17 +1426,20 @@ export async function run(
         search = carousel();
       }
 
-      // The party to be used, its cards read off the selection screen unless they are the cards last read. Where a card
-      // left the party screen not showing again, the screen is read afresh rather than USE THIS PARTY tapped at it.
+      // The party to be used, each card read off the selection screen unless it is the card last read there, whose moves
+      // are kept. Where a card left anything but the party screen showing, the screen is read afresh rather than USE
+      // THIS PARTY tapped at it. The CPs are off the read `readMenu` made, where it made one.
       if (menu.screen === 'party' && 'tap' in menu) {
-        const cps = await readCps(screenshot);
+        const cps = menu.cps ?? (await readCps(screenshot));
         const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
-        const key = JSON.stringify(cards);
+        const kept = cards.map((card, slot) => (sameCard(shown[slot], card) ? party[slot] : undefined));
+        const stale = cards.flatMap((_, slot) => (kept[slot] ? [] : [slot]));
 
-        if (key !== partyRead) {
-          partyRead = key;
+        shown = cards.map((card, slot) => (kept[slot] ? { ...card, cp: card.cp ?? shown[slot]?.cp ?? null } : card));
+        party = cards.map((card, slot) => kept[slot] ?? card);
 
-          const read = await readCards(cards, screenshot);
+        if (stale.length > 0) {
+          const read = await readCards(party, stale, screenshot);
           party = read.cards;
           menu = read.back ? menu : { screen: 'unknown' };
         }

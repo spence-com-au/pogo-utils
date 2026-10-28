@@ -16,6 +16,7 @@
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, place, tall, TOP } from './layout.mts';
+import { cpsOf } from './party.mts';
 import { type Point } from './play.mts';
 
 export const LEADERS = ['blanche', 'candela', 'spark'] as const;
@@ -41,7 +42,8 @@ export type Menu =
   | { screen: 'map' | 'main' | 'training' | 'gbl' | 'welcome' | 'intro' | 'league' | 'result'; tap: Point }
 
   // The league's CP cap as GO Battle League's party screen states it: `null` for no limit, `undefined` where unread.
-  | { screen: 'party'; tap: Point; cap?: number | null; title?: string }
+  // And the CP over each card, off the same read; Training's party screen is told by colour, and read for none.
+  | { screen: 'party'; tap: Point; cap?: number | null; title?: string; cps?: (number | null)[] }
   | { screen: 'battle-tab' | 'league' | 'party'; swipe: readonly [Point, Point] }
   | { screen: 'matchmaking' | 'no-battle' | 'unknown' };
 
@@ -460,7 +462,7 @@ export async function readMenu(
 
     const title = partyTitle(lines, image);
 
-    return { screen: 'party', tap: party, cap: capOf(lines), ...(title && { title }) };
+    return { screen: 'party', tap: party, cap: capOf(lines), cps: cpsOf(lines, image), ...(title && { title }) };
   }
 
   if (pokeBall(image)) {

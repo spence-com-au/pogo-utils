@@ -13,7 +13,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { setImmediate } from 'node:timers/promises';
 import { expect, test } from 'vitest';
-import { silhouetteOfIcon } from './party.mts';
+import { readCps, silhouetteOfIcon } from './party.mts';
 import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
 import { place } from './layout.mts';
@@ -395,12 +395,16 @@ const SELECTION = {
   first: [0.185, 0.397] as Point,
 };
 
+/** The Master League party screen with the CP over Xerneas's card painted out, in widths. */
+const MASTER_CP_UNREAD = painted(fixture('menu-pixel8-party-master'), [255, 255, 255], [0.66, 1.455, 0.88, 1.52]);
+
 /**
  * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. The committed
  * icons read Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by
  * its CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
  * cleared goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside its search field:
- * CANCEL, back to the party screen, unless a test has it answer another.
+ * CANCEL, back to the party screen, unless a test has it answer another. The way back round comes to the party screen
+ * again with Xerneas's CP painted out, as OCR misses one now and then.
  */
 function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<string, Scene> {
   const unsearched = fixture('menu-pixel8-selection');
@@ -416,15 +420,19 @@ function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<str
     ...(held && { hold: { at: SELECTION.first, shows: fixture(held) } }),
   });
 
+  const party = (frame: Image): Scene => ({
+    frame,
+    tap: [
+      ...[0, 1, 2].map((slot) => ({ at: SELECTION.card(slot), to: `select${slot}` })),
+      { at: SELECTION.use, to: 'loading' },
+    ],
+  });
+
   return {
     ...battleAndBack(),
-    party: {
-      frame: fixture('menu-pixel8-party-master'),
-      tap: [
-        ...[0, 1, 2].map((slot) => ({ at: SELECTION.card(slot), to: `select${slot}` })),
-        { at: SELECTION.use, to: 'loading' },
-      ],
-    },
+    party: party(fixture('menu-pixel8-party-master')),
+    league: { frame: fixture('menu-league'), tap: { at: [0.55, 0.58], to: 'again' } },
+    again: party(MASTER_CP_UNREAD),
     select0: selection(0, [
       { text: 'mamoswine&cp4673', to: 'none0' },
       { text: 'cp4673', to: 'found0' },
@@ -443,10 +451,12 @@ function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<str
 
 const ULTRA = { mode: 'training', leader: 'blanche', league: 'ultra' } as const;
 
+// The second time round, Xerneas's CP unread, its card is still the one read: none is read again.
 test('reads each card’s moves off the selection screen before using the party, and only once', async () => {
   const { phone, clock, taps, holds, searches } = scripted(masterParty(), 'party');
   const report = recorder();
 
+  expect(await readCps(MASTER_CP_UNREAD)).toEqual([4673, 3986, null]);
   expect(
     await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
   ).toEqual({ battles: 2, won: 2, lost: 0 });
@@ -461,7 +471,37 @@ test('reads each card’s moves off the selection screen before using the party,
   ]);
   expect(searches).toEqual(['mamoswine&cp4673', 'cp4673', 'metagross&cp3986', 'cp3986', 'xerneas&cp4275']);
   expect(holds).toEqual(['found0', 'found2']);
-  expect(taps.filter((scene) => scene === 'party')).toEqual(['party', 'party', 'party', 'party', 'party']);
+  expect(taps.filter((scene) => scene === 'party' || scene === 'again')).toEqual([
+    ...['party', 'party', 'party', 'party'],
+    'again',
+  ]);
+});
+
+// The selection screen 2s behind Palkia's card's tap, as a phone at work can draw it: looked for again, and read.
+test('reads a card whose selection screen opens late', async () => {
+  const { phone, clock, holds } = scripted(
+    {
+      ...masterParty(),
+      party: {
+        frame: fixture('menu-pixel8-party-master'),
+        tap: [
+          { at: SELECTION.card(0), to: 'opening' },
+          { at: SELECTION.card(1), to: 'select1' },
+          { at: SELECTION.card(2), to: 'select2' },
+          { at: SELECTION.use, to: 'loading' },
+        ],
+      },
+      opening: { frame: fixture('menu-pixel8-party-master'), lasts: { ms: 2000, to: 'select0' } },
+    },
+    'party',
+  );
+
+  expect(await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
+    battles: 1,
+    won: 1,
+    lost: 0,
+  });
+  expect(holds).toEqual(['found0', 'found2']);
 });
 
 /**
@@ -547,8 +587,8 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
  *
  * The faint is caught once, on the prompt's first frame, by the prompt and by the Poké Balls it leaves in view, so the
  * frames kept are the prompt's two: the fight's was first seen more than a second before it, and Mamoswine's more than
- * a second after. Each is kept at its time on the run's clock, 2.75s of it the first card's tap for the selection
- * screen, which these scenes never open.
+ * a second after. Each is kept at its time on the run's clock, 6.52s of it the first card's tap for the selection
+ * screen, which these scenes never open: looked for twice, then the party screen read afresh.
  */
 test('retaps the card it chose when the first tap on the switch prompt does not land', async () => {
   const scenes: Record<string, Scene> = {
@@ -585,8 +625,8 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(kept).toEqual([
-    ['fainted', 10380, 'faint-own'],
-    ['again', 10990, 'faint-own'],
+    ['fainted', 14150, 'faint-own'],
+    ['again', 14760, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([

@@ -232,9 +232,11 @@ const CLEARED_MS = 1_000;
  * Reads the party card at `card` by its panel: tap it, search for it, hold the pink cell, then clear the search and
  * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp` and its panel's
  * moves matched among first. A silhouette misread names a species the search finds nothing of, so a search by both that
- * shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went unread; whether the selection
- * screen opened; and whether the party screen is showing again. Each step is checked before the next is tapped, since a
- * tap meant for the party screen that lands on the selection screen swaps a Pokémon in.
+ * shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went unread, and whether the party
+ * screen is showing again for certain. Each step is checked before the next is tapped, since a tap meant for the party
+ * screen that lands on the selection screen swaps a Pokémon in. A selection screen not showing after the card's tap is
+ * looked for once more, a phone at work being slower to draw it, and may yet be on its way after that, so the party
+ * screen still showing then is not taken for certain.
  */
 export async function readCard(
   hands: Hands,
@@ -243,7 +245,7 @@ export async function readCard(
   { species, cp }: { species: string | null; cp: number },
   data: GameData,
   read: (image: Image) => Promise<Line[]> = ocr,
-): Promise<{ panel?: Panel; why?: string; opened: boolean; back: boolean }> {
+): Promise<{ panel?: Panel; why?: string; back: boolean }> {
   await hands.tap(card);
   await sleep(OPENS_MS);
 
@@ -254,7 +256,12 @@ export async function readCard(
   let cell: Point | undefined;
 
   if (!isSelection(lines)) {
-    return { why: 'the selection screen did not open', opened: false, back: onParty(opened) };
+    await sleep(OPENS_MS);
+    lines = await read(await hands.screenshot());
+  }
+
+  if (!isSelection(lines)) {
+    return { why: 'the selection screen did not open', back: false };
   }
 
   for (const term of terms) {
@@ -297,5 +304,5 @@ export async function readCard(
       ? `no pink cell for ${terms.join(' or ')}`
       : 'its panel went unread';
 
-  return panel ? { panel, opened: true, back } : { why, opened: true, back };
+  return panel ? { panel, back } : { why, back };
 }

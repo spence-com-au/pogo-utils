@@ -152,8 +152,11 @@ export const cardAt = (card: number, screen: Size): Point => place([CARD_XS[card
 const CP_ABOVE = -0.133;
 const CP_REACH = 0.04;
 
-export async function readCps(image: Image, read: (image: Image) => Promise<Line[]> = ocr): Promise<(number | null)[]> {
-  const lines = await read(image);
+export const readCps = async (image: Image, read: (image: Image) => Promise<Line[]> = ocr) =>
+  cpsOf(await read(image), image);
+
+/** The CP each card shows, as `readCps` reads it, out of `lines` already read off the whole of `image`. */
+export function cpsOf(lines: readonly Line[], image: Image): (number | null)[] {
   const row = down(CARD_Y, CARD_ANCHOR, image) * image.height;
 
   return CARD_XS.map((x) => {
