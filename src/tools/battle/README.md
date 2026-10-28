@@ -143,11 +143,11 @@ for text and done every few seconds.
     Pokémon there in, so where CANCEL leaves anything but the party screen showing, nothing more is tapped. A selection
     screen not showing after a card's tap is looked for once more, and where it still is not, the screen is read afresh
     before USE THIS PARTY is tapped, the selection screen perhaps arriving late.
-  - **Once per card:** a card waits 10.5s on the screens drawing and the hold, and takes three screenshots of 0.8–1.9s
-    each, so the three take 40s or more. A card is tried again only when the party screen shows another species or CP
-    for it, a CP OCR missed matching any, and the moves read of the others are kept. One tried and not read is not tried
-    again, what failed once being likely to fail again, nor are the cards after one that stopped the reading, the
-    selection screen not opening or not closing. One passed over for its CP going unread is tried once its CP is read.
+  - **Once per card:** a card waits 8s on the screens drawing and the hold, and takes four screenshots of 0.8–1.9s each,
+    so the three take 33s or more. A card is tried again only when the party screen shows another species or CP for it,
+    a CP OCR missed matching any, and the moves read of the others are kept. One tried and not read is not tried again,
+    what failed once being likely to fail again, nor are the cards after one that stopped the reading, the selection
+    screen not opening or not closing. One passed over for its CP going unread is tried once its CP is read.
   - **Judging it:** a card read with both charged moves is judged by those two. One read alone could be a row OCR
     missed, as much as a second move locked, so that card is judged as one not read is, by every move its species can
     learn.

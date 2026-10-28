@@ -114,11 +114,10 @@ if (ignored.length > 0) {
 }
 
 /**
- * How long a Pokémon on the selection screen is held for its panel, and how far into the hold it is screenshot, in
- * milliseconds: the panel goes as the hold is let go. Screenshots 1.8s into a hold of 3.5s showed it on a Pixel 8 Pro,
- * and a screenshot takes 0.8–1.9s, so the hold outlasts the slowest of them begun at 1.5s.
+ * How far into a hold of a Pokémon on the selection screen its panel is screenshot, in milliseconds. The panel goes as
+ * the hold is let go, so the hold lasts until the screenshot is done, however long that takes: screenshots 1.8s into a
+ * hold showed it on a Pixel 8 Pro.
  */
-const HOLD_MS = 4_000;
 const HELD_MS = 1_500;
 
 /**
@@ -448,16 +447,15 @@ if (command === 'run') {
       tap: (point) => touch.tap(point),
       swipe: (from, to, ms) => touch.swipe(from, to, ms),
       hold: async (point) => {
-        const holding = touch.swipe(point, point, HOLD_MS);
+        await touch.down(point);
 
-        // Failing while the screenshot is taken, the hold fails where it is awaited, or goes with the screenshot's own
-        // failure, rather than as a rejection nothing handles, which ends the process mid-restore.
-        holding.catch(() => {});
-        await sleep(HELD_MS);
-        const shown = await device.screenshot();
-        await holding;
+        try {
+          await sleep(HELD_MS);
 
-        return shown;
+          return await device.screenshot();
+        } finally {
+          await touch.up(point);
+        }
       },
       search: async (text) => {
         await device.type(text);

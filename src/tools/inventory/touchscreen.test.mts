@@ -107,6 +107,18 @@ test('makes the device, then taps down and up at the point in one command', asyn
   expect(commands).toEqual([`${write(report(true, [0.1, 0.2]))}; ${write(report(false, [0.1, 0.2]))}`]);
 });
 
+test('holds a touch down from one command to the next', async () => {
+  const { transport, commands } = phone(LISTED);
+  const touch = await touchscreen(transport);
+  commands.length = 0;
+
+  await touch.down([0.1, 0.2]);
+  expect(commands).toEqual([write(report(true, [0.1, 0.2]))]);
+
+  await touch.up([0.1, 0.2]);
+  expect(commands).toEqual([write(report(true, [0.1, 0.2])), write(report(false, [0.1, 0.2]))]);
+});
+
 test('fails where Android never takes it as a touchscreen', async () => {
   await expect(touchscreen(phone('').transport)).rejects.toThrow(/has not taken pogo-utils touch as a touchscreen/);
 });

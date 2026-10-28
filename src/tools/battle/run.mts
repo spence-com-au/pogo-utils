@@ -337,9 +337,9 @@ export async function run(
 
   // Each card as the party screen showed it when it was last tried on the selection screen, by silhouette and CP, of
   // which `party` holds what was read: a GO Battle League set comes back to the party screen before every battle, and
-  // reading three cards takes 40s or more. A card is the one tried before where its silhouette names the same species
+  // reading three cards takes 33s or more. A card is the one tried before where its silhouette names the same species
   // and its CP is the same or went unread either time, OCR having missed one CP of 24. One tried and not read is not
-  // tried again, a search or a panel that failed once being likely to fail again at some 13s a battle; nor are those
+  // tried again, a search or a panel that failed once being likely to fail again at some 11s a battle; nor are those
   // after one that stopped the reading, the selection screen not opening or not closing being what they would meet too.
   // One passed over for its CP going unread was never tried, and is tried once its CP is read.
   let shown: (Card | undefined)[] = [];
