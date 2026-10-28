@@ -601,17 +601,17 @@ test('aims the minigame’s swipes at its bubbles', async () => {
 
 /**
  * A throw waits for the fast move under way with its button lit, and a live run tapped it again a second on and told
- * the one throw twice. Lit past the longest fast move, the first tap did not take and is retried, but told once still.
+ * the one throw twice. Whether the tap took or not, it is tried again each second the button stays lit, and told once.
  */
 test.each([
-  ['waits out a throw', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'result']],
-  ['retries a tap that did not take', undefined, ['fight', 'fight', 'result']],
+  ['retaps a throw still waiting', { at: [0.499, 0.889] as Point, to: 'queued' }, ['fight', 'queued', 'result']],
+  ['retries a tap that did not take', undefined, ['fight', 'fight', 'fight', 'fight', 'result']],
 ])('%s with the button still lit, telling the throw once', async (_, tap, tapped) => {
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),
       fight: { frame: fixture('charged-shadow-sneak'), ...(tap && { tap }), lasts: { ms: 4000, to: 'minigame' } },
-      queued: { frame: fixture('charged-shadow-sneak'), lasts: { ms: 2000, to: 'minigame' } },
+      queued: { frame: fixture('charged-shadow-sneak'), lasts: { ms: 1500, to: 'minigame' } },
     },
     'fight',
   );

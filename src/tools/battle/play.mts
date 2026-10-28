@@ -140,20 +140,15 @@ const SWIPE_MS = 80;
 const SETTLE: Partial<Record<State, number>> = { charged: 2, shield: 3, switch: 3 };
 
 /**
- * How long a tap is given to take before the same state is answered again, in milliseconds; a charged move's is given
- * `THROW_MS` until its throw plays. The button stays lit for a few frames after a charged move is thrown, and the
- * prototype tapped it five times over 200ms where once would do.
+ * How long a tap is given to take before the same state is answered again, in milliseconds. The button stays lit for a
+ * few frames after a charged move is thrown, and the prototype tapped it five times over 200ms where once would do. A
+ * throw also waits for the fast move under way, up to five 500ms turns, its button lit meanwhile, so a retap a second
+ * on can be the same throw still waiting: three of a live run's 15 throws were tapped twice so, and each was one throw,
+ * which `run` tells once. It is retapped even so, there being no telling a throw waiting from a tap dropped while the
+ * button stays lit: held for 3s instead, a dropped Overheat was retapped 0.1s before Entei fainted, its energy lost and
+ * the shield it would have drawn kept for the rest of the battle.
  */
 const RETAP_MS = 1000;
-
-/**
- * How long a charged move's tap is given to be thrown before the button, still lit, is tapped again, in milliseconds.
- * The throw waits for the fast move under way to finish, its button lit meanwhile, and a fast move takes up to five
- * 500ms turns. `RETAP_MS` retapped three of a live run's 15 throws, finding the button still lit a second on: Shadow
- * Sneak at 130.1s and 131.2s, Ancient Power at 433.4s and 434.5s, Frenzy Plant at 473.9s and 474.9s. Each was one throw,
- * the battle read again 13s after the first tap, as after the throws tapped once (12.1s to 12.5s).
- */
-const THROW_MS = 3000;
 
 /**
  * How long nothing is swiped after a charged move is tapped, in milliseconds. A swipe straight after the tap looked to
@@ -245,10 +240,7 @@ export class Player {
       return { kind: 'wait' };
     }
 
-    // A charged move's tap holds until its throw is seen to play, ending the minigame, or until `THROW_MS` has passed.
-    const retap = state === 'charged' && this.#minigame ? THROW_MS : RETAP_MS;
-
-    if (this.#tapped?.state === state && now - this.#tapped.at < retap) {
+    if (this.#tapped?.state === state && now - this.#tapped.at < RETAP_MS) {
       return { kind: 'wait' };
     }
 

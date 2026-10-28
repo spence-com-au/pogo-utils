@@ -541,7 +541,11 @@ export async function run(
 
     if (battling) {
       const now = clock.now();
-      const part = state === 'battle' || state === 'charged' ? (player.minigame ? 'minigame' : undefined) : state;
+
+      // A button lit is the fight, whatever `Player` waits on: the minigame draws none, and a throw tapped and still lit
+      // is waiting on a fast move or was dropped. Live, a dropped Overheat's lit button was told as its minigame.
+      const part =
+        state === 'charged' ? undefined : state === 'battle' ? (player.minigame ? 'minigame' : undefined) : state;
       const [first] = off;
 
       if (!part) {

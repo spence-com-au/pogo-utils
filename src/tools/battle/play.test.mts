@@ -51,12 +51,14 @@ test('throws a charged move once it has held for two frames, and once only', () 
 });
 
 /**
- * A throw waits for the fast move under way, up to five 500ms turns, with its button lit: a tap a second later was the
- * same throw counted twice. Lit past the longest fast move, the first tap did not take.
+ * A throw waits for the fast move under way, up to five 500ms turns, with its button lit, and a tap dropped looks the
+ * same: lit a second on, the button is tapped again, rather than left to the end of the longest fast move with the
+ * Pokémon perhaps fainting first.
  */
-test('throws again only if the button is still lit past the longest fast move', () => {
-  expect(taps(play(Array(80).fill('charged')))).toHaveLength(1);
-  expect(taps(play(Array(100).fill('charged')))).toHaveLength(2);
+test('throws again each second the button stays lit', () => {
+  expect(taps(play(Array(30).fill('charged')))).toHaveLength(1);
+  expect(taps(play(Array(40).fill('charged')))).toHaveLength(2);
+  expect(taps(play(Array(100).fill('charged')))).toHaveLength(4);
 });
 
 test('throws the next charged move at once after the last one’s throw has played', () => {
@@ -224,8 +226,9 @@ test('does nothing on any other screen', () => {
 });
 
 /**
- * The button in `charge.h264` stays lit for 38 frames, until the person playing threw it, and then goes dark before the
- * throw plays: tapped on its second lit frame, it is tapped once, as a throw waiting on a fast move would be.
+ * A recording does not answer the taps made over it: the button in `charge.h264` stays lit for 38 frames, until the
+ * person playing threw it, so a tap a second after the first is the retry doing its job. What the replay does show is
+ * the first tap landing on the button's second lit frame, and none following sooner than a second apart.
  */
 test('throws the charged move in a recorded battle as soon as it is ready', async () => {
   const player = new Player(SIZE);
@@ -245,6 +248,12 @@ test('throws the charged move in a recorded battle as soon as it is ready', asyn
   const tapped = timed.filter(({ action }) => action.kind === 'tap');
   const lit = timed.filter(({ state }) => state === 'charged');
 
-  expect(tapped.map(({ action }) => action)).toEqual([{ kind: 'tap', at: CENTRE, what: 'charged' }]);
+  expect(new Set(tapped.map(({ action }) => JSON.stringify(action)))).toEqual(
+    new Set([JSON.stringify({ kind: 'tap', at: CENTRE, what: 'charged' })]),
+  );
   expect(tapped[0]?.at).toBe(lit[1]?.at);
+
+  for (const [before, after] of tapped.slice(0, -1).map((tap, n) => [tap, tapped[n + 1]] as const)) {
+    expect((after?.at ?? Infinity) - before.at).toBeGreaterThanOrEqual(1000);
+  }
 });
