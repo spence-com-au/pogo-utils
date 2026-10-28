@@ -11,7 +11,15 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, numbered, type Entry } from '../pokedex/entries.js';
+import {
+  CATEGORIES,
+  ENTRIES,
+  GENERATION_NUMBERS,
+  HUNTS,
+  numbered,
+  tileNumber,
+  type Entry,
+} from '../pokedex/entries.js';
 import { spriteOf, typeIcon, type Icons } from '../pokedex/icons.js';
 import { colourOf, inkOn, type Types } from '../pokedex/types.js';
 import {
@@ -34,9 +42,6 @@ import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
-
-/** A tile's number as the game prints it under the picture: four digits and no `#`. */
-const tileNumber = (dex: number) => String(dex).padStart(4, '0');
 
 /**
  * A sprite that says nothing when it fails. The number under it is the tile; a hotlinked picture that does not arrive

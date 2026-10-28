@@ -160,7 +160,8 @@ export const ENTRIES: readonly Entry[] = Object.entries(POKEMON).map(([constant,
   };
 });
 
-/**
- * The dex number zero-padded to four places, the way the games print it.
- */
-export const numbered = (dex: number) => `#${String(dex).padStart(4, '0')}`;
+/** The dex number zero-padded to four places, the way the games print it: bare, as under a tile in the GO Pokédex. */
+export const tileNumber = (dex: number) => String(dex).padStart(4, '0');
+
+/** And with the `#` ahead of it, as an entry's title prints it. */
+export const numbered = (dex: number) => `#${tileNumber(dex)}`;
