@@ -2,7 +2,7 @@
  * The Pokédex page: a tile per species, narrowed by the search behind the button at its foot, and a dialog for the one
  * picked.
  *
- * Every card is rendered and the filtered-out ones hidden, rather than the grid being rebuilt from what survives: 1025
+ * Every tile is rendered and the filtered-out ones hidden, rather than the grid being rebuilt from what survives: 1025
  * of them is enough that rebuilding on every keystroke would drop their sprites and the reader's scroll position.
  * Keying each by its dex number is what holds the reconciler to that.
  *
@@ -69,7 +69,7 @@ function Sprite({ src, size, eager }: { src: string; size: number; eager?: boole
 /**
  * One of the tables `build:sprites` writes, empty until it arrives.
  *
- * The icons are most of a page visit's wait on anything. A fetch that fails leaves the derived name on every card —
+ * The icons are most of a page visit's wait on anything. A fetch that fails leaves the derived name on every tile —
  * right for 912 of the 1025, and the rest keep their number — and the types only colour an entry, so neither
  * missing table is worth withholding the grid over.
  */
@@ -348,8 +348,8 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const queryRef = useRef<HTMLInputElement>(null);
   const regionsRef = useRef<HTMLDialogElement>(null);
 
-  /** Each card's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
-  const cards = useRef(new Map<number, HTMLButtonElement>());
+  /** Each tile's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
+  const tiles = useRef(new Map<number, HTMLButtonElement>());
 
   /**
    * The entries the filters leave, in dex order — what the grid shows and what the dialog's arrows step through.
@@ -402,7 +402,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
     if (at !== -1 && target) {
       setState((was) => ({ ...was, open: target.dex }));
-      cards.current.get(target.dex)?.scrollIntoView({ block: 'nearest' });
+      tiles.current.get(target.dex)?.scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -480,13 +480,13 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
               <li key={entry.dex} hidden={!shown.has(entry.dex)}>
                 <button
                   type="button"
-                  class="card"
+                  class="tile"
                   aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
                   ref={(node) => {
                     if (node === null) {
-                      cards.current.delete(entry.dex);
+                      tiles.current.delete(entry.dex);
                     } else {
-                      cards.current.set(entry.dex, node);
+                      tiles.current.set(entry.dex, node);
                     }
                   }}
                   onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
@@ -753,9 +753,9 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           setState((was) => ({ ...was, open: null }));
 
           // showModal() hands focus back to whatever had it, which after stepping with the arrows is an arrow button
-          // inside a dialog now closed. Send it to the card for the species last shown, which is where the reader is.
+          // inside a dialog now closed. Send it to the tile for the species last shown, which is where the reader is.
           if (dex !== null) {
-            cards.current.get(dex)?.focus();
+            tiles.current.get(dex)?.focus();
           }
         }}
       >

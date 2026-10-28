@@ -12,7 +12,7 @@
  *
  * Each of these sheets was the only one in its document and could style `.card`, `.grid` and `.chip` as it liked. One
  * document loads all five, and between them they give nineteen class names a different meaning per page — this sheet
- * and the Events calendar's disagree about all four of `.card`, `.grid`, `.chip` and `.controls`. The wrapper is what
+ * and the Events calendar's disagreed about all four of `.card`, `.grid`, `.chip` and `.controls`. The wrapper is what
  * keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the same table the
  * router validates a fragment against.
  */
@@ -243,7 +243,7 @@ body[data-page='pokedex'] {
    * yet registered.
    */
 
-  .card {
+  .tile {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -265,12 +265,12 @@ body[data-page='pokedex'] {
     scroll-margin-bottom: 180px;
   }
 
-  .card:hover {
+  .tile:hover {
     background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
   }
 
   /* In the page's ink, since the ring is drawn on the bare sky, where the blue and the gold are both under 3:1. */
-  .card:focus-visible {
+  .tile:focus-visible {
     outline: 3px solid var(--go-ink);
     outline-offset: 2px;
   }
@@ -292,7 +292,7 @@ body[data-page='pokedex'] {
     object-fit: contain;
   }
 
-  .card .sprite {
+  .tile .sprite {
     flex: 1 1 0;
     width: 100%;
     min-height: 0;
@@ -302,7 +302,7 @@ body[data-page='pokedex'] {
     visibility: hidden;
   }
 
-  .card .num {
+  .tile .num {
     flex: 0 0 auto;
     margin-top: 4px;
     font-size: 20px;
@@ -1133,12 +1133,12 @@ body[data-page='pokedex'] {
       gap: 7px;
     }
 
-    .card {
+    .tile {
       padding: 4px 3px 7px;
       border-radius: 13px;
     }
 
-    .card .num {
+    .tile .num {
       font-size: 16px;
     }
 
