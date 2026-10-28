@@ -440,7 +440,7 @@ export const BAIT_SAVES = 10;
  * `src/js/battle/actions/ActionLogic.js`). Its battle AI makes the trade only for a move costing up to 10 more, and
  * only while the opponent has a shield; with none, a self-debuffing move costing over 50 gives way to the cheapest
  * while ours has over half its HP and the move would take under 80% of what the opponent has left. One rule, both
- * ways, stands in for the two: a Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.20, as
+ * ways, stands in for the two: a Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.16, as
  * PvPoke's first would, and a Galarian Moltres holds for Fly, 2.13, rather than Brave Bird, 2.84 and −3 to its
  * defense, as its second would with Moltres healthy.
  *

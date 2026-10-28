@@ -261,7 +261,7 @@ our last hit, where Brave Bird and Close Combat are thrown as they are. The numb
 simulations being what the meta is ranked by, but its battle AI makes this trade only for a move costing more, and only
 while the opponent has a shield; with none, it holds a Pokémon above half its HP to its cheapest move rather than a
 self-debuffing one costing over 50. The one rule stands in for both. So Xerneas throws Close Combat at a Regigigas, 3.56
-a point to Moonblast's 2.20, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
+a point to Moonblast's 2.16, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
 its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth

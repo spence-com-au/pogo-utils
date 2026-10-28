@@ -163,7 +163,7 @@ test('a move that lowers our defense gives way to one within 10 energy and worth
 });
 
 /** Battle 2 of a Master League set on a Pixel 8 Pro, 2026-10-29, in which Xerneas threw Moonblast at Regigigas twice. */
-test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast’s 2.20', () => {
+test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast’s 2.16', () => {
   const xerneas = new Map([
     [0.31, 'Moonblast'],
     [0.69, 'Close Combat'],
@@ -249,7 +249,7 @@ test('the best button leaves out a drop to the opponent’s attack, which this h
   expect(bestButton(DATA, dewgong, own, [])?.x, 'Water Pulse, 96 for 50, over Icy Wind, 72 for 45').toBe(0.31);
 });
 
-test('on our last hit, a move’s stages on our side count for nothing, and those on theirs still count', () => {
+test('on our last hit, a move’s stages on our attack count for nothing, and those on their defense still count', () => {
   const lastHit = { lastHit: true };
   const fire = new Map([
     [0.31, 'Overheat'],
@@ -361,7 +361,7 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
       [],
       { bait: true },
     ),
-    'Meteor Mash, 2.22 to Moonblast’s 2.20, is the bait and the move worth the most per energy, though it saves 5',
+    'Meteor Mash, 2.22 to Moonblast’s 2.16, is the bait and the move worth the most per energy, though it saves 5',
   ).toEqual({ x: 0.69, bait: true });
 });
 
