@@ -50,3 +50,15 @@ test('a sub-region sits inside one generation, and names its species and that ge
   expect(regionsOf(1)).toBe('Kanto');
   expect(regionOf(1026)).toBe(null);
 });
+
+/**
+ * Each region's starters are its own, and three of them a generation apart in the dex. Written out rather than counted
+ * from `first` because Unova opens on Victini: counting would put Victini, Serperior and Emboar on its card.
+ */
+test("a generation's starters sit inside it, and Unova's are Snivy, Tepig and Oshawott", () => {
+  for (const { first, last, starters } of GENERATIONS) {
+    expect(starters.every((dex) => dex >= first && dex <= last)).toBe(true);
+  }
+
+  expect(GENERATIONS.find(({ number }) => number === 5)?.starters).toEqual([495, 498, 501]);
+});

@@ -56,12 +56,10 @@ function luminance(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/**
- * The ink a type's name is written in on its own colour: white or black, whichever stands further from it. Black
- * rather than a softer near-black because Fighting sits mid-way, where white reaches 4.45:1 and even `#111` less.
- */
+/** Black rather than a softer near-black: Fighting sits mid-way, where white reaches 4.45:1 and even `#111` less. */
 export const DARK_INK = '#000000';
 
+/** The ink a type's name is written in on its own colour: white or black, whichever stands further from it. */
 export function inkOn(type: string) {
   const colour = TYPE_COLOURS[type];
 

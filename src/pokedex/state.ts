@@ -14,7 +14,7 @@ export type Availability = '' | 'in' | 'out';
  * species, then the shinies, then the XXL, XXS and perfect ones. A view rather than a filter — the grid keeps every
  * slot, and the mode decides which are drawn filled and which are left as an empty numbered tile.
  */
-export type Mode = 'pokemon' | 'shiny' | 'xxl' | 'xxs' | 'perfect';
+export type Mode = 'pokemon' | HuntId;
 export type Toggle = { id: string; label: string; test: (entry: Entry) => boolean };
 
 /**
@@ -59,16 +59,16 @@ export const TOGGLES = new Map([...FLAGS, ...HUNT_FLAGS].map((flag) => [flag.id,
 export const availabilityOf = (value: string | null): Availability => (value === 'in' || value === 'out' ? value : '');
 
 /**
- * The modes in the order the game's tabs run, each with the hunt list whose absence counts as registered. A hunt list
- * is what is still wanted, so a species off the XXL list is one the XXL dex already holds — which is the same reading
+ * The modes in the order the game's tabs run. Every one but the plain dex is a hunt list's id, the list whose absence
+ * counts as registered: a hunt list is what is still wanted, so a species off the XXL list is one the XXL dex already holds — which is the same reading
  * the game's own XXL tab makes of the storage it looks at.
  */
-export const MODES: readonly { id: Mode; label: string; hunt: HuntId | null }[] = [
-  { id: 'pokemon', label: 'Pokémon', hunt: null },
-  { id: 'shiny', label: 'Shiny', hunt: 'shiny' },
-  { id: 'xxl', label: 'XXL', hunt: 'xxl' },
-  { id: 'xxs', label: 'XXS', hunt: 'xxs' },
-  { id: 'perfect', label: '100%', hunt: 'perfect' },
+export const MODES: readonly { id: Mode; label: string }[] = [
+  { id: 'pokemon', label: 'Pokémon' },
+  { id: 'shiny', label: 'Shiny' },
+  { id: 'xxl', label: 'XXL' },
+  { id: 'xxs', label: 'XXS' },
+  { id: 'perfect', label: '100%' },
 ];
 
 export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id === value)?.id ?? 'pokemon';
@@ -78,13 +78,11 @@ export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id 
  * a shiny once its shiny is; past that, it is registered unless its hunt list still wants it.
  */
 export function registered(entry: Entry, mode: Mode) {
-  const hunt = MODES.find(({ id }) => id === mode)?.hunt ?? null;
-
   if (!entry.released || (mode === 'shiny' && !entry.shiny)) {
     return false;
   }
 
-  return hunt === null || !entry.hunts.some(({ id }) => id === hunt);
+  return !entry.hunts.some(({ id }) => id === mode);
 }
 
 export function emptyState(): State {

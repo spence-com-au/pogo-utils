@@ -27,7 +27,7 @@ import {
 } from '../pokedex/state.js';
 import { said } from '../errors.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
-import { regionOf, regionsOf } from '../pokemon/generations.js';
+import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
 import { nameFragment } from '../search/query.js';
 
@@ -620,8 +620,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           {[null, ...GENERATION_NUMBERS].map((generation) => {
             const of = ENTRIES.filter((entry) => generation === null || entry.generation === generation);
             const got = of.filter((entry) => registered(entry, state.mode)).length;
-            const first = of[0]?.dex ?? 1;
-            const starters = generation === null ? [25, 133, 151] : [first, first + 3, first + 6];
+            const starters =
+              generation === null
+                ? [25, 133, 151]
+                : (GENERATIONS.find(({ number }) => number === generation)?.starters ?? []);
 
             return (
               <li key={generation ?? 'all'}>
