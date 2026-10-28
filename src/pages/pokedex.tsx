@@ -20,6 +20,8 @@ import {
   fromFragment,
   HUNT_FLAGS,
   matches,
+  MODES,
+  registered,
   toFragment,
   type State,
 } from '../pokedex/state.js';
@@ -183,6 +185,7 @@ function Detail({
   entry,
   icons,
   types,
+  shinyFirst,
   step,
   first,
   last,
@@ -190,6 +193,7 @@ function Detail({
   entry: Entry;
   icons: Icons;
   types: readonly string[];
+  shinyFirst: boolean;
   step: (by: number) => void;
   first: boolean;
   last: boolean;
@@ -200,12 +204,13 @@ function Detail({
    * assets are stricter and agree — Hoopa, Volcanion, Cosmog, Kubfu, Urshifu and Zarude have no shiny render, and are
    * exactly the six `pokedex.ts` marks `isNotShinyEligible`.
    *
-   * Held as the species it was turned on for, so stepping to the next one shows its ordinary picture. Not by keying
-   * this component by dex number, which would remount the step buttons inside it and drop the focus off the one just
-   * pressed — and with it the dialog's arrow keys, until the reader tabbed back in.
+   * Opened on the shiny in the shiny dex, as the game's own shiny tab opens an entry, and on the ordinary picture
+   * otherwise. A toggle is held with the species it was made for, so stepping to the next one starts it afresh. Not
+   * by keying this component by dex number, which would remount the step buttons inside it and drop the focus off the
+   * one just pressed — and with it the dialog's arrow keys, until the reader tabbed back in.
    */
-  const [shinyDex, setShinyDex] = useState<number | null>(null);
-  const shiny = shinyDex === entry.dex;
+  const [toggled, setToggled] = useState<{ dex: number; shiny: boolean } | null>(null);
+  const shiny = entry.shiny && (toggled?.dex === entry.dex ? toggled.shiny : shinyFirst);
   const name = entry.name.toLowerCase();
 
   return (
@@ -231,7 +236,7 @@ function Detail({
             aria-pressed={shiny}
             aria-label="Shiny"
             title="Shiny"
-            onClick={() => setShinyDex(shiny ? null : entry.dex)}
+            onClick={() => setToggled({ dex: entry.dex, shiny: !shiny })}
           >
             ✨
           </button>
@@ -315,6 +320,8 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const types: Types = useTable<Types>(POKEMON_TYPES, 'entries will not be coloured by type');
 
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const searchRef = useRef<HTMLDialogElement>(null);
+  const regionsRef = useRef<HTMLDialogElement>(null);
 
   /** Each card's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
   const cards = useRef(new Map<number, HTMLButtonElement>());
@@ -328,7 +335,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
    */
   const visible = ENTRIES.filter((entry) => matches(entry, state));
   const shown = new Set(visible.map((entry) => entry.dex));
-  const filtered = visible.length !== ENTRIES.length;
 
   const open = state.open === null ? null : (ENTRIES.find((entry) => entry.dex === state.open) ?? null);
   const at = open === null ? -1 : visible.findIndex((entry) => entry.dex === open.dex);
@@ -387,68 +393,159 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
     });
   }
 
-  return (
-    <>
-      <header class="page banner">
-        <h1>Pokédex</h1>
-        <p class="sub">
-          Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. Pick one
-          to see its forms.
-        </p>
+  /**
+   * A search, the availability control or a toggle narrowing the grid. The region and the mode are not among them:
+   * they are where the reader is rather than what they asked to hide, and clearing a search leaves both alone.
+   */
+  const searching = state.q.trim() !== '' || state.availability !== '' || state.flags.size > 0;
 
-        {/*
-         * The counts over what the filters leave, which is also how the page says a filter did anything: it is the
-         * only part of the page that answers them, so it carries the live region rather than a second line of text
-         * saying the same number again.
-         *
-         * The word is the `<dt>` and the figure its `<dd>` — "species, which is 1025" — rather than the other way
-         * round, which would be markup defining the number. Source order is the one HTML allows, and the stylesheet is
-         * what paints the figure above its word.
-         */}
-        <dl class="tally" aria-live="polite">
-          {[
-            { label: 'species', of: visible },
-            { label: 'in Pokémon GO', of: visible.filter((entry) => entry.released) },
-            { label: 'with a shiny', of: visible.filter((entry) => entry.shiny) },
-          ].map(({ label, of }) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{of.length}</dd>
-            </div>
+  const region = state.generation === null ? 'All regions' : regionOf(state.generation);
+  const held = visible.filter((entry) => registered(entry, state.mode)).length;
+
+  return (
+    <div class="dexroot" data-mode={state.mode}>
+      {/*
+       * The card the game heads a region's grid with: the region's name, how many of it are registered in this mode
+       * against how many there are, and the counts for each of the other modes beneath — each of which switches to it,
+       * as the tabs along the foot do.
+       *
+       * The counts are over what the filters leave, which is also how the page says a filter did anything, so the card
+       * carries the live region rather than a second line of text saying the same number again.
+       */}
+      <header class="page dexhead">
+        <div class="top">
+          <h1>{region}</h1>
+          <p class="count" aria-live="polite">
+            <span class="sr">{MODES.find(({ id }) => id === state.mode)?.label} registered: </span>
+            {held} / {visible.length}
+          </p>
+        </div>
+        <ul class="stats" aria-label="Registered in each mode">
+          {MODES.filter(({ id }) => id !== 'pokemon').map(({ id, label }) => (
+            <li key={id}>
+              <button
+                type="button"
+                aria-pressed={state.mode === id}
+                onClick={() => setState((was) => ({ ...was, mode: was.mode === id ? 'pokemon' : id }))}
+              >
+                <span class="figure">{visible.filter((entry) => registered(entry, id)).length}</span>
+                <span class="label">{id === 'perfect' ? '★ 100%' : label}</span>
+              </button>
+            </li>
           ))}
-        </dl>
+        </ul>
       </header>
 
       <main class="dex">
-        <section class="controls" aria-label="Filter the Pokédex">
-          {/*
-           * The region tabs the game's Pokédex opens on, each standing for its generation. Toggles rather than tabs to
-           * a screen reader: they narrow the one list below rather than switching between panels, and pressing the
-           * pressed one again goes back to the whole dex.
-           */}
-          <div class="regions" role="group" aria-label="Region">
+        <ul class="grid">
+          {ENTRIES.map((entry) => {
+            const filled = registered(entry, state.mode);
+
+            return (
+              <li key={entry.dex} hidden={!shown.has(entry.dex)}>
+                <button
+                  type="button"
+                  class={filled ? 'card' : 'card empty'}
+                  ref={(node) => {
+                    if (node === null) {
+                      cards.current.delete(entry.dex);
+                    } else {
+                      cards.current.set(entry.dex, node);
+                    }
+                  }}
+                  onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
+                >
+                  {/*
+                   * The game draws a tile as the picture and the number, and an empty one as the number alone. The name
+                   * is for a screen reader, which is told whether the slot is filled in words rather than by a picture.
+                   */}
+                  <span class="sr">
+                    {entry.name}
+                    {filled ? '' : ' — not registered'}
+                  </span>
+                  {filled && <Sprite src={spriteOf(entry.dex, state.mode === 'shiny', icons)} size={112} />}
+                  <span class="num" aria-hidden="true">
+                    {String(entry.dex).padStart(4, '0')}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p class="empty" hidden={visible.length > 0}>
+          No species match those filters.
+        </p>
+      </main>
+
+      {/*
+       * The bar that floats over the foot of the game's Pokédex: the mode tabs, and under them the round search, close
+       * and regions buttons. The close button clears a search, which is the one thing here there is to close; with none
+       * it is left out rather than drawn doing nothing.
+       */}
+      <nav class="dexbar" aria-label="Pokédex">
+        <div class="modes" role="group" aria-label="Mode">
+          {MODES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              class="mode"
+              aria-pressed={state.mode === id}
+              onClick={() => setState((was) => ({ ...was, mode: id }))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div class="actions">
+          <button
+            type="button"
+            class="round search"
+            aria-label={searching ? 'Search and filter (filters on)' : 'Search and filter'}
+            onClick={() => searchRef.current?.showModal()}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10" cy="10" r="6.5" />
+              <path d="M15 15l5.5 5.5" />
+            </svg>
+            {searching && <span class="dot" />}
+          </button>
+          {searching && (
             <button
               type="button"
-              class="region"
-              aria-pressed={state.generation === null}
-              onClick={() => setState((was) => ({ ...was, generation: null }))}
+              class="round clear"
+              aria-label="Clear search and filters"
+              onClick={() => setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }))}
             >
-              All
+              ✕
             </button>
-            {GENERATION_NUMBERS.map((number) => (
-              <button
-                key={number}
-                type="button"
-                class="region"
-                aria-pressed={state.generation === number}
-                title={`Generation ${number}`}
-                onClick={() => setState((was) => ({ ...was, generation: was.generation === number ? null : number }))}
-              >
-                {regionOf(number)}
-              </button>
-            ))}
-          </div>
+          )}
+          <button type="button" class="round regions" onClick={() => regionsRef.current?.showModal()}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="3" width="12" height="6" rx="3" />
+              <rect x="3" y="10" width="18" height="4" rx="2" />
+              <rect x="6" y="15" width="12" height="6" rx="3" />
+            </svg>
+            <span class="tag">Regions</span>
+          </button>
+        </div>
+      </nav>
 
+      {/*
+       * The search, as a sheet over the grid rather than a bar pinned above it: the game keeps its grid clear and puts
+       * searching behind the glass. The grid behind narrows as the reader types, so closing it is the only "apply".
+       */}
+      <dialog
+        ref={searchRef}
+        class="sheet"
+        aria-label="Search and filter"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            searchRef.current?.close();
+          }
+        }}
+      >
+        <section class="controls">
           <div class="row">
             <input
               type="search"
@@ -496,54 +593,86 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           ))}
 
           <div class="meta">
+            <span class="matched">
+              {visible.length} of {ENTRIES.length} species
+            </span>
             <button
               type="button"
               class="ghost"
-              disabled={!filtered}
-              onClick={() => setState((was) => ({ ...emptyState(), open: was.open }))}
+              disabled={!searching}
+              onClick={() => setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }))}
             >
               Reset
             </button>
+            <button type="button" class="ghost done" onClick={() => searchRef.current?.close()}>
+              Done
+            </button>
           </div>
         </section>
+      </dialog>
 
-        <ul class="grid">
-          {ENTRIES.map((entry) => (
-            <li key={entry.dex} hidden={!shown.has(entry.dex)}>
-              <button
-                type="button"
-                class={entry.released ? 'card' : 'card unreleased'}
-                style={{ '--type': colourOf(types[entry.dex]?.[0]) }}
-                ref={(node) => {
-                  if (node === null) {
-                    cards.current.delete(entry.dex);
-                  } else {
-                    cards.current.set(entry.dex, node);
-                  }
-                }}
-                onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
-              >
-                {/*
-                 * The number above the picture and the name under it, as the game's own grid has them. The name is
-                 * first in the markup all the same, so a screen reader says the species before its number.
-                 */}
-                <span class="name">{entry.name}</span>
-                <span class="num">{numbered(entry.dex)}</span>
-                <Sprite src={spriteOf(entry.dex, false, icons)} size={112} />
+      {/*
+       * The game's region list: a card per region with its starters, how much of it is registered in this mode and a bar
+       * for the rest — "Complete!" once there is none. Counted over the whole region rather than what a search leaves,
+       * since it is the dex's progress the card reports and not the search's.
+       */}
+      <dialog
+        ref={regionsRef}
+        class="sheet regionlist"
+        aria-labelledby="regionsTitle"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            regionsRef.current?.close();
+          }
+        }}
+      >
+        <div class="listhead">
+          <h2 id="regionsTitle">Pokédex</h2>
+          <p>Registered: {ENTRIES.filter((entry) => registered(entry, state.mode)).length}</p>
+        </div>
+        <ul>
+          {[null, ...GENERATION_NUMBERS].map((generation) => {
+            const of = ENTRIES.filter((entry) => generation === null || entry.generation === generation);
+            const got = of.filter((entry) => registered(entry, state.mode)).length;
+            const first = of[0]?.dex ?? 1;
+            const starters = generation === null ? [25, 133, 151] : [first, first + 3, first + 6];
 
-                <span class="marks">
-                  {entry.shiny && <Mark kind="shiny" glyph="✨" words="shiny available" />}
-                  {!entry.released && <Mark kind="out" glyph="🔒" words="not in Pokémon GO yet" />}
-                </span>
-              </button>
-            </li>
-          ))}
+            return (
+              <li key={generation ?? 'all'}>
+                <button
+                  type="button"
+                  class="regioncard"
+                  aria-current={state.generation === generation ? 'true' : undefined}
+                  onClick={() => {
+                    setState((was) => ({ ...was, generation }));
+                    regionsRef.current?.close();
+                    window.scrollTo({ top: 0 });
+                  }}
+                >
+                  <span class="words">
+                    <span class="name">{generation === null ? 'All regions' : regionOf(generation)}</span>
+                    {got === of.length ? (
+                      <span class="done">Complete!</span>
+                    ) : (
+                      <span class="bar" aria-hidden="true">
+                        <span style={{ width: `${(100 * got) / Math.max(1, of.length)}%` }} />
+                      </span>
+                    )}
+                    <span class="tally">
+                      {got} / {of.length}
+                    </span>
+                  </span>
+                  <span class="art" aria-hidden="true">
+                    {starters.map((dex) => (
+                      <Sprite key={dex} src={spriteOf(dex, state.mode === 'shiny', icons)} size={96} />
+                    ))}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
-
-        <p class="empty" hidden={visible.length > 0}>
-          No species match those filters.
-        </p>
-      </main>
+      </dialog>
 
       {/*
        * One dialog, filled in for whichever species is opened. A modal <dialog> brings the focus trap and Escape to
@@ -589,6 +718,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 entry={open}
                 icons={icons}
                 types={types[open.dex] ?? []}
+                shinyFirst={state.mode === 'shiny'}
                 step={step}
                 first={at <= 0}
                 last={at === -1 || at >= visible.length - 1}
@@ -613,12 +743,17 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
       <footer>
         <p>
+          Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. A tab
+          along the foot redraws the grid as that hunt's dex: a species its list no longer wants is drawn as registered,
+          and one it still wants is left as an empty tile.
+        </p>
+        <p>
           Read from the same Pokédex and hunt lists the PGSharp backup is built from, so the two cannot disagree.
           Pictures are the game's own, from PokeMiners, with PokeAPI's sprite for a species the game has no artwork for.
           The link updates as you filter, so a view can be shared or bookmarked.
         </p>
         <p>This site is unofficial.</p>
       </footer>
-    </>
+    </div>
   );
 }

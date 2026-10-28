@@ -1,8 +1,9 @@
 /**
- * The Pokédex, drawn after the one in Pokémon GO: a teal banner, the region tabs across the top, a grid of white
- * rounded tiles on a pale mint ground, and an entry screen on a band of the species' own type colour with the round
- * close button at its foot. Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages;
- * everything below is this page's own.
+ * The Pokédex, drawn after the one in Pokémon GO: a sky-blue ground under a region's card, its count and the counts of
+ * the other modes, a grid of glassy tiles holding a picture and a number, and the bar that floats over the foot with
+ * the mode tabs and the round search, close and regions buttons. The shiny mode turns all of it gold, as the game does.
+ * Shares the colour tokens in theme.css and the tab bar in nav.css with the other pages; everything below is this
+ * page's own.
  */
 
 /**
@@ -16,7 +17,7 @@
  */
 body[data-page='pokedex'] {
   /**
-   * Wider than the search page, since the cards are the page and more of them to a row is less scrolling through 1025.
+   * Wider than the search page, since the tiles are the page and more of them to a row is less scrolling through 1025.
    *
    * On the wrapper rather than on `:root`, where it was while this sheet was alone in its document: three of the four
    * pages that set it want a different width, so on `:root` they would be one declaration and whichever the bundler
@@ -25,27 +26,57 @@ body[data-page='pokedex'] {
   --content-w: 1100px;
 
   /**
-   * The game's own palette for its menus: the teal its buttons and headings are drawn in, a deeper one for text on a
-   * light ground, and the mint the Pokédex grid sits on. Page tokens rather than theme ones, since no other page is
-   * dressed as the game.
+   * The game's palette for its Pokédex, read off its screens: the sky it is drawn on, the blue of its headings and of a
+   * pressed tab, the paler blue of a tile's number, and the white glass the cards and tiles are made of. Page tokens
+   * rather than theme ones, since no other page is dressed as the game.
+   *
+   * `--go`, `--go-deep` and `--go-ink` are the names the entry dialog paints with, so it follows the mode too.
    */
-  --go: #3cb7a3;
-  --go-deep: #2a7f7a;
+  --sky: linear-gradient(180deg, #84cfe3 0, #a6dded 45%, #c4ebf3 100%);
+  --go: #1d89b0;
+  --go-deep: #2a8db5;
   --go-ink: #3d4f5c;
-  --dex-ground: linear-gradient(180deg, #d9f3e8 0, #eef9f3 320px, #f6fbf8 100%);
-  --tile: #fff;
-  --tile-shadow: 0 2px 4px rgb(42 127 122 / 14%);
+  --number: #4aa3c6;
+  --glass: rgb(255 255 255 / 55%);
+  --tile: rgb(255 255 255 / 22%);
+  --tile-edge: rgb(255 255 255 / 60%);
+  --pill: rgb(255 255 255 / 88%);
+  --pill-ink: #5b5f63;
 
-  background: var(--dex-ground);
+  background: var(--sky);
   background-attachment: fixed;
 
   @media (prefers-color-scheme: dark) {
-    --go: #4fcfb9;
-    --go-deep: #7fded0;
+    --sky: linear-gradient(180deg, #0f3442 0, #113a49 45%, #123f4e 100%);
+    --go: #1d89b0;
+    --go-deep: #7fd0ec;
     --go-ink: #d7e4e8;
-    --dex-ground: linear-gradient(180deg, #10302c 0, #121c1f 320px, #12141a 100%);
-    --tile: #1d2a2d;
-    --tile-shadow: 0 2px 6px rgb(0 0 0 / 45%);
+    --number: #7cc3dc;
+    --glass: rgb(255 255 255 / 9%);
+    --tile: rgb(255 255 255 / 5%);
+    --tile-edge: rgb(255 255 255 / 16%);
+    --pill: rgb(255 255 255 / 14%);
+    --pill-ink: #d7e4e8;
+  }
+
+  /**
+   * The shiny dex, which the game draws in gold from top to bottom. On the body rather than the page's own wrapper, so
+   * the ground behind the bar and past the end of the grid turns with it.
+   */
+  &:has(.dexroot[data-mode='shiny']) {
+    --sky: linear-gradient(180deg, #f2d48a 0, #f6e0a6 45%, #f9eac0 100%);
+    --go: #f0a52a;
+    --go-deep: #e9a227;
+    --number: #e3a03a;
+    --tile: rgb(255 255 255 / 30%);
+
+    @media (prefers-color-scheme: dark) {
+      --sky: linear-gradient(180deg, #3a2c0e 0, #42331a 45%, #47381f 100%);
+      --go: #d48e1c;
+      --go-deep: #f5c15c;
+      --number: #f0bb55;
+      --tile: rgb(255 255 255 / 5%);
+    }
   }
 
   /**
@@ -57,7 +88,7 @@ body[data-page='pokedex'] {
     display: none !important;
   }
 
-  /* Words for a screen reader that the eye is given as a glyph instead. */
+  /* Words for a screen reader that the eye is given as a glyph or a picture instead. */
 
   .sr {
     position: absolute;
@@ -68,57 +99,381 @@ body[data-page='pokedex'] {
     white-space: nowrap;
   }
 
+  .dexroot {
+    color: var(--go-ink);
+  }
+
   /**
-   * The banner the game titles its Pokédex with: the word in capitals, heavy and spaced, on the teal. The page's own
-   * header carries it, so the counts under it stay where the other pages keep theirs.
+   * The card heading the grid: the region's name and its count on the top line, the other modes' counts under it. The
+   * page header's own box, widened to the grid's.
    */
 
-  header.banner {
-    max-width: none;
-    padding: 18px max(22px, calc((100vw - var(--content-w)) / 2 + 22px)) 16px;
-    background: linear-gradient(135deg, var(--go) 0%, #2fa58f 100%);
-    color: #fff;
-    box-shadow: 0 2px 10px rgb(42 127 122 / 25%);
+  header.dexhead {
+    margin: 14px auto 0;
+    padding: 0 22px;
   }
 
-  header.banner h1 {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
+  .dexhead .top,
+  .dexhead .stats {
+    max-width: calc(var(--content-w) - 44px);
+    margin: 0 auto;
+    background: var(--glass);
+  }
+
+  .dexhead .top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 22px 6px;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .dexhead h1 {
+    flex: 1 1 0;
+    min-width: 0;
+    color: var(--go-deep);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
-    text-shadow: 0 1px 2px rgb(0 0 0 / 18%);
   }
 
-  header.banner .sub {
-    max-width: 640px;
-    color: rgb(255 255 255 / 88%);
+  /* The count, in the pill the game sets it in, held to the middle of the card whatever the region is called. */
+
+  .dexhead .count {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 2px 26px;
+    border-radius: 999px;
+    background: var(--go);
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
+
+  .dexhead .top::after {
+    flex: 1 1 0;
+    content: '';
+  }
+
+  .dexhead .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 6px 14px 16px;
+    border-radius: 0 0 24px 24px;
+    list-style: none;
+  }
+
+  .dexhead .stats button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--go-deep);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .dexhead .stats button:hover,
+  .dexhead .stats button[aria-pressed='true'] {
+    background: var(--glass);
+  }
+
+  .dexhead .stats .figure {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .dexhead .stats .label {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  /* Room under the grid for the bar that floats over its foot, so the last row can be scrolled clear of it. */
 
   .dex {
     max-width: var(--content-w);
     margin: 0 auto;
-    padding: 14px 22px 40px;
+    padding: 16px 22px 190px;
     font-size: 13px;
   }
 
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   /**
-   * The controls stay in view while the grid scrolls under them, as the string does on the search page: a filter
-   * changed from the middle of the list should not need a trip back to the top.
+   * A tile as the game's grid draws one: a pane of frosted glass, a little taller than wide, the picture in its upper
+   * part and the number under it. An empty one keeps the glass and the number, which is how the game shows a slot not
+   * yet registered.
    */
 
-  .controls {
-    position: sticky;
-    top: 0;
-    z-index: 2;
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    padding: 6px 6px 10px;
+    border: 2px solid var(--tile-edge);
+    border-radius: 16px;
+    background: var(--tile);
+    color: var(--number);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .card:hover {
+    background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
+  }
+
+  .card:focus-visible {
+    outline: 3px solid var(--go);
+    outline-offset: 2px;
+  }
+
+  /**
+   * No `image-rendering: pixelated`, deliberately: these are the game's own 256×256 renders and this scales them down,
+   * which nearest-neighbour makes a mess of. Smooth is wrong only for the two released species with no render —
+   * Scatterbug and Spewpa — whose pixel sprite scales up a little soft.
+   *
+   * The box is held whether or not the image arrives, so a tile that failed to load a picture keeps its number where a
+   * reader expects it rather than collapsing the row it sits in.
+   */
+
+  .sprite {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+  }
+
+  .card .sprite {
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .sprite.missing {
+    visibility: hidden;
+  }
+
+  .card .num {
+    flex: 0 0 auto;
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .empty {
+    padding: 40px 0;
+    color: var(--go-deep);
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  /**
+   * The bar over the foot of the screen. Fixed to the viewport rather than sticky to the grid, since the game's floats
+   * over every screen of the dex, and clear of the side gutters so the grid reads through either side of it.
+   */
+
+  .dexbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 3;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 16px;
-    padding: 12px 14px;
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--tile) 94%, transparent);
-    box-shadow: var(--tile-shadow);
-    backdrop-filter: blur(8px);
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 12px max(12px, env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+
+  .dexbar > * {
+    pointer-events: auto;
+  }
+
+  /**
+   * The mode tabs, which scroll sideways rather than wrapping: the game's run off the edge of a phone, and a second row
+   * would stand another 50px over the grid.
+   */
+
+  .modes {
+    display: flex;
+    gap: 6px;
+    padding: 4px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .modes::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mode {
+    flex: 0 0 auto;
+    min-width: 108px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--pill);
+    color: var(--pill-ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+  }
+
+  .mode[aria-pressed='true'] {
+    background: var(--go);
+    color: #fff;
+    box-shadow:
+      0 0 0 3px rgb(255 255 255 / 70%),
+      0 2px 8px rgb(0 0 0 / 14%);
+  }
+
+  .mode:focus-visible,
+  .round:focus-visible {
+    outline: 3px solid var(--go-deep);
+    outline-offset: 3px;
+  }
+
+  /* The three round buttons under the tabs, at the left, the middle and the right whichever of them is drawn. */
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .round {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #3a3f44;
+    font: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    box-shadow:
+      0 0 0 4px rgb(255 255 255 / 55%),
+      0 0 0 5px rgb(0 0 0 / 10%),
+      0 3px 10px rgb(0 0 0 / 18%);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .round svg {
+    width: 28px;
+    height: 28px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+  }
+
+  .round.search {
+    grid-column: 1;
+    justify-self: start;
+    margin-left: 40px;
+  }
+
+  .round.clear {
+    grid-column: 2;
+  }
+
+  .round.regions {
+    grid-column: 3;
+    justify-self: end;
+    margin-right: 40px;
+  }
+
+  /* A filter left on shows on the glass, so a grid with tiles missing from it says why. */
+
+  .round .dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--go);
+  }
+
+  .round .tag {
+    position: absolute;
+    bottom: -12px;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 14%);
+  }
+
+  /**
+   * The search and the region list, which rise from the foot of the screen as the game's own panels do, on the same
+   * sky as the page.
+   */
+
+  .sheet {
+    width: min(640px, 100vw);
+    max-width: none;
+    max-height: 86dvh;
+    margin: auto auto 0;
+    padding: 0;
+    overflow: hidden auto;
+    border: 0;
+    border-radius: 26px 26px 0 0;
+    background: var(--sky);
+    color: var(--go-ink);
+    box-shadow: 0 -8px 30px rgb(0 0 0 / 25%);
+  }
+
+  .sheet::backdrop {
+    background: rgb(10 40 50 / 40%);
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 16px 22px;
   }
 
   .controls .row {
@@ -127,79 +482,32 @@ body[data-page='pokedex'] {
     gap: 8px;
   }
 
-  /* The game's search box: a white pill with the glass ahead of the words. */
-
   .controls input,
   .controls select {
-    padding: 9px 14px;
-    border: 2px solid color-mix(in srgb, var(--go) 35%, transparent);
+    padding: 11px 16px;
+    border: 0;
     border-radius: 999px;
-    background: var(--tile);
+    background: var(--pill);
     color: var(--go-ink);
     font: inherit;
+    font-size: 15px;
     font-weight: 600;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 10%);
   }
 
   .controls input {
     flex: 1 1 200px;
     min-width: 0;
-    padding-left: 36px;
-    background: var(--tile)
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233cb7a3' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3Cpath d='M15 15l5.5 5.5'/%3E%3C/svg%3E")
-      no-repeat 13px center / 16px;
-  }
-
-  .controls input::placeholder {
-    color: color-mix(in srgb, var(--go-ink) 50%, transparent);
+    padding-left: 40px;
+    background: var(--pill)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b5f63' stroke-width='2.6' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3Cpath d='M15 15l5.5 5.5'/%3E%3C/svg%3E")
+      no-repeat 14px center / 18px;
   }
 
   .controls input:focus-visible,
   .controls select:focus-visible {
-    border-color: var(--go);
-    outline: none;
-  }
-
-  /**
-   * The region tabs, which scroll sideways on a phone rather than wrapping into a block of buttons: the game's own row
-   * is one line, and ten of them wrapped would be a third of the screen.
-   */
-
-  .regions {
-    display: flex;
-    gap: 6px;
-    margin: 0 -4px;
-    padding: 2px 4px 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .regions::-webkit-scrollbar {
-    display: none;
-  }
-
-  .region {
-    flex: 0 0 auto;
-    padding: 7px 14px;
-    border: 0;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--go) 12%, var(--tile));
-    color: var(--go-deep);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-
-  .region:hover {
-    background: color-mix(in srgb, var(--go) 24%, var(--tile));
-  }
-
-  .region[aria-pressed='true'] {
-    background: var(--go);
-    color: #fff;
-    box-shadow: 0 2px 0 var(--go-deep);
+    outline: 3px solid var(--go);
+    outline-offset: 1px;
   }
 
   .chips {
@@ -212,30 +520,25 @@ body[data-page='pokedex'] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 12px;
-    border: 2px solid color-mix(in srgb, var(--go) 30%, transparent);
+    padding: 7px 14px;
+    border: 0;
     border-radius: 999px;
-    background: var(--tile);
-    color: var(--go-ink);
+    background: var(--pill);
+    color: var(--pill-ink);
     font: inherit;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
     cursor: pointer;
     user-select: none;
   }
 
-  .chip:hover {
-    border-color: var(--go);
-  }
-
-  .region:focus-visible,
   .chip:focus-visible {
-    outline: 2px solid var(--go-deep);
+    outline: 3px solid var(--go-deep);
     outline-offset: 2px;
   }
 
   .chip[aria-pressed='true'] {
-    border-color: var(--go);
     background: var(--go);
     color: #fff;
   }
@@ -243,201 +546,187 @@ body[data-page='pokedex'] {
   .controls .meta {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 10px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
-  /**
-   * The counts over what the filters leave, read as three figures rather than a sentence, on the banner as the game
-   * puts its seen and caught counts. In the page header rather than among the controls: it is the answer to them, and
-   * the controls are pinned over a scrolling grid where a number that changed under the pointer would be the one thing
-   * moving.
-   */
-
-  .tally {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 28px;
-    margin: 12px 0 0;
-  }
-
-  /**
-   * The figure reads above its word, which is the reverse of the order HTML wants: a `<dt>` is the term and has to come
-   * first, so the column is turned over rather than the markup.
-   */
-
-  .tally div {
-    display: flex;
-    flex-direction: column-reverse;
-  }
-
-  .tally dd {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.1;
-  }
-
-  .tally dt {
-    color: rgb(255 255 255 / 85%);
-    font-size: 11px;
+  .controls .matched {
+    flex: 1;
+    color: var(--go-deep);
     font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 
   .ghost {
-    padding: 5px 14px;
-    border: 2px solid var(--go);
+    padding: 8px 18px;
+    border: 0;
     border-radius: 999px;
-    background: transparent;
+    background: var(--pill);
     color: var(--go-deep);
     font: inherit;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     text-decoration: none;
+    text-transform: uppercase;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
     cursor: pointer;
   }
 
-  .ghost:hover:not(:disabled) {
+  .ghost.done {
     background: var(--go);
     color: #fff;
   }
 
   .ghost:disabled {
-    border-color: color-mix(in srgb, var(--go) 30%, transparent);
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: default;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-    gap: 10px;
+  /**
+   * The region list: the dex's own title and count over a card per region, each with its name, a bar or a
+   * "Complete!", its count, and its three starters on the striped panel the game draws them on.
+   */
+
+  .listhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 20px 22px 6px;
+    color: var(--go-deep);
+  }
+
+  .listhead h2 {
     margin: 0;
-    padding: 0;
+    font-size: 22px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .listhead p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .regionlist ul {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 8px 14px 24px;
     list-style: none;
   }
 
-  /**
-   * A tile as the game's grid draws one: white and rounded, the number over the picture and the name under it, with a
-   * wash of the species' first type rising from the foot so a row reads by colour before any name is.
-   */
-
-  .card {
+  .regioncard {
     position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     width: 100%;
-    padding: 6px 6px 8px;
+    min-height: 118px;
+    padding: 0;
     overflow: hidden;
-    border: 0;
-    border-radius: 16px;
-    background:
-      radial-gradient(ellipse 70% 30% at 50% 74%, color-mix(in srgb, var(--type) 30%, transparent), transparent 100%),
-      var(--tile);
-    box-shadow: var(--tile-shadow);
-    color: var(--go-ink);
+    border: 4px solid rgb(255 255 255 / 70%);
+    border-radius: 22px;
+    background: rgb(232 248 252);
+    color: var(--go-deep);
     font: inherit;
+    text-align: left;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
     cursor: pointer;
-    transition:
-      transform 0.12s ease,
-      box-shadow 0.12s ease;
   }
 
-  .card:hover {
-    box-shadow:
-      0 0 0 2px var(--go),
-      var(--tile-shadow);
-    transform: translateY(-2px);
+  .regioncard[aria-current='true'] {
+    border-color: var(--go);
   }
 
-  .card:focus-visible {
+  .regioncard:focus-visible {
     outline: 3px solid var(--go-deep);
     outline-offset: 2px;
   }
 
-  .card .num {
-    order: -1;
-    align-self: flex-start;
-    color: color-mix(in srgb, var(--go-ink) 60%, transparent);
-    font-size: 11px;
+  .regioncard .words {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 18px;
+  }
+
+  .regioncard .name {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .regioncard .done {
+    font-size: 15px;
+  }
+
+  .regioncard .bar {
+    display: block;
+    width: 110px;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 80%);
+  }
+
+  .regioncard .bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--go);
+  }
+
+  .regioncard .tally {
+    font-size: 18px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
   /**
-   * The sprite's box is held whether or not the image arrives, so a card that failed to load a picture keeps its name
-   * where a reader expects it rather than collapsing the row it sits in.
-   *
-   * No `image-rendering: pixelated`, deliberately: these are the game's own 256×256 renders and this scales them down,
-   * which nearest-neighbour makes a mess of. Smooth is wrong only for the two released species with no render —
-   * Scatterbug and Spewpa — whose pixel sprite scales up a little soft.
+   * The starters' panel: a diagonal cut of the game's blue, squared like the circuit pattern it draws, with the three
+   * of them crowded across it.
    */
 
-  .sprite {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-    object-fit: contain;
-  }
-
-  .card .sprite {
-    width: 88%;
-  }
-
-  .sprite.missing {
-    visibility: hidden;
-  }
-
-  /* A long name wraps rather than being cut: the tile grows by a line before it loses the end of a species. */
-
-  .card .name {
-    order: 1;
-    display: block;
-    max-width: 100%;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.15;
-    text-align: center;
-  }
-
-  /**
-   * A species not in the game yet stays in the list — it is still in the dex — but drawn as the game draws one it has
-   * not caught: a shadow of itself, with no colour under it.
-   */
-
-  .card.unreleased {
-    background: color-mix(in srgb, var(--tile) 70%, transparent);
-  }
-
-  .card.unreleased .sprite {
-    filter: brightness(0);
-    opacity: 0.22;
-  }
-
-  .card.unreleased .name {
-    color: color-mix(in srgb, var(--go-ink) 50%, transparent);
-  }
-
-  .card .marks {
+  .regioncard .art {
     position: absolute;
-    top: 5px;
-    right: 7px;
+    inset: 0 0 0 46%;
     display: flex;
-    gap: 2px;
-    font-size: 12px;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding-right: 6px;
+    background:
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 12%) 0 3px, transparent 3px 9px),
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 12%) 0 3px, transparent 3px 9px),
+      linear-gradient(135deg, #1fa3dc, #46c1ea);
+    clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
   }
 
-  .empty {
-    padding: 40px 0;
-    color: var(--go-deep);
-    font-weight: 600;
-    text-align: center;
+  .regioncard .art .sprite {
+    flex: 0 0 auto;
+    width: 52%;
+    max-width: 150px;
+    margin: 0 0 -6% -22%;
+
+    /* The renders leave the species a lot of room inside their square, which the game's own art does not. */
+    transform: scale(1.5);
+    transform-origin: 50% 85%;
+    filter: drop-shadow(0 3px 3px rgb(0 0 0 / 22%));
+  }
+
+  .dexroot[data-mode='shiny'] .regioncard {
+    background: rgb(253 244 220);
+  }
+
+  .dexroot[data-mode='shiny'] .regioncard .art {
+    background:
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 14%) 0 3px, transparent 3px 9px),
+      repeating-linear-gradient(90deg, rgb(255 255 255 / 14%) 0 3px, transparent 3px 9px),
+      linear-gradient(135deg, #f0a52a, #f6c45a);
   }
 
   /**
@@ -763,26 +1052,56 @@ body[data-page='pokedex'] {
   }
 
   @media (width <= 560px) {
-    header.banner {
-      padding-inline: 16px;
+    header.dexhead {
+      padding-inline: 10px;
     }
 
-    /**
-     * Stacked for a phone, the controls are a third of its screen, which is too much to keep pinned over the list. They
-     * scroll away with the page instead.
-     */
-    .controls {
-      position: static;
+    .dexhead .top {
+      padding: 14px 14px 4px;
+    }
+
+    .dexhead h1 {
+      font-size: 20px;
+    }
+
+    .dexhead .count {
+      padding-inline: 18px;
+      font-size: 20px;
+    }
+
+    .dexhead .stats .figure {
+      font-size: 22px;
+    }
+
+    .dexhead .stats .label {
+      font-size: 12px;
     }
 
     .dex {
-      padding-inline: 12px;
+      padding-inline: 10px;
     }
 
-    /* Three to a row, which is what the game itself fits across a phone. */
+    /* Four to a row, which is what the game itself fits across a phone. */
     .grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+    }
+
+    .card {
+      padding: 4px 3px 7px;
+      border-radius: 13px;
+    }
+
+    .card .num {
+      font-size: 16px;
+    }
+
+    .round.search {
+      margin-left: 16px;
+    }
+
+    .round.regions {
+      margin-right: 16px;
     }
 
     /* The entry takes the whole screen, as it does in the game, rather than floating over a sliver of the grid. */

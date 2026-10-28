@@ -6,6 +6,8 @@ import {
   emptyState,
   fromFragment,
   matches,
+  MODES,
+  registered,
   matchesQuery,
   toFragment,
   TOGGLES,
@@ -38,6 +40,7 @@ test('an empty state writes no fragment and admits the whole dex', () => {
  */
 test('a state survives being written to a fragment and read back', () => {
   const original = state({
+    mode: 'xxs',
     q: 'pika',
     generation: 9,
     availability: 'out',
@@ -45,7 +48,7 @@ test('a state survives being written to a fragment and read back', () => {
     open: entryAt(150).dex,
   });
 
-  expect(toFragment(original)).toBe('q=pika&g=9&a=out&f=shiny.legendary.hunt-xxs&n=150');
+  expect(toFragment(original)).toBe('m=xxs&q=pika&g=9&a=out&f=shiny.legendary.hunt-xxs&n=150');
   expect(fromFragment(toFragment(original))).toEqual(original);
 });
 
@@ -67,7 +70,7 @@ test('a query carrying the fragment’s own punctuation round-trips', () => {
  * was.
  */
 test('a hand-edited fragment can only produce a state the controls could have', () => {
-  const read = fromFragment('q=pika&g=99&a=sideways&f=shiny.nonsense.hunt-xxs.legendary-ish&n=99999');
+  const read = fromFragment('m=lucky&q=pika&g=99&a=sideways&f=shiny.nonsense.hunt-xxs.legendary-ish&n=99999');
 
   expect(read).toEqual(
     state({ q: 'pika', generation: null, availability: '', flags: new Set(['shiny', 'hunt-xxs']), open: null }),
@@ -245,4 +248,25 @@ test.for([
   expect(admits.length).toBeGreaterThan(0);
   expect(admits.length).toBeLessThan(ENTRIES.length);
   expect(admits).toEqual(ENTRIES.filter(holds));
+});
+
+/**
+ * Every mode but the plain one reads a hunt list, and a mode's tile is filled only for a species the game could have
+ * registered: one released, and in the shiny dex one whose shiny is. A hunt list wanting a species is what leaves it
+ * empty, so each mode's filled tiles are exactly the released ones its list no longer wants.
+ */
+test('a mode fills the tiles of what its hunt list no longer wants', () => {
+  for (const { id, hunt } of MODES) {
+    for (const entry of ENTRIES) {
+      const wanted = entry.hunts.some((h) => h.id === hunt);
+      const possible = entry.released && (id !== 'shiny' || entry.shiny);
+
+      expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(possible && !wanted);
+    }
+  }
+
+  // Not yet in the game is empty in every mode, however few lists name it.
+  const unreleased = ENTRIES.find((entry) => !entry.released);
+
+  expect(unreleased && MODES.some(({ id }) => registered(unreleased, id))).toBe(false);
 });

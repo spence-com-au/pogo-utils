@@ -8,6 +8,13 @@ import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry } from './en
 import { fold } from '../pokemon/names.js';
 
 export type Availability = '' | 'in' | 'out';
+
+/**
+ * The tabs along the foot of the game's Pokédex, which redraw the same grid as what has been registered in each: every
+ * species, then the shinies, then the XXL, XXS and perfect ones. A view rather than a filter — the grid keeps every
+ * slot, and the mode decides which are drawn filled and which are left as an empty numbered tile.
+ */
+export type Mode = 'pokemon' | 'shiny' | 'xxl' | 'xxs' | 'perfect';
 export type Toggle = { id: string; label: string; test: (entry: Entry) => boolean };
 
 /**
@@ -15,6 +22,7 @@ export type Toggle = { id: string; label: string; test: (entry: Entry) => boolea
  * the same kind of thing: replace or amend it and call `update`.
  */
 export interface State {
+  mode: Mode;
   q: string;
   generation: number | null;
   availability: Availability;
@@ -50,8 +58,37 @@ export const TOGGLES = new Map([...FLAGS, ...HUNT_FLAGS].map((flag) => [flag.id,
  */
 export const availabilityOf = (value: string | null): Availability => (value === 'in' || value === 'out' ? value : '');
 
+/**
+ * The modes in the order the game's tabs run, each with the hunt list whose absence counts as registered. A hunt list
+ * is what is still wanted, so a species off the XXL list is one the XXL dex already holds — which is the same reading
+ * the game's own XXL tab makes of the storage it looks at.
+ */
+export const MODES: readonly { id: Mode; label: string; hunt: string | null }[] = [
+  { id: 'pokemon', label: 'Pokémon', hunt: null },
+  { id: 'shiny', label: 'Shiny', hunt: 'shiny' },
+  { id: 'xxl', label: 'XXL', hunt: 'xxl' },
+  { id: 'xxs', label: 'XXS', hunt: 'xxs' },
+  { id: 'perfect', label: '100%', hunt: 'perfect' },
+];
+
+export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id === value)?.id ?? 'pokemon';
+
+/**
+ * Whether a species fills its tile in a mode. In the game a species can only be registered once it is in the game, and
+ * a shiny once its shiny is; past that, it is registered unless its hunt list still wants it.
+ */
+export function registered(entry: Entry, mode: Mode) {
+  const hunt = MODES.find(({ id }) => id === mode)?.hunt ?? null;
+
+  if (!entry.released || (mode === 'shiny' && !entry.shiny)) {
+    return false;
+  }
+
+  return hunt === null || !entry.hunts.some(({ id }) => id === hunt);
+}
+
 export function emptyState(): State {
-  return { q: '', generation: null, availability: '', flags: new Set(), open: null };
+  return { mode: 'pokemon', q: '', generation: null, availability: '', flags: new Set(), open: null };
 }
 
 export function fromFragment(fragment: string) {
@@ -60,6 +97,7 @@ export function fromFragment(fragment: string) {
   const generation = Number(params.get('g'));
   const open = Number(params.get('n'));
 
+  state.mode = modeOf(params.get('m'));
   state.q = params.get('q') ?? '';
   state.generation = GENERATION_NUMBERS.includes(generation) ? generation : null;
   state.availability = availabilityOf(params.get('a'));
@@ -71,6 +109,10 @@ export function fromFragment(fragment: string) {
 
 export function toFragment(state: State) {
   const params = new URLSearchParams();
+
+  if (state.mode !== 'pokemon') {
+    params.set('m', state.mode);
+  }
 
   if (state.q.trim()) {
     params.set('q', state.q.trim());
