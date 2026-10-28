@@ -123,8 +123,8 @@ body[data-page='pokedex'] {
   }
 
   /**
-   * The card heading the grid: the region's name and its count on the top line, the other modes' counts under it. The
-   * page header's own box, widened to the grid's.
+   * The card heading the grid: the region's name and its count on the top line, and under it the counts for every mode
+   * but the plain one — the four hunt modes, the open one among them. The page header's own box, widened to the grid's.
    */
 
   header.dexhead {
@@ -257,6 +257,12 @@ body[data-page='pokedex'] {
     color: var(--number);
     font: inherit;
     cursor: pointer;
+
+    /**
+     * Room kept below a tile scrolled into view — by the keyboard, by the entry's arrows or by the focus coming back
+     * as it closes — so it stops clear of the bar floating over the foot of the screen rather than under it.
+     */
+    scroll-margin-bottom: 180px;
   }
 
   .card:hover {
