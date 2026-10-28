@@ -272,6 +272,9 @@ export class Video {
   #last: number | undefined;
   #closed = false;
 
+  /** Writes the pictures still held once they come due, when no picture or recording ending comes to. */
+  #due: NodeJS.Timeout | undefined;
+
   /** `write` takes whole packets, `origin` is when the run began and `now` the clock it began by. */
   constructor(write: (bytes: Uint8Array) => void, origin: number, now = () => performance.now()) {
     this.#stream = new TransportStream(write);
@@ -337,6 +340,7 @@ export class Video {
     }
 
     this.#closed = true;
+    clearTimeout(this.#due);
     this.#pump();
   }
 
@@ -366,11 +370,27 @@ export class Video {
         }
       }
 
-      if (!(over || (segment.ended && later.length > 0))) {
+      // An ended recording is gone on from once nothing of it is held: what is, a cut may yet come for, or time.
+      if (!(over || (segment.ended && later.length > 0 && segment.pictures.length === 0))) {
+        this.#hold(segment.pictures[0]);
         return;
       }
 
       this.#writing++;
+    }
+  }
+
+  /**
+   * Comes back for `held` once its `HELD_MS` are up, so the pictures before a screen goes still are written then rather
+   * than at whatever next arrives, which a crash would never see. Unreferenced, so it never keeps a run's process alive.
+   */
+  #hold(held: Picture | undefined): void {
+    clearTimeout(this.#due);
+    this.#due = undefined;
+
+    if (held && !this.#closed) {
+      const wait = Math.max(0, held.at + HELD_MS - (this.#now() - this.#origin));
+      this.#due = setTimeout(() => this.#pump(), wait + 1).unref();
     }
   }
 

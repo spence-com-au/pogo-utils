@@ -6,6 +6,7 @@
 
 import { execFile, spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 import { type Recording } from './stream.mts';
@@ -237,4 +238,68 @@ test('writes a picture only once the next recording could no longer cut it', asy
   // One write a picture: the two from more than `HELD_MS` ago.
   expect(written).toHaveLength(2);
   video.close();
+});
+
+test('writes a held picture once its time is up, with nothing else arriving', async () => {
+  const pictures: Uint8Array[] = [];
+  const cutter = new Pictures(({ bytes }) => pictures.push(bytes));
+  cutter.push(await clip('red', 3), 0);
+  cutter.end();
+
+  const written: Uint8Array[] = [];
+  const video = new Video((bytes) => written.push(bytes), performance.now());
+  const { recording: one, stdout } = recording();
+  video.watch(one);
+
+  // A screen gone still: the first two are whole once the third begins, and nothing follows it.
+  for (const picture of pictures) {
+    stdout.write(picture);
+  }
+
+  await new Promise(setImmediate);
+  expect(written).toHaveLength(0);
+
+  const until = performance.now() + 5000;
+
+  while (written.length < 2 && performance.now() < until) {
+    await sleep(10);
+  }
+
+  expect(written).toHaveLength(2);
+  video.close();
+});
+
+test('keeps the last pictures of a recording that ends before the next has begun', async () => {
+  const [red, blue] = await Promise.all([clip('red', 5), clip('blue', 5)]);
+  const written: Uint8Array[] = [];
+  let now = 0;
+  const video = new Video(
+    (bytes) => written.push(bytes),
+    0,
+    () => now,
+  );
+  const first = recording();
+  const second = recording();
+
+  video.watch(first.recording);
+  now = 1000;
+  first.stdout.write(red);
+  await new Promise(setImmediate);
+
+  // The last ends at once, its every picture within `HELD_MS`; the next has started but sent nothing.
+  video.watch(second.recording);
+  first.stdout.destroy();
+  await new Promise(setImmediate);
+
+  now = 3000;
+  second.stdout.write(blue);
+  await new Promise(setImmediate);
+  video.close();
+
+  const shown = await watch(Buffer.concat(written));
+  const colours = shown.map(({ red, blue }) =>
+    red > 200 && blue < 40 ? 'red' : blue > 200 && red < 40 ? 'blue' : '?',
+  );
+
+  expect(colours).toEqual([...Array<string>(5).fill('red'), ...Array<string>(5).fill('blue')]);
 });
