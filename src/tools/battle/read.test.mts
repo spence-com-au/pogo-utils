@@ -41,6 +41,16 @@ test.each([
   expect(await read(name)).toEqual({ ...unseen(), opponent, ownCp, opponentCp, moves });
 });
 
+// Xerneas read as `Xemeas`, so the labels are matched among every move. OCR splits the line beneath Moonblast saying how
+// effective it is, and its end, `TIVE`, is one edit from Dive: under `BLAST`, which is nearer no move, and beside the
+// pair as a third.
+test.each([
+  ['battle-pixel8-xerneas-super-effective', { 0.69: 'Close Combat' }],
+  ['charged-pixel8-xerneas-not-very-effective', { 0.31: 'Moonblast', 0.69: 'Close Combat' }],
+])('%s: reads no piece of how effective a move is as a move', async (name, moves) => {
+  expect((await read(name)).moves).toEqual(moves);
+});
+
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
   expect(await read('battle-minigame-kyogre-great')).toEqual({
     ...unseen(),

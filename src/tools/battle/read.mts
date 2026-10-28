@@ -8,7 +8,7 @@
  * every frame.
  */
 
-import { closest, type GameData } from '../inventory/game-master.mts';
+import { closest, distance, type GameData } from '../inventory/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
 import { crop, scale, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, TOP } from './layout.mts';
@@ -71,6 +71,13 @@ const CP = /c\s*p\s*(\d{2,4})\b/gi;
  */
 const LETTER = 0.022;
 
+/**
+ * What the line beneath a move can say of how effective it is, a neutral hit saying nothing. OCR splits it into pieces
+ * where the artwork behind breaks it up, and a piece of a few letters can be within `closest`'s slack of a short move:
+ * `TIVE` and `IVE`, its end, are each one edit from Dive.
+ */
+const EFFECTIVENESS = ['Super Effective', 'Not Very Effective'];
+
 const band = (
   image: Image,
   box: { left?: number; right?: number; top: number; bottom: number },
@@ -131,11 +138,13 @@ export async function readBattle(
     .filter((move) => !move.fast && move.name in data.combat)
     .map((move) => move.name);
 
-  // Beneath each move is how effective it is, which matches no move and so drops out here.
+  // Beneath each move is how effective it is, which matches no move whole. A piece of it can, and is dropped for being
+  // no further from some stretch of that line than from the move: `TIVE` is no distance within SUPER EFFECTIVE and one
+  // from Dive, where `DIVE` read whole is one and none.
   for (const line of await read(labels.image)) {
     const move = closest(line.text, charged, (name) => name);
 
-    if (!move) {
+    if (!move || EFFECTIVENESS.some((said) => distance(line.text, said, true) <= distance(line.text, move))) {
       continue;
     }
 
