@@ -8,7 +8,7 @@
  * every frame.
  */
 
-import { closest, type GameData } from '../inventory/game-master.mts';
+import { closest, distance, type GameData } from '../inventory/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
 import { crop, scale, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, TOP } from './layout.mts';
@@ -125,15 +125,24 @@ export async function readBattle(
   }
 
   const own = sighting.own ?? species;
-  const charged = (
-    own === null ? data.moves : data.forms.filter((form) => form.species === own).flatMap((f) => f.moves)
-  )
-    .filter((move) => !move.fast && move.name in data.combat)
-    .map((move) => move.name);
+  const chargedOf = (moves: GameData['moves']) =>
+    moves.filter((move) => !move.fast && move.name in data.combat).map((move) => move.name);
+  const every = chargedOf(data.moves);
+  const charged =
+    own === null ? every : chargedOf(data.forms.filter((form) => form.species === own).flatMap((f) => f.moves));
 
-  // Beneath each move is how effective it is, which matches no move and so drops out here.
+  // Beneath each move is how effective it is, which matches no move and so drops out here. A label outside the
+  // species' moves counts only where it reads as a move's whole name, and not as the start of one of the species' own,
+  // which is what a label cut short reads as: Gengar's `SLUDGE BOMB` came back as `SLUDGE`. Palkia in Origin Forme
+  // gains Spacial Rend with the form, which the game master's moves for it leave out.
+  const bare = (text: string) => fold(text).replaceAll(' ', '');
+  const outside = (text: string) =>
+    charged.some((name) => bare(name).startsWith(bare(text)))
+      ? undefined
+      : every.find((name) => distance(text, name) === 0);
+
   for (const line of await read(labels.image)) {
-    const move = closest(line.text, charged, (name) => name);
+    const move = closest(line.text, charged, (name) => name) ?? outside(line.text);
 
     if (!move) {
       continue;

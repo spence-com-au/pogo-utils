@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { tesseractCli } from '../inventory/ocr-cli.mts';
-import { useEngine } from '../inventory/ocr.mts';
+import { type Line, useEngine } from '../inventory/ocr.mts';
 import { decodePng } from '../inventory/png.mts';
 import { merge, readBanner, readBattle, unseen } from './read.mts';
 
@@ -90,6 +90,30 @@ test.each([
   ['battle-banner-pixel8-groudon', { own: 'Moltres', opponent: 'Groudon' }, 'Solar Beam'],
 ])('reads the move %s names, against %j', async (name, sides, move) => {
   expect(await banner(name, sides)).toBe(move);
+});
+
+/**
+ * A label line read off the labels' band of `image`, centred under the button at `x` across the screen: the band starts
+ * 0.05 in and is scaled up three times, and a label is placed by its left edge and a letter of 0.022 a character.
+ */
+const label = (image: { width: number }, text: string, x: number): Line => {
+  const width = text.length * 0.022;
+
+  return { text, left: (x - width / 2 - 0.05) * image.width * 3, top: 0, width: width * image.width * 3, height: 30 };
+};
+
+// Palkia in Origin Forme gains Spacial Rend with the form, which the game master's moves for it leave out: live, its
+// label never matched, and Palkia was weighed as having Aqua Tail alone against a Dragonite. A clipped label outside
+// the species' moves still matches nothing, as `SLUDGE B` must not be Sludge.
+test.each([
+  ['SPACIAL REND', 'Spacial Rend'],
+  ['SPACIAL RE', undefined],
+])("reads %s, which is none of the species' moves, only where it is a move's whole name", async (text, move) => {
+  const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8.png', import.meta.url)));
+  const bands = [[], [label(image, text, 0.31), label(image, 'AQUA TAIL', 0.69)]];
+  const sighting = await readBattle(image, DATA, () => Promise.resolve(bands.shift() ?? []), 'Palkia');
+
+  expect(Object.fromEntries(sighting.moves)).toEqual({ 0.31: move, 0.69: 'Aqua Tail' });
 });
 
 // Gengar's `SLUDGE BOMB` read short as `SLUDGE B`, which was nearer Sludge than Sludge Bomb among every charged move.
