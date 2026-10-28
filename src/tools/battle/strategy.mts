@@ -76,18 +76,22 @@ export function damage(data: GameData, move: string, own: readonly Typing[], opp
 }
 
 /**
- * What a move's damage is worth once the stat stages it may move are counted: each stage priced as if it touched one
- * more hit the size of this one, by the share that hit grows or shrinks in our favour, and weighted by the chance the
- * stages move at all. So Ancient Power's tenth of a chance at +1 attack makes 60 worth 61.5.
+ * What a move's damage is worth once the stat stages it may move on our hits are counted, our attack and their defense:
+ * each stage priced as if it touched one more hit the size of this one, by the share that hit grows or shrinks, and
+ * weighted by the chance the stages move at all. So Ancient Power's tenth of a chance at +1 attack makes 60 worth 61.5.
  *
- * Bar those on our own defense, up or down: what Close Combat's −2 costs is the opponent's hits for as long as ours
- * stays out, which this hit is no measure of. Priced against it, a Close Combat super effective on a Regigigas, 160 to
- * Moonblast's 108, would lose half its damage however little Regigigas hits for. `bestButton` weighs a move that always
- * lowers our defense instead; High Jump Kick's tenth of a chance at −4, and Ancient Power's at +1, go uncounted.
+ * Not those on the opponent's hits, our defense or their attack, up or down: what they come to is the opponent's hits
+ * for as long as both stay out, which this hit is no measure of. Priced against it, a Close Combat super effective on a
+ * Regigigas, 160 to Moonblast's 108, would lose half its damage however little Regigigas hits for, and an Icy Wind's −1
+ * to their attack would gain 19.2 into a Dragon type but 7.5 into a Steel type, however hard either hits back. PvPoke's
+ * battle AI prices only the stages on our hits too (pvpoke/pvpoke@d98f521, a move's DPE in `src/js/pokemon/Pokemon.js`
+ * and its plan in `src/js/battle/actions/ActionLogic.js`). `bestButton` weighs a move that always lowers our defense
+ * instead; High Jump Kick's tenth of a chance at −4, Ancient Power's at +1 and Rock Tomb's −1 to their attack go
+ * uncounted.
  *
  * On our `lastHit`, the stages it moves on our attack count for nothing either way: there is no next throw for Ancient
- * Power's attack to help. Those it moves on theirs still count, lasting on the opponent into whichever of ours goes in
- * next.
+ * Power's attack to help. Those it moves on their defense still count, lasting on the opponent into whichever of ours
+ * goes in next.
  */
 export function worth(
   data: GameData,
@@ -105,9 +109,8 @@ export function worth(
 
   const ours = lastHit ? 0 : stage(buffs.ownAttack) - 1;
   const dealt = 1 / stage(buffs.theirDefense) - 1;
-  const theirs = 1 - stage(buffs.theirAttack);
 
-  return hit * (1 + buffs.chance * (ours + dealt + theirs));
+  return hit * (1 + buffs.chance * (ours + dealt));
 }
 
 /** What `stages` up or down multiply an attack or defense stat by in a trainer battle: ×1.25 for +1, ×0.8 for −1. */
@@ -437,7 +440,7 @@ export const BAIT_SAVES = 10;
  * `src/js/battle/actions/ActionLogic.js`). Its battle AI makes the trade only for a move costing up to 10 more, and
  * only while the opponent has a shield; with none, a self-debuffing move costing over 50 gives way to the cheapest
  * while ours has over half its HP and the move would take under 80% of what the opponent has left. One rule, both
- * ways, stands in for the two: a Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.20, as
+ * ways, stands in for the two: a Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast's 2.16, as
  * PvPoke's first would, and a Galarian Moltres holds for Fly, 2.13, rather than Brave Bird, 2.84 and −3 to its
  * defense, as its second would with Moltres healthy.
  *
@@ -485,8 +488,9 @@ const perEnergy = ({ cost, worth }: Weighed): number => (cost > 0 ? worth / cost
 
 /**
  * Whether `a` is to be held for rather than `b`: worth more per energy, or as much and cheaper, which fires sooner. As
- * much to within a billionth, a true tie being split only by the last bit of the multipliers its two moves share: a
- * Dewgong's Icy Wind, 86.4 for 45 energy, and Water Pulse, 96 for 50, come to 1.9199999999999997 and 1.92.
+ * much to within a billionth, a true tie being split only by the last bit of the multipliers its two moves take: a
+ * Cryogonal's Water Pulse into a Great Tusk, 128 for 50 energy, and Aurora Beam, 153.6 for 60, come to 2.56 and
+ * 2.5600000000000005.
  */
 const better = (a: Weighed, b: Weighed): boolean => {
   const more = perEnergy(a) - perEnergy(b);

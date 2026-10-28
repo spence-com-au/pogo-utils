@@ -231,11 +231,13 @@ cancel out. Where a species' forms differ in type, as a Galarian Moltres does fr
 each side's panel say which form it is ([`typing.mts`](typing.mts)). Where they weren't read, or show a typing no form
 of the species has, a move is valued against the typing it does worst against.
 
-**Stat changes.** Worth is adjusted for the stat stages a move may move, each priced as if it touched one more hit of
-the same size, and weighted by its chance. So Ancient Power's one-in-ten +1 to its user's attack adds 2.5%. Stages on
-our own defense are left out: what Close Combat's −2 costs is the opponent's hits for as long as ours stays out, which
-Close Combat's own damage is no measure of. Priced against it, a Close Combat super effective on a Regigigas would lose
-half its damage however little Regigigas hits for.
+**Stat changes.** Worth is adjusted for the stat stages a move may move on our hits, our attack and their defense, each
+priced as if it touched one more hit of the same size, and weighted by its chance. So Ancient Power's one-in-ten +1 to
+its user's attack adds 2.5%. Stages on the opponent's hits, our defense and their attack, are left out: what Close
+Combat's −2 costs, or Icy Wind's −1 to their attack saves, is the opponent's hits for as long as both stay out, which
+the move's own damage is no measure of. Priced against it, a Close Combat super effective on a Regigigas would lose half
+its damage however little Regigigas hits for, and Icy Wind would gain more than twice as much into a Dragon type as into
+a Steel type, however hard either hits back. PvPoke's battle AI leaves them out too (`Pokemon.js`, `ActionLogic.js`).
 
 **On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
 stats count for nothing, since there's no next hit for them to matter on.
@@ -259,7 +261,7 @@ our last hit, where Brave Bird and Close Combat are thrown as they are. The numb
 simulations being what the meta is ranked by, but its battle AI makes this trade only for a move costing more, and only
 while the opponent has a shield; with none, it holds a Pokémon above half its HP to its cheapest move rather than a
 self-debuffing one costing over 50. The one rule stands in for both. So Xerneas throws Close Combat at a Regigigas, 3.56
-a point to Moonblast's 2.20, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
+a point to Moonblast's 2.16, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
 its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth

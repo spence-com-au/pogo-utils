@@ -163,7 +163,7 @@ test('a move that lowers our defense gives way to one within 10 energy and worth
 });
 
 /** Battle 2 of a Master League set on a Pixel 8 Pro, 2026-10-29, in which Xerneas threw Moonblast at Regigigas twice. */
-test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast’s 2.20', () => {
+test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast’s 2.16', () => {
   const xerneas = new Map([
     [0.31, 'Moonblast'],
     [0.69, 'Close Combat'],
@@ -179,18 +179,20 @@ test('Xerneas throws Close Combat at a Regigigas, 3.56 per energy to Moonblast�
 });
 
 test('of two worth as much per energy, the cheaper is held for, whatever the last bit of the arithmetic says', () => {
-  const dewgong = new Map([
-    [0.31, 'Water Pulse'],
-    [0.69, 'Icy Wind'],
+  const cryogonal = new Map([
+    [0.31, 'Aurora Beam'],
+    [0.69, 'Water Pulse'],
   ]);
-  const own = typesOf(DATA, { species: 'Dewgong' });
+  const own = typesOf(DATA, { species: 'Cryogonal' });
+  const tusk = typesOf(DATA, { species: 'Great Tusk' });
 
-  expect(worth(DATA, 'Icy Wind', own, []) / 45, 'the floats split the tie for Water Pulse').toBeLessThan(
-    worth(DATA, 'Water Pulse', own, []) / 50,
+  expect(worth(DATA, 'Water Pulse', own, tusk) / 50, 'the floats split the tie for Aurora Beam').toBeLessThan(
+    worth(DATA, 'Aurora Beam', own, tusk) / 60,
   );
-  expect(bestButton(DATA, dewgong, own, [])?.x, 'Icy Wind, 86.4 for 45, over Water Pulse, 96 for 50: 1.92 each').toBe(
-    0.69,
-  );
+  expect(
+    bestButton(DATA, cryogonal, own, tusk)?.x,
+    'Water Pulse, 128 for 50, over Aurora Beam, 153.6 for 60: 2.56 each',
+  ).toBe(0.69);
 });
 
 test('a move whose energy is not known is worth nothing per energy', () => {
@@ -208,7 +210,8 @@ test('a move is worth its damage, moved by the stat stages it may change as if e
     worth(DATA, 'Ancient Power', [], []),
     'a tenth of a chance at +1 attack, its +1 defense uncounted',
   ).toBeCloseTo(60 * 1.025);
-  expect(worth(DATA, 'Rock Tomb', [], []), 'their attack −1 every time').toBeCloseTo(75 * 1.2);
+  expect(worth(DATA, 'Wrap', [], []), 'their defense −1 every time').toBeCloseTo(70 * 1.25);
+  expect(worth(DATA, 'Rock Tomb', [], []), 'their attack −1 left out').toBe(75);
   expect(worth(DATA, 'Overheat', [], []), 'our attack −2 every time').toBeCloseTo((130 * 2) / 3);
   expect(worth(DATA, 'Close Combat', [], []), 'our defense −2 left to `bestButton`').toBe(100);
   expect(worth(DATA, 'Superpower', [], []), 'its attack −1 counted, its defense −1 not').toBeCloseTo(85 * 0.8);
@@ -216,22 +219,37 @@ test('a move is worth its damage, moved by the stat stages it may change as if e
 });
 
 test('the best button counts what a move does to either side’s stats as well as the damage', () => {
-  const tomb = new Map([
-    [0.31, 'Rock Tomb'],
-    [0.69, 'Power Gem'],
+  const wrap = new Map([
+    [0.31, 'Wrap'],
+    [0.69, 'Rock Slide'],
   ]);
   const fire = new Map([
     [0.31, 'Overheat'],
     [0.69, 'Flamethrower'],
   ]);
 
-  expect(bestButton(DATA, tomb, [], [])?.x, 'Rock Tomb, 75 and their attack −1, over Power Gem’s 85').toBe(0.31);
+  expect(bestButton(DATA, wrap, [], [])?.x, 'Wrap, 70 and their defense −1, over Rock Slide’s 75').toBe(0.31);
   expect(bestButton(DATA, fire, [], [])?.x, 'Flamethrower, 90, over an Overheat that leaves ours −2 to attack').toBe(
     0.69,
   );
 });
 
-test('on our last hit, a move’s stages on our side count for nothing, and those on theirs still count', () => {
+test('the best button leaves out a drop to the opponent’s attack, which this hit is no measure of', () => {
+  const tomb = new Map([
+    [0.31, 'Rock Tomb'],
+    [0.69, 'Power Gem'],
+  ]);
+  const dewgong = new Map([
+    [0.31, 'Water Pulse'],
+    [0.69, 'Icy Wind'],
+  ]);
+  const own = typesOf(DATA, { species: 'Dewgong' });
+
+  expect(bestButton(DATA, tomb, [], [])?.x, 'Power Gem’s 85 over Rock Tomb’s 75').toBe(0.69);
+  expect(bestButton(DATA, dewgong, own, [])?.x, 'Water Pulse, 96 for 50, over Icy Wind, 72 for 45').toBe(0.31);
+});
+
+test('on our last hit, a move’s stages on our attack count for nothing, and those on their defense still count', () => {
   const lastHit = { lastHit: true };
   const fire = new Map([
     [0.31, 'Overheat'],
@@ -240,7 +258,7 @@ test('on our last hit, a move’s stages on our side count for nothing, and thos
 
   expect(worth(DATA, 'Overheat', [], [], lastHit), 'no next throw for our attack −2 to cost').toBe(130);
   expect(worth(DATA, 'Ancient Power', [], [], lastHit), 'nor for our attack +1 to help').toBe(60);
-  expect(worth(DATA, 'Rock Tomb', [], [], lastHit), 'their attack −1 lasts on them').toBeCloseTo(75 * 1.2);
+  expect(worth(DATA, 'Wrap', [], [], lastHit), 'their defense −1 lasts on them').toBeCloseTo(70 * 1.25);
   expect(bestButton(DATA, fire, [], [], lastHit)?.x, 'Overheat, 130 to 90').toBe(0.31);
 });
 
@@ -343,7 +361,7 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
       [],
       { bait: true },
     ),
-    'Meteor Mash, 2.22 to Moonblast’s 2.20, is the bait and the move worth the most per energy, though it saves 5',
+    'Meteor Mash, 2.22 to Moonblast’s 2.16, is the bait and the move worth the most per energy, though it saves 5',
   ).toEqual({ x: 0.69, bait: true });
 });
 
