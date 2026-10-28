@@ -41,7 +41,7 @@ jobs:
         with:
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.1'
+      - uses: 'pnpm/setup@v3.1.2'
         with:
           cache: true
       - run: 'pnpm prune:events'
