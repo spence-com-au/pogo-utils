@@ -302,9 +302,11 @@ export async function readCard(
   const back = onParty(await hands.screenshot());
   const why = cell
     ? 'its panel went unread'
-    : took
-      ? `no pink cell for ${terms.join(' or ')}`
-      : 'the search did not take';
+    : !isSelection(lines)
+      ? 'the selection screen went unrecognised after the search'
+      : took
+        ? `no pink cell for ${terms.join(' or ')}`
+        : 'the search did not take';
 
   return panel ? { panel, back } : { why, back };
 }
