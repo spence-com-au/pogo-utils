@@ -179,6 +179,15 @@ const REFUSED_MS = 10_000;
  */
 const OFF_MS = 3_000;
 
+/**
+ * How long after a faint of ours, a switch prompt's frame or its answer the HUD may go on naming the one that fainted, in
+ * milliseconds. Live, Palkia's name stood 2.7s after its Poké Ball went grey, until half a second after the prompt was
+ * answered. Past it, a name the HUD reads is the one out's, even of a fainted species: a second of it on the team, or
+ * a faint `activeOf` pinned on the wrong slot. Within it the name cannot tell those from the HUD's, so they go by the
+ * party's name alone, their CP and labels unread and their lit buttons unthrown, until it is up.
+ */
+const STALE_MS = 3_000;
+
 /** Frames kept for a run that gets lost, about the last three seconds of it at one frame in ten. */
 const KEPT_FRAMES = 10;
 
@@ -453,6 +462,10 @@ export async function run(
   let seen: Sighting = unseen();
   let readAt = -Infinity;
 
+  // When we last had a faint, a switch prompt or its answer, after which for `STALE_MS` the HUD may name the one that
+  // fainted.
+  let faintAt = -Infinity;
+
   // The battle's names, CPs, move labels and types being read, if they are: off the frame of `at`, and onto the `seen`
   // it began from. Begun before `seen` was cleared, for a newcomer of theirs, a faint or a switch of ours or the next
   // battle, it is of the Pokémon before, and is never merged: its name or CP would stand for the one sent in.
@@ -697,6 +710,7 @@ export async function run(
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
+        faintAt = -Infinity;
         fainted = new Set();
         sent = 0;
         caught = undefined;
@@ -815,7 +829,19 @@ export async function run(
         const named = seen.opponent;
         const before = named ?? departed;
 
-        seen = merge(seen, read);
+        // The HUD goes on naming one of ours after it faints, through the switch prompt and the frames between the
+        // prompt's that read as the fight. Our side of a read begun then naming one fainted is of that HUD, and is
+        // dropped and read again at once, as `forgetOwn` has it: merged, Palkia's name stood for Xerneas for as long as
+        // it fought, `Xemeas` matching no species to replace it, and Xerneas's labels were matched among Palkia's moves,
+        // none of them read. Left to `READ_MS`, the one sent in would go unnamed until it was up.
+        const fallen =
+          at - faintAt < STALE_MS && read.own !== null && [...fainted].some((slot) => party[slot] === read.own);
+
+        seen = merge(seen, fallen ? { ...read, own: null, ownCp: null, ownTypes: null, moves: new Map() } : read);
+
+        if (fallen) {
+          readAt = -Infinity;
+        }
 
         if (seen.opponent !== null && seen.opponent !== before) {
           // A CP kept from while another species was named is that one's, which a switch the bar did not catch leaves
@@ -849,6 +875,7 @@ export async function run(
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
         forgetOwn();
+        faintAt = clock.now();
 
         if (switching) {
           swappedAt = switching.at;
@@ -936,6 +963,7 @@ export async function run(
         if (gone !== undefined) {
           drop(`${seen.own ?? party[gone] ?? 'ours'} fainted first`);
           fainted.add(gone);
+          faintAt = clock.now();
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };
 
           // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
@@ -1346,6 +1374,7 @@ export async function run(
 
           if (prompt.fainted !== undefined) {
             fainted.add(prompt.fainted);
+            faintAt = clock.now();
           }
 
           if (prompt.next !== undefined) {
