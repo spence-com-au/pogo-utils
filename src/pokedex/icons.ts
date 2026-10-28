@@ -41,7 +41,7 @@ export const shinyIcon = (icon: string) => icon.replace(/[.]icon[.]png$/, '.s.ic
 /**
  * The picture to show for a species: the game's own render where there is one, and PokeAPI's pixel sprite where there
  * is not. `icons` is empty until the vended file arrives, which leaves the derived name — right for most of the dex,
- * and a species it is wrong for keeps its name and number until the file lands.
+ * and a species it is wrong for keeps its number until the file lands.
  */
 export function spriteOf(dex: number, shiny: boolean, icons: Icons): string {
   const icon = dex in icons ? icons[dex] : ordinaryIcon(dex);
