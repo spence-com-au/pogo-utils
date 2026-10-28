@@ -167,7 +167,8 @@ const OFF_MS = 3_000;
  * How long after a faint of ours, a switch prompt's frame or its answer the HUD may go on naming the one that fainted, in
  * milliseconds. Live, Palkia's name stood 2.7s after its Poké Ball went grey, until half a second after the prompt was
  * answered. Past it, a name the HUD reads is the one out's, even of a fainted species: a second of it on the team, or
- * a faint `activeOf` pinned on the wrong slot.
+ * a faint `activeOf` pinned on the wrong slot. Within it the name cannot tell those from the HUD's, so they go unnamed,
+ * and their lit buttons unthrown, until it is up.
  */
 const STALE_MS = 3_000;
 
