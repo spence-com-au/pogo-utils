@@ -92,9 +92,9 @@ const across = (line: Line, { left, factor }: { left: number; factor: number }, 
 /**
  * What the battle's text says on `image`. `species` is ours where an earlier frame's HUD named it, which the labels are
  * matched among, as the name on this frame is: Gengar's `SLUDGE BOMB` read short as `SLUDGE B` was nearer Sludge, which
- * Gengar cannot hold, than Sludge Bomb, and the move thrown flipped between them read to read. Unnamed — nicknamed, the
- * species no more than the party's guess, which the labels are what correct — every charged move is a label it could
- * be.
+ * Gengar cannot hold, than Sludge Bomb, and the move thrown flipped between them read to read. A label outside its moves
+ * counts only as a move's whole name that begins none of them. Unnamed — nicknamed, the species no more than the
+ * party's guess, which the labels are what correct — every charged move is a label it could be.
  */
 export async function readBattle(
   image: Image,
@@ -133,8 +133,9 @@ export async function readBattle(
 
   // Beneath each move is how effective it is, which matches no move and so drops out here. A label outside the
   // species' moves counts only where it reads as a move's whole name, and not as the start of one of the species' own,
-  // which is what a label cut short reads as: Gengar's `SLUDGE BOMB` came back as `SLUDGE`. Palkia in Origin Forme
-  // gains Spacial Rend with the form, which the game master's moves for it leave out.
+  // which is what a label cut short reads as: Tesseract reads Gengar's committed `SLUDGE BOMB` as `SLUDGE`, where live
+  // it read `SLUDGE B`. Palkia in Origin Forme gains Spacial Rend with the form, which the game master's moves for it
+  // leave out.
   const bare = (text: string) => fold(text).replaceAll(' ', '');
   const outside = (text: string) =>
     charged.some((name) => bare(name).startsWith(bare(text)))

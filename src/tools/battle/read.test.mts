@@ -103,17 +103,19 @@ const label = (image: { width: number }, text: string, x: number): Line => {
 };
 
 // Palkia in Origin Forme gains Spacial Rend with the form, which the game master's moves for it leave out: live, its
-// label never matched, and Palkia was weighed as having Aqua Tail alone against a Dragonite. A clipped label outside
-// the species' moves still matches nothing, as `SLUDGE B` must not be Sludge.
+// label never matched, and Palkia was weighed as having Aqua Tail alone against a Dragonite. Outside the species' moves
+// a label must be a move's whole name, which `SPACIAL RE` is not, and must not be the start of one of the species' own:
+// Tesseract reads Gengar's committed `SLUDGE BOMB` as `SLUDGE`, the whole name of a move Gengar cannot hold.
 test.each([
-  ['SPACIAL REND', 'Spacial Rend'],
-  ['SPACIAL RE', undefined],
-])("reads %s, which is none of the species' moves, only where it is a move's whole name", async (text, move) => {
+  ['Palkia', 'SPACIAL REND', 'Spacial Rend', 'AQUA TAIL', 'Aqua Tail'],
+  ['Palkia', 'SPACIAL RE', undefined, 'AQUA TAIL', 'Aqua Tail'],
+  ['Gengar', 'SLUDGE', undefined, 'SHADOW BALL', 'Shadow Ball'],
+])('under %s, reads %s as %s', async (species, text, move, other, otherMove) => {
   const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8.png', import.meta.url)));
-  const bands = [[], [label(image, text, 0.31), label(image, 'AQUA TAIL', 0.69)]];
-  const sighting = await readBattle(image, DATA, () => Promise.resolve(bands.shift() ?? []), 'Palkia');
+  const bands = [[], [label(image, text, 0.31), label(image, other, 0.69)]];
+  const sighting = await readBattle(image, DATA, () => Promise.resolve(bands.shift() ?? []), species);
 
-  expect(Object.fromEntries(sighting.moves)).toEqual({ 0.31: move, 0.69: 'Aqua Tail' });
+  expect(Object.fromEntries(sighting.moves)).toEqual({ 0.31: move, 0.69: otherMove });
 });
 
 // Gengar's `SLUDGE BOMB` read short as `SLUDGE B`, which was nearer Sludge than Sludge Bomb among every charged move.
