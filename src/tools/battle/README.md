@@ -131,8 +131,8 @@ for text and done every few seconds.
   Pokémon selection screen, to swap it for another, and holding a Pokémon there shows a panel of its types, HP, fast
   move and charged moves until it is let go. Neither the hold nor CANCEL changes the party.
   - **Finding it:** the selection screen lists the whole storage by CP and opens at the top, so the Pokémon tapped is in
-    view only where its CP is near the top. It is searched for instead, `metagross&cp3986`, by the species its
-    silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
+    view only where its CP is near the top. It is searched for instead, `376&cp3986`, by the dex number of the species
+    its silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
     species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
   - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
     rows matched as `pnpm inventory` matches the detail screen's moves

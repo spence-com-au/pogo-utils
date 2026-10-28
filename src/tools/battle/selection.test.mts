@@ -34,10 +34,9 @@ test.each([
   expect(searched(lines)).toBe(search);
 });
 
-test('searches by species and CP, or by the CP alone where the species is unread or not one word', () => {
-  expect(query('Metagross', 3986)).toBe('metagross&cp3986');
-  expect(query(null, 4673)).toBe('cp4673');
-  expect(query('Mr. Mime', 1500)).toBe('cp1500');
+test('searches by dex number and CP, or by the CP alone where the species is unread', () => {
+  expect(query(376, 3986)).toBe('376&cp3986');
+  expect(query(undefined, 4673)).toBe('cp4673');
 });
 
 // Palkia tapped, unsearched, at the top of storage in the second row; each searched for, alone in the first cell; and

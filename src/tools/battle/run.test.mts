@@ -434,17 +434,17 @@ function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<str
     league: { frame: fixture('menu-league'), tap: { at: [0.55, 0.58], to: 'again' } },
     again: party(MASTER_CP_UNREAD),
     select0: selection(0, [
-      { text: 'mamoswine&cp4673', to: 'none0' },
+      { text: '473&cp4673', to: 'none0' },
       { text: 'cp4673', to: 'found0' },
     ]),
     none0: found(0, nothing),
     found0: found(0, fixture('menu-pixel8-search-palkia'), 'menu-pixel8-held-palkia'),
     select1: selection(1, [
-      { text: 'metagross&cp3986', to: 'none1' },
+      { text: '376&cp3986', to: 'none1' },
       { text: 'cp3986', to: 'none1' },
     ]),
     none1: found(1, nothing),
-    select2: selection(2, [{ text: 'xerneas&cp4275', to: 'found2' }]),
+    select2: selection(2, [{ text: '716&cp4275', to: 'found2' }]),
     found2: found(2, fixture('menu-pixel8-search-xerneas'), 'menu-pixel8-held-xerneas'),
   };
 }
@@ -465,11 +465,11 @@ test('reads each card’s moves off the selection screen before using the party,
   ).toEqual([
     'run: party: Mamoswine, Metagross, Xerneas',
     'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
-    'run: card 2 unread: no pink cell for metagross&cp3986 or cp3986',
+    'run: card 2 unread: no pink cell for 376&cp3986 or cp3986',
     'run: Xerneas CP 4275: Geomancy / Moonblast, Close Combat',
     'run: party: Mamoswine, Metagross, Xerneas',
   ]);
-  expect(searches).toEqual(['mamoswine&cp4673', 'cp4673', 'metagross&cp3986', 'cp3986', 'xerneas&cp4275']);
+  expect(searches).toEqual(['473&cp4673', 'cp4673', '376&cp3986', 'cp3986', '716&cp4275']);
   expect(holds).toEqual(['found0', 'found2']);
   expect(taps.filter((scene) => scene === 'party' || scene === 'again')).toEqual([
     ...['party', 'party', 'party', 'party'],
@@ -493,11 +493,11 @@ test('tries a card passed over for its CP once its CP is read', async () => {
   ).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(report.events.filter((line) => /^run: .*( CP \d|unread)/.test(line))).toEqual([
     'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
-    'run: card 2 unread: no pink cell for metagross&cp3986 or cp3986',
+    'run: card 2 unread: no pink cell for 376&cp3986 or cp3986',
     'run: card 3 unread: its CP unread',
     'run: Xerneas CP 4275: Geomancy / Moonblast, Close Combat',
   ]);
-  expect(searches).toEqual(['mamoswine&cp4673', 'cp4673', 'metagross&cp3986', 'cp3986', 'xerneas&cp4275']);
+  expect(searches).toEqual(['473&cp4673', 'cp4673', '376&cp3986', 'cp3986', '716&cp4275']);
 });
 
 // The selection screen 2s behind Palkia's card's tap, as a phone at work can draw it: looked for again, and read.

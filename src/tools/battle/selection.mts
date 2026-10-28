@@ -44,12 +44,12 @@ export const searched = (lines: readonly Line[]) =>
   lines.some((line) => fold(line.text).includes('show evolutionary line'));
 
 /**
- * What to search for to find the card showing `species` at `cp`: `metagross&cp3986`, or the CP alone where the species
- * was not read or is not one word of letters, which is all a search term is sure to be. The CP alone can find a crowd,
- * a Great League storage holding many at CP 1500, the species alone more.
+ * What to search for to find the card of the species numbered `dex` at `cp`: `376&cp3986` for Metagross, or the CP
+ * alone where the species was not read. A dex number finds the species alone, where its name would find nicknames too,
+ * and is a term for every species, Ho-Oh's and Mr. Mime's as much as Metagross's. The CP alone can find a crowd, a Great
+ * League storage holding many at CP 1500, the species alone more.
  */
-export const query = (species: string | null, cp: number) =>
-  species !== null && /^[a-z]+$/i.test(species) ? `${species.toLowerCase()}&cp${cp}` : `cp${cp}`;
+export const query = (dex: number | undefined, cp: number) => (dex === undefined ? `cp${cp}` : `${dex}&cp${cp}`);
 
 /**
  * The grid: three columns centred across the screen, rows of cells from 0.715 widths down from the top, a row every
@@ -252,7 +252,8 @@ export async function readCard(
 
   const opened = await hands.screenshot();
   const at = (point: Point, anchor: number) => place(point, anchor, opened);
-  const terms = [...new Set([query(species, cp), query(null, cp)])];
+  const dex = data.forms.find((form) => form.species === species)?.dex;
+  const terms = [...new Set([query(dex, cp), query(undefined, cp)])];
   let lines = await read(opened);
   let cell: Point | undefined;
 
