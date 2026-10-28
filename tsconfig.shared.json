@@ -41,6 +41,7 @@
     "src/page-table.ts",
     "src/pgsharp/release.ts",
     "src/pokedex/icons.ts",
+    "src/pokedex/types.ts",
     "src/pokemon/names.ts",
     "src/recurring-types.ts",
     "src/release.ts",

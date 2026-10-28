@@ -4,10 +4,17 @@
  * state, and a hand-edited fragment can only produce one the controls could have. Nothing here touches the DOM.
  */
 
-import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry } from './entries.js';
+import { CATEGORIES, ENTRIES, GENERATION_NUMBERS, HUNTS, type Entry, type HuntId } from './entries.js';
 import { fold } from '../pokemon/names.js';
 
 export type Availability = '' | 'in' | 'out';
+
+/**
+ * The tabs along the foot of the game's Pokédex, which redraw the same grid as what has been registered in each: every
+ * species, then the shinies, then the XXL, XXS and perfect ones. A view rather than a filter — the grid keeps every
+ * slot, and the mode decides which are drawn filled and which are left as an empty numbered tile.
+ */
+export type Mode = 'pokemon' | HuntId;
 export type Toggle = { id: string; label: string; test: (entry: Entry) => boolean };
 
 /**
@@ -15,6 +22,7 @@ export type Toggle = { id: string; label: string; test: (entry: Entry) => boolea
  * the same kind of thing: replace or amend it and call `update`.
  */
 export interface State {
+  mode: Mode;
   q: string;
   generation: number | null;
   availability: Availability;
@@ -50,8 +58,31 @@ export const TOGGLES = new Map([...FLAGS, ...HUNT_FLAGS].map((flag) => [flag.id,
  */
 export const availabilityOf = (value: string | null): Availability => (value === 'in' || value === 'out' ? value : '');
 
+/**
+ * The modes in the order the game's tabs run. Every one but the plain dex is a hunt list's id, the list whose absence
+ * counts as registered: a hunt list is what is still wanted, so a species off the XXL list is one the XXL dex already
+ * holds — which is the same reading the game's own XXL tab makes of the storage it looks at.
+ */
+export const MODES: readonly { id: Mode; label: string }[] = [
+  { id: 'pokemon', label: 'Pokémon' },
+  { id: 'shiny', label: 'Shiny' },
+  { id: 'xxl', label: 'XXL' },
+  { id: 'xxs', label: 'XXS' },
+  { id: 'perfect', label: '100%' },
+];
+
+export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id === value)?.id ?? 'pokemon';
+
+/**
+ * Whether a species fills its tile in a mode: in the plain dex once it is in the game, and in a hunt's once some form
+ * of it the hunt can fill is off the hunt's list — `heldIn`, which `ENTRIES` reads for every hunt as it is built.
+ */
+export function registered(entry: Entry, mode: Mode) {
+  return mode === 'pokemon' ? entry.released : entry.held[mode];
+}
+
 export function emptyState(): State {
-  return { q: '', generation: null, availability: '', flags: new Set(), open: null };
+  return { mode: 'pokemon', q: '', generation: null, availability: '', flags: new Set(), open: null };
 }
 
 export function fromFragment(fragment: string) {
@@ -60,6 +91,7 @@ export function fromFragment(fragment: string) {
   const generation = Number(params.get('g'));
   const open = Number(params.get('n'));
 
+  state.mode = modeOf(params.get('m'));
   state.q = params.get('q') ?? '';
   state.generation = GENERATION_NUMBERS.includes(generation) ? generation : null;
   state.availability = availabilityOf(params.get('a'));
@@ -71,6 +103,10 @@ export function fromFragment(fragment: string) {
 
 export function toFragment(state: State) {
   const params = new URLSearchParams();
+
+  if (state.mode !== 'pokemon') {
+    params.set('m', state.mode);
+  }
 
   if (state.q.trim()) {
     params.set('q', state.q.trim());

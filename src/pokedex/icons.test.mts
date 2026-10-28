@@ -14,10 +14,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-import { expect, test } from 'vitest';
+import { beforeAll, expect, test } from 'vitest';
 
 import { ICON_BASE, ordinaryIcon, spriteOf, type Icons } from './icons.js';
-import { POKEMON_ICONS } from '../generated.js';
+import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
+import { TYPE_PAINT, type Types } from './types.js';
 
 const run = promisify(execFile);
 
@@ -52,9 +53,18 @@ test('a species the game has no artwork for falls back to a pixel sprite', () =>
   expect(spriteOf(1025, true, icons)).toBe(`${PIXELS}/shiny/1025.png`);
 });
 
-test('`build:sprites` names every species whose icon the dex number cannot derive', async () => {
-  const { stderr } = await run('node', ['scripts/build-sprites.mts'], { cwd: ROOT });
+/**
+ * `build:sprites` run once for the two tests that read what it writes: one run writes both tables, and each run is a
+ * Node process parsing the whole game master. Its log is kept for the report the icons test reads. Given the minute a
+ * test has rather than a hook's ten seconds, which a loaded runner parsing the game master can run past.
+ */
+let stderr = '';
 
+beforeAll(async () => {
+  ({ stderr } = await run('node', ['scripts/build-sprites.mts'], { cwd: ROOT }));
+}, 60_000);
+
+test('`build:sprites` names every species whose icon the dex number cannot derive', () => {
   const icons: Icons = JSON.parse(readFileSync(new URL(POKEMON_ICONS, new URL('../../', import.meta.url)), 'utf8'));
   const rows = Object.entries(icons);
 
@@ -135,4 +145,29 @@ test('`build:sprites` names every species whose icon the dex number cannot deriv
 
   // And the ordinary case is absent, so the derivation above is what those cards actually use.
   expect(Object.keys(icons)).not.toContain('25');
+});
+
+/**
+ * The types written beside the icons, which colour each entry. Read off the same form as the picture, so a species
+ * whose ordinary form and regional one differ is drawn in the colour of the one shown.
+ */
+test('`build:sprites` writes the types of every species the game master holds, from the form its picture is', () => {
+  const types: Types = JSON.parse(readFileSync(new URL(POKEMON_TYPES, new URL('../../', import.meta.url)), 'utf8'));
+
+  // Every type named is one the page has a colour for, or that entry would be drawn in the page's fallback colour.
+  expect([...new Set(Object.values(types).flat())].sort()).toEqual(Object.keys(TYPE_PAINT).sort());
+
+  expect(types).toMatchObject({
+    1: ['Grass', 'Poison'],
+    25: ['Electric'],
+
+    // The plain Unovan Darmanitan rather than the Galarian one, whose ice would tint the fire species.
+    555: ['Fire'],
+
+    // A dual type comes through in its order, which is what the band blends from and the badges read in.
+    681: ['Steel', 'Ghost'],
+  });
+
+  // Basculegion has no form in the game master, so no types either; the entry is simply drawn without them.
+  expect(types).not.toHaveProperty('902');
 });

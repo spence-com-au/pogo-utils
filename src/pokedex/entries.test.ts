@@ -136,6 +136,8 @@ test('a hunt is watched where any member it wants is, not where every one of the
     label: 'Split',
     members: new Set([species, variant]),
     watched: (p: Pokemon) => p === species,
+    fillable: (p: Pokemon) => p.released,
+    perForm: false,
   };
 
   expect(huntsOf([species, variant], [hunt])).toEqual([{ id: 'split', watched: true }]);

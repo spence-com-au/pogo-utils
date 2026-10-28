@@ -6,6 +6,8 @@ import {
   emptyState,
   fromFragment,
   matches,
+  MODES,
+  registered,
   matchesQuery,
   toFragment,
   TOGGLES,
@@ -38,6 +40,7 @@ test('an empty state writes no fragment and admits the whole dex', () => {
  */
 test('a state survives being written to a fragment and read back', () => {
   const original = state({
+    mode: 'xxs',
     q: 'pika',
     generation: 9,
     availability: 'out',
@@ -45,7 +48,7 @@ test('a state survives being written to a fragment and read back', () => {
     open: entryAt(150).dex,
   });
 
-  expect(toFragment(original)).toBe('q=pika&g=9&a=out&f=shiny.legendary.hunt-xxs&n=150');
+  expect(toFragment(original)).toBe('m=xxs&q=pika&g=9&a=out&f=shiny.legendary.hunt-xxs&n=150');
   expect(fromFragment(toFragment(original))).toEqual(original);
 });
 
@@ -67,7 +70,7 @@ test('a query carrying the fragment’s own punctuation round-trips', () => {
  * was.
  */
 test('a hand-edited fragment can only produce a state the controls could have', () => {
-  const read = fromFragment('q=pika&g=99&a=sideways&f=shiny.nonsense.hunt-xxs.legendary-ish&n=99999');
+  const read = fromFragment('m=lucky&q=pika&g=99&a=sideways&f=shiny.nonsense.hunt-xxs.legendary-ish&n=99999');
 
   expect(read).toEqual(
     state({ q: 'pika', generation: null, availability: '', flags: new Set(['shiny', 'hunt-xxs']), open: null }),
@@ -245,4 +248,56 @@ test.for([
   expect(admits.length).toBeGreaterThan(0);
   expect(admits.length).toBeLessThan(ENTRIES.length);
   expect(admits).toEqual(ENTRIES.filter(holds));
+});
+
+/**
+ * Every mode but the plain one reads a hunt list, and a mode's tile is filled only for a species the game could have
+ * registered: one released, and in the shiny dex one whose shiny is. A species no list names at all is held in every
+ * hunt's dex it could be. A tile fills once any form of the species is off the list, as the game fills it once any
+ * form is registered — where the shiny list names a regional variant apart, and the other three hold one entry per
+ * species, which stands for its regional variants too.
+ */
+test('a mode fills the tiles of what its hunt list no longer wants, a form at a time', () => {
+  for (const { id } of MODES) {
+    for (const entry of ENTRIES) {
+      const possible = entry.released && (id !== 'shiny' || entry.shiny);
+
+      if (!possible) {
+        expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(false);
+      } else if (!entry.hunts.some((h) => h.id === id)) {
+        expect(registered(entry, id), `#${entry.dex} in ${id}`).toBe(true);
+      }
+    }
+  }
+
+  // The shiny list wants only Galarian Weezing, so the Kantonian one leaves the species held.
+  expect(registered(entryAt(110), 'shiny')).toBe(true);
+
+  // It names Keldeo bare, which carries both its forms with it, so neither leaves the species held.
+  expect(registered(entryAt(647), 'shiny')).toBe(false);
+
+  // And Unown a letter at a time, leaving a released letter off it, so the species is held.
+  expect(registered(entryAt(201), 'shiny')).toBe(true);
+
+  // Hoopa is in the game with no shiny, so the shiny dex leaves it empty however the lists read.
+  expect(entryAt(720).released).toBe(true);
+  expect(registered(entryAt(720), 'shiny')).toBe(false);
+  expect(registered(entryAt(720), 'pokemon')).toBe(true);
+
+  // Meowth, Vulpix and Tauros are listed bare by the per-species hunts, which carries their regional variants with
+  // them, so none of those leaves the species held — where the shiny list's Galarian Weezing above does.
+  expect(registered(entryAt(52), 'xxl')).toBe(false);
+  expect(registered(entryAt(37), 'xxl')).toBe(false);
+  expect(registered(entryAt(128), 'xxs')).toBe(false);
+
+  // A species the XXL list still wants is empty in the XXL dex and filled in the plain one.
+  const wantedXxl = ENTRIES.find((entry) => entry.released && entry.hunts.some(({ id }) => id === 'xxl'));
+
+  expect(wantedXxl && registered(wantedXxl, 'xxl')).toBe(false);
+  expect(wantedXxl && registered(wantedXxl, 'pokemon')).toBe(true);
+
+  // Not yet in the game is empty in every mode, however few lists name it.
+  const unreleased = ENTRIES.find((entry) => !entry.released);
+
+  expect(unreleased && MODES.some(({ id }) => registered(unreleased, id))).toBe(false);
 });

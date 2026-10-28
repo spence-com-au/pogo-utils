@@ -42,7 +42,7 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
-import { ICON_BASE, POGO_ASSETS } from '../src/pokedex/icons.ts';
+import { ICON_BASE, typeIcon, typeIconFile } from '../src/pokedex/icons.ts';
 import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
 import { silhouetteOfIcon, type Icon } from '../src/tools/battle/party.mts';
@@ -121,10 +121,8 @@ if (ignored.length > 0) {
 async function typeIcons(data: GameData): Promise<Record<string, Image>> {
   const read = await Promise.all(
     data.types.map(async (type) => {
-      const file = `POKEMON_TYPE_${type.toUpperCase()}.png`;
-
       try {
-        const icon = await cachedAs(join(CACHE, 'types'), file, `${POGO_ASSETS}Images/Types/${file}`, false, decodePng);
+        const icon = await cachedAs(join(CACHE, 'types'), typeIconFile(type), typeIcon(type), false, decodePng);
 
         return [[type, icon] as const];
       } catch {

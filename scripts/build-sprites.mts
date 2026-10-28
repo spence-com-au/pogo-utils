@@ -1,6 +1,6 @@
 /**
  * Writes the table the Pokédex page reads a species' picture out of: the icon to ask `pogo_assets` for, where the dex
- * number alone does not derive it.
+ * number alone does not derive it. And beside it the types each species' entry is coloured by, read off the same form.
  *
  * Read from the committed game master rather than from PokeMiners' directory listing, so the build stays off the
  * network and the names cannot disagree with the ones the inventory tool matches a screenshot against. That file
@@ -13,7 +13,8 @@
 import { ordinaryIcon, type Icons } from '../src/pokedex/icons.ts';
 import type { GameData } from '../src/tools/inventory/game-master.mts';
 import { fold } from '../src/pokemon/names.ts';
-import { GAME_MASTER, POKEMON_ICONS } from '../src/generated.ts';
+import type { Types } from '../src/pokedex/types.js';
+import { GAME_MASTER, POKEMON_ICONS, POKEMON_TYPES } from '../src/generated.ts';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const SPECIES = 'src/pokemon/pokedex.ts';
@@ -96,8 +97,9 @@ const { first: declared, last, split } = readSpecies();
 const guessed: number[] = [];
 
 /**
- * The picture that stands for a species, out of the forms the game has artwork for. A costume is never it, Pikachu
- * having 70 of them and no reason to be shown in a party hat.
+ * The form that stands for a species, out of the forms the game has artwork for: its picture is the species' picture,
+ * and its types the ones the entry is coloured by. A costume is never it, Pikachu having 70 of them and no reason to be
+ * shown in a party hat.
  *
  * The ordinary form where the species has one. Otherwise the form `pokedex.ts` declares first, matched by name: the
  * game master abbreviates what that table spells in full, so `PLANT_CLOAK` is offered `Plant` and `SHIELD_FORME` is
@@ -105,12 +107,12 @@ const guessed: number[] = [];
  * alphabetical, which picked Mimikyu with its disguise already broken and the white Galarian Darmanitan for the plain
  * Unovan species.
  */
-function iconOf(dex: number): string | null {
+function formOf(dex: number): GameData['forms'][number] | undefined {
   const plain = (forms.get(dex) ?? []).filter(({ costume, icon }) => !costume && icon !== null);
   const ordinary = plain.find(({ form }) => form === null);
 
   if (ordinary) {
-    return ordinary.icon;
+    return ordinary;
   }
 
   const wanted = declared.get(dex);
@@ -121,10 +123,17 @@ function iconOf(dex: number): string | null {
     guessed.push(dex);
   }
 
-  return (named ?? plain[0])?.icon ?? null;
+  return named ?? plain[0];
 }
 
 const icons: Record<string, string | null> = {};
+
+/**
+ * The types the Pokédex entry is coloured by, off the same form as its picture so the two cannot disagree — Galarian
+ * Darmanitan's ice would otherwise tint the plain fire species. A species with no artwork still has its types, from
+ * the first form the game master lists that is not a costume; Basculegion, with no form there at all, has no row.
+ */
+const types: Record<string, readonly string[]> = {};
 
 let rendered = 0;
 
@@ -144,7 +153,13 @@ if (forms.size === 0) {
 }
 
 for (let dex = 1; dex <= last; dex++) {
-  const icon = iconOf(dex);
+  const form = formOf(dex);
+  const icon = form?.icon ?? null;
+  const typed = form ?? (forms.get(dex) ?? []).find(({ costume }) => !costume);
+
+  if (typed !== undefined) {
+    types[dex] = typed.types;
+  }
 
   if (icon !== null) {
     rendered += 1;
@@ -166,6 +181,7 @@ if (rendered < last / 2) {
 }
 
 writeFileSync(POKEMON_ICONS, JSON.stringify(icons satisfies Icons));
+writeFileSync(POKEMON_TYPES, JSON.stringify(types satisfies Types));
 
 console.error(
   `${POKEMON_ICONS}: ${rendered} of ${last} species draw the game's own render, and ` +

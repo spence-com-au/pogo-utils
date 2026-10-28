@@ -9,7 +9,7 @@
 import { expect, test } from 'vitest';
 
 import POKEMON from './pokedex.js';
-import { GENERATIONS } from './generations.js';
+import { GENERATIONS, regionOf, regionsOf, SUB_REGIONS } from './generations.js';
 
 test('the generations tile the dex: no gap, no overlap, none of them empty', () => {
   // Each generation begins one past the end of the one before, so every dex number falls in exactly one span. A gap is
@@ -34,4 +34,41 @@ test('the last generation ends where the dex itself ends, which is the one bound
   // naming dex numbers nothing holds, and a species added there without this moving leaves it in no generation at all.
   expect(GENERATIONS.at(-1)?.last).toBe(Object.keys(POKEMON).length);
   expect(Object.keys(POKEMON)).toHaveLength(1025);
+});
+
+/**
+ * A region shared within a generation sits wholly inside it, so a species is from one region and the generation's name
+ * lists both. Hisui is the case there is: the seven from Wyrdeer to Enamorus, at the end of Galar's generation.
+ */
+test('a sub-region sits inside one generation, and names its species and that generation', () => {
+  for (const { first, last } of SUB_REGIONS) {
+    expect(GENERATIONS.filter((g) => first >= g.first && last <= g.last)).toHaveLength(1);
+  }
+
+  expect([898, 899, 905, 906].map(regionOf)).toEqual(['Galar', 'Hisui', 'Hisui', 'Paldea']);
+  expect(GENERATIONS.map(regionsOf)).toEqual([
+    'Kanto',
+    'Johto',
+    'Hoenn',
+    'Sinnoh',
+    'Unova',
+    'Kalos',
+    'Alola',
+    'Galar & Hisui',
+    'Paldea',
+  ]);
+  expect(regionOf(1026)).toBe(null);
+});
+
+/**
+ * Each region's starters are its own, and three dex numbers apart from each other. Written out rather than counted
+ * from `first` because Unova opens on Victini: counting would put Victini, Serperior and Emboar on its card.
+ */
+test("a generation's starters sit inside it, and Unova's are Snivy, Tepig and Oshawott", () => {
+  for (const { first, last, starters } of GENERATIONS) {
+    expect(starters.every((dex) => dex >= first && dex <= last)).toBe(true);
+    expect(starters.slice(1).map((dex, at) => dex - (starters[at] ?? 0))).toEqual([3, 3]);
+  }
+
+  expect(GENERATIONS.find(({ number }) => number === 5)?.starters).toEqual([495, 498, 501]);
 });

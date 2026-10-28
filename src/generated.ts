@@ -13,6 +13,7 @@
 export const GPX_PATHS = 'data/gpx-paths.json';
 export const ENTRIES_BY_EVENT = 'data/entries-by-event.json';
 export const POKEMON_ICONS = 'data/pokemon-icons.json';
+export const POKEMON_TYPES = 'data/pokemon-types.json';
 export const EVENTS_FEED = 'events.ics';
 
 /**
