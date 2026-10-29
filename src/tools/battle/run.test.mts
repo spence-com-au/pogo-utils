@@ -1035,8 +1035,8 @@ const HOLDING =
 /**
  * Held, Shadow Sneak goes once Mamoswine's Icicle Spear has landed, its countdown showing with no prompt and lowering
  * the count to afford nothing, our bar at 30% after it; or once held as long as Giratina's energy takes to fill from 50
- * at 8 a second, as any of its fast moves gains: 6.25s, between the 6s `lit` lasts and the 6.5s `late` lasts after it;
- * or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit`, which takes
+ * at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off the field between `lit` and `relit` not
+ * counting, between the 6s the two last and the 6.5s `late` lasts after them; or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit`, which takes
  * no tap.
  */
 test.each([
@@ -1053,11 +1053,11 @@ test.each([
   ],
   [
     'runs out of time',
-    { lasts: { ms: 6000, to: 'late' } },
+    { lasts: { ms: 4000, to: 'gap' } },
     'late',
     [
       HOLDING,
-      "own: no longer holding Shadow Sneak: held 6.3s, the soonest Giratina's energy fills from 50",
+      "own: no longer holding Shadow Sneak: held 6.3s, past the 6.3s Giratina's energy takes at the soonest to fill from 50",
       'own: threw Shadow Sneak',
     ],
   ],
@@ -1081,6 +1081,8 @@ test.each([
         countdown: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 3000, to: 'playing' } },
         playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
         back: { frame: ours(30), tap: { at: [0.499, 0.889], to: 'minigame' } },
+        gap: { frame: fixture('other-vs-fade'), lasts: { ms: 3000, to: 'relit' } },
+        relit: { frame: ours(80), lasts: { ms: 2000, to: 'late' } },
         late: { frame: ours(80), tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 500, to: 'won' } },
         finishing: {
           frame: painted(ours(80), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
@@ -1104,7 +1106,7 @@ test.each([
       report,
     );
 
-    expect(taps.filter((scene) => scene === 'lit' || scene === tapped)).toEqual([tapped]);
+    expect(taps.filter((scene) => scene === 'lit' || scene === 'relit' || scene === tapped)).toEqual([tapped]);
     expect(holds(report.events)).toEqual(said);
   },
 );

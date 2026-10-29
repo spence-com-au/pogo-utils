@@ -497,10 +497,11 @@ export async function run(
   let unlit: number | undefined;
   let relit: number | undefined;
 
-  // The move chosen that lowers our defense, held until the opponent's charged move has landed: since when, which a
-  // release and a second hold before it is tapped both keep, our energy filling on throughout, and whether it is held
-  // now. Ended by a tap, or by ours leaving the field.
-  let deferring: { move: string; from: number; held: boolean } | undefined;
+  // The move chosen that lowers our defense, held until the opponent's charged move has landed: for how long, which a
+  // release and a second hold before it is tapped both keep, counted only across the fight's own frames, back to back,
+  // where alone our fast moves gain energy; the frame and the time last counted; and whether it is held now. Ended by a
+  // tap, or by ours leaving the field.
+  let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
   const drop = (why: string) => {
     if (pending) {
@@ -1123,6 +1124,13 @@ export async function run(
         sparing = seen.opponent;
       }
 
+      // A hold lasts only as long as our energy grows through it: the fight's own frames, one after another.
+      if (deferring && (state === 'battle' || state === 'charged') && !player.minigame) {
+        deferring.waited += deferring.frame === frames - 1 ? clock.now() - deferring.at : 0;
+        deferring.frame = frames;
+        deferring.at = clock.now();
+      }
+
       // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
       // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
       // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for
@@ -1131,27 +1139,19 @@ export async function run(
         spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending
           ? seen.moves.get(pick.x)
           : undefined;
-      const kept = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
+      const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
       const hold =
         deferrable === undefined
           ? undefined
-          : untilTheirsLands(
-              data,
-              deferrable,
-              us,
-              theirName(),
-              ourShields,
-              verdict,
-              kept ? clock.now() - kept.from : 0,
-            );
+          : untilTheirsLands(data, deferrable, us, theirName(), ourShields, verdict, ongoing?.waited ?? 0);
 
-      if (deferrable !== undefined && hold?.held && !kept?.held) {
+      if (deferrable !== undefined && hold?.held && !ongoing?.held) {
         log(`holding ${deferrable}`, 'own', hold.why);
-        deferring = { move: deferrable, from: kept?.from ?? clock.now(), held: true };
-      } else if (kept?.held && hold && !hold.held) {
-        log(`no longer holding ${kept.move}`, 'own', hold.why);
-        kept.held = false;
-      } else if (deferring?.held && !kept && lit.length > 0) {
+        deferring = { move: deferrable, waited: ongoing?.waited ?? 0, frame: frames, at: clock.now(), held: true };
+      } else if (ongoing?.held && hold && !hold.held) {
+        log(`no longer holding ${ongoing.move}`, 'own', hold.why);
+        ongoing.held = false;
+      } else if (deferring?.held && !ongoing && lit.length > 0) {
         // Another throw taking over on a frame with a button lit, rather than the buttons hidden by a throw or a prompt.
         const instead = finish?.why ?? now?.why ?? spared ?? `${(pick && seen.moves.get(pick.x)) ?? 'another'} picked`;
 

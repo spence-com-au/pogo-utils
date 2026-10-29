@@ -697,7 +697,9 @@ export interface Hold {
  *
  * And only until `held`, how long it has been held in milliseconds, reaches `filling`'s time. PvPoke stops waiting at
  * 100 energy of ours, past which our fast moves gain nothing; the bot cannot see ours, so it stops at the soonest it
- * could be full, against an opponent holding its move for longer or a count that is wrong.
+ * could be full, against an opponent holding its move for longer or a count that is wrong. So `held` is to count only
+ * time our fast moves gain energy in, not the opponent's throw playing out. It is the soonest from `cost`, where a
+ * move lit before the hold began, as one `spare` kept for the next, already has more and fills sooner than this allows.
  *
  * Otherwise unlike PvPoke's: its test is the opponent's best move, and our shielding it, which with no shield to take
  * PvPoke's `wouldShield` answers yes for any of its charged moves taking 1/1.4 of the HP left (line 1221); ours is the
@@ -740,7 +742,12 @@ export function untilTheirsLands(
   if (held >= limit) {
     const whose = own.species === null ? 'our' : `${own.species}'s`;
 
-    return { held: false, why: `held ${(limit / 1000).toFixed(1)}s, the soonest ${whose} energy fills from ${cost}` };
+    const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+    return {
+      held: false,
+      why: `held ${seconds(held)}, past the ${seconds(limit)} ${whose} energy takes at the soonest to fill from ${cost}`,
+    };
   }
 
   return { held: true, why: `${opponent} can afford ${verdict.afforded}, which we would survive; ${verdict.why}` };

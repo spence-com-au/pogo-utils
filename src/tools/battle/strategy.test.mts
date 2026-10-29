@@ -631,7 +631,7 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   expect(holds('Close Combat', 0, survived, 6300)?.held).toBe(true);
   expect(holds('Close Combat', 0, survived, 6400)).toEqual({
     held: false,
-    why: "held 6.3s, the soonest Xerneas's energy fills from 45",
+    why: "held 6.4s, past the 6.3s Xerneas's energy takes at the soonest to fill from 45",
   });
 
   // Galarian Moltres's Wing Attack, 8 for 2 turns, fills from Brave Bird's 55 in 5625ms.
@@ -639,7 +639,7 @@ test('with no shield left, a move lowering our defense waits for a charged move 
 
   expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 5600)?.held).toBe(true);
   expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 5700)?.why).toBe(
-    "held 5.6s, the soonest Moltres's energy fills from 55",
+    "held 5.7s, past the 5.6s Moltres's energy takes at the soonest to fill from 55",
   );
   expect(
     untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 0)?.held,
