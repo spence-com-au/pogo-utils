@@ -510,10 +510,10 @@ export async function run(
   let relit: number | undefined;
 
   // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
-  // began, which a release and a second hold before it is thrown both keep, counted only across the fight's own frames,
-  // back to back, where alone our fast moves gain energy; the frame and the time last counted; and whether it is held
-  // now. Ended by a throw of ours playing, ours leaving the field, the battle ending or, failing that, the next one
-  // starting; a tap that is dropped leaves it running.
+  // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
+  // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
+  // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours leaving the
+  // field, the battle ending or, failing that, the next one starting; a tap that is dropped leaves it running.
   let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
   // Ends a hold with the move it held for, told where it was held.
@@ -1186,7 +1186,7 @@ export async function run(
               verdict,
               fast,
               affordable,
-              ongoing?.waited ?? 0,
+              deferring?.waited ?? 0,
             );
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
@@ -1196,7 +1196,7 @@ export async function run(
         }
 
         log(`holding ${deferrable}`, 'own', hold.why);
-        deferring = { move: deferrable, waited: ongoing?.waited ?? 0, frame: frames, at: clock.now(), held: true };
+        deferring = { move: deferrable, waited: deferring?.waited ?? 0, frame: frames, at: clock.now(), held: true };
       } else if (ongoing?.held && hold && !hold.held) {
         log(`no longer holding ${ongoing.move}`, 'own', hold.why);
         ongoing.held = false;
