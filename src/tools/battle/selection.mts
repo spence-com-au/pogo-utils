@@ -238,14 +238,15 @@ const CLEARED_MS = 1_000;
 /**
  * Reads the party card at `card` by its panel: tap it, search for it, hold the pink cell, then clear the search and
  * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp`, and which a search
- * by both finding it proves, as its panel's species; otherwise the panel names it. A silhouette misread names a species
- * the search finds nothing of, so a search by both that shows no pink cell is followed by one by the CP alone. Answers
- * the panel, or why it went unread, and whether the party screen is showing again for certain. A tap meant for the
- * party screen that lands on the selection screen swaps a Pokémon in, so the screen is read after the card's tap, after
- * each search and after CANCEL; the taps between those reads, on the search field, its ⊗ and CANCEL, land above or
- * below the grid, where no tap swaps anything. A selection screen not showing after the card's tap is looked for once
- * more, a phone at work being slower to draw it, and may yet be on its way after that, so the party screen still
- * showing then is not taken for certain.
+ * by both finding it proves, as its panel's species; otherwise the panel names it, and where the panel names nobody,
+ * the silhouette's species stands unless that search ruled it out. A silhouette misread names a species the search
+ * finds nothing of, so a search by both that shows no pink cell is followed by one by the CP alone. Answers the panel,
+ * or why it went unread, and whether the party screen is showing again for certain. A tap meant for the party screen
+ * that lands on the selection screen swaps a Pokémon in, so the screen is read after the card's tap, after each search
+ * and after CANCEL; the taps between those reads, on the search field, its ⊗ and CANCEL, land above or below the grid,
+ * where no tap swaps anything. A selection screen not showing after the card's tap is looked for once more, a phone at
+ * work being slower to draw it, and may yet be on its way after that, so the party screen still showing then is not
+ * taken for certain.
  */
 export async function readCard(
   hands: Hands,
@@ -266,6 +267,7 @@ export async function readCard(
   let cell: Point | undefined;
   let found: string | undefined;
   let took = false;
+  let refuted = false;
 
   if (!isSelection(lines)) {
     await sleep(OPENS_MS);
@@ -286,6 +288,7 @@ export async function readCard(
     lines = await read(results);
     cell = isSelection(lines) ? pinkCell(results) : undefined;
     took ||= searched(lines);
+    refuted ||= !cell && searched(lines) && dex !== undefined && term === query(dex, cp);
 
     if (cell || !searched(lines)) {
       found = cell && searched(lines) ? term : undefined;
@@ -295,7 +298,11 @@ export async function readCard(
 
   // Found by the dex number only where that search was seen to take: unsearched, the party's own cells are in view.
   const proven = dex !== undefined && found === query(dex, cp);
-  const panel = cell && (await readPanel(await hands.hold(cell), data, proven ? species : null, read));
+  const held = cell && (await readPanel(await hands.hold(cell), data, proven ? species : null, read));
+
+  // Named by nothing on the panel, the card keeps its silhouette's species unless the search by its dex number ruled it
+  // out, taking and showing no pink cell.
+  const panel = held && { ...held, species: held.species ?? (refuted ? null : species) };
 
   // Only where a search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL. One
   // that took stays in force under a second that OCR does not see take. A pink cell is no sign of one, the party often

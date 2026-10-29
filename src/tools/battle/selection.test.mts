@@ -196,6 +196,18 @@ test('reads a pink cell shown with no search in force as found by nothing', asyn
   expect(taps, 'the card, the search field and CANCEL, no ⊗').toHaveLength(3);
 });
 
+// Palkia read by its silhouette, its search not seen to take and its pink cell in view at the top of storage, and its
+// panel read with Water missed, so naming nobody: nothing ruled Palkia out, so the silhouette's species stands.
+test('keeps a silhouette nothing ruled out where the panel names nobody', async () => {
+  const screens = ['menu-pixel8-selection', 'menu-pixel8-selection', 'menu-pixel8-party-master'].map(fixture);
+  const { hands, searches } = phone(screens, fixture('menu-pixel8-held-palkia'));
+  const read = misreading((lines) => lines.map((line) => ({ ...line, text: line.text.replace('Water', '') })));
+  const { panel } = await readCard(hands, asleep, [0.185, 0.6], { species: 'Palkia', cp: 4673 }, DATA, read);
+
+  expect(searches).toEqual(['484&cp4673']);
+  expect(panel).toEqual({ species: 'Palkia', fast: 'Dragon Breath', charged: ['Spacial Rend', 'Aqua Tail'] });
+});
+
 // The search by Metagross's dex number shows no pink cell, ruling Metagross out, and its CP alone finds the card. A row
 // garbled past matching among every move, `oO Meteor Mas`, would be Meteor Mash among Metagross's moves, but is not
 // read among them: with Earthquake unread and Shadow Claw alone left, nothing names the card.

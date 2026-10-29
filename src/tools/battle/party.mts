@@ -18,8 +18,9 @@ import { down, place, type Size } from './layout.mts';
 import { type Point } from './play.mts';
 
 /**
- * What is known of a party card: its species, null where neither its silhouette nor its panel named one; the CP it
- * shows, null where unread; and its moves, where the panel the selection screen shows for it held was read.
+ * What is known of a party card: its species, null where its silhouette named none and its panel none either, or the
+ * search by the silhouette's dex number ruled it out and the panel named none; the CP it shows, null where unread; and
+ * its moves, where the panel the selection screen shows for it held was read.
  */
 export interface Card {
   species: string | null;

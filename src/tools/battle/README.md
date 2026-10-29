@@ -139,7 +139,9 @@ for text and done every few seconds.
     ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. One its dex number found
     is that species, its moves matched among its own whatever types the panel reads, a type OCR missed leaving them to
     fit another. Where the CP alone found it, its types and moves name the species, which a nickname hides: the one
-    species whose forms of those types hold every move read, or none, the silhouette's having been ruled out.
+    species whose forms of those types hold every move read, or none, the silhouette's having been ruled out. Where
+    neither search was seen to settle it, its pink cell in view with no search seen to take, the panel names it as it
+    would, and the silhouette's species stands where the panel names none.
   - **Leaving it as found:** the game keeps a search for the next opening, so one seen to take is cleared before CANCEL.
     One OCR did not see take is left, a pink cell being no sign of one: the party is often at the top of storage, in
     view unsearched, and ⊗ tapped with no search in force opens the keyboard over CANCEL. The next search typed clears
@@ -483,11 +485,11 @@ time, it's tried again at once.
 
 - **Ours:** a nicknamed Pokémon's species comes from the party screen: the lead, then whichever card was sent in, named
   by its silhouette where its panel went unread. Where the panel was read, a card its dex number's search found keeps
-  its silhouette's species, and one its CP alone found takes the species the panel's types and moves name, or none. If
-  the moves read under the buttons can't belong to that card, its own two where they were read and otherwise its
-  species', which a misread card would cause, it moves on to the next card that fits. A switch prompt is answered only
-  once our Poké Balls show a faint since the last one: a dark field at night can match its slate panel, and was once
-  answered with all three of ours still red.
+  its silhouette's species, one its CP alone found takes the species the panel's types and moves name, or none, and any
+  other takes theirs, its silhouette's where they name none. If the moves read under the buttons can't belong to that
+  card, its own two where they were read and otherwise its species', which a misread card would cause, it moves on to
+  the next card that fits. A switch prompt is answered only once our Poké Balls show a faint since the last one: a dark
+  field at night can match its slate panel, and was once answered with all three of ours still red.
 - **Theirs:** a switch made with the HUD up shows as their HP bar reading fuller than before. Fewer Poké Balls left than
   when the last name was read means the old one fainted, logged as `Entei fainted; sent in Salamence`; otherwise it
   switched out, `switched to Sneasel`.
