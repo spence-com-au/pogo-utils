@@ -17,8 +17,9 @@ const OUT = join(DIST, 'src');
 
 /**
  * The entry points: the pages', taken from the markup rather than transcribed, a `<script type="module">` being what
- * makes a module one, and the Worker's from `BATTLE_WORKER`. The tag names the `.js` the browser fetches, so both source extensions are tried: a page component is `.tsx` and
- * a module with no markup in it is `.ts`, which is not something the markup can say.
+ * makes a module one, and the Worker's from `BATTLE_WORKER`. The tag names the `.js` the browser fetches, so both
+ * source extensions are tried: a page component is `.tsx` and a module with no markup in it is `.ts`, which is not
+ * something the markup can say.
  */
 const entryPoints: string[] = [];
 

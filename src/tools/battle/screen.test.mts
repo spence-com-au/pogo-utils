@@ -138,6 +138,7 @@ test('fails with what the recording said once the newest one ends', async () => 
   expect((await screen.failed).message, 'told without being asked').toBe(
     'screen recording ended: Unable to get output buffers',
   );
+  expect(only.stopped(), 'stopped, its decoder having failed while it may still send').toBe(true);
 });
 
 test("fails with the decoder's reason where the recording said nothing", async () => {
