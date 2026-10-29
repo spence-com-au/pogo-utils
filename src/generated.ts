@@ -28,6 +28,12 @@ export const GAME_MASTER = 'src/tools/inventory/fixtures/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
+ * Where the battle's Worker is published, which `scripts/bundle.mts` builds it to and a page starts it from: no markup
+ * names it, so the markup cannot be where the bundler learns of it as it learns of a page's module.
+ */
+export const BATTLE_WORKER = 'src/battle/worker.js';
+
+/**
  * The artifact each step of `pnpm build` writes its part of the site into, and the one tree `pnpm serve` serves.
  * `package.json`'s scripts and the ignore lists in `.gitignore`, `.prettierignore` and `eslint.config.mjs` spell it as
  * well, being configuration rather than modules.

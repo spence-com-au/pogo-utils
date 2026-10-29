@@ -1,0 +1,104 @@
+/**
+ * The battle's Worker, from the page. One context at a time can claim the phone's USB device, and the page holds it in
+ * `phoneStore` from the settings menu's connect on. So for a run the page lets it go and tells the Worker its serial,
+ * the Worker opens it again from the devices the site was granted, and once the Worker says it has stopped, having let
+ * it go in turn, the page opens it again and holds it as before. Neither open asks anything of the user, nor of the
+ * phone, and other tabs see no phone held meanwhile.
+ */
+
+import { BATTLE_WORKER } from '../generated.js';
+import { reconnect as reopen, type Phone } from '../inventory/webusb.js';
+import { type PhoneStore } from '../phone-store.js';
+import { type Image } from '../tools/inventory/png.mts';
+import { type Command, type Message } from './protocol.js';
+
+/** What the page posts to and hears from: the Worker, or a channel's end in a test. */
+export interface Endpoint {
+  postMessage(command: Command): void;
+  addEventListener(type: 'message', listener: (event: MessageEvent<Message>) => void): void;
+  addEventListener(type: 'error', listener: (event: ErrorEvent) => void): void;
+  terminate(): void;
+}
+
+export interface Run {
+  /** The latest frame the phone has sent, for a canvas, or `undefined` before the first and once stopped. */
+  frame(): Promise<Image | undefined>;
+  stop(): void;
+
+  /** Settles once the page holds the phone again, rejecting with why the run stopped where it failed. */
+  ended: Promise<void>;
+}
+
+/**
+ * Hands the phone `store` holds to `worker` for a run, answering once the phone's screen has sent its first frame, or
+ * failing with why it never did once the page holds the phone again. The Worker is ended with the run.
+ */
+export async function lend(
+  store: PhoneStore,
+  worker: Endpoint = new Worker(BATTLE_WORKER, { type: 'module' }),
+  reconnect: (serial: string) => Promise<Phone> = reopen,
+): Promise<Run> {
+  const phone = store.phone;
+
+  if (!phone) {
+    worker.terminate();
+    throw new Error('no phone is connected');
+  }
+
+  const { serial } = phone;
+  await phone.close();
+
+  // Frames are answered in the order they were asked for, the Worker taking each message in turn.
+  const asked: ((image: Image | undefined) => void)[] = [];
+  let started = () => {};
+  const running = new Promise<void>((resolve) => (started = resolve));
+  let over = false;
+
+  const ended = new Promise<void>((resolve, reject) => {
+    const end = (error: string | undefined) => {
+      if (over) {
+        return;
+      }
+
+      over = true;
+      worker.terminate();
+      asked.splice(0).forEach((answer) => answer(undefined));
+
+      // The run's failure is the news where there is one, over the phone failing to come back after it.
+      reconnect(serial)
+        .then((back) => store.hold(back))
+        .then(
+          () => (error === undefined ? resolve() : reject(new Error(error))),
+          (failure: unknown) => reject(error === undefined ? failure : new Error(error)),
+        );
+    };
+
+    worker.addEventListener('message', ({ data }) => {
+      if (data.type === 'started') {
+        started();
+      } else if (data.type === 'frame') {
+        asked.shift()?.(data.image);
+      } else {
+        end(data.error);
+      }
+    });
+
+    // A Worker that failed to load, or threw past `host`: its context is gone, and the device with it.
+    worker.addEventListener('error', (event) => end(event.message || 'the battle Worker failed'));
+  });
+
+  worker.postMessage({ type: 'start', serial });
+  await Promise.race([running, ended]);
+
+  return {
+    frame: () =>
+      over
+        ? Promise.resolve(undefined)
+        : new Promise((answer) => {
+            asked.push(answer);
+            worker.postMessage({ type: 'frame' });
+          }),
+    stop: () => worker.postMessage({ type: 'stop' }),
+    ended,
+  };
+}

@@ -15,7 +15,9 @@ function fake(name: string, close: () => Promise<void> = () => Promise.resolve()
   });
   const phone: Phone = {
     name,
+    serial: name,
     transport: { state: vi.fn(), shell: vi.fn(), screencap: vi.fn() },
+    spawn: vi.fn(),
     close: vi.fn(close),
     disconnected,
   };

@@ -1,5 +1,6 @@
 /**
- * Bundles the module graph the markup names into the files it already points at.
+ * Bundles the module graph the markup names into the files it already points at, and the battle's Worker into the one
+ * `BATTLE_WORKER` names.
  *
  * `outbase` reproduces the source tree's shape under `outdir`, so `src/main.tsx` lands at `dist/src/main.js` — the path
  * `index.html` already points at — and the entry points are read off those tags rather than listed here, so the two
@@ -9,7 +10,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
-import { DIST } from '../src/generated.ts';
+import { BATTLE_WORKER, DIST } from '../src/generated.ts';
 
 const OUT = join(DIST, 'src');
 
@@ -20,19 +21,22 @@ const OUT = join(DIST, 'src');
  */
 const entryPoints: string[] = [];
 
+/** The source of the `.js` that `by` names, which is either kind. */
+function sourceOf(module: string, by: string): string {
+  const source = [`${module}.tsx`, `${module}.ts`].find((path) => existsSync(path));
+
+  if (source === undefined) {
+    throw new Error(`${by} names ${module}.js, which is neither ${module}.tsx nor ${module}.ts`);
+  }
+
+  return source;
+}
+
 for (const page of readdirSync('.').filter((name) => name.endsWith('.html'))) {
   for (const [, module] of readFileSync(page, 'utf8').matchAll(/<script type="module" src="(src\/[^"]+)\.js">/g)) {
-    if (module === undefined) {
-      continue;
+    if (module !== undefined) {
+      entryPoints.push(sourceOf(module, page));
     }
-
-    const source = [`${module}.tsx`, `${module}.ts`].find((path) => existsSync(path));
-
-    if (source === undefined) {
-      throw new Error(`${page} names ${module}.js, which is neither ${module}.tsx nor ${module}.ts`);
-    }
-
-    entryPoints.push(source);
   }
 }
 
@@ -41,6 +45,10 @@ for (const page of readdirSync('.').filter((name) => name.endsWith('.html'))) {
 if (entryPoints.length === 0) {
   throw new Error('No page names a module: the `<script type="module">` tags are not the shape this expects.');
 }
+
+// A module Worker, which a page starts by its path rather than its markup naming it, and which imports the chunks it
+// shares with the pages as they do.
+entryPoints.push(sourceOf(BATTLE_WORKER.replace(/\.js$/, ''), 'src/generated.ts'));
 
 const result = await build({
   entryPoints,
@@ -93,4 +101,4 @@ const result = await build({
 
 const modules = new Set(Object.values(result.metafile.outputs).flatMap((output) => Object.keys(output.inputs)));
 
-console.log(`${entryPoints.length} page(s) bundled into ${OUT}/ from ${modules.size} module(s).`);
+console.log(`${entryPoints.length} entry point(s) bundled into ${OUT}/ from ${modules.size} module(s).`);

@@ -30,10 +30,12 @@ flowchart LR
 ### Watching the screen
 
 - **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
-  decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen` keeps one recording going after
-  another, since `screenrecord` stops after 180s, and always answers the latest frame. What `screenrecord` is asked for,
-  the picture's size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process`
-  so that a page streaming over WebUSB asks for the same picture.
+  decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen`, in [`screen.mts`](screen.mts),
+  keeps one recording going after another, since `screenrecord` stops after 180s, and always answers the latest frame.
+  It knows a recording only as a `Feed` of frames it can stop, so a page plugs in its own: `screenrecord` over WebUSB,
+  decoded by WebCodecs, in [`src/battle/feed.ts`](../../battle/feed.ts). What `screenrecord` is asked for, the picture's
+  size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process` so that a page
+  streaming over WebUSB asks for the same picture.
 - **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
   which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
   until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
@@ -98,7 +100,8 @@ for text and done every few seconds.
   Pokémon low on HP can faint while it waits. Nothing is swiped for 0.7s after a charged-move tap, since a swipe
   straight after one could cost the throw. A bench card to switch to is tapped ahead of a lit move, since the switch is
   made to keep that move's energy.
-- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts)), not a
+- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts), over the
+  marker protocol in [`held-shell.mts`](../inventory/held-shell.mts) that a page's shell over WebUSB shares), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
   ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
@@ -167,8 +170,12 @@ for text and done every few seconds.
    `off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)`. A stretch
    the battle never comes back from, its end, is not.
 
-`run` is driven through a `Phone` (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb` directly, so tests
-stand in a scripted phone that plays committed frames as scenes.
+`run` is driven through a [`Phone`](phone.mts) (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb`
+directly, so tests stand in a scripted phone that plays committed frames as scenes, and a page one over WebUSB
+([`src/battle/phone.ts`](../../battle/phone.ts)). A page runs it in a dedicated Worker, whose timers keep time while the
+tab is hidden where the page's fall to one a second. Only one context can claim the phone's USB device, so the page lets
+go of the phone it holds, the Worker opens it again by its serial from the devices the site was granted, and once the
+Worker has stopped and let go in turn the page opens it again ([`src/battle/client.ts`](../../battle/client.ts)).
 
 **[`report.mts`](report.mts)** is how a run tells of itself: events (a tap, a throw, a shield taken and why, a faint)
 and a status sent every frame. On a terminal, `live` draws a fixed full-screen panel with our side on the left and the
