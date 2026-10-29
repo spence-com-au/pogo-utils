@@ -26,7 +26,7 @@
 
 import POKEMON from '../pokemon/pokedex.js';
 import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
-import { isGroup, leafText, type Group, type Leaf, type Node } from './tree.js';
+import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
 import type { State } from './query.js';
 
 /** A run of dex numbers, inclusive at both ends, which is every shape of number the game reads: `4` is `[4, 4]`. */
@@ -448,6 +448,22 @@ function short(node: Node, told: Told): Node {
   }
 
   let parts = node.parts.map((part) => short(part, told));
+
+  /*
+   * A span over the whole of its range is true of every Pokémon, so it gets the two answers the dex spans get below:
+   * in an `all` it is a pill that has earned no clause, and in an `any` it makes the whole group ask nothing. A
+   * negated one is left alone for the reason the empty overlap is — it matches nothing, and dropping it would turn
+   * that into a search for everything.
+   */
+  const saying = parts.filter((part) => isGroup(part) || part.negated || !whole(part));
+
+  if (saying.length < parts.length) {
+    if (node.junction === 'any') {
+      return { ...node, parts: [] };
+    }
+
+    parts = saying;
+  }
 
   // Each category settled among this junction's own parts, which neither reads nor disturbs the spans below.
   for (const category of GROUPS) {

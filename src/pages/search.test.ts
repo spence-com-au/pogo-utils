@@ -73,7 +73,7 @@ test('a box takes the digits of a bound its own floor is wider than', () => {
   const cp = range('cp');
 
   expect([year.min, year.max]).toEqual([2016, 2030]);
-  expect([cp.min ?? 0, cp.max]).toEqual([0, 5000]);
+  expect([cp.min ?? 0, cp.max]).toEqual([0, 99999]);
 
   /*
    * Every prefix of a year is below the floor, which is what a box showing its own clamp could not survive: `2`
@@ -87,7 +87,7 @@ test('a box takes the digits of a bound its own floor is wider than', () => {
 
   // The ceiling never had the same trouble: no prefix of a number inside a range is above it, only the number itself.
   expect(typing('600', cp)).toEqual({ shown: '600', bound: 600, left: '600' });
-  expect(typing('6000', cp)).toEqual({ shown: '6000', bound: 5000, left: '5000' });
+  expect(typing('600000', cp)).toEqual({ shown: '600000', bound: 99999, left: '99999' });
 });
 
 test('the digits stay in the box they were typed into', () => {

@@ -261,8 +261,8 @@ const EDGES: Record<Edge, string> = { from: 'lowest', to: 'highest' };
  * So the floor goes from the lowest end, the ceiling from the highest, and each end is held to the other's side of the
  * span. Nothing is lost by any of it: a span that starts on the floor asks for the same set as one with that end left
  * open, and so does one that ends on the ceiling — `buddy0-3` and `buddy-3` are two spellings of levels nought to
- * three, `buddy2-5` and `buddy2-` two of levels two to five. `optimise.js` would have caught the no-op span, but its
- * `everything` is measured against the dex alone.
+ * three, `buddy2-5` and `buddy2-` two of levels two to five. *Shorten* drops a no-op span and the caveat under the box
+ * names one, but both are after the fact, and a dropdown can decline to offer it in the first place.
  *
  * **The bound comes in because a tree can hold what the control would not offer.** `buddy0` is the documented
  * spelling of *never a buddy*, so the Advanced pane and a shared link both arrive with a `from` of nought, and a

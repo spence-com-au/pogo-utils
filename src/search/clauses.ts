@@ -28,7 +28,7 @@
  */
 
 import { RANGES_BY_ID, SHORTCUTS, type RangeId } from './terms.js';
-import { group, isGroup, leafText, type Leaf, type Node } from './tree.js';
+import { group, isGroup, leafText, whole, type Leaf, type Node } from './tree.js';
 
 /**
  * As many clauses as the distribution is let reach. A query ORing a dozen pairs is 4096 clauses out of 24 pills, and
@@ -124,7 +124,7 @@ const MISHANDLED = [
   },
 ];
 
-/** One phrase the game mishandles, written as the reader will see it, and what the game does with it instead. */
+/** One phrase worth a caveat, written as the reader will see it, and what the game does with it. */
 export interface Mishandled {
   term: string;
   note: string;
@@ -138,7 +138,7 @@ export interface Written {
   /** Why nothing came back, in words for the reader under the box rather than for a log. */
   error: string | null;
 
-  /** The phrases the game is known to get wrong, each named once however many clauses it ended up in. */
+  /** The phrases the game gets wrong or that rule nothing out, each named once however many clauses it reached. */
   mishandled: readonly Mishandled[];
 }
 
@@ -411,6 +411,32 @@ function swallowed(clauses: readonly (readonly Leaf[])[]): Mishandled[] {
   return named;
 }
 
+/**
+ * The spans that take in their whole range, each named once: a `cp0-` beside a `shiny` in an `all` filters nothing,
+ * and beside one in an `any` leaves the clause it is in ruling nothing out.
+ *
+ * Computed off the span's bounds by `whole` rather than looked up as a pattern, so it reaches a span however the reader
+ * arrived at it. The number boxes accept one on purpose — a box records what it is given, and a reader typing `0` in
+ * the lowest on the way to `3` in the highest passes through exactly the span this names — so the page says so instead.
+ *
+ * Only the positive form, which is the opposite of the reason `mishandling` reads only the negated one. A `!cp0-`
+ * standing alone matches nothing, and the empty list that comes back says so on its own; a `cp0-` contributes nothing
+ * to a list that still looks like an answer, so the reader believes the clause did some work.
+ */
+function inert(clauses: readonly (readonly Leaf[])[]): Mishandled[] {
+  const spans = new Set(
+    clauses
+      .flat()
+      .filter((leaf) => !leaf.negated && whole(leaf))
+      .map(written),
+  );
+
+  return [...spans].map((term) => ({
+    term,
+    note: 'this takes in every value the range has, so it matches every Pokémon',
+  }));
+}
+
 /** The negated terms the game gets wrong, each named once however many of the clauses it reached. */
 function mishandling(clauses: readonly (readonly Leaf[])[]): Mishandled[] {
   const negated = new Set(
@@ -457,10 +483,10 @@ export function spreadOut(node: Node): readonly (readonly Leaf[])[] | null {
  * intermediate clauses the absorption above sees, so two of them surviving a nested `any` can come out the other way
  * round than they would unfactored.
  *
- * Both sets of notes are read off the clauses that survived rather than off everything the distribution produced. A
- * clause dropped for asking nothing takes its pills with it, so a query can spread a `!1hp` and then write no clause
- * holding one — naming it would have named a term the string does not contain, which is the one thing the page says
- * these notes are for.
+ * Every note is read off the clauses that survived rather than off everything the distribution produced. A clause
+ * dropped for asking nothing takes its pills with it, so a query can spread a `!1hp` and then write no clause holding
+ * one — naming it would have named a term the string does not contain, which is the one thing the page says these
+ * notes are for.
  */
 export function clausesOf(node: Node): Written {
   const kept = spreadOut(node);
@@ -476,6 +502,6 @@ export function clausesOf(node: Node): Written {
   return {
     clauses: kept.map((leaves) => leaves.map(written).join(',')),
     error: null,
-    mishandled: [...mishandling(kept), ...swallowed(kept)],
+    mishandled: [...mishandling(kept), ...swallowed(kept), ...inert(kept)],
   };
 }

@@ -20,7 +20,7 @@ import { expect, test } from 'vitest';
 
 import { CLAUSES, clausesOf } from './clauses.js';
 import { RANGES_BY_ID } from './terms.js';
-import { group, spanned, type Leaf, type Node } from './tree.js';
+import { group, leafText, spanned, type Leaf, type Node } from './tree.js';
 
 /** A required pill, which is what a chip pressed in the catalogue becomes. */
 const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
@@ -460,6 +460,42 @@ test('the same term is named once however many clauses it reached', () => {
   expect(clausesOf(any(all(named('1hp'), yes('shiny')), all(named('1hp'), yes('lucky')))).mishandled).toEqual([
     { term: '!1hp', note: expect.stringContaining('ignores a negation') },
   ]);
+});
+
+/*
+ * A span over the whole of its range is the one note computed rather than looked up, so it is swept over every range
+ * and every way a span can reach both bounds: open at either end, or filled the wrong way round. A range only some
+ * species hold a value in is the exception, its whole span being the search for those species.
+ */
+
+test('a span over the whole of its range is named for matching every Pokémon', () => {
+  // The terms this note names, leaving out the negation caveats a ruled-out IV, buddy or mega level draws as well.
+  const inert = (node: Node) =>
+    clausesOf(node)
+      .mishandled.filter(({ note }) => note.includes('matches every Pokémon'))
+      .map(({ term }) => term);
+
+  for (const range of RANGES_BY_ID.values()) {
+    const floor = range.min ?? 0;
+    const pill = (from: number | null, to: number | null, negated = false): Leaf => ({
+      kind: 'range',
+      id: range.id,
+      from,
+      to,
+      negated,
+    });
+
+    for (const one of [pill(floor, null), pill(null, range.max), pill(range.max, floor)]) {
+      const term = leafText(one);
+
+      expect({ term, named: inert(all(yes('shiny'), one)) }).toEqual({ term, named: range.sparse ? [] : [term] });
+    }
+
+    // Ruled out it matches nothing, which the empty list says for itself; one short of either bound says something.
+    for (const one of [pill(floor, null, true), pill(floor + 1, null), pill(null, range.max - 1)]) {
+      expect({ term: leafText(one), named: inert(all(yes('shiny'), one)) }).toEqual({ term: leafText(one), named: [] });
+    }
+  }
 });
 
 test('a term the game reads properly is not named, negated or otherwise', () => {

@@ -18,7 +18,7 @@ import POKEMON from '../pokemon/pokedex.js';
 import { compose, emptyState, type State } from './query.js';
 import { optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
-import { group, type Leaf, type Node } from './tree.js';
+import { group, leafText, type Leaf, type Node } from './tree.js';
 
 const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
 const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
@@ -167,6 +167,51 @@ test('spans covering the whole dex earn no clause either way', () => {
 
   expect(short(any(...every))).toBe('');
   expect(short(all(yes('shiny'), span(1, 1025), span(1, 1025)))).toBe('shiny');
+});
+
+test('a span over the whole of any range earns no clause, unless only some species hold one', () => {
+  expect(RANGES.filter((range) => range.sparse).map((range) => range.id)).toEqual([
+    'megalevel',
+    'dynamaxmoves',
+    'gigantamaxmoves',
+    'maxmove',
+    'maxguard',
+    'maxspirit',
+  ]);
+
+  // Every range, so a row added to `terms.js` is held to this as well as the ones there now.
+  for (const range of RANGES) {
+    const floor = range.min ?? 0;
+    const pill = (from: number | null, to: number | null, negated = false): Leaf => ({
+      kind: 'range',
+      id: range.id,
+      from,
+      to,
+      negated,
+    });
+
+    // Open above the floor, open below the ceiling, and the two ends typed the wrong way round.
+    for (const one of [pill(floor, null), pill(null, range.max), pill(range.max, floor)]) {
+      const text = leafText(one);
+
+      // In an `any` it is true of everything, so the group asks nothing and the `shiny` beside it never filtered.
+      expect({
+        text,
+        all: short(all(yes('shiny'), one)),
+        any: short(all(yes('lucky'), any(yes('shiny'), one))),
+      }).toEqual({
+        text,
+        all: range.sparse ? `shiny&${text}` : 'shiny',
+        any: range.sparse ? `lucky&shiny,${text}` : 'lucky',
+      });
+    }
+
+    // Ruled out it matches nothing, and dropping it would turn that into a search for everything; one short of either
+    // bound still says something.
+    for (const one of [pill(floor, null, true), pill(floor + 1, null), pill(null, range.max - 1)]) {
+      expect(short(all(yes('shiny'), one))).toBe(`shiny&${leafText(one)}`);
+    }
+  }
 });
 
 test('a negated span is left out of the arithmetic', () => {

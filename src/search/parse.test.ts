@@ -320,20 +320,20 @@ test('a bare span that a generation chip already spells arrives as that chip', (
 test('a typed span is bounded by the range, so it is a pill the number boxes could have made', () => {
   /*
    * The bounds reach a `<input type="number" max="…">` and a link the page writes, so a pill outside the range's limits
-   * is one the rest of the page cannot hold — and the value then moves under the reader, `cp99999` composing itself and
-   * its own link reading back as `cp5000`. The last row is the sharp one: `Number` on a long enough digit run is a
-   * float, and `1e+21` went into the search box as a term the game cannot read at all.
+   * is one the rest of the page cannot hold — and the value then moves under the reader, `cp999999` composing itself
+   * and its own link reading back as `cp99999`. The last row is the sharp one: `Number` on a long enough digit run is
+   * a float, and `1e+21` went into the search box as a term the game cannot read at all.
    */
   /*
-   * The last row is the one where the clamp changes what is asked rather than only how it is spelled. A CP above 5000
-   * belongs to nothing, so `cp99999` and `cp5000` are the same search; an IV of 9 is not a bucket the game has, where
+   * The last row is the one where the clamp changes what is asked rather than only how it is spelled. A six-digit CP
+   * belongs to nothing, so `cp999999` and `cp99999` are the same search; an IV of 9 is not a bucket the game has, where
    * `4hp` is every perfect one. That is what the clamp has always done to a range whose ceiling is a count of options
    * — `buddy9` is `buddy5` and `mega9` is `mega3` — and the reason it still wins is the one `bounded` gives: a pill the
    * boxes could not have made is one whose own link reads back as something else.
    */
   for (const [typed, written] of [
-    ['cp99999', 'cp5000'],
-    ['cp0-99999', 'cp0-5000'],
+    ['cp999999', 'cp99999'],
+    ['cp0-999999', 'cp0-99999'],
     ['2020', '1025'],
     ['year5', 'year2016'],
     ['1000000000000000000000', '1025'],
@@ -345,6 +345,18 @@ test('a typed span is bounded by the range, so it is a pill the number boxes cou
       again: written,
     });
   }
+});
+
+test('an age a launch-day Pokémon has reached reads back as itself', () => {
+  // Counted from the day the game launched rather than written down, since the oldest catch goes on getting older.
+  const days = Math.floor((Date.now() - Date.UTC(2016, 6, 6)) / 86_400_000);
+
+  expect(stringFor(`age${days}-`)).toBe(`age${days}-`);
+});
+
+test('a CP a Pokémon in storage can reach reads back as itself', () => {
+  // A perfect Crowned Zacian at level 50, from the game master's base stats: 5000 looks like a ceiling and is not one.
+  expect(stringFor('cp5629-')).toBe('cp5629-');
 });
 
 test('a family shorthand and a tag stay the text the game reads', () => {

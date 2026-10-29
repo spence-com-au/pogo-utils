@@ -61,7 +61,7 @@ test('a span pill leaves an empty bound open rather than filling it from its own
    * `1-151`. The dex carries no prefix, a bare span being how the game searches dex numbers, so its open low end is
    * the bare leading dash the phrase list gives as its own example of the form.
    */
-  expect(range('cp').max).toBe(5000);
+  expect(range('cp').max).toBe(99999);
   expect([range('dex').prefix, range('dex').min]).toEqual(['', 1]);
 
   expect(leafText({ kind: 'range', id: 'cp', from: 3000, to: null, negated: false })).toBe('cp3000-');
