@@ -395,6 +395,9 @@ export interface Cycle {
  * move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
  *
  * - Its `+ 1` HP of margin a shield, under a point of our bar, is left out.
+ * - Its count of fast moves goes below the one of margin, to none or fewer, where the opponent had more than twice the
+ *   move's cost, as up to `FULL` it can: that would keep every shield against an opponent able to throw again at once,
+ *   when the next hit comes soonest. Here it stops at none before the margin.
  * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which a hit measured off
  *   the bar would need our HP, a rank-1 guess, to tell.
  * - It asks the cycle of every charged move too (line 1226), where this asks it of the hit alone: a harder move the
@@ -435,7 +438,7 @@ export function wouldShield(
     return { shield: true, why: `${verdict.why}; their energy uncounted` };
   }
 
-  const fast = Math.ceil((cost - Math.max(estimate.energy - cost, 0)) / estimate.gain) + 1;
+  const fast = Math.max(Math.ceil((cost - Math.max(estimate.energy - cost, 0)) / estimate.gain), 0) + 1;
   const left = hp - share;
   const shield = left < fast * step * shields;
   const times = shields > 1 ? `${shields} × the` : 'the';

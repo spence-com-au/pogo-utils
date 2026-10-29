@@ -382,6 +382,11 @@ test('energy the opponent had past what the hit costs shortens the cycle, the ne
       'Drill Peck would take ~34%, with 50% left; leaves ~16%, more than 2 × the ~2% of 1 fast move before their ' +
       'next charged move',
   });
+
+  // 100, past twice Drill Peck, is no fewer: still the one for margin, where PvPoke's sum comes to −1.
+  expect(palkia(0.5, 2, { ...THUNDER_SHOCK, estimate: { energy: 100, gain: 9 } }).why).toMatch(
+    /the ~2% of 1 fast move before/,
+  );
 });
 
 test('a harder move the count does not yet afford takes the shield against one it does', () => {
