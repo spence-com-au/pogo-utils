@@ -217,7 +217,7 @@ export async function readPanel(
     : { species: named, ...moves };
 }
 
-/** What reading a card needs of the phone, as `run.mts`'s `Phone` gives it. */
+/** What reading a card needs of the phone, as the `Phone` in `phone.mts` gives it. */
 export interface Hands {
   screenshot(): Promise<Image>;
   tap(at: Point): Promise<void>;
