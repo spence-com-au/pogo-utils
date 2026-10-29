@@ -4,8 +4,9 @@
  * 30 frames a second, and `ffmpeg` decodes it here into the same `Image` the inventory readers take.
  *
  * `decodeFrames` is the half that knows nothing of the phone, so a test can hand it a recording off disk and exercise
- * the very decoder a battle runs on. `feed` is the half that does: a recording as the `Screen` in `screen.mts` watches
- * one, which keeps one going after another and answers the latest frame.
+ * the very decoder a battle runs on. `screenrecord` is the half that does. `feed` puts the two together as the `Feed`
+ * that the `Screen` in `screen.mts` watches, which keeps one recording going after another and answers the latest
+ * frame, out of whatever process it is handed.
  */
 
 import { type Image } from '../inventory/png.mts';

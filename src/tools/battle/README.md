@@ -172,10 +172,11 @@ for text and done every few seconds.
 
 `run` is driven through a [`Phone`](phone.mts) (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb`
 directly, so tests stand in a scripted phone that plays committed frames as scenes, and a page one over WebUSB
-([`src/battle/phone.ts`](../../battle/phone.ts)). A page runs it in a dedicated Worker, whose timers keep time while the
-tab is hidden where the page's fall to one a second. Only one context can claim the phone's USB device, so the page lets
-go of the phone it holds, the Worker opens it again by its serial from the devices the site was granted, and once the
-Worker has stopped and let go in turn the page opens it again ([`src/battle/client.ts`](../../battle/client.ts)).
+([`src/battle/phone.ts`](../../battle/phone.ts)). That one is built in a dedicated Worker, for `run` to play through
+there once the Battle tab runs it, since a Worker's timers keep time while the tab is hidden where the page's fall to
+one a second. Only one context can claim the phone's USB device, so the page lets go of the phone it holds, the Worker
+opens it again by its serial from the devices the site was granted, and once the Worker has stopped and let go in turn
+the page opens it again ([`src/battle/client.ts`](../../battle/client.ts)).
 
 **[`report.mts`](report.mts)** is how a run tells of itself: events (a tap, a throw, a shield taken and why, a faint)
 and a status sent every frame. On a terminal, `live` draws a fixed full-screen panel with our side on the left and the
