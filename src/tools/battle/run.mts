@@ -383,8 +383,9 @@ export async function run(
   const sameCard = (was: Card | undefined, card: Card) =>
     was !== undefined && was.species === card.species && (was.cp === null || card.cp === null || was.cp === card.cp);
 
-  // The moves of each card in `slots` read off the selection screen, as `readCard` reads them, in turn, onto `cards`.
-  // Stops at one that left anything but the party screen showing, nothing more being tapped then.
+  // `cards` with the moves of each card in `slots` merged in, read off the selection screen in turn as `readCard` reads
+  // them, and whether the party screen is showing again. Stops at one that left anything but the party screen showing,
+  // nothing more being tapped then.
   const readCards = async (cards: readonly Card[], slots: readonly number[], screen: Size) => {
     const read = [...cards];
 
@@ -1561,13 +1562,13 @@ export async function run(
       if (menu.screen === 'party' && 'tap' in menu) {
         const cps = menu.cps ?? (await readCps(screenshot));
         const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
-        const kept = cards.map((card, slot) => (sameCard(shown[slot], card) ? party[slot] : undefined));
-        const stale = cards.flatMap((_, slot) => (kept[slot] ? [] : [slot]));
+        const tried = cards.map((card, slot) => (sameCard(shown[slot], card) ? party[slot] : undefined));
+        const stale = cards.flatMap((_, slot) => (tried[slot] ? [] : [slot]));
 
         shown = cards.map((card, slot) =>
-          kept[slot] ? { ...card, cp: card.cp ?? shown[slot]?.cp ?? null } : card.cp === null ? undefined : card,
+          tried[slot] ? { ...card, cp: card.cp ?? shown[slot]?.cp ?? null } : card.cp === null ? undefined : card,
         );
-        party = cards.map((card, slot) => kept[slot] ?? card);
+        party = cards.map((card, slot) => tried[slot] ?? card);
 
         if (stale.length > 0) {
           const read = await readCards(party, stale, screenshot);
