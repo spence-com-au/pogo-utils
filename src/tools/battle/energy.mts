@@ -532,7 +532,7 @@ function filling(data: GameData, own: Shown, cost: number): number {
   return fastest > 0 ? (FULL - cost) / fastest : 0;
 }
 
-/** Whether the move chosen is held, and why, or why it goes though this rule would hold it. */
+/** Whether the move chosen is held and why, or, where this rule would have held it, why it goes. */
 export interface Hold {
   held: boolean;
   why: string;
