@@ -154,6 +154,20 @@ test('reads a card its dex number found as that species, among its own moves', a
   expect(panel).toEqual({ species: 'Metagross', fast: 'Shadow Claw', charged: ['Psychic', 'Earthquake'] });
 });
 
+// Metagross's panel with its type row unread: proven by its dex number, its moves are read among its own all the same;
+// with no species to go on, nothing names it, and the panel goes unread.
+test('reads the moves of a proven panel whose types went unread', async () => {
+  const held = fixture('menu-pixel8-held-metagross');
+  const read = misreading((lines) => lines.filter((line) => !/Steel|Psychic/.test(line.text)));
+
+  expect(await readPanel(held, DATA, 'Metagross', read)).toEqual({
+    species: 'Metagross',
+    fast: 'Shadow Claw',
+    charged: ['Meteor Mash', 'Earthquake'],
+  });
+  expect(await readPanel(held, DATA, null, read)).toBeUndefined();
+});
+
 // The search by Metagross's dex number shows no pink cell, ruling Metagross out, and its CP alone finds the card. A row
 // garbled past matching among every move, `oO Meteor Mas`, would be Meteor Mash among Metagross's moves, but is not
 // read among them: with Earthquake unread and Shadow Claw alone left, nothing names the card.

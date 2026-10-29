@@ -154,7 +154,7 @@ const same = (a: readonly string[], b: ReadonlySet<string>) => a.length === b.si
  * whose Steel went unread holding Shadow Claw and Psychic as Mew does. Null, the moves are matched among every move and
  * name the species: the one whose forms of the panel's types hold them all. A Pokémon whose moves two species of its
  * types can hold is named by neither, and one whose moves no form of its types holds, by none. Undefined where no panel
- * is drawn, or its types or moves went unread.
+ * is drawn, its moves went unread, or, `species` being null, its types did.
  */
 export async function readPanel(
   image: Image,
@@ -210,7 +210,7 @@ export async function readPanel(
     named = speciesOf(moves);
   }
 
-  return types.size === 0 || (moves.fast === null && moves.charged.length === 0)
+  return (species === null && types.size === 0) || (moves.fast === null && moves.charged.length === 0)
     ? undefined
     : { species: named, ...moves };
 }
