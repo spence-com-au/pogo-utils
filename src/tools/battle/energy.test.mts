@@ -259,6 +259,96 @@ test('what one hit takes is the median clean step, for this matchup only', () =>
 });
 
 /**
+ * Counter measured taking 4.5% of Registeel a hit: within one of it, with the bar's 2 points, the next would faint us,
+ * and short of that it would not.
+ */
+test.each([
+  [0.06, 'their next fast move would faint us, one taking ~5% with 6% left'],
+  [0.07, undefined],
+])('with a hit measured and %f left, the next fast move would faint us: %s', (hp, said) => {
+  const energy = new Energy(DATA);
+
+  fight(energy, { step: COUNTER, hits: 3 });
+
+  expect(energy.fastFaints(MATCHUP, hp)).toBe(said);
+});
+
+/**
+ * A shadow Medicham's Counter, a fifth harder than the model has any Counter, with our defense at −2: 8.2% of Registeel
+ * a hit to the model's 6.8%. Where the stages have moved the hit, the larger of the two counts, and that is the step.
+ */
+test('a hit measured larger than the model outweighs it', () => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast: 'Counter', fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+  const lowered = { own: { attack: 0, defense: -2 }, their: { attack: 0, defense: 0 } };
+
+  fight(energy, { step: (9 / 132) * 1.2, hits: 3 });
+
+  expect(energy.fastFaints(MATCHUP, 0.1, lowered)).toBe(
+    'their next fast move would faint us, one taking ~8% with 10% left',
+  );
+});
+
+/**
+ * With no hit measured, the model's for the fast move it is counted by, the one PvPoke recommends: Counter takes 4.5%,
+ * and Psycho Cut 1.5%.
+ */
+test.each([
+  ['Counter', 0.06, 'their next fast move would faint us, Counter modelled at ~5% with 6% left'],
+  ['Counter', 0.07, undefined],
+  ['Psycho Cut', 0.06, undefined],
+  ['Psycho Cut', 0.03, 'their next fast move would faint us, Psycho Cut modelled at ~2% with 3% left'],
+])('with no hit measured, %s is modelled against %f left: %s', (fast, hp, said) => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast, fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+
+  energy.read(0, hp, MATCHUP);
+
+  expect(energy.fastFaints(MATCHUP, hp)).toBe(said);
+});
+
+/**
+ * Our defense at −2, as Close Combat leaves it, takes Counter's hit from 4.5% to 6.8%: modelled so where no hit has
+ * been measured, and over a step measured before the drop, which the stretch does not start again for.
+ */
+test.each([
+  ['no hit measured', 0],
+  ['a hit measured before our defense fell', 3],
+])('with %s, a fast move is weighed at the stages that move it', (_, hits) => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast: 'Counter', fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+  const lowered = { own: { attack: 0, defense: -2 }, their: { attack: 0, defense: 0 } };
+
+  fight(energy, { step: COUNTER, hits });
+
+  expect(energy.fastFaints(MATCHUP, 0.08), 'at no stages').toBe(undefined);
+  expect(energy.fastFaints(MATCHUP, 0.08, lowered)).toBe(
+    'their next fast move would faint us, Counter modelled at ~7% with 8% left',
+  );
+});
+
+test('nothing is told of a fast move where our HP or a build to model it on is unknown', () => {
+  const energy = new Energy(DATA);
+  const uncapped: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: null }, cap: null };
+
+  expect(energy.fastFaints(MATCHUP, null), 'our HP unread').toBe(undefined);
+  expect(energy.fastFaints(uncapped, 0.01), 'their CP unread, with no cap to take it as').toBe(undefined);
+  expect(energy.fastFaints({ ...MATCHUP, opponent: { species: null, cp: 1497 } }, 0.01), 'unnamed').toBe(undefined);
+});
+
+/**
  * The Ultra League footage that asked for the hold: Galarian Moltres with Brave Bird and Fly lit, against a Giratina at
  * 15% with no shields left and Mewtwo to come. Sucker Punch takes 4.3% of a rank-1 Altered Giratina, so four of them
  * finish it, two turns each; Dragon Breath takes 1.3% of Moltres, gaining 4 in one turn. So eight of Giratina's land

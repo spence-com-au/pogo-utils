@@ -1099,11 +1099,14 @@ export async function run(
             );
       const shield = ourShields > 0 && verdict.faints;
 
+      // One more of the opponent's fast moves fainting us, which no shield stops.
+      const fast = energy.fastFaints(facing, health.own, stages);
+
       // With no shield left, a hit that would faint us makes this throw our last, so what it does to our own stats is
-      // past mattering. The shield's verdict, unknowns and an unread cap counting as fainting here too: guessed wrong,
-      // either way it costs no more than the stages of one move, where telling a guess from a read would take `Verdict`
-      // saying which it is.
-      const lastHit = ourShields === 0 && verdict.faints;
+      // past mattering, and so does a fast move that would, whatever the shields. The shield's verdict, unknowns and an
+      // unread cap counting as fainting here too: guessed wrong, either way it costs no more than the stages of one
+      // move, where telling a guess from a read would take `Verdict` saying which it is.
+      const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined;
       const ownTypes = typesOf(data, us);
       const theirTypes = typesOf(data, them);
       const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
@@ -1134,14 +1137,19 @@ export async function run(
           ? undefined
           : finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, theirShields, cap, stages);
 
-      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, and
-      // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
-      // drawn or damage dealt being better than fainting with the energy stored. Only on the count's word, a faint feared
-      // for something unknown being no sign that one is coming.
-      const fear = `${verdict.afforded} would faint us, ${affordable} energy affords it`;
+      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, or
+      // its next fast move fainting us whatever the shields, and there may be no time left to hold energy for the move
+      // chosen: the lit button worth the most goes now, a shield drawn or damage dealt being better than fainting with
+      // the energy stored. Only on the count's word or a fast hit measured or modelled, a faint feared for something
+      // unknown being no sign that one is coming.
+      const afforded =
+        !shield && verdict.faints && verdict.afforded !== undefined
+          ? `${verdict.afforded} would faint us, ${affordable} energy affords it`
+          : undefined;
+      const fears = [fast, afforded].filter((fear) => fear !== undefined);
       const now =
-        pick && !shield && verdict.faints && verdict.afforded !== undefined
-          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fear, { lastHit })
+        pick && fears.length > 0
+          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fears.join('; '), { lastHit })
           : undefined;
 
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
@@ -1159,24 +1167,27 @@ export async function run(
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
       // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw. Never once a throw is tapped and
       // not yet played: a banner read landing meanwhile can lower the count into a hold, which would stop a lost tap's
-      // retap, the counts it rests on staying paused until the throw plays.
+      // retap, the counts it rests on staying paused until the throw plays. Nor where the next fast move would faint us:
+      // `spare` weighs their fast moves by the step measured, where `fastFaints` may have found one hit enough by the
+      // model at the stages as they stand, and a Pokémon fainted carries no energy on.
       const going = !player.minigame && lit.some((x) => throwing === undefined || x === throwing.x);
-      const spared = going
-        ? spare(
-            data,
-            {
-              matchup: facing,
-              hp: health,
-              shields: theirShields,
-              left: left.opponent,
-              steps: { ours: hits.step, theirs: energy.step },
-              estimate,
-              seen: theirMoves.get(seen.opponent ?? ''),
-              fast: ours?.fast,
-            },
-            meta,
-          )
-        : undefined;
+      const spared =
+        going && fast === undefined
+          ? spare(
+              data,
+              {
+                matchup: facing,
+                hp: health,
+                shields: theirShields,
+                left: left.opponent,
+                steps: { ours: hits.step, theirs: energy.step },
+                estimate,
+                seen: theirMoves.get(seen.opponent ?? ''),
+                fast: ours?.fast,
+              },
+              meta,
+            )
+          : undefined;
       const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {

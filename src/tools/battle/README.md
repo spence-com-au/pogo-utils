@@ -274,8 +274,9 @@ the move's own damage is no measure of. Priced against it, a Close Combat super 
 its damage however little Regigigas hits for, and Icy Wind would gain more than twice as much into a Dragon type as into
 a Steel type, however hard either hits back. PvPoke's battle AI leaves them out too (`Pokemon.js`, `ActionLogic.js`).
 
-**On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
-stats count for nothing, since there's no next hit for them to matter on.
+**On our last hit,** when we have no shield left and the opponent's next charged move would faint us, or its next fast
+move would faint us whatever our shields, changes to our own stats count for nothing, since there's no next hit for them
+to matter on.
 
 **Worth per energy.** Once the opponent's shields are gone, it throws the move worth the most for each point of energy
 it costs, and of two worth as much, the cheaper, which fires sooner. With no shield to take a throw, energy is all that
@@ -313,6 +314,18 @@ and a faint feared only for something unread doesn't count, since only the count
 is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords it; not holding for Flamethrower`. Where
 the move picked is lit as well, as Body Slam is when Earthquake lights beside it, the throw passes it over rather than
 holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy affords it; worth more than Body Slam`.
+
+**A fast move that would faint us.** The same throw goes, shields or not, where one more of the opponent's fast moves
+would faint us: one hit, as [measured off our bar](#the-opponents-energy), taking at least what the bar shows less 2
+points for its wander. Until a hit has been measured against the Pokémon out, it is modelled instead, for the fast move
+the count goes by, at the most it would take of any form either side could be. That is where a measured hit is missing,
+the opponent's newcomer facing one of ours left low by the last, and throwing a hit early costs less than fainting with
+the energy. Once their attack or our defense has moved, the model counts as well wherever it is the larger, the hit
+perhaps measured before they moved. With no hit measured and nothing to model it on, such as our CP unread, the move
+held for stays held. The rule is PvPoke's (`ActionLogic.js`), which also fits in fast moves of its own while it would
+land one before the opponent's next, a timing that needs to know how far into its fast move the opponent is, to a turn.
+It is logged as
+`threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump`.
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
@@ -486,8 +499,8 @@ The strategy still leaves some gaps:
 - **Our own energy.** With our fast move read off its card, our energy can be counted from it, given that we swipe
   non-stop, and corrected by the buttons lighting ([#485](https://github.com/spence-com-au/pogo-utils/issues/485)).
 - **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
-  would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
-  fills, which needs our own energy to see coming.
+  would faint us, or its next fast move would ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing
+  us down before the best move fills, seen sooner than the last of them, which needs our own energy to see coming.
 - **Our own fast move, unread.** Where its card's panel went unread, holding for the next
   ([above](#which-charged-move-to-throw)) takes ours to be the longest our species has. Told apart by the size of our
   hits, as the opponent's is by its, it would hold more often.

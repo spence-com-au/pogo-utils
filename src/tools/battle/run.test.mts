@@ -1203,6 +1203,51 @@ test.each([
 });
 
 /**
+ * Kyogre against Entei in Master League with Avalanche lit, and with Entei's shield hexagons painted a spent one's
+ * purple, Hydro Pump held for: worth more per energy, as `strategy.test.mts` has it. Our bar, its fill painted over
+ * past the HP wanted, is seen to lose 12 points to one of Entei's fast moves once the battle's first read has named it.
+ * Left within one more, Avalanche goes now rather than faint with its energy; left more, Hydro Pump is held for.
+ */
+test.each([
+  [
+    '13%',
+    25,
+    13,
+    [
+      'own: threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump',
+    ],
+  ],
+  ['28%', 40, 28, []],
+])('with %s left, a lit move goes only once the next fast move would faint us', async (_, before, after, said) => {
+  const spent = painted(fixture('charged-two-right'), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
+  const ours = (px: number) => painted(spent, [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: ours(before), lasts: { ms: 400, to: 'hit' } },
+      hit: { frame: ours(after), tap: { at: [0.69, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the
