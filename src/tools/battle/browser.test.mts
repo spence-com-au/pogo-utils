@@ -18,7 +18,8 @@ const ROOT = join(import.meta.dirname, '../../..');
 
 /**
  * What a Worker driving the phone over WebUSB imports: the loop, the touchscreen, a picture cut out of `screenrecord`'s
- * H.264 for WebCodecs, what `screenrecord` is asked for, and the `Device` the touchscreen's transport is built on.
+ * H.264 for WebCodecs, what `screenrecord` is asked for, and the `Device` built on the same `Transport` the touchscreen
+ * takes.
  *
  * `meta.mts` is the one a page needs and cannot have yet: it reads the PvPoke rankings through the download cache in
  * `inventory/download.mts`, which is Node's file system. The pull request that makes it loadable in a browser adds it
