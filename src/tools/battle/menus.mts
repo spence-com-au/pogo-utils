@@ -428,9 +428,10 @@ export function onParty(image: Image): boolean {
  * where colour cannot answer. Training's screens are never looked for in GO Battle League, nor its screens in Training:
  * a portrait scrolled into view on the Battle tab is not to be tapped for GO Battle League.
  *
- * `result` says whether a battle has ended with its ✓ not yet tapped, which is the only time the teal button at the foot
- * is read as the result's. Anywhere else it is the ✗ that closes the menu, and a Battle tab whose portraits were not
- * found would otherwise have been taken for the result and closed.
+ * `result` says whether a battle has ended with its ✓ not yet tapped. The teal button at the foot is read as the
+ * result's then, or where the result's verdict reads, as on one left over from an earlier run. Anywhere else it is the ✗
+ * that closes the menu, and a Battle tab whose portraits were not found would otherwise have been taken for the result
+ * and closed.
  *
  * Throws where the GO Battle League chooser lists leagues and none is the one asked for.
  */
@@ -548,7 +549,7 @@ export async function readMenu(
     return { screen: 'battle-tab', swipe: SCROLL_UP };
   }
 
-  if (result && teal(image)) {
+  if (teal(image) && (result || (await readOutcome(image)) !== undefined)) {
     const next = place(NEXT_BATTLE, BOTTOM, image);
 
     return { screen: 'result', tap: !training && green(image, next) ? next : foot };

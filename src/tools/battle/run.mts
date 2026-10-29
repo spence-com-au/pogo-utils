@@ -352,7 +352,7 @@ export async function run(
 
   // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
   // is read for the battle's outcome too.
-  let reading: Reading<{ screenshot: Image; menu: Menu; outcome: Outcome | undefined }> | undefined;
+  let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
   let frames = 0;
   const kept: Image[] = [];
 
@@ -1648,7 +1648,9 @@ export async function run(
 
           const menu = await readMenu(screenshot, { ...mode, result });
 
-          return { screenshot, menu, outcome: menu.screen === 'result' ? await readOutcome(screenshot) : undefined };
+          const ended = menu.screen === 'result' && result;
+
+          return { screenshot, menu, ended, outcome: ended ? await readOutcome(screenshot) : undefined };
         })(),
       );
     }
@@ -1752,7 +1754,8 @@ export async function run(
       }
 
       if (menu.screen !== 'unknown') {
-        if (menu.screen === 'result') {
+        // A result left over from before the run, from a battle it never played, is tapped past but not counted.
+        if (done.ended) {
           battles++;
           battling = false;
           undefer('the battle ended');

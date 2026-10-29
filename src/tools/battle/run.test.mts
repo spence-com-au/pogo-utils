@@ -297,6 +297,26 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
   expect(taps).toEqual(['training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
 });
 
+// A result left over from a battle before the run, as one stopped mid-fight leaves, is tapped past and not counted.
+test('taps past a result it started on, then plays the battle counted', async () => {
+  const { phone, clock, taps } = scripted(battleAndBack(), 'result');
+
+  const battles = await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+  );
+
+  expect(battles).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(taps).toEqual(['result', 'training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
+});
+
 /** The map's Poké Ball, BATTLE on the main menu, and the Battle tab scrolled from GO Battle League to Training. */
 test('finds its way to the leader from the map', async () => {
   const { phone, clock, taps } = scripted(
