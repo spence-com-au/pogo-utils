@@ -16,10 +16,10 @@
  * the near-miss `?no=<offset>`, which the page accepts and ignores, answering with the newest thirty however large it
  * is — so a walk that looks like it paginated can silently re-read page one nine times.
  *
- * Two hundred-odd articles is too many to triage by hand, so each unmatched one is filtered by the furthest-future date
- * its own prose names: see `latestDateNamed`. That cuts roughly two hundred unmatched articles to around twenty worth a
- * human decision, and it cuts them on what the announcement says rather than on a keyword list that would miss whatever
- * Niantic partners with next.
+ * Four hundred-odd articles is too many to triage by hand, so each unmatched one is filtered by the furthest-future
+ * date its own prose names: see `latestDateNamed`. That cuts roughly four hundred unmatched articles to around thirty
+ * worth a human decision, and it cuts them on what the announcement says rather than on a keyword list that would miss
+ * whatever Niantic partners with next.
  *
  * That filter has one blind spot, and it is reported separately rather than patched: an article that *changes* an event
  * gives no new date — "rescheduled to a later date" — so it names no future date by construction. An undated article
