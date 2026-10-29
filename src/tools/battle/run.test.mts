@@ -275,7 +275,7 @@ function battleAndBack(): Record<string, Scene> {
   };
 }
 
-// The party screen is tapped twice: its first card, for the selection screen these scenes never open, and USE THIS PARTY.
+// The party screen is tapped twice: its first card, for a selection screen these scenes never open, and USE THIS PARTY.
 test('plays a battle from the Battle tab and taps its way back round', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
 
@@ -423,9 +423,9 @@ const MASTER_CP_UNREAD = painted(fixture('menu-pixel8-party-master'), [255, 255,
  * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. The committed
  * icons read Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by
  * its CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
- * cleared or searched over goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside its search field:
- * CANCEL, back to the party screen, unless a test has it answer another. The way back round comes to the party screen
- * again with Xerneas's CP painted out, as OCR misses one now and then.
+ * cleared or searched over goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside
+ * its search field: CANCEL, back to the party screen, unless a test has it answer another. The way back round comes to
+ * the party screen again with Xerneas's CP painted out, as OCR misses one now and then.
  */
 function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<string, Scene> {
   const unsearched = fixture('menu-pixel8-selection');
@@ -552,9 +552,9 @@ test('reads a card whose selection screen opens late', async () => {
 });
 
 /**
- * CANCEL tapped and the selection screen still showing, as where the tap missed: USE THIS PARTY falls on its grid, where
- * a tap swaps the Pokémon there into the party, so nothing more is tapped, and the screen nothing recognises ends the
- * run `Lost`. Here a tap there starts the battle, so tapping it would play one rather than end lost.
+ * CANCEL tapped and the selection screen still showing, as where the tap missed: USE THIS PARTY falls on its grid,
+ * where a tap swaps the Pokémon there into the party, so nothing more is tapped, and the screen nothing recognises ends
+ * the run `Lost`. Here a tap there starts the battle, so tapping it would play one rather than end lost.
  */
 test('taps nothing more where CANCEL leaves the selection screen showing', async () => {
   const { phone, clock } = scripted(masterParty({ at: SELECTION.use, to: 'loading' }), 'party');
