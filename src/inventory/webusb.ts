@@ -14,7 +14,7 @@ import { AdbDaemonWebUsbDevice, AdbDaemonWebUsbDeviceManager } from '@yume-chan/
 
 import { type Transport } from '../tools/inventory/adb.mts';
 
-/** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `connect`. */
+/** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `open`. */
 const EXIT_MARK = 'pogo-utils-exit:';
 
 /**
