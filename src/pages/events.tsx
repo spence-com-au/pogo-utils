@@ -263,6 +263,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [reveals, setReveals] = useState<Reveals>(NOTHING_REVEALED);
 
+  /**
+   * Whether the reader has narrowed the page to the events the header reports as new, by pressing that count. Read
+   * live rather than as a snapshot of the IDs, so a card opened or marked as seen drops out as its mark does.
+   */
+  const [onlyNew, setOnlyNew] = useState(false);
+
   /** The first-of-month the calendar view is showing, or the current month until the reader steps off it. */
   const [calMonth, setCalMonth] = useState<Date | null>(null);
 
@@ -275,8 +281,13 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /** What the cards view is drawing under beyond the saved filters, which the top bar's count reads too. */
   const filter = { reveals, search, now };
 
-  /** Whether an event survives the type-filter, dismissal and search-term filters of the view that is open. */
-  const isVisible = (ev: ParsedEvent) => admits(ev, prefs, hiddenFor(prefs, view), filter);
+  /**
+   * Whether an event survives the type-filter, dismissal and search-term filters of the view that is open, and the new
+   * events filter while that is on. `newlyVisible` is not built on this, so narrowing the page does not change the
+   * count the reader pressed to narrow it, nor the top bar's.
+   */
+  const isVisible = (ev: ParsedEvent) =>
+    admits(ev, prefs, hiddenFor(prefs, view), filter) && (!filteringNew || isNew(ev));
 
   /** Whether the reader has revealed the status bucket this event falls in. */
   const isRevealed = (ev: ParsedEvent) => isRevealedIn(ev, filter);
@@ -313,6 +324,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
      */
     hiddenFor(prefs, view).delete(match.eventType);
     setSearch(match.name);
+
+    // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to.
+    setOnlyNew(false);
 
     // Arriving on the event is reading it, as opening its card is. A notification's link relies on this to take itself
     // off the list, and a shared link would otherwise leave the card marking an event the reader is looking at as new.
@@ -475,6 +489,20 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const types = [...labels].sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
   const hidden = hiddenFor(prefs, view);
   const newly = newlyVisible().length;
+
+  /**
+   * The filter is only in force while there is something new to narrow to: the count that turns it off is hidden at
+   * zero, and would leave the page reading "No events to show" with no control to undo it. Turned off for good once
+   * the count reaches zero, so an event a later refetch brings does not narrow the page again unasked; the check above
+   * covers the render before that lands.
+   */
+  const filteringNew = onlyNew && newly > 0;
+
+  useEffect(() => {
+    if (newly === 0) {
+      setOnlyNew(false);
+    }
+  }, [newly]);
 
   /**
    * One card. The overlay link covers it, so every other control has to be a sibling of that link.
@@ -992,11 +1020,19 @@ export default function EventsPage({ query: fragment }: { query: string }) {
          * How many events have appeared since this browser last acknowledged them, and the one control that clears them
          * all. Its own line rather than part of the count because all three views write that one themselves, and this
          * says the same thing in each of them. Hidden until there is a number to report.
+         *
+         * The number is a toggle narrowing every view to those events, `aria-pressed` saying which way it is set.
          */}
         <p class="sub newly" hidden={newly === 0}>
-          <span class="new-count">
+          <button
+            type="button"
+            class="new-count"
+            aria-pressed={filteringNew}
+            title={filteringNew ? 'Show every event' : 'Show only these events'}
+            onClick={() => setOnlyNew(!filteringNew)}
+          >
             {newly} new event{newly === 1 ? '' : 's'}
-          </span>
+          </button>
           <button type="button" class="ghost" title="Stop marking these events as new" onClick={markAllSeen}>
             Mark all as seen
           </button>
