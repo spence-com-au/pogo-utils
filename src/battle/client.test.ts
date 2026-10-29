@@ -174,7 +174,7 @@ test('leaves a phone connected during the run held, letting the lent one go agai
   await expect(back.connection.disconnected).resolves.toBeUndefined();
 });
 
-test('fails a run whose connection closed before the first frame, rather than answer one already over', async () => {
+test('fails a run whose connection closed unasked before the first frame, saying so', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, async () => {
@@ -182,7 +182,18 @@ test('fails a run whose connection closed before the first frame, rather than an
     return there.connection;
   });
 
-  await expect(lend(store, start, reconnect)).rejects.toThrow('the run stopped before the phone sent a frame');
+  await expect(lend(store, start, reconnect)).rejects.toThrow('the connection to the phone closed');
+  expect(store.phone).toBe(back.connection);
+});
+
+test('fails a run whose connection closed unasked, rather than end it as if stopped', async () => {
+  const there = fakeConnection('pixel', H264);
+  const { store, start, reconnect, back } = await setUp([], () => Promise.resolve(there.connection));
+  const run = await lend(store, start, reconnect);
+
+  await there.connection.close();
+
+  await expect(run.ended).rejects.toThrow('the connection to the phone closed; is it still plugged in?');
   expect(store.phone).toBe(back.connection);
 });
 

@@ -40,9 +40,10 @@ export function host(port: Port, reconnect: (serial: string) => Promise<Connecti
   const start = async (serial: string) => {
     connection = await reconnect(serial);
 
-    // Closed by `stop` as well, which this then hears as nothing new.
+    // Closed unasked as well as unplugged, by the phone dropping USB debugging, and so a failure either way. Closed by
+    // `stop`, it is heard once the stop is under way, which keeps its own reason.
     connection.disconnected.then(
-      () => void stop(),
+      () => void stop(new Error('the connection to the phone closed; is it still plugged in?')),
       (error: unknown) => void stop(error),
     );
 
