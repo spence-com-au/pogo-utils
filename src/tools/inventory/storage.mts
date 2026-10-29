@@ -55,6 +55,17 @@ function isStorage(lines: readonly Line[]): boolean {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Replaces what the focused search box holds with `term`: cleared by `CLEAR_KEYS`, typed unless empty, and entered. */
+export async function replaceSearch(device: Device, term: string): Promise<void> {
+  await device.key(KEY.MOVE_END, ...Array<number>(CLEAR_KEYS).fill(KEY.DEL));
+
+  if (term) {
+    await device.type(term);
+  }
+
+  await device.key(KEY.ENTER);
+}
+
 /**
  * Getting about storage on the phone: to the grid, a search typed into it, and where the first tile of what it left is.
  *
@@ -174,13 +185,7 @@ export function storage(
     let lines = await toStorage();
     searchBox ??= ((l) => (l ? centre(l) : null))(findLine(lines, /\bsearch\b/)) ?? at(config.taps.search);
     await tap(searchBox);
-    await device.key(KEY.MOVE_END, ...Array<number>(CLEAR_KEYS).fill(KEY.DEL));
-
-    if (term) {
-      await device.type(term);
-    }
-
-    await device.key(KEY.ENTER);
+    await replaceSearch(device, term);
     await sleep(config.waits.search);
     lines = await readLines(await device.screenshot());
 
