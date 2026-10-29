@@ -130,6 +130,18 @@ function Phone() {
   return <canvas class="screen" ref={canvas} width={9} height={19} aria-label="The phone’s screen" />;
 }
 
+/**
+ * `on` of `of` drawn as dots, as the game draws shields and Poké Balls, or each dashed where `on` is unread: the
+ * terminal's `●` and `◓`, which a page's fonts draw unevenly.
+ */
+const Dots = (props: { class: string; of: number; on: number | null; label: string }) => (
+  <span class={props.class} role="img" aria-label={`${props.on ?? '?'} ${props.label}`}>
+    {Array.from({ length: props.of }, (_, i) => (
+      <i key={i} class={props.on === null ? 'unread' : i < props.on ? 'on' : undefined} />
+    ))}
+  </span>
+);
+
 /** One side as the terminal's panel draws it: name, how strong, its HP and the party it has left. */
 function SideOf({ side, title, children }: { side: Side; title: string; children?: ComponentChildren }) {
   const { hp, left, shields } = side;
@@ -152,10 +164,8 @@ function SideOf({ side, title, children }: { side: Side; title: string; children
       </div>
       <p class="strength">
         <span>{hp === null ? '?' : Math.round(hp * 100)}%</span>
-        <span title="Shields left">{'●'.repeat(shields) + '○'.repeat(2 - shields)}</span>
-        <span title="Pokémon left">
-          {left === null ? '?'.repeat(PARTY) : '◓'.repeat(left) + '○'.repeat(PARTY - left)}
-        </span>
+        <Dots class="shields" of={2} on={shields} label="shields left" />
+        <Dots class="balls" of={PARTY} on={left} label={`of ${PARTY} Pokémon left`} />
       </p>
       {children}
     </div>

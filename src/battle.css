@@ -174,17 +174,25 @@ body[data-page='battle'] {
     color: var(--muted);
   }
 
+  /* The CP goes under the name where the column is too narrow for both, rather than cutting the name short. */
+
   .name {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 8px;
+    column-gap: 8px;
     color: var(--text);
     font-size: 15px;
   }
 
   .name strong {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .name span {
     white-space: nowrap;
   }
 
@@ -206,6 +214,33 @@ body[data-page='battle'] {
     justify-content: space-between;
     gap: 8px;
     font-variant-numeric: tabular-nums;
+  }
+
+  .shields i,
+  .balls i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-left: 3px;
+    border: 1px solid var(--muted);
+    border-radius: 50%;
+  }
+
+  .shields i.on {
+    border-color: var(--event);
+    background: var(--event);
+  }
+
+  /* A Poké Ball, red over white. */
+
+  .balls i.on {
+    border-color: var(--text);
+    background: linear-gradient(var(--accent) 50%, var(--panel) 50%);
+  }
+
+  .shields i.unread,
+  .balls i.unread {
+    border-style: dashed;
   }
 
   /* What each side did, ours at the left and theirs at the right, laid out from the foot up so the latest stays in view. */
@@ -263,7 +298,7 @@ body[data-page='battle'] {
     .screen {
       width: auto;
       max-width: 100%;
-      max-height: 50vh;
+      height: 50vh;
       justify-self: center;
     }
   }
