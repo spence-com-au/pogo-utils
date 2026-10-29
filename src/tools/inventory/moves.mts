@@ -20,7 +20,7 @@ export interface Moves {
  * a screen without it is read as showing no moves at all. Bounding the region below matters as much: `CAUGHT IN THE
  * WILD` and the rest are ordinary prose a fuzzy match will take for a short move.
  *
- * How each row is matched is `readMoves`'.
+ * How each row is matched is described on `readMoves`.
  */
 export async function parseMoves(
   lines: readonly Line[],
