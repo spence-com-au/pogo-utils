@@ -1,12 +1,13 @@
 /**
- * The `Phone` the battle loop in `src/tools/battle/run.mts` plays through, over WebUSB, as `scripts/battle.mts` builds
- * one over the `adb` binary: screenshots through a `Device`, taps and swipes through the uhid touchscreen made on one
- * shell held open, and frames from `Screen` over `screenrecord`, decoded by WebCodecs.
+ * The `Phone` the battle loop in `src/tools/battle/run.mts` plays through, over WebUSB, built by the same `phoneOf` as
+ * `scripts/battle.mts` builds one over the `adb` binary: screenshots and typing through a `Device`, taps, swipes and
+ * holds through the uhid touchscreen made on one shell held open, and frames from `Screen` over `screenrecord`, decoded
+ * by WebCodecs.
  */
 
 import { said } from '../errors.js';
 import type { Phone as Connection } from '../inventory/webusb.js';
-import { type Phone } from '../tools/battle/phone.mts';
+import { phoneOf, type Phone } from '../tools/battle/phone.mts';
 import { streamSize } from '../tools/battle/record-command.mts';
 import { Screen } from '../tools/battle/screen.mts';
 import { Device } from '../tools/inventory/adb.mts';
@@ -67,17 +68,16 @@ export async function heldShell(
 export async function battlePhone(
   connection: Pick<Connection, 'transport' | 'spawn'>,
 ): Promise<Phone & { close(): void; failed: Promise<Error> }> {
-  const device = new Device(connection.transport);
-
-  // A screenshot for the screen's size, which the stream takes its shape from.
-  const size = streamSize(await device.screenshot());
+  // Shell commands through the shell held open, as `pnpm battle` sends them, and the screenshot a process of its own.
   const held = await heldShell(connection);
-  const screen = new Screen(() => feed(connection, size));
+  const transport = { ...connection.transport, shell: held.shell };
+  const device = new Device(transport);
+  let screen: Screen | undefined;
   let closed = false;
 
   const close = () => {
     closed = true;
-    screen.close();
+    screen?.close();
     held.close();
   };
 
@@ -88,17 +88,14 @@ export async function battlePhone(
   );
 
   try {
-    const touch = await touchscreen({ ...connection.transport, shell: held.shell });
-    await screen.first();
+    // A screenshot for the screen's size, which the stream takes its shape from.
+    const size = streamSize(await device.screenshot());
+    const shown = new Screen(() => feed(connection, size));
+    screen = shown;
+    const touch = await touchscreen(transport);
+    await shown.first();
 
-    return {
-      frame: () => screen.latest()?.image,
-      screenshot: () => device.screenshot(),
-      tap: (point) => touch.tap(point),
-      swipe: (from, to, ms) => touch.swipe(from, to, ms),
-      close,
-      failed: Promise.race([screen.failed, shellEnded]),
-    };
+    return { ...phoneOf(shown, device, touch), close, failed: Promise.race([shown.failed, shellEnded]) };
   } catch (error) {
     close();
     throw error;

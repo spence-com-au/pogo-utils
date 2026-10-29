@@ -71,6 +71,18 @@ test('makes the touchscreen through the held shell, taps through it, and answers
     phone.commands.length = 0;
     await battle.tap([0.1, 0.2]);
     expect(phone.commands).toEqual([`${write(report(true, [0.1, 0.2]))}; ${write(report(false, [0.1, 0.2]))}`]);
+
+    // A hold lets go only once its screenshot is taken, and a search types through the same shell.
+    phone.commands.length = 0;
+    expect((await battle.hold([0.3, 0.4])).width).toBe(144);
+    await battle.search('pikachu');
+    expect(phone.commands).toEqual([
+      write(report(true, [0.3, 0.4])),
+      write(report(false, [0.3, 0.4])),
+      `input keyevent 123 ${Array<string>(300).fill('67').join(' ')}`,
+      "input text 'pikachu'",
+      'input keyevent 66',
+    ]);
   } finally {
     battle.close();
   }
