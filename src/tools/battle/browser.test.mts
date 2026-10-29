@@ -19,9 +19,9 @@ const ROOT = join(import.meta.dirname, '../../..');
 /**
  * What a Worker driving the phone over WebUSB imports: the loop, the touchscreen, a picture cut out of `screenrecord`'s
  * H.264 for WebCodecs, what `screenrecord` is asked for, and the `Device` built on the same `Transport` the touchscreen
- * takes. And what a page loads before a run: PvPoke's meta in `meta.mts` and the type icons and silhouettes in
- * `assets.mts`, each fetched through the `Download` it is handed rather than the CLI's cache in
- * `inventory/download.mts`, and `src/battle/load.ts`, which hands them `fetch`.
+ * takes. And what a page loads before a run: PvPoke's meta in `meta.mts` and the type icons in `assets.mts`, each
+ * fetched through the `Download` it is handed rather than through `cachedAs`, the decoding of the vended
+ * `data/silhouettes.json` beside them, and `src/battle/load.ts`, which fetches that file and hands the others `fetch`.
  */
 const ENTRIES = [
   'src/tools/battle/run.mts',

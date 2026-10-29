@@ -30,7 +30,10 @@ test.each(ICONS)('%s is vended as `silhouetteOfIcon` outlines it', (icon) => {
 // arrays rather than the maps `toStrictEqual` would compare regardless of order, since a vend writing them in the order
 // its downloads finished would show a diff where no outline moved.
 test('the silhouettes are for every form icon of the vended game master, by its species and in its order', () => {
-  expect([...DECODED].map(([icon, { species }]) => [icon, species])).toStrictEqual([...formIcons(DATA)]);
+  expect(
+    [...DECODED].map(([icon, { species }]) => [icon, species]),
+    'the vended game master has moved: run `pnpm vend:silhouettes`',
+  ).toStrictEqual([...formIcons(DATA)]);
 });
 
 test('a silhouette packed for another grid is refused rather than laid over the wrong cells', () => {

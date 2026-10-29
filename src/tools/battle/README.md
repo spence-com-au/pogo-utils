@@ -203,8 +203,9 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 - **The silhouettes** the party screen is read against are outlined from every form icon, some 1,300 files and 40 MB.
   The CLI downloads and outlines them itself, so a form newer than the last vend is still read. A page fetches
   [`data/silhouettes.json`](../../../data/silhouettes.json) instead: every outline packed to a bit a cell, under 100 KB
-  gzipped, written by `pnpm vend:silhouettes` out of the vended game master. `assets.test.mts` fails when the two name
-  different forms, so a re-vend of the game master that adds one is followed by this.
+  gzipped, written by `pnpm vend:silhouettes` out of the vended game master. `assets.test.mts` fails when
+  `data/silhouettes.json` and the vended game master name different forms, so a re-vend of the game master that adds one
+  is followed by `pnpm vend:silhouettes`.
 
 ### Testing
 
