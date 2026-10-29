@@ -56,7 +56,7 @@ import {
   type Verdict,
 } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, Hits, spare, untilTheirsLands, type Matchup } from './energy.mts';
+import { Energy, holding, Hits, spare, untilTheirsLands, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 
@@ -1201,9 +1201,9 @@ export async function run(
               deferring?.waited ?? 0,
             );
 
-      // A fear of fainting, charged or fast, lets the move go as it does `beforeFainting`'s throw: where the move chosen
-      // is the lit one worth the most, that throw is the move chosen.
-      const hold = rule && fears.length > 0 ? { held: false, why: fears.join('; ') } : rule;
+      const standing = switching !== undefined && deferring?.held === true && throwing === pick ? deferring : undefined;
+      const hold = holding(rule, standing !== undefined, fears);
+      const current = ongoing ?? standing;
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
         // A hold of another move ends as this one begins, the move chosen having changed under it.
@@ -1213,9 +1213,9 @@ export async function run(
 
         log(`holding ${deferrable}`, 'own', hold.why);
         deferring = { move: deferrable, waited: deferring?.waited ?? 0, frame: frames, at: clock.now(), held: true };
-      } else if (ongoing?.held && hold && !hold.held) {
-        log(`no longer holding ${ongoing.move}`, 'own', hold.why);
-        ongoing.held = false;
+      } else if (current?.held && hold && !hold.held) {
+        log(`no longer holding ${current.move}`, 'own', hold.why);
+        current.held = false;
       } else if (deferring?.held && !ongoing && lit.length > 0 && !switching) {
         // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
         // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
@@ -1235,8 +1235,7 @@ export async function run(
 
       // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
       // as thrown.
-      const held = hold?.held ?? (switching !== undefined && deferring?.held === true && throwing === pick);
-      const best = spared === undefined && !held ? throwing?.x : undefined;
+      const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
@@ -1420,7 +1419,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying && !held ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
         shield,
         minigame: playing,

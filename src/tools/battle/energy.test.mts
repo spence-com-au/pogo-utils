@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Verdict } from './damage.mts';
-import { Energy, Hits, spare, untilTheirsLands, type Matchup, type Standing } from './energy.mts';
+import { Energy, holding, Hits, spare, untilTheirsLands, type Matchup, type Standing } from './energy.mts';
 import { type Meta } from './meta.mts';
 
 const DATA = JSON.parse(
@@ -459,4 +459,22 @@ test('with no shield left, a move lowering our defense waits for a charged move 
     untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0),
     'none of our fast moves known, so no time to hold for',
   ).toEqual({ held: false, why: 'our fast moves not known' });
+});
+
+test('a hold stands through a switch of ours under way, and goes on a fear of fainting either way', () => {
+  const fear = 'their next fast move would faint us, one taking ~12% with 13% left';
+  const weighed = { held: true, why: 'Metagross can afford Meteor Mash; Meteor Mash would take ~78%, with 100% left' };
+  const released = { held: false, why: fear };
+
+  expect(holding(weighed, false, []), 'as weighed').toEqual(weighed);
+  expect(holding(weighed, false, [fear]), 'a fear lets it go').toEqual(released);
+  expect(holding(undefined, true, []), 'kept in force mid-switch').toEqual({
+    held: true,
+    why: 'a switch of ours under way',
+  });
+  expect(holding(undefined, true, [fear]), 'a fear lets it go mid-switch too').toEqual(released);
+  expect(holding(undefined, false, [fear]), 'no hold to let go').toBe(undefined);
+  expect(holding({ held: false, why: 'the time' }, false, [fear, 'Avalanche would faint us'])?.why).toBe(
+    `${fear}; Avalanche would faint us`,
+  );
 });
