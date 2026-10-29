@@ -45,7 +45,16 @@ import {
   type Pick,
   type Switch,
 } from './strategy.mts';
-import { afterThrow, finisher, NO_STAGES, wouldFaint, type Side, type Stages, type Verdict } from './damage.mts';
+import {
+  afterThrow,
+  finisher,
+  NO_STAGES,
+  wouldFaint,
+  wouldShield,
+  type Side,
+  type Stages,
+  type Verdict,
+} from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
 import { Energy, Hits, spare, untilTheirsLands, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
@@ -1041,9 +1050,10 @@ export async function run(
       const estimate = energy.estimate(facing);
       const affordable = estimate ? estimate.energy + estimate.gain : undefined;
 
-      // Taken only where the opponent's hardest charged move would faint us: a hit we survive is eaten, the shield kept
-      // for one we would not. Hardest of those it can afford, where its energy is counted. A league whose cap went
-      // unread takes every shield, as anything else unknown does.
+      // Whether the opponent's hardest charged move would faint us: hardest of those it can afford, where its energy is
+      // counted. A league whose cap went unread takes every shield, as anything else unknown does. Taken also by
+      // PvPoke's rules, `wouldShield`'s: against any move that would take 1/1.4 of what is left, and against a hit that
+      // leaves too little for the fast moves before the next.
       const verdict: Verdict =
         cap === undefined
           ? { faints: true, why: "the league's cap unread" }
@@ -1058,7 +1068,8 @@ export async function run(
               affordable,
               stages,
             );
-      const shield = ourShields > 0 && verdict.faints;
+      const shielding = wouldShield(data, verdict, health.own, ourShields, { step: energy.step, estimate });
+      const shield = ourShields > 0 && shielding.shield;
 
       // One more of the opponent's fast moves fainting us, which no shield stops.
       const fast = energy.fastFaints(facing, health.own, stages);
@@ -1209,7 +1220,7 @@ export async function run(
       }
 
       if (state === 'shield' && !offered?.taken) {
-        offered = { why: verdict.why, taken: false };
+        offered = { why: shielding.why, taken: false };
       }
 
       fight = {
@@ -1420,10 +1431,10 @@ export async function run(
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!offered?.taken) {
-            log('took shield', 'own', verdict.why);
+            log('took shield', 'own', shielding.why);
           }
 
-          offered = { why: verdict.why, taken: true };
+          offered = { why: shielding.why, taken: true };
         } else if (action.what === 'bench' && counter && slot !== undefined) {
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
           const to = party[counter.slot] ?? '?';

@@ -22,7 +22,8 @@ import {
   recognise,
   type State,
 } from './recognise.mts';
-import { decodeFrames, streamSize } from './stream.mts';
+import { streamSize } from './record-command.mts';
+import { decodeFrames } from './stream.mts';
 
 const FIXTURES = fileURLToPath(new URL('fixtures/', import.meta.url));
 

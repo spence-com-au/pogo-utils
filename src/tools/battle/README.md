@@ -31,7 +31,9 @@ flowchart LR
 
 - **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
   decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen` keeps one recording going after
-  another, since `screenrecord` stops after 180s, and always answers the latest frame.
+  another, since `screenrecord` stops after 180s, and always answers the latest frame. What `screenrecord` is asked for,
+  the picture's size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process`
+  so that a page streaming over WebUSB asks for the same picture.
 - **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
   which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
   until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
@@ -54,7 +56,8 @@ flowchart LR
   being known until the next recording's first byte, bar the last before the screen goes still, which is known to be
   whole only once the screen next changes. The first picture is shown from 0, there being nothing earlier, so a player's
   clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
-  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped.
+  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped. The cutting is
+  [`pictures.mts`](pictures.mts), which a browser can run too.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
@@ -271,14 +274,15 @@ its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 7
 **Taking their hit first.** With none of our shields left, a move picked that always lowers our defense waits, once lit,
 while the opponent's [counted energy](#the-opponents-energy) affords a charged move we would survive: thrown first, it
 would have that move land on the lowered defense. This is PvPoke's battle AI's deferral (`ActionLogic.js`), as
-[`energy.mts`](energy.mts)'s `untilTheirsLands`, with our fainting judged as for shielding [below](#when-to-shield). No
-prompt shows a throw with no shield to take, and its banner is read only after, if at all, so what says the hit landed
-is the count, which the throw's countdown lowers; affording nothing, or not counted at all, it lets the move go. PvPoke
-waits no longer than until our energy is full, which the bot can't see, so it waits no longer than the soonest it could
-fill from the move's cost, at the fastest gain of any fast move our species has: 6.3s for Xerneas's Close Combat by
-Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. Only the fight's own time counts, not the opponent's
-throw playing out, in which our energy stands still. A finish and a throw for fear of fainting, both below, go at once.
-Logged as `holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
+[`energy.mts`](energy.mts)'s `untilTheirsLands`, with our fainting judged by nine tenths of the HP left, as
+[below](#when-to-shield), but not PvPoke's 1/1.4 or its cycle of fast moves. No prompt shows a throw with no shield to
+take, and its banner is read only after, if at all, so what says the hit landed is the count, which the throw's
+countdown lowers; affording nothing, or not counted at all, it lets the move go. PvPoke waits no longer than until our
+energy is full, which the bot can't see, so it waits no longer than the soonest it could fill from the move's cost, at
+the fastest gain of any fast move our species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian
+Moltres's Brave Bird by Wing Attack. Only the fight's own time counts, not the opponent's throw playing out, in which
+our energy stands still. A finish and a throw for fear of fainting, both below, go at once. Logged as
+`holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
 `no longer holding Close Combat: 7 energy affords none of Metagross's charged moves`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
@@ -337,10 +341,31 @@ it.
 
 ### When to shield
 
-The shield prompt never names the move coming. It takes a shield only if the hardest move the opponent could be throwing
-would take at least **90%** of the HP our bar shows ([`damage.mts`](damage.mts)'s `wouldFaint`). A hit we would survive
-is taken, and the shield kept for one we wouldn't. The margin short of 100% allows for the HP being read off a bar and
-the opponent's build being a guess.
+The shield prompt never names the move coming, so the hit judged is the hardest move the opponent could be throwing
+([`damage.mts`](damage.mts)'s `wouldFaint`). A shield is taken where any of these holds, and kept otherwise
+([`damage.mts`](damage.mts)'s `wouldShield`):
+
+- **The hit would faint us:** it would take at least **90%** of the HP our bar shows. The margin short of 100% allows
+  for the HP being read off a bar and the opponent's build being a guess.
+- **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
+  **1/1.4** of the HP left.
+- **Too little would be left:** the hit, or any charged move it could have, would leave no more than the opponent's fast
+  moves take before it can throw the hit's move again, once for each shield we hold, so ours would faint before the next
+  shield could be taken. The fast moves are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's
+  cost and the energy counted less that cost, each taking what one was measured to take off our bar
+  ([below](#the-opponents-energy)).
+
+The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
+simulates, and with these differences:
+
+- PvPoke asks the 1/1.4 rule only of a fast move doing more than 1.5 HP a turn. Leaving that out can only take a shield
+  PvPoke would keep, against a fast move that barely scratches us, and a shield taken is the side these rules err to.
+- PvPoke adds 1 HP of margin a shield to the fast moves' damage, under a point of our bar, which is left out.
+- PvPoke raises the fast moves' damage by the thrown move's own stat changes, a Power-Up Punch's +1 attack say. The
+  prompt never names the move, so the step is taken as measured before the throw.
+- Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or the HUD
+  tells apart: shielding the first of a run of attack-lowering moves such as Superpower where it takes over 55% of what
+  is left, and its exceptions for Aegislash, Minior and Cramorant.
 
 What goes into "the hardest move the opponent could be throwing":
 
@@ -359,8 +384,10 @@ What goes into "the hardest move the opponent could be throwing":
   reset when its Pokémon leaves the field. A shield stops the damage, not the stat change.
 
 **Anything unknown takes the shield:** either side's species or CP unread, a CP over the cap (so misread), our HP
-unread, or the cap itself not yet known. A shield spent early costs less than a Pokémon lost. Each shield taken or kept
-is logged with the reason, such as `Flamethrower would take ~45%, with 50% left, the hardest 60 energy affords`.
+unread, the cap itself not yet known, or none of the opponent's fast moves yet measured or its energy uncounted. A
+shield spent early costs less than a Pokémon lost. Each shield taken or kept is logged with the hit, such as
+`Drill Peck would take ~34%, with 50% left`, and the rule that decided it, such as
+`leaves ~16%, no more than 2 × the ~12% of 6 fast moves before their next charged move`.
 
 ### The opponent's energy
 

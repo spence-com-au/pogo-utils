@@ -626,10 +626,10 @@ export interface Hold {
  *
  * Otherwise unlike PvPoke's: its test is the opponent's best move, and our shielding it, which with no shield to take
  * PvPoke's `wouldShield` answers yes for any of its charged moves taking 1/1.4 of the HP left (line 1221); ours is the
- * hardest the count affords, not fainting us by `FAINTS`, as a shield is judged. Nor does it throw at once where
- * our cheapest move raises our own stats, as PvPoke's does: the Xerneas and Galarian Moltres played hold no such move
- * beside Close Combat and Brave Bird. A finish, `finisher`'s, is the caller's to throw at once, as PvPoke's comes ahead
- * of its deferral.
+ * hardest the count affords, not fainting us by `wouldFaint`'s `FAINTS`, the 1/1.4 being `wouldShield`'s to weigh for a
+ * shield we hold rather than for this. Nor does it throw at once where our cheapest move raises our own stats, as
+ * PvPoke's does: the Xerneas and Galarian Moltres played hold no such move beside Close Combat and Brave Bird. A
+ * finish, `finisher`'s, is the caller's to throw at once, as PvPoke's comes ahead of its deferral.
  *
  * Undefined where `move` does not always lower our defense, or where a shield of ours is left to take the hit.
  */
