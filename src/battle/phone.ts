@@ -25,16 +25,19 @@ export async function heldShell(
   const process = await connection.spawn(['sh']);
   const writer = process.stdin.getWriter();
   const encoder = new TextEncoder();
-  const lost = (error: unknown) => new Error(`adb shell: ${said(error)}; is the phone still connected?`);
+  const lost = (error: unknown) => new Error(`shell: ${said(error)}; is the phone still connected?`);
 
-  const held = holdShell({
-    write: (text) => void writer.write(encoder.encode(text)).catch((error: unknown) => held.fail(lost(error))),
+  const held = holdShell(
+    {
+      write: (text) => void writer.write(encoder.encode(text)).catch((error: unknown) => held.fail(lost(error))),
 
-    // Killed rather than left to exit on its stdin ending: it is closed only once a run is over and nothing more is to
-    // be sent, and the touchscreen goes with it either way.
-    end: () => process.kill(),
-    kill: () => process.kill(),
-  });
+      // Killed rather than left to exit on its stdin ending: it is closed only once a run is over and nothing more is
+      // to be sent, and the touchscreen goes with it either way.
+      end: () => process.kill(),
+      kill: () => process.kill(),
+    },
+    'shell',
+  );
 
   // The phone's own stderr comes on stdout, `holdShell` having sent it there; what comes here is from before that.
   const errors = textOf(process.stderr);

@@ -50,7 +50,8 @@ function indexOf(bytes: Uint8Array, needle: Uint8Array): number {
   return -1;
 }
 
-export function holdShell(pipe: Pipe): HeldShell {
+/** The shell `pipe` reaches, called `name` in what it fails with: `adb shell` where the `adb` binary runs it. */
+export function holdShell(pipe: Pipe, name: string): HeldShell {
   const encoder = new TextEncoder();
   const marker = `__held_shell_${Date.now()}_${Math.random().toString(36).slice(2)}__`;
   const lead = encoder.encode(`\n${marker} `);
@@ -102,7 +103,7 @@ export function holdShell(pipe: Pipe): HeldShell {
       () =>
         new Promise<Uint8Array>((resolve, reject) => {
           if (dead || closing) {
-            reject(dead ?? new Error('adb shell closed'));
+            reject(dead ?? new Error(`${name} closed`));
             return;
           }
 
@@ -128,7 +129,7 @@ export function holdShell(pipe: Pipe): HeldShell {
     const shown = command.length > 60 ? `${command.slice(0, 60)}…` : command;
 
     return run.catch((error: unknown) => {
-      throw new Error(`adb shell ${shown}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`${name} ${shown}: ${error instanceof Error ? error.message : String(error)}`);
     });
   };
 
@@ -145,9 +146,7 @@ export function holdShell(pipe: Pipe): HeldShell {
     exited: (detail) =>
       fail(
         new Error(
-          closing
-            ? 'adb shell closed'
-            : `adb shell exited${detail ? `: ${detail}` : ''}; is the phone still connected?`,
+          closing ? `${name} closed` : `${name} exited${detail ? `: ${detail}` : ''}; is the phone still connected?`,
         ),
       ),
   };

@@ -57,11 +57,14 @@ export function adbHeld(serial?: string): Transport & { close(): void } {
   const child = spawn('adb', [...prefix, 'shell'], { stdio: ['pipe', 'pipe', 'pipe'] });
   let errors = '';
 
-  const held = holdShell({
-    write: (text) => child.stdin.write(text),
-    end: () => child.stdin.end(),
-    kill: () => child.kill(),
-  });
+  const held = holdShell(
+    {
+      write: (text) => child.stdin.write(text),
+      end: () => child.stdin.end(),
+      kill: () => child.kill(),
+    },
+    'adb shell',
+  );
 
   child.stdout.on('data', (chunk: Buffer) => held.output(chunk));
 

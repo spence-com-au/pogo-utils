@@ -59,9 +59,7 @@ export async function lend(
       .catch((failure: unknown) => {
         throw error === undefined
           ? failure
-          : new Error(
-              `${error}; the phone could not be taken back, so connect it again from the settings menu: ${said(failure)}`,
-            );
+          : new Error(`${error}; the phone could not be taken back, so connect it again in settings: ${said(failure)}`);
       });
 
   // Started only once the phone is let go of, which fails where it is already gone and leaves nothing to end.

@@ -39,7 +39,7 @@ test('holds one shell, its stderr sent to stdout, and writes each command and it
   ]);
 
   held.close();
-  await expect(held.shell(['echo', 'after'])).rejects.toThrow(/adb shell closed/);
+  await expect(held.shell(['echo', 'after'])).rejects.toThrow(/^shell echo after: shell closed$/);
   expect(phone.killed).toEqual(['sh']);
 });
 
@@ -54,7 +54,7 @@ test('fails every command once the shell is gone, as when the phone is unplugged
   await expect(held.shell(['echo', 'nor this'])).rejects.toThrow(/is the phone still connected\?/);
 });
 
-test('makes the touchscreen through the held shell, taps through it, and answers frames once the screen sends one', async () => {
+test('makes the touchscreen through the held shell, taps through it, and answers frames once they come', async () => {
   const phone = fakeConnection('pixel', H264);
   const battle = await battlePhone(phone.connection);
 

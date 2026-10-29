@@ -79,7 +79,7 @@ async function setUp(log: string[], open: (serial: string) => Promise<Connection
   return { store, held, start, reconnect, back };
 }
 
-test('hands the phone to the Worker for the run, answers its frames, and takes the phone back once it stops', async () => {
+test('lends the phone to the Worker for a run, answers its frames, and takes it back once it stops', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
@@ -174,7 +174,7 @@ test('leaves a phone connected during the run held, letting the lent one go agai
   await expect(back.connection.disconnected).resolves.toBeUndefined();
 });
 
-test('fails a run whose connection closed before the phone sent a frame, rather than answering one already over', async () => {
+test('fails a run whose connection closed before the first frame, rather than answer one already over', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, async () => {
