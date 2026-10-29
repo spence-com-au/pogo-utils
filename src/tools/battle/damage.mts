@@ -386,8 +386,8 @@ export interface Cycle {
  * 894) and its randomized battles weigh, its own simulations taking every shield they can bar a few moves and forms
  * (`src/js/battle/Battle.js` lines 1081–1144). The first alone is too late: in the two Master League sets of GO Battle
  * League logged, 2026-10-28 and 2026-10-29, 9 of the 14 shields it took against a hit it calculated were at 25% HP or
- * less, and 8 of the 13 it kept were against hits that left 26% or less. A Palkia at 40% kept one against a Zapdos's
- * Drill Peck at ~34%, and fainted 2.5s later with both still up.
+ * less, and 8 of the 13 it kept were against hits that left 26% or less. Palkia at 40% kept one against Zapdos's Drill
+ * Peck at ~34%, and fainted 2.5s later with both still up.
  *
  * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, one more than
  * the hit's move takes to be thrown again from what the opponent had before paying for it (lines 1190–1194). Where
