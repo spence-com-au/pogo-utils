@@ -273,13 +273,24 @@ test.each([
   expect(energy.fastFaints(MATCHUP, hp)).toBe(said);
 });
 
-// A shadow Medicham's Counter, a fifth harder than the model has any Counter: the hit measured is the one that counts.
-test('a hit measured outweighs the model', () => {
-  const energy = new Energy(DATA);
+/**
+ * A shadow Medicham's Counter, a fifth harder than the model has any Counter, with our defense at −2: 8.2% of Registeel
+ * a hit to the model's 6.8%. Where the stages have moved the hit, the larger of the two counts, and that is the step.
+ */
+test('a hit measured larger than the model outweighs it', () => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast: 'Counter', fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+  const lowered = { own: { attack: 0, defense: -2 }, their: { attack: 0, defense: 0 } };
 
-  fight(energy, { step: COUNTER * 1.2, hits: 3 });
+  fight(energy, { step: (9 / 132) * 1.2, hits: 3 });
 
-  expect(energy.fastFaints(MATCHUP, 0.07)).toBe('their next fast move would faint us, one taking ~5% with 7% left');
+  expect(energy.fastFaints(MATCHUP, 0.1, lowered)).toBe(
+    'their next fast move would faint us, one taking ~8% with 10% left',
+  );
 });
 
 /**

@@ -288,9 +288,11 @@ would faint us: one hit, as [measured off our bar](#the-opponents-energy), takin
 points for its wander. Until a hit has been measured against the Pokémon out, it is modelled instead, for the fast move
 the count goes by, at the most it would take of any form either side could be. That is where a measured hit is missing,
 the opponent's newcomer facing one of ours left low by the last, and throwing a hit early costs less than fainting with
-the energy. Nothing to model it on, such as our CP unread, leaves the move held for. The rule is PvPoke's
-(`ActionLogic.js`), which also fits in fast moves of its own while it would land one before the opponent's next, a
-timing that needs to know how far into its fast move the opponent is, to a turn. It is logged as
+the energy. Once their attack or our defense has moved, the model counts as well wherever it is the larger, the hit
+perhaps measured before they moved. With no hit measured and nothing to model it on, such as our CP unread, the move
+held for stays held. The rule is PvPoke's (`ActionLogic.js`), which also fits in fast moves of its own while it would
+land one before the opponent's next, a timing that needs to know how far into its fast move the opponent is, to a turn.
+It is logged as
 `threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump`.
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,

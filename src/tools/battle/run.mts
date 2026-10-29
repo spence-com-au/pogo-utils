@@ -1097,23 +1097,26 @@ export async function run(
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
       // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw. Never once a throw is tapped and
       // not yet played: a banner read landing meanwhile can lower the count into a hold, which would stop a lost tap's
-      // retap, the counts it rests on staying paused until the throw plays.
+      // retap, the counts it rests on staying paused until the throw plays. Nor where the next fast move would faint us:
+      // `spare` weighs their fast moves by the step measured, where `fastFaints` may have found one hit enough by the
+      // model at the stages as they stand, and a Pokémon fainted carries no energy on.
       const going = !player.minigame && lit.some((x) => throwing === undefined || x === throwing.x);
-      const spared = going
-        ? spare(
-            data,
-            {
-              matchup: facing,
-              hp: health,
-              shields: theirShields,
-              left: left.opponent,
-              steps: { ours: hits.step, theirs: energy.step },
-              estimate,
-              seen: theirMoves.get(seen.opponent ?? ''),
-            },
-            meta,
-          )
-        : undefined;
+      const spared =
+        going && fast === undefined
+          ? spare(
+              data,
+              {
+                matchup: facing,
+                hp: health,
+                shields: theirShields,
+                left: left.opponent,
+                steps: { ours: hits.step, theirs: energy.step },
+                estimate,
+                seen: theirMoves.get(seen.opponent ?? ''),
+              },
+              meta,
+            )
+          : undefined;
       const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {
