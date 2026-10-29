@@ -1,8 +1,8 @@
 /**
- * Writes `SILHOUETTES`, every form's outline that `pnpm battle` reads a party card against, for a page to fetch once
- * rather than fetching some 1,300 form icons and 40 MB to outline them itself. The forms are the vended game master's,
- * which is the one a page reads, and `assets.test.mts` fails where the two have drifted apart, so a re-vend of the game
- * master that adds a form is followed by this.
+ * Writes `data/silhouettes.json`, every form's outline that `pnpm battle` reads a party card against, for a page to
+ * fetch once rather than fetching some 1,300 form icons and 40 MB to outline them itself. The forms are the vended game
+ * master's, which is the one a page reads, and `assets.test.mts` fails where the two have drifted apart, so a re-vend
+ * of the game master that adds a form is followed by this.
  *
  * Vended rather than built, for the reason `build-ics.mts` gives: the build touches nothing on the network, and this
  * would be 1,300 downloads on every deploy and on every pull request's `lint:types`. As with the game master, the icons
@@ -25,14 +25,16 @@ const dir = mkdtempSync(join(tmpdir(), 'silhouettes-'));
 let icons;
 
 /*
- * `silhouettesFor` carries on past an icon it could not have, which suits a run and would vend a form a page can never
- * match. A few of the 1,300 downloads time out on most cold runs — 1 to 5 in each of four, a different few each time,
- * each `ETIMEDOUT` and each there when asked again — so a second pass over the same directory fetches only those, and anything still missing after it is refused.
+ * `silhouettesFor` leaves out an icon it could not have, and a form left out here is one a page can never match. A few
+ * of the 1,300 downloads time out on most cold runs — 1 to 5 in each of four, a different few each time, each
+ * `ETIMEDOUT` and each there when asked again — so a second pass over the same directory fetches only those, and
+ * anything still missing after it is refused.
  */
 try {
   icons = await silhouettesFor(dir, data);
 
   if (icons.size < wanted) {
+    console.error(`${wanted - icons.size} of ${wanted} form icons could not be had; asking for them again`);
     icons = await silhouettesFor(dir, data);
   }
 } finally {

@@ -26,9 +26,11 @@ test.each(ICONS)('%s is vended as `silhouetteOfIcon` outlines it', (icon) => {
 });
 
 // The other way to drift: a re-vend of the game master that adds a form, or renames a species, without the silhouettes
-// following it, which leaves that form's card unread in a page and nowhere else.
-test('the silhouettes are for every form icon of the vended game master, by its species', () => {
-  expect(new Map([...DECODED].map(([icon, { species }]) => [icon, species]))).toStrictEqual(formIcons(DATA));
+// following it, which leaves that form's card unread in a page and nowhere else. In the game master's order too, as
+// arrays rather than the maps `toStrictEqual` would compare regardless of order, since a vend writing them in the order
+// its downloads finished would show a diff where no outline moved.
+test('the silhouettes are for every form icon of the vended game master, by its species and in its order', () => {
+  expect([...DECODED].map(([icon, { species }]) => [icon, species])).toStrictEqual([...formIcons(DATA)]);
 });
 
 test('a silhouette packed for another grid is refused rather than laid over the wrong cells', () => {

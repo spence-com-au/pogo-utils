@@ -511,14 +511,16 @@ export function iconsFor(dir: string, data: GameData, refresh = false): Promise<
 }
 
 /**
- * Every form's outline, by its icon, which `pnpm battle` reads the party screen against and `pnpm vend:silhouettes`
- * publishes for a page to: each icon the game draws, some 1,300 files and 40 MB on the first run, cached beside the ones
- * `iconsFor` keeps. One that cannot be had leaves its form unmatched rather than stopping the run.
+ * Every form's outline that could be had, by its icon: some 1,300 icons and 40 MB, downloaded into `dir` and cached
+ * there as `iconsFor` caches its own. One that cannot be had is left out for the caller to answer for, since the two
+ * answer differently: `pnpm battle` reads the party without it, and `pnpm vend:silhouettes` asks again and then refuses.
+ *
+ * In the order the game master lists the forms rather than the order the downloads finish, so a vend over the same
+ * upstream writes the same file.
  */
 export async function silhouettesFor(dir: string, data: GameData): Promise<Map<string, Icon>> {
   const icons = [...formIcons(data)];
-  const read = new Map<string, Icon>();
-  let missing = 0;
+  const read: (readonly [string, Icon])[] = [];
 
   for (let at = 0; at < icons.length; at += 16) {
     const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
@@ -526,24 +528,15 @@ export async function silhouettesFor(dir: string, data: GameData): Promise<Map<s
         const silhouette = await cachedAs(join(dir, 'icons'), icon, ICON_BASE + icon, false, (bytes) =>
           silhouetteOfIcon(decodePng(bytes)),
         );
-        read.set(icon, { species, silhouette });
+
+        return [[icon, { species, silhouette }] as const];
       } catch {
-        missing++;
+        return [];
       }
     });
 
-    await Promise.all(batch);
+    read.push(...(await Promise.all(batch)).flat());
   }
 
-  if (missing > 0) {
-    console.error(`${missing} of ${icons.length} form icons could not be had; those forms go unmatched`);
-  }
-
-  // None at all is every party read against nothing. Where no form even names an icon, it is the listing of the artwork
-  // that failed, which `loadGameData` reports and carries on from: `pnpm inventory` loses only its narrowing by artwork.
-  if (read.size === 0) {
-    throw new Error('no form icon could be had, so no party could be read');
-  }
-
-  return read;
+  return new Map(read);
 }

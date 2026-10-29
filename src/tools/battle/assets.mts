@@ -1,12 +1,12 @@
 /**
- * What a battle reads the screen against beyond the game master, and how each is fetched and read: the type icons, the
- * forms' silhouettes and, through `meta.mts`, PvPoke's rankings. The reading is here and the fetching is the caller's,
- * handed over as a `Download`, because the two callers fetch differently: `pnpm battle` keeps a week's copy under
- * `.cache` as `pnpm inventory` does, and a page has `fetch` and nothing to keep a copy on.
+ * What a battle reads the screen against beyond the game master and PvPoke's meta, and how each is read: the type icons
+ * and the forms' silhouettes. The type icons are fetched through a `Download` the caller hands over, as `meta.mts`
+ * fetches PvPoke's files, because the two callers fetch differently: `pnpm battle` keeps a week's copy under `.cache`
+ * as `pnpm inventory` does, and a page has `fetch` and nothing to keep a copy on.
  *
  * The silhouettes are the exception. A page would have to fetch some 1,300 form icons and 40 MB to outline them, so
- * `scripts/vend-silhouettes.mts` outlines them once into `SILHOUETTES`, which is what `encodeSilhouettes` writes and
- * `decodeSilhouettes` reads.
+ * `scripts/vend-silhouettes.mts` outlines them once into `data/silhouettes.json`, which is what `encodeSilhouettes`
+ * writes and `decodeSilhouettes` reads.
  */
 
 import { typeIcon, typeIconFile } from '../../pokedex/icons.ts';

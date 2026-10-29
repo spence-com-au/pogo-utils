@@ -42,9 +42,10 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
-import { typeIcons, type Download } from '../src/tools/battle/assets.mts';
+import { formIcons, typeIcons, type Download } from '../src/tools/battle/assets.mts';
 import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
+import { type Icon } from '../src/tools/battle/party.mts';
 import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
@@ -54,6 +55,7 @@ import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData, silhouettesFor } from '../src/tools/inventory/download.mts';
+import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { encodePng, type Image } from '../src/tools/inventory/png.mts';
@@ -117,6 +119,29 @@ const cache =
   (file, url, decode) =>
     cachedAs(dir, file, url, false, decode);
 
+/**
+ * Every form's outline, which the party screen is read against, outlined from the icons out of the game master the run
+ * reads rather than read from the vended `data/silhouettes.json` the site publishes, so a form released since the last
+ * vend is read on its card from the day this game master names it. One that cannot be had leaves its form unmatched
+ * rather than stopping the run.
+ */
+async function silhouettes(data: GameData): Promise<Icon[]> {
+  const wanted = formIcons(data).size;
+  const read = await silhouettesFor(CACHE, data);
+
+  if (read.size < wanted) {
+    console.error(`${wanted - read.size} of ${wanted} form icons could not be had; those forms go unmatched`);
+  }
+
+  // None at all is every party read against nothing. Where no form even names an icon, it is the listing of the artwork
+  // that failed, which `loadGameData` reports and carries on from: `pnpm inventory` loses only its narrowing by artwork.
+  if (read.size === 0) {
+    throw new Error('no form icon could be had, so no party could be read');
+  }
+
+  return [...read.values()];
+}
+
 function oneOf<T extends string>(name: string, value: string | undefined, allowed: readonly T[]): T {
   const found = allowed.find((option) => option === value);
 
@@ -168,9 +193,7 @@ if (command === 'run') {
   // Which move is worth the most per energy, out of the game master `pnpm inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
 
-  // Outlined from the icons out of the same game master, rather than read from the vended `SILHOUETTES` the site
-  // publishes, so a form released since the last vend is read on its card from the day this game master names it.
-  const icons = [...(await silhouettesFor(CACHE, data)).values()];
+  const icons = await silhouettes(data);
 
   // The type icons are 18 small files, cached beside the form icons.
   const types = await typeIcons(data, cache(join(CACHE, 'types')));
