@@ -22,7 +22,7 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
-import { buildsOf, capped, hit, MOVES_HELD, type Side } from './damage.mts';
+import { buildsOf, capped, hit, MOVES_HELD, type Side, type Verdict } from './damage.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, lowersDefense, type Shown } from './strategy.mts';
 
@@ -574,7 +574,7 @@ export function untilTheirsLands(
   own: Shown,
   opponent: string,
   shields: number,
-  verdict: { faints: boolean; why: string; hardest?: string; afforded?: string },
+  verdict: Verdict,
   affordable: number | undefined,
   held: number,
 ): Hold | undefined {

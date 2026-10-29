@@ -502,6 +502,15 @@ export async function run(
   // tap, or by ours leaving the field.
   let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
+  // Ends a hold with the move it held for, told where it was held.
+  const undefer = (why: string) => {
+    if (deferring?.held) {
+      log(`no longer holding ${deferring.move}`, 'own', why);
+    }
+
+    deferring = undefined;
+  };
+
   const drop = (why: string) => {
     if (pending) {
       log(`${pending.move ?? 'our charged move'} not thrown`, 'own', why);
@@ -521,7 +530,7 @@ export async function run(
     stages = { ...stages, own: NO_STAGES };
     readAt = -Infinity;
     counter = undefined;
-    deferring = undefined;
+    undefer('ours left the field');
   };
 
   // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
@@ -714,7 +723,7 @@ export async function run(
         offered = undefined;
         thrown = undefined;
         pending = undefined;
-        deferring = undefined;
+        undefer('the battle before ended');
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
@@ -1000,8 +1009,9 @@ export async function run(
       // the HP decided on, a misread's drop and the rise back from it being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
       const theirBar = bars && bars.opponent !== null ? health.opponent : null;
+      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
-      if ((state !== 'battle' && state !== 'charged') || player.minigame) {
+      if (!fighting) {
         energy.pause();
         hits.pause();
       } else {
@@ -1124,7 +1134,7 @@ export async function run(
       }
 
       // A hold lasts only as long as our energy grows through it: the fight's own frames, one after another.
-      if (deferring && (state === 'battle' || state === 'charged') && !player.minigame) {
+      if (deferring && fighting) {
         deferring.waited += deferring.frame === frames - 1 ? clock.now() - deferring.at : 0;
         deferring.frame = frames;
         deferring.at = clock.now();
@@ -1267,7 +1277,6 @@ export async function run(
             )
           : undefined;
       const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
-      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for and again where its tap is
       // dropped, by a counter of ours where one is benched; and for as long as the newcomer stays out, its switch timer
@@ -1546,6 +1555,7 @@ export async function run(
         if (menu.screen === 'result') {
           battles++;
           battling = false;
+          undefer('the battle ended');
           off = [];
 
           if (done.outcome) {

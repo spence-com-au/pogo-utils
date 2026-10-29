@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
+import { type Verdict } from './damage.mts';
 import { Energy, Hits, spare, untilTheirsLands, type Matchup, type Standing } from './energy.mts';
 import { type Meta } from './meta.mts';
 
@@ -334,13 +335,8 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   };
   const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left', hardest: 'Flash Cannon' };
   const unread = { faints: true, why: 'their species unread' };
-  const holds = (
-    move: string,
-    shields: number,
-    verdict: Parameters<typeof untilTheirsLands>[5],
-    energy = 50,
-    held = 0,
-  ) => untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, energy, held);
+  const holds = (move: string, shields: number, verdict: Verdict, energy = 50, held = 0) =>
+    untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, energy, held);
 
   expect(holds('Close Combat', 0, survived)).toEqual({
     held: true,
