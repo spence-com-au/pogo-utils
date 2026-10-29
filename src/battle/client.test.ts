@@ -192,6 +192,22 @@ test('lets the lent phone go again where another is connected while it is being 
   await expect(back.connection.disconnected).resolves.toBeUndefined();
 });
 
+test('takes a reopen that fails as no failure where another phone was connected meanwhile', async () => {
+  const there = fakeConnection('pixel', H264);
+  const { store, start } = await setUp([], () => Promise.resolve(there.connection));
+  const other = fakeConnection('other', H264);
+
+  const run = await lend(store, start, async () => {
+    await store.hold(other.connection);
+    throw new Error('the phone is held by something else');
+  });
+
+  run.stop();
+  await run.ended;
+
+  expect(store.phone).toBe(other.connection);
+});
+
 test('fails a run whose connection closed unasked before the first frame, saying so', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
