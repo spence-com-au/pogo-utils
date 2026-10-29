@@ -1769,8 +1769,8 @@ test.each([
     'shield-charizard-high',
     false,
     ['prompt'],
-    'own: took shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, less than 2 × the ~20% of 10 fast ' +
-      'moves before their next charged move',
+    'own: took shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, no more than 2 × the ~20% of 10 ' +
+      'fast moves before their next charged move',
   ],
   [
     'shield-charizard-high',

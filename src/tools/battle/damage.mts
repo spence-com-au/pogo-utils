@@ -378,9 +378,10 @@ export interface Cycle {
  *
  * - The hit would faint us, or something it rests on is unknown, as `verdict.faints` says.
  * - Any charged move the opponent is allowed for, `verdict.worst`, would take at least 1/`HARD` of what is left.
- * - What the hit, or any charged move the opponent is allowed for, would leave is less than its fast moves take before
- *   it can throw the hit's move again, once for each shield we hold: with that little left, ours would faint before the
- *   next shield could be taken. The fast moves are counted off `cycle`, and with either unknown the shield is taken.
+ * - What the hit, or any charged move the opponent is allowed for, would leave is no more than its fast moves take
+ *   before it can throw the hit's move again, once for each shield we hold: with that little left, ours would faint
+ *   before the next shield could be taken. The fast moves are counted off `cycle`, and with either unknown the shield is
+ *   taken.
  *
  * The last two are PvPoke's `wouldShield` (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines
  * 1164–1280), its battle AI's model of whether a player shields: what its baiting asks of the opponent (lines 421 and
@@ -445,19 +446,19 @@ export function wouldShield(
   const cycles = fast * step * shields;
   const times = shields > 1 ? `${shields} × the` : 'the';
   const than = (left: number) =>
-    `${left < cycles ? 'less' : 'more'} than ${times} ~${percent(fast * step)} of ${fast} fast ` +
+    `${left <= cycles ? 'no more' : 'more'} than ${times} ~${percent(fast * step)} of ${fast} fast ` +
     `move${fast === 1 ? '' : 's'} before their next charged move`;
 
   // Asked of every move allowed for as well as the hit, as PvPoke asks it (line 1226), the cycle being the hit's either
   // way: a harder move the count does not yet afford may be the next.
-  if (hp - share >= cycles && hp - worst.share < cycles) {
+  if (hp - share > cycles && hp - worst.share <= cycles) {
     return {
       shield: true,
       why: `${verdict.why}; ${worst.name} would leave ~${percent(hp - worst.share)}, ${than(hp - worst.share)}`,
     };
   }
 
-  return { shield: hp - share < cycles, why: `${verdict.why}; leaves ~${percent(hp - share)}, ${than(hp - share)}` };
+  return { shield: hp - share <= cycles, why: `${verdict.why}; leaves ~${percent(hp - share)}, ${than(hp - share)}` };
 }
 
 /**

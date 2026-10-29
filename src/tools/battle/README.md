@@ -319,7 +319,7 @@ The shield prompt never names the move coming, so the hit judged is the hardest 
   for the HP being read off a bar and the opponent's build being a guess.
 - **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
   **1/1.4** of the HP left.
-- **Too little would be left:** the hit, or any charged move it could have, would leave less than the opponent's fast
+- **Too little would be left:** the hit, or any charged move it could have, would leave no more than the opponent's fast
   moves take before it can throw the hit's move again, once for each shield we hold, so ours would faint before the next
   shield could be taken. The fast moves are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's
   cost and the energy counted less that cost, each taking what one was measured to take off our bar
@@ -357,7 +357,7 @@ What goes into "the hardest move the opponent could be throwing":
 unread, the cap itself not yet known, or none of the opponent's fast moves yet measured or its energy uncounted. A
 shield spent early costs less than a Pokémon lost. Each shield taken or kept is logged with the hit, such as
 `Drill Peck would take ~34%, with 50% left`, and the rule that decided it, such as
-`leaves ~16%, less than 2 × the ~12% of 6 fast moves before their next charged move`.
+`leaves ~16%, no more than 2 × the ~12% of 6 fast moves before their next charged move`.
 
 ### The opponent's energy
 

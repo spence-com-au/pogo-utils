@@ -338,7 +338,7 @@ test.each<[string, number, number, Shielding]>([
     {
       shield: true,
       why:
-        'Drill Peck would take ~34%, with 50% left; leaves ~16%, less than 2 × the ~12% of 6 fast moves before ' +
+        'Drill Peck would take ~34%, with 50% left; leaves ~16%, no more than 2 × the ~12% of 6 fast moves before ' +
         'their next charged move',
     },
   ],
@@ -380,7 +380,7 @@ test.each<[string, number, number, Shielding]>([
  * Shocks and one for margin.
  */
 test.each<[number, boolean, string]>([
-  [80, true, 'less than 2 × the ~12% of 6 fast moves'],
+  [80, true, 'no more than 2 × the ~12% of 6 fast moves'],
   [100, false, 'more than 2 × the ~8% of 4 fast moves'],
 ])('with %s energy counted, Palkia at 55%% shields Drill Peck: %s', (energy, shield, than) => {
   expect(palkia(0.55, 2, { ...THUNDER_SHOCK, estimate: { energy, gain: 9 } })).toEqual({
@@ -404,8 +404,8 @@ test('a harder move the count does not yet afford takes the shield against one i
   expect(palkia(0.65, 2, THUNDER_SHOCK, both)).toEqual({
     shield: true,
     why:
-      'Drill Peck would take ~34%, with 65% left, the hardest 41 energy affords; Thunderbolt would leave ~21%, less ' +
-      'than 2 × the ~12% of 6 fast moves before their next charged move',
+      'Drill Peck would take ~34%, with 65% left, the hardest 41 energy affords; Thunderbolt would leave ~21%, no ' +
+      'more than 2 × the ~12% of 6 fast moves before their next charged move',
   });
 });
 
