@@ -3,10 +3,10 @@
  * nothing here accounts for and has not yet finished.
  *
  * Two announcement surfaces are read. The news archive is paginated by `?nr=<offset>`, thirty articles a page, and
- * walking it to exhaustion reaches every article back to mid-2025 in nine fetches per edition. It is walked in every language the
- * site publishes in, because each edition lists announcements the English one never does — a regional event is often
- * written only for its own country, as Día de Muertos in Mexico was in Spanish alone, and the Japanese edition alone
- * carried some fifty such articles. The in-person index carries one schema.org `Event` per listing with its dates
+ * walking it to exhaustion reaches every article back to mid-2025, in about nine fetches for English when this was
+ * written. It is walked in every language the site publishes in, because each edition lists announcements the English
+ * one never does — a regional event is often written only for its own country, as Día de Muertos in Mexico was in
+ * Spanish alone, and the Japanese edition alone carried some fifty such articles. The in-person index carries one schema.org `Event` per listing with its dates
  * stated outright, and is scoped to exactly the kind of event this skill hunts.
  *
  * Reaching the whole archive rather than the front page is the difference between finding a long-running event and
@@ -261,12 +261,13 @@ function byScore(a: Scored, b: Scored) {
 }
 
 /**
- * What an article is scored against: its headline, or its slug where the headline has no words `tokens` can read. A
- * Japanese, Korean, Chinese, Russian or Thai headline folds to nothing, and an article only one of those editions lists
- * keeps it, so without this it could never be matched — not even a postponement of an event we hold. Its slug is still
- * ASCII, `202610aeonmall-halloween`.
+ * What an article is scored against: its headline, or its slug where the headline has no word `tokens` can read. A
+ * Japanese, Korean, Chinese, Russian or Thai headline folds to its numbers at most — `2026年11月のコミュニティ・デイ` to
+ * `2026` and `11` — and an article only one of those editions lists keeps it, so without this it could never be
+ * matched, not even a postponement of an event we hold. Its slug is still ASCII, `202610aeonmall-halloween`.
  */
-const matchText = ({ headline, slug }: Article) => (tokens(headline).size ? headline : slug);
+const matchText = ({ headline, slug }: Article) =>
+  [...tokens(headline)].some((word) => /[a-z]/.test(word)) ? headline : slug;
 
 /** The few events a headline most plausibly refers to, best first, or nothing if none is close enough. */
 function candidatesFor(headline: string, candidates: Candidate[]) {

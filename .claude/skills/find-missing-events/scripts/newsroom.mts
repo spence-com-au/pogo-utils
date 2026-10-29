@@ -78,6 +78,17 @@ const YEAR = '(20\\d{2}|25\\d{2})(?!\\d)';
 const DAY = '(?<!\\d)(3[01]|[12]\\d|0?[1-9])(?!\\d)';
 const DASH = '[~～〜‐-―-]';
 
+// What joins the two ends of a range, besides a dash: `to`, `bis`, `hasta`, `から`, `부터` and the rest. Only between two
+// dates joined by one of these does a year roll over from one to the other, since a ticket-sale date after an event's
+// is as near as its range end and is no part of it.
+const CONNECTOR = new RegExp(
+  `${DASH}|から|まで|至|到|부터|까지|ถึง|(?<![\\p{L}])(?:to|until|through|thru|bis|au|al|hasta|até|ao|alle|fino|do|по|до|hingga|sampai|kadar)(?![\\p{L}])`,
+  'iu',
+);
+
+// The years a bare number may be read as, around now: further out, a `2000` beside a date is an amount of Stardust.
+const THIS_YEAR = new Date().getUTCFullYear();
+
 // What follows a number that makes it a clock time rather than a day: `18:00`, `10.00`, `10h`, `10 Uhr`. A day-first
 // date is routinely followed by its start time, and neither reading of it may take the hour as a day.
 const NOT_TIME = '(?![\\d:]|\\.\\d|\\s*(?:h|uhr)(?![\\p{L}]))';
@@ -111,8 +122,11 @@ function* datesIn(text: string, months: Map<string, number>) {
   // Numeric dates read a same-month range to its last day too, past the weekday each end usually carries:
   // `10月24日（土）〜25日（日）` is the 25th.
   const weekday = `(?:\\s*[（(][^）)]{1,4}[）)])?`;
-  const numeric = `(?:(20\\d{2})\\s*[年년]\\s*)?${DAY}\\s*[月월](?:\\s*${DAY}\\s*[日일]${weekday}(?:\\s*${DASH}\\s*${DAY}\\s*[日일]${weekday})?)?`;
-  const bareYear = `(?<!\\d)(20\\d{2})(?!\\d)`;
+  const joiner = `(?:${DASH}|から|至|到|부터)`;
+  const numeric = `(?:(20\\d{2})\\s*[年년]\\s*)?${DAY}\\s*[月월](?:\\s*${DAY}\\s*[日일]${weekday}(?:\\s*${joiner}\\s*${DAY}\\s*[日일]${weekday})?)?`;
+
+  // A bare year touches no letter or kana, so `ほしのすな2000を` is an amount rather than a year.
+  const bareYear = `(?<![\\d\\p{L}])(20\\d{2})(?![\\d\\p{L}])`;
   const pattern = new RegExp(`${monthFirst}|${dayFirst}|${numeric}|${bareYear}`, 'giu');
   const number = (digits?: string) => (digits === undefined ? undefined : Number(digits));
   const era = (year?: number) => (year !== undefined && year >= 2500 ? year - 543 : year);
@@ -127,7 +141,7 @@ function* datesIn(text: string, months: Map<string, number>) {
       yield [era(number(y2)), months.get(m2.toLowerCase()), number(d2), at] as const;
     } else if (m3 !== undefined) {
       yield [number(y3), number(m3), number(e3 ?? d3), at] as const;
-    } else {
+    } else if (Math.abs(Number(y4) - THIS_YEAR) <= 5) {
       yield [number(y4), undefined, undefined, at] as const;
     }
   }
@@ -229,7 +243,8 @@ export function articleText(html: string, url: string) {
  * mostly a verb.
  */
 export function latestDateNamed(text: string, locales: string[]) {
-  const named = [...datesIn(text, monthNamesFor(locales))];
+  const normalized = text.normalize('NFC');
+  const named = [...datesIn(normalized, monthNamesFor(locales))];
   const stated = named.filter(([year]) => year !== undefined);
   let latest: string | undefined;
 
@@ -238,7 +253,7 @@ export function latestDateNamed(text: string, locales: string[]) {
       continue;
     }
 
-    const year = given ?? yearNear(at, month, stated);
+    const year = given ?? yearNear(normalized, at, month, stated);
     const found = year === undefined ? undefined : isoDate(year, month, day ?? 28);
 
     if (found && (!latest || found > latest)) {
@@ -260,9 +275,11 @@ type Named = ReturnType<typeof datesIn> extends Iterable<infer T> ? T : never;
  * the year before. Others write it on the start — `2026年12月28日から1月3日まで`, `gamescom 2026 … vom 26. bis 30.
  * August` — and there a January after a December is the year after. The far side is ignored even when it is in reach,
  * since `2026年12月28日から1月3日まで開催！参加券は2026年11月1日から` is about two things. A tie goes to the date after, the more
- * common shape. Nothing further is reached for: a year a paragraph away is as likely another event's.
+ * common shape. Nothing further is reached for: a year a paragraph away is as likely another event's. And the year only
+ * rolls over where a `CONNECTOR` joins the two, since `November 15, 2026. Ticket sales begin Wednesday, October 1` is
+ * two dates in the same year, not a range into the next.
  */
-function yearNear(at: Named[3], month: number, stated: Named[]) {
+function yearNear(text: string, at: Named[3], month: number, stated: Named[]) {
   const after = stated.find(([, , , other]) => other.start >= at.end && other.start - at.end <= RANGE_GAP);
   const before = stated.findLast(([, , , other]) => other.end <= at.start && at.start - other.end <= RANGE_GAP);
   const gapAfter = after ? after[3].start - at.end : Infinity;
@@ -271,13 +288,17 @@ function yearNear(at: Named[3], month: number, stated: Named[]) {
   if (after && gapAfter <= gapBefore) {
     const [year = 0, otherMonth] = after;
 
-    return otherMonth !== undefined && month > otherMonth ? year - 1 : year;
+    const ranged = CONNECTOR.test(text.slice(at.end, after[3].start));
+
+    return ranged && otherMonth !== undefined && month > otherMonth ? year - 1 : year;
   }
 
   if (before) {
     const [year = 0, otherMonth] = before;
 
-    return otherMonth !== undefined && month < otherMonth ? year + 1 : year;
+    const ranged = CONNECTOR.test(text.slice(before[3].end, at.start));
+
+    return ranged && otherMonth !== undefined && month < otherMonth ? year + 1 : year;
   }
 
   return undefined;
