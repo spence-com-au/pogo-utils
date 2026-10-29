@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
-import { Energy, Hits, spare, type Matchup, type Standing } from './energy.mts';
+import { Energy, Hits, spare, untilTheirsLands, type Matchup, type Standing } from './energy.mts';
 import { type Meta } from './meta.mts';
 
 const DATA = JSON.parse(
@@ -311,4 +311,76 @@ test('weighs only its two moves once both have been seen', () => {
   expect(spare(DATA, { ...standing, seen: new Set(['Dragon Claw', 'Shadow Sneak']) }), '46 short of 50').toBe(
     'fast moves finish Giratina at 15%',
   );
+});
+
+/**
+ * Xerneas against Metagross, both read at their CPs from battle 4 of the Pixel 8 Pro's Master League set, 2026-10-29,
+ * the verdicts `wouldFaint`'s for them: Meteor Mash, at 50 energy counted, would take 78% of a full bar; Flash Cannon,
+ * at 100, 85% of 90%; and at 7, nothing is afforded.
+ */
+test('with no shield left, a move lowering our defense waits for a charged move we would survive to land', () => {
+  const xerneas = { species: 'Xerneas', types: ['Fairy'] };
+  const survived = {
+    faints: false,
+    why: 'Meteor Mash would take ~78%, with 100% left, the hardest 50 energy affords',
+    hardest: 'Meteor Mash',
+    afforded: 'Meteor Mash',
+  };
+  const fainting = {
+    faints: true,
+    why: 'Flash Cannon would take ~85%, with 90% left',
+    hardest: 'Flash Cannon',
+    afforded: 'Flash Cannon',
+  };
+  const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left', hardest: 'Flash Cannon' };
+  const unread = { faints: true, why: 'their species unread' };
+  const holds = (
+    move: string,
+    shields: number,
+    verdict: Parameters<typeof untilTheirsLands>[5],
+    energy = 50,
+    held = 0,
+  ) => untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, energy, held);
+
+  expect(holds('Close Combat', 0, survived)).toEqual({
+    held: true,
+    why: `Metagross can afford Meteor Mash, which we would survive; ${survived.why}`,
+  });
+  expect(holds('Close Combat', 0, landed, 7), 'the count lowered by its throw, affording nothing').toEqual({
+    held: false,
+    why: "7 energy, as counted, affords none of Metagross's charged moves",
+  });
+  expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, landed, undefined, 0)).toEqual({
+    held: false,
+    why: "Metagross's energy not counted",
+  });
+  expect(holds('Close Combat', 0, fainting), 'a hit that would faint us, for `beforeFainting`').toEqual({
+    held: false,
+    why: fainting.why,
+  });
+  expect(holds('Close Combat', 1, survived), 'a shield left to take it').toBe(undefined);
+  expect(holds('Moonblast', 0, survived), 'a move leaving our defense alone').toBe(undefined);
+  expect(holds('Close Combat', 0, unread), 'a newcomer of theirs not yet named').toEqual({
+    held: false,
+    why: unread.why,
+  });
+
+  // Geomancy, 13 energy for 3 turns, fills 100 from Close Combat's 45 in 6346ms.
+  expect(holds('Close Combat', 0, survived, 50, 6300)?.held).toBe(true);
+  expect(holds('Close Combat', 0, survived, 50, 6400)).toEqual({
+    held: false,
+    why: "held 6.4s, past the 6.3s Xerneas's energy takes at the soonest to fill from 45",
+  });
+
+  // Galarian Moltres's Wing Attack, 8 for 2 turns, fills from Brave Bird's 55 in 5625ms.
+  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
+
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5600)?.held).toBe(true);
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5700)?.why).toBe(
+    "held 5.7s, past the 5.6s Moltres's energy takes at the soonest to fill from 55",
+  );
+  expect(
+    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0)?.held,
+    'none of our fast moves known, so no time to hold for',
+  ).toBe(false);
 });

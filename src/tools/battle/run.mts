@@ -42,13 +42,12 @@ import {
   refugeOf,
   stripperOf,
   typesOf,
-  untilTheirsLands,
   type Pick,
   type Switch,
 } from './strategy.mts';
 import { afterThrow, finisher, NO_STAGES, wouldFaint, type Side, type Stages, type Verdict } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, Hits, spare, type Matchup } from './energy.mts';
+import { Energy, Hits, spare, untilTheirsLands, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 
@@ -1143,16 +1142,21 @@ export async function run(
       const hold =
         deferrable === undefined
           ? undefined
-          : untilTheirsLands(data, deferrable, us, theirName(), ourShields, verdict, ongoing?.waited ?? 0);
+          : untilTheirsLands(data, deferrable, us, theirName(), ourShields, verdict, affordable, ongoing?.waited ?? 0);
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
+        // A hold of another move ends as this one begins, the move chosen having changed under it.
+        if (deferring?.held) {
+          log(`no longer holding ${deferring.move}`, 'own', `${deferrable} picked`);
+        }
+
         log(`holding ${deferrable}`, 'own', hold.why);
         deferring = { move: deferrable, waited: ongoing?.waited ?? 0, frame: frames, at: clock.now(), held: true };
       } else if (ongoing?.held && hold && !hold.held) {
         log(`no longer holding ${ongoing.move}`, 'own', hold.why);
         ongoing.held = false;
       } else if (deferring?.held && !ongoing && lit.length > 0) {
-        // Another throw taking over on a frame with a button lit, rather than the buttons hidden by a throw or a prompt.
+        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt.
         const instead = finish?.why ?? now?.why ?? spared ?? `${(pick && seen.moves.get(pick.x)) ?? 'another'} picked`;
 
         log(`no longer holding ${deferring.move}`, 'own', instead);

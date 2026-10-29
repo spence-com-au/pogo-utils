@@ -1034,10 +1034,11 @@ const HOLDING =
 
 /**
  * Held, Shadow Sneak goes once Mamoswine's Icicle Spear has landed, its countdown showing with no prompt and lowering
- * the count to afford nothing, our bar at 30% after it; or once held as long as Giratina's energy takes to fill from 50
- * at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off the field between `lit` and `relit` not
- * counting, between the 6s the two last and the 6.5s `late` lasts after them; or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit`, which takes
- * no tap.
+ * the count to 8, one hit's allowance, which affords nothing, our bar at 30% after it. Or once held as long as
+ * Giratina's energy takes to fill from 50 at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off
+ * the field between `lit` and `relit` not counting, so after the 6s the two last and before `late`, 0.5s after them,
+ * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit` or
+ * `relit`, which take no tap.
  */
 test.each([
   [
@@ -1047,7 +1048,7 @@ test.each([
     [
       HOLDING,
       'opponent: Mamoswine threw a charged move: none of our shields left to prompt for',
-      "own: no longer holding Shadow Sneak: Mamoswine's counted energy affords none of its charged moves",
+      "own: no longer holding Shadow Sneak: 8 energy, as counted, affords none of Mamoswine's charged moves",
       'own: threw Shadow Sneak',
     ],
   ],
@@ -1113,7 +1114,8 @@ test.each([
 
 /**
  * Thrown at once, as above, where there is no hit to wait for: with our two shields painted held, one left to take
- * Icicle Spear; with Mamoswine's painted spent, Shadow Sneak finishing it at 4%; and from 54%, Icicle Spear fainting us.
+ * Icicle Spear; with Mamoswine's painted spent, Shadow Sneak finishing it at 4%; and from 54%, Icicle Spear fainting
+ * us.
  */
 test.each([
   [
