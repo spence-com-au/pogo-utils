@@ -14,6 +14,9 @@ import {
   NO_STAGES,
   rankOne,
   wouldFaint,
+  wouldShield,
+  type Cycle,
+  type Shielding,
   type Side,
   type Stages,
 } from './damage.mts';
@@ -189,11 +192,10 @@ test('their CP unread is taken as the cap, and says so', () => {
   const atCap = wouldFaint(DATA, CHARIZARD, { species: 'Magmar', cp: ULTRA }, 0.9, ULTRA);
 
   expect(wouldFaint(DATA, CHARIZARD, unread, 0.9, ULTRA)).toEqual({
-    faints: atCap.faints,
+    ...atCap,
     why: `${atCap.why} (their CP unread, taken as the 2500 cap)`,
-    hardest: atCap.hardest,
   });
-  expect(atCap.faints, 'a hit it survives keeps the shield').toBe(false);
+  expect(atCap.faints, 'a hit it survives').toBe(false);
   expect(wouldFaint(DATA, { species: 'Charizard', cp: null }, MAGMAR, 0.9, ULTRA).why, 'ours is not').toBe(
     'our CP unread',
   );
@@ -204,6 +206,8 @@ test('says which hit it judged by, and how much of us it takes against what is l
     faints: true,
     why: 'Fire Blast would take ~48%, with 50% left',
     hardest: 'Fire Blast',
+    share: 71 / 149,
+    worst: { name: 'Fire Blast', share: 71 / 149 },
   });
   expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.6, ULTRA).why).toBe('Fire Blast would take ~48%, with 60% left');
 });
@@ -260,13 +264,14 @@ const staged = (their: Partial<Stages>, own: Partial<Stages> = {}) => ({
   their: { ...NO_STAGES, ...their },
 });
 
-test.each<[string, number, ReturnType<typeof staged>, boolean, string]>([
+test.each<[string, number, ReturnType<typeof staged>, boolean, string, number]>([
   [
     'Magmar a stage up on attack',
     0.6,
     staged({ attack: 1 }),
     true,
     'Fire Blast would take ~59%, with 60% left (their attack +1)',
+    88,
   ],
   [
     'our defense down two after our Close Combat',
@@ -274,6 +279,7 @@ test.each<[string, number, ReturnType<typeof staged>, boolean, string]>([
     staged({}, { defense: -2 }),
     true,
     'Fire Blast would take ~71%, with 75% left (our defense -2)',
+    106,
   ],
   [
     'Magmar a stage down on attack after our Icy Wind',
@@ -281,6 +287,7 @@ test.each<[string, number, ReturnType<typeof staged>, boolean, string]>([
     staged({ attack: -1 }),
     false,
     'Fire Blast would take ~38%, with 50% left (their attack -1)',
+    57,
   ],
   [
     'our attack and their defense, which do not move its hit',
@@ -288,13 +295,130 @@ test.each<[string, number, ReturnType<typeof staged>, boolean, string]>([
     staged({ defense: -2 }, { attack: 2 }),
     false,
     'Fire Blast would take ~48%, with 60% left',
+    71,
   ],
-])('with %s, at %s HP a CP 2495 Charizard would faint: %s', (_, hp, stages, faints, why) => {
+])('with %s, at %s HP a CP 2495 Charizard would faint: %s', (_, hp, stages, faints, why, taken) => {
   expect(wouldFaint(DATA, CHARIZARD, MAGMAR, hp, ULTRA, null, new Set(), undefined, stages)).toEqual({
     faints,
     why,
     hardest: 'Fire Blast',
+    share: taken / 149,
+    worst: { name: 'Fire Blast', share: taken / 149 },
   });
+});
+
+/**
+ * Palkia, CP 4679, against Zapdos, CP 3586, as in a live Master League battle of GO Battle League: Zapdos's Thunder
+ * Shock took 2 points of Palkia's bar a hit, gaining 9 energy, and 32 were counted when it threw. Drill Peck, 40
+ * energy, takes ~34% of Palkia, and is the move its players run here. Its 40 from nothing is five Thunder Shocks, and
+ * one more for margin: six, or 12% of Palkia a shield held.
+ */
+const PALKIA = { species: 'Palkia', cp: 4679 };
+const ZAPDOS = { species: 'Zapdos', cp: 3586, types: ['Electric', 'Flying'] };
+const THUNDER_SHOCK = { step: 0.02, estimate: { energy: 32, gain: 9 } };
+const DRILL_PECK = metaOf('Zapdos', ['Drill Peck']);
+
+const palkia = (hp: number | null, shields = 2, cycle: Cycle = THUNDER_SHOCK, meta = DRILL_PECK) =>
+  wouldShield(DATA, wouldFaint(DATA, PALKIA, ZAPDOS, hp, null, meta, new Set(), 41), hp, shields, cycle);
+
+test.each<[string, number, number, Shielding]>([
+  [
+    'at 40%, as live, where Palkia kept it and fainted 2.5s later with both still up',
+    0.4,
+    2,
+    {
+      shield: true,
+      why: 'Drill Peck would take ~34%, with 40% left; at least 1/1.4 of what is left',
+    },
+  ],
+  [
+    'at 50%, leaving 16%',
+    0.5,
+    2,
+    {
+      shield: true,
+      why:
+        'Drill Peck would take ~34%, with 50% left; leaves ~16%, no more than 2 × the ~12% of 6 fast moves before ' +
+        'their next charged move',
+    },
+  ],
+  [
+    'at 50% with one shield, which the 16% left outlasts',
+    0.5,
+    1,
+    {
+      shield: false,
+      why:
+        'Drill Peck would take ~34%, with 50% left; leaves ~16%, more than the ~12% of 6 fast moves before their ' +
+        'next charged move',
+    },
+  ],
+  [
+    'at 90%, leaving 56%',
+    0.9,
+    2,
+    {
+      shield: false,
+      why:
+        'Drill Peck would take ~34%, with 90% left; leaves ~56%, more than 2 × the ~12% of 6 fast moves before ' +
+        'their next charged move',
+    },
+  ],
+  [
+    'at 35%, which it would faint from',
+    0.35,
+    2,
+    { shield: true, why: 'Drill Peck would take ~34%, with 35% left; that would faint us' },
+  ],
+])('Palkia shields Zapdos’s Drill Peck %s', (_, hp, shields, shielding) => {
+  expect(palkia(hp, shields)).toEqual(shielding);
+});
+
+/**
+ * What is left once Drill Peck is paid for counts only past a whole Drill Peck more, as PvPoke counts it: 80 leaves 40,
+ * which still counts six Thunder Shocks from nothing, and 100 leaves 60, 20 short of the next Drill Peck, three Thunder
+ * Shocks and one for margin.
+ */
+test.each<[number, boolean, string]>([
+  [80, true, 'no more than 2 × the ~12% of 6 fast moves'],
+  [100, false, 'more than 2 × the ~8% of 4 fast moves'],
+])('with %s energy counted, Palkia at 55%% shields Drill Peck: %s', (energy, shield, than) => {
+  expect(palkia(0.55, 2, { ...THUNDER_SHOCK, estimate: { energy, gain: 9 } })).toEqual({
+    shield,
+    why: `Drill Peck would take ~34%, with 55% left; leaves ~21%, ${than} before their next charged move`,
+  });
+});
+
+test('a harder move the count does not yet afford takes the shield against one it does', () => {
+  // Thunderbolt, 55 energy, takes ~44% of Palkia: at least 1/1.4 of 60%, where Drill Peck's hit leaves enough.
+  const both = metaOf('Zapdos', ['Drill Peck', 'Thunderbolt']);
+
+  expect(palkia(0.6, 2, THUNDER_SHOCK, both)).toEqual({
+    shield: true,
+    why:
+      'Drill Peck would take ~34%, with 60% left, the hardest 41 energy affords; Thunderbolt would take at least ' +
+      '1/1.4 of what is left',
+  });
+
+  // At 65%, Thunderbolt is short of 1/1.4 of it, and Drill Peck leaves more than its cycle, but Thunderbolt does not.
+  expect(palkia(0.65, 2, THUNDER_SHOCK, both)).toEqual({
+    shield: true,
+    why:
+      'Drill Peck would take ~34%, with 65% left, the hardest 41 energy affords; Thunderbolt would leave ~21%, no ' +
+      'more than 2 × the ~12% of 6 fast moves before their next charged move',
+  });
+});
+
+test('their fast moves unmeasured or their energy uncounted, the shield is taken', () => {
+  expect(palkia(0.9, 2, { ...THUNDER_SHOCK, step: undefined })).toEqual({
+    shield: true,
+    why: 'Drill Peck would take ~34%, with 90% left; their fast moves unmeasured',
+  });
+  expect(palkia(0.9, 2, { ...THUNDER_SHOCK, estimate: null })).toEqual({
+    shield: true,
+    why: 'Drill Peck would take ~34%, with 90% left; their energy uncounted',
+  });
+  expect(palkia(null), 'our HP unread').toEqual({ shield: true, why: 'our HP unread' });
 });
 
 test('only a stat change that always happens moves a stage, and no further than ±4', () => {
