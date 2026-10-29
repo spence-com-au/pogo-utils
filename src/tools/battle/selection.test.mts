@@ -10,8 +10,8 @@ import { beforeAll, expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { ocr, useEngine } from '../inventory/ocr.mts';
 import { tesseractCli } from '../inventory/ocr-cli.mts';
-import { decodePng } from '../inventory/png.mts';
-import { isSelection, pinkCell, query, readPanel, searched } from './selection.mts';
+import { decodePng, type Image } from '../inventory/png.mts';
+import { isSelection, pinkCell, query, readCard, readPanel, searched, type Hands } from './selection.mts';
 
 beforeAll(() => useEngine(tesseractCli));
 
@@ -88,4 +88,53 @@ test.each([
 
 test('reads no panel where none is held', async () => {
   expect(await readPanel(fixture('menu-pixel8-search-metagross'), DATA, 'Metagross')).toBeUndefined();
+});
+
+// Metagross found by `376&cp3986` and held, its panel read with Steel missed and Meteor Mash as Psychic, Earthquake
+// unread: of the Pokémon that are Psychic alone, Mew alone holds Shadow Claw and Psychic, which the search rules out.
+test('keeps the species its dex number found over the one its panel names', async () => {
+  const held = fixture('menu-pixel8-held-metagross');
+  const screens = ['menu-pixel8-selection', 'menu-pixel8-search-metagross', 'menu-pixel8-party-master'].map(fixture);
+  const searches: string[] = [];
+  const hands: Hands = {
+    screenshot: () => {
+      const next = screens.shift();
+
+      return next ? Promise.resolve(next) : Promise.reject(new Error('no screen left'));
+    },
+    tap: () => Promise.resolve(),
+    hold: () => Promise.resolve(held),
+    search: (text) => {
+      searches.push(text);
+
+      return Promise.resolve();
+    },
+  };
+
+  // The panel is cropped wider than it is tall, every screen taller.
+  const read = async (image: Image) => {
+    const lines = await ocr(image);
+
+    return image.height > image.width
+      ? lines
+      : lines.flatMap((line) =>
+          /Earthquake/.test(line.text)
+            ? []
+            : [{ ...line, text: line.text.replace('Steel', '').replace('Meteor Mash', 'Psychic') }],
+        );
+  };
+
+  expect(await readPanel(held, DATA, 'Metagross', read)).toMatchObject({ species: 'Mew' });
+
+  const { panel } = await readCard(
+    hands,
+    () => Promise.resolve(),
+    [0.185, 0.6],
+    { species: 'Metagross', cp: 3986 },
+    DATA,
+    read,
+  );
+
+  expect(searches).toEqual(['376&cp3986']);
+  expect(panel).toEqual({ species: 'Metagross', fast: 'Shadow Claw', charged: ['Psychic'] });
 });

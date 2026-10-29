@@ -136,8 +136,10 @@ for text and done every few seconds.
     species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
   - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
     rows matched as `pnpm inventory` matches the detail screen's moves
-    ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. Its types and moves name
-    the species, which a nickname hides: the one species whose forms of those types hold every move read.
+    ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. Where the CP alone found
+    it, its types and moves name the species, which a nickname hides: the one species whose forms of those types hold
+    every move read. One its dex number found is that species, whatever the panel names, a type OCR missed leaving the
+    moves read to fit another.
   - **Leaving it as found:** the game keeps a search for the next opening, so it is cleared before CANCEL. A tap meant
     for the party screen that lands on the selection screen swaps the Pokémon there in, so the screen is read after the
     card's tap, after each search and after CANCEL, and the taps between, on the search field, its ⊗ and CANCEL, land

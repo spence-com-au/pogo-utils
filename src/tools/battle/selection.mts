@@ -256,6 +256,7 @@ export async function readCard(
   const terms = [...new Set([query(dex, cp), query(undefined, cp)])];
   let lines = await read(opened);
   let cell: Point | undefined;
+  let found: string | undefined;
 
   if (!isSelection(lines)) {
     await sleep(OPENS_MS);
@@ -277,11 +278,15 @@ export async function readCard(
     cell = isSelection(lines) ? pinkCell(results) : undefined;
 
     if (cell || !searched(lines)) {
+      found = cell && term;
       break;
     }
   }
 
-  const panel = cell && (await readPanel(await hands.hold(cell), data, species, read));
+  // A cell its dex number found is the species searched for, whoever the panel names: a type OCR missed leaves its
+  // moves to fit another, a Metagross whose Steel went unread holding Shadow Claw and Psychic as Mew does.
+  const held = cell && (await readPanel(await hands.hold(cell), data, species, read));
+  const panel = held && dex !== undefined && found === query(dex, cp) ? { ...held, species } : held;
   const took = searched(lines);
 
   // Only where the search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL.
