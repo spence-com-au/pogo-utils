@@ -11,14 +11,18 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { expect, test } from 'vitest';
+import { beforeAll, expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
+import { useEngine } from '../inventory/ocr.mts';
+import { tesseractCli } from '../inventory/ocr-cli.mts';
 import { decodePng } from '../inventory/png.mts';
-import { readParty, silhouetteOfIcon } from './party.mts';
+import { readCps, readParty, silhouetteOfIcon } from './party.mts';
 
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
 ) as GameData;
+
+beforeAll(() => useEngine(tesseractCli));
 
 const png = (path: string) => decodePng(readFileSync(new URL(path, import.meta.url)));
 
@@ -44,4 +48,14 @@ test('a card no species is clearly nearest is declined rather than guessed', () 
   const others = ICONS.filter(({ species }) => ['Hippowdon', 'Seismitoad', 'Hariyama', 'Crustle'].includes(species));
 
   expect(readParty(png('fixtures/menu-party.png'), others).slice(1)).toEqual([null, null]);
+});
+
+// The cards' CPs off both phones, the third of `menu-party-full` read by OCR as nothing.
+test.each([
+  ['menu-pixel8-party-master', [4673, 3986, 4275]],
+  ['menu-pixel8-party', [1400, 1499, 1488]],
+  ['menu-gbl-party', [2500, 2495, 2336]],
+  ['menu-party-full', [1435, 1451, null]],
+])('%s shows CPs %o', async (name, cps) => {
+  expect(await readCps(png(`fixtures/${name}.png`))).toEqual(cps);
 });

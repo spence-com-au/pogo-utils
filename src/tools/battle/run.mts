@@ -18,8 +18,9 @@ import {
   type Mode,
   type Outcome,
 } from './menus.mts';
-import { readParty, type Icon } from './party.mts';
-import { BOTTOM, place } from './layout.mts';
+import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
+import { BOTTOM, place, type Size } from './layout.mts';
+import { readCard } from './selection.mts';
 import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS, type Point } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
@@ -56,7 +57,7 @@ import {
   type Verdict,
 } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, Hits, spare, type Matchup } from './energy.mts';
+import { Energy, holding, Hits, spare, untilTheirsLands, type Hold, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './report.mts';
@@ -362,9 +363,56 @@ export async function run(
     keeping = { event, until: clock.now() + AROUND_MS };
   };
 
-  let party: (string | null)[] = [];
+  let party: Card[] = [];
   let fainted = new Set<number>();
   let sent = 0;
+
+  // Each card as the party screen showed it when it was last tried on the selection screen, by silhouette and CP, of
+  // which `party` holds what was read: a GO Battle League set comes back to the party screen before every battle, and
+  // reading three cards takes 33s or more. A card is the one tried before where its silhouette names the same species
+  // and its CP is the same or went unread this time, OCR having missed one CP of 24. One tried and not read is not
+  // tried again, a search or a panel that failed once being likely to fail again at some 11s a battle; nor are those
+  // after one that stopped the reading, the selection screen not opening or not closing being what they would meet too.
+  // One passed over for its CP going unread was never tried, and is tried once its CP is read, so each held has its CP.
+  let lastTried: ({ species: string | null; cp: number } | undefined)[] = [];
+
+  const sameCard = (was: (typeof lastTried)[number], card: Card) =>
+    was !== undefined && was.species === card.species && (card.cp === null || was.cp === card.cp);
+
+  // `cards` with the moves of each card in `slots` merged in, read off the selection screen in turn as `readCard` reads
+  // them, and whether the party screen is showing again. Stops at one that left anything but the party screen showing,
+  // nothing more being tapped then.
+  const readCards = async (cards: readonly Card[], slots: readonly number[], screen: Size) => {
+    const read = [...cards];
+
+    for (const slot of slots) {
+      const card = read[slot];
+
+      if (card?.cp === null || card === undefined) {
+        log(`card ${slot + 1} unread: its CP unread`);
+        continue;
+      }
+
+      const sleep = (ms: number) => clock.sleep(ms);
+      const { species, cp } = card;
+      const { panel, why, back } = await readCard(phone, sleep, cardAt(slot, screen), { species, cp }, data);
+      known = clock.now();
+
+      if (panel) {
+        const { species: named, ...moves } = panel;
+        read[slot] = { ...card, species: named, moves };
+        log(`${named ?? '?'} CP ${cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
+      } else {
+        log(`card ${slot + 1} unread: ${why ?? '?'}`);
+      }
+
+      if (!back) {
+        return { cards: read, back };
+      }
+    }
+
+    return { cards: read, back: true };
+  };
 
   // What the switch prompt showing was decided to be answered with, once, on its first frame: who fainted and who goes
   // in, and why. Decided again on a later frame, the first tap having moved `sent`, a retap would go to another card.
@@ -510,6 +558,32 @@ export async function run(
   let pending: { move: string | undefined; x: number; why: string | undefined } | undefined;
   let unlit: number | undefined;
   let relit: number | undefined;
+
+  // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
+  // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
+  // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
+  // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours fainting, a
+  // switch of ours seen to have gone through or the result screen; a tap dropped, a throw or a switch, leaves it running.
+  // `weigh` asks the hold again as it was last weighed, but for the time waited: what a switch under way leaves it to.
+  let deferring:
+    | {
+        move: string;
+        waited: number;
+        frame: number;
+        at: number;
+        held: boolean;
+        weigh: (waited: number) => Hold | undefined;
+      }
+    | undefined;
+
+  // Ends a hold with the move it held for, told where it was held.
+  const undefer = (why: string) => {
+    if (deferring?.held) {
+      log(`no longer holding ${deferring.move}`, 'own', why);
+    }
+
+    deferring = undefined;
+  };
 
   const drop = (why: string) => {
     if (pending) {
@@ -798,7 +872,7 @@ export async function run(
         // one it was tapped against. A read begun too soon to judge by has the next begin as soon as one can.
         if (switching && at - switching.at >= SWITCHED_MS) {
           const { own, ownCp } = read;
-          const was = party[switching.from];
+          const was = party[switching.from]?.species;
           const byName = own !== null && was !== switching.to && (own === was || own === switching.to);
           const stayed = byName ? own === was : ownCp === null ? undefined : ownCp === switching.cp;
 
@@ -832,6 +906,7 @@ export async function run(
 
           if (stayed === false) {
             swappedAt = switching.at;
+            undefer('ours switched out');
           }
 
           if (stayed !== undefined) {
@@ -850,7 +925,9 @@ export async function run(
         // it fought, `Xemeas` matching no species to replace it, and Xerneas's labels were matched among Palkia's moves,
         // none of them read. Left to `READ_MS`, the one sent in would go unnamed until it was up.
         const fallen =
-          at - faintAt < STALE_MS && read.own !== null && [...fainted].some((slot) => party[slot] === read.own);
+          at - faintAt < STALE_MS &&
+          read.own !== null &&
+          [...fainted].some((slot) => party[slot]?.species === read.own);
 
         seen = merge(seen, fallen ? { ...read, own: null, ownCp: null, ownTypes: null, moves: new Map() } : read);
 
@@ -889,6 +966,7 @@ export async function run(
       // and the one switched to gets back what it had. The switch timer is taken to run from it, as it does if it took.
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
+        undefer('ours fainted');
         forgetOwn();
         faintAt = clock.now();
         switchAt = faintAt;
@@ -958,7 +1036,7 @@ export async function run(
       const over = clock.now() - switchAt >= FLICKER_MS;
 
       if (over && prompt?.fainted !== undefined && !prompt.answered && !prompt.told && fainted.has(prompt.fainted)) {
-        log(`${party[prompt.fainted] ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
+        log(`${party[prompt.fainted]?.species ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
       }
 
       prompt = over ? undefined : prompt;
@@ -975,22 +1053,26 @@ export async function run(
           activeOf(data, party, fainted, seen.moves.values(), sent) ?? activeOf(data, party, fainted, [], sent);
 
         if (gone !== undefined) {
-          drop(`${seen.own ?? party[gone] ?? 'ours'} fainted first`);
+          drop(`${seen.own ?? party[gone]?.species ?? 'ours'} fainted first`);
           fainted.add(gone);
           faintAt = clock.now();
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };
 
           // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
           if (state !== 'switch') {
-            log(`${seen.own ?? party[gone] ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            log(`${seen.own ?? party[gone]?.species ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            undefer('ours fainted');
             forgetOwn();
           }
         }
       }
 
-      // A nickname in the HUD leaves the species to the party: whichever slot is out.
+      // A nickname in the HUD leaves the species to the party: whichever slot is out. Its card's moves are ours only
+      // where the HUD names no other species than the card.
       const slot = activeOf(data, party, fainted, seen.moves.values(), sent);
-      const own = seen.own ?? (slot === undefined ? null : (party[slot] ?? null));
+      const ourCard = slot === undefined ? undefined : party[slot];
+      const own = seen.own ?? ourCard?.species ?? null;
+      const ours = ourCard && (seen.own === null || seen.own === ourCard.species) ? ourCard.moves : undefined;
       const us = { species: own, types: seen.ownTypes };
       const them = { species: seen.opponent, types: seen.opponentTypes };
       const facing: Matchup = {
@@ -1006,8 +1088,9 @@ export async function run(
       // the HP decided on, a misread's drop and the rise back from it being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
       const theirBar = bars && bars.opponent !== null ? health.opponent : null;
+      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
-      if ((state !== 'battle' && state !== 'charged') || player.minigame) {
+      if (!fighting) {
         energy.pause();
         hits.pause();
       } else {
@@ -1069,6 +1152,7 @@ export async function run(
         const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
         stages = { own: user, their: target };
         thrown = pending.move;
+        undefer(`${pending.move ?? 'a charged move'} thrown`);
         log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
         pending = undefined;
       } else if (relit !== undefined && clock.now() - relit >= RELIT_MS) {
@@ -1129,11 +1213,11 @@ export async function run(
                 steps: { ours: hits.step, theirs: energy.step },
                 estimate,
                 seen: theirMoves.get(seen.opponent ?? ''),
+                fast: ours?.fast,
               },
               meta,
             )
           : undefined;
-      const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {
         const names = lit.flatMap((x) => seen.moves.get(x) ?? []);
@@ -1141,6 +1225,78 @@ export async function run(
         log(`holding ${names.length > 0 ? names.join(' and ') : 'our charged moves'} for the next`, 'own', spared);
         sparing = seen.opponent;
       }
+
+      // A hold lasts only as long as our energy grows through it: the fight's own frames, one after another.
+      if (deferring && fighting) {
+        deferring.waited += deferring.frame === frames - 1 ? clock.now() - deferring.at : 0;
+        deferring.frame = frames;
+        deferring.at = clock.now();
+      }
+
+      // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
+      // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
+      // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for fear
+      // of fainting, which go at once. Told as it begins and as it ends. Not weighed afresh while a switch of ours is under
+      // way, which leaves who is out unknown: a hold then stands as it was last weighed, its time limit running, in force
+      // but for a finish or a fear, until the switch is seen to take, ending it, or to be refused.
+      const deferrable =
+        spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending && !switching
+          ? seen.moves.get(pick.x)
+          : undefined;
+      const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
+      const opponent = theirName();
+      const weigh = (waited: number) =>
+        deferrable === undefined
+          ? undefined
+          : untilTheirsLands(data, deferrable, us, opponent, ourShields, verdict, shielding, affordable, waited);
+
+      const standing = switching !== undefined && deferring?.held === true && throwing === pick ? deferring : undefined;
+      const rule = standing ? standing.weigh(standing.waited) : weigh(deferring?.waited ?? 0);
+      const hold = holding(rule, fears);
+      const current = ongoing ?? standing;
+
+      if (ongoing) {
+        ongoing.weigh = weigh;
+      }
+
+      if (deferrable !== undefined && hold?.held && !ongoing?.held) {
+        // A hold of another move ends as this one begins, the move chosen having changed under it.
+        if (deferring?.held) {
+          log(`no longer holding ${deferring.move}`, 'own', `${deferrable} picked`);
+        }
+
+        log(`holding ${deferrable}`, 'own', hold.why);
+        deferring = {
+          move: deferrable,
+          waited: deferring?.waited ?? 0,
+          frame: frames,
+          at: clock.now(),
+          held: true,
+          weigh,
+        };
+      } else if (current?.held && hold && !hold.held) {
+        log(`no longer holding ${current.move}`, 'own', hold.why);
+        current.held = false;
+      } else if (deferring?.held && !ongoing && lit.length > 0 && !switching) {
+        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
+        // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
+        // tells the hold's end once it is seen to go through.
+        const chosen = pick && seen.moves.get(pick.x);
+        const instead =
+          finish?.why ??
+          now?.why ??
+          spared ??
+          (chosen !== deferring.move ? `${chosen ?? 'another'} picked` : undefined);
+
+        if (instead !== undefined) {
+          log(`no longer holding ${deferring.move}`, 'own', instead);
+          deferring.held = false;
+        }
+      }
+
+      // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
+      // as thrown.
+      const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
@@ -1246,7 +1402,6 @@ export async function run(
             )
           : undefined;
       const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
-      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for and again where its tap is
       // dropped, by a counter of ours where one is benched; and for as long as the newcomer stays out, its switch timer
@@ -1325,7 +1480,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
         shield,
         minigame: playing,
@@ -1361,7 +1516,7 @@ export async function run(
           offered = { why: shielding.why, taken: true };
         } else if (action.what === 'bench' && counter && slot !== undefined) {
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
-          const to = party[counter.slot] ?? '?';
+          const to = party[counter.slot]?.species ?? '?';
           const keeping = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
 
           drop(`switched to ${to} first`);
@@ -1408,9 +1563,10 @@ export async function run(
             sent = prompt.next;
             banked.delete(prompt.next);
             stripping = undefined;
-            const gone = prompt.fainted === undefined || prompt.told ? '' : `${party[prompt.fainted] ?? '?'} fainted; `;
+            const gone =
+              prompt.fainted === undefined || prompt.told ? '' : `${party[prompt.fainted]?.species ?? '?'} fainted; `;
 
-            log(`${gone}sending in ${party[prompt.next] ?? '?'}`, 'own', prompt.why);
+            log(`${gone}sending in ${party[prompt.next]?.species ?? '?'}`, 'own', prompt.why);
           }
         }
       } else {
@@ -1466,14 +1622,14 @@ export async function run(
         noBattle = 0;
       }
 
-      if (menu.screen === 'party' && 'tap' in menu) {
-        party = readParty(screenshot, icons);
+      const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
 
+      if (menu.screen === 'party' && 'tap' in menu) {
         if (mode.mode === 'gbl' && menu.cap !== undefined) {
           cap = menu.cap;
         }
 
-        log(`party: ${party.map((species) => species ?? '?').join(', ')}`);
+        log(`party: ${silhouettes.map((species) => species ?? '?').join(', ')}`);
       }
 
       // A party named is looked for along the carousel before its party is used, the search starting afresh each time the
@@ -1497,6 +1653,29 @@ export async function run(
               : { screen: 'party', swipe: CAROUSEL[step] };
       } else if (menu.screen !== 'party') {
         search = carousel();
+      }
+
+      // The party to be used, each card read off the selection screen unless it is the card last tried there, whose
+      // moves, if any were read, are kept. Where a card left anything but the party screen showing, the screen is read
+      // afresh rather than USE THIS PARTY tapped at it. The CPs are off the read `readMenu` made, where it made one.
+      if (menu.screen === 'party' && 'tap' in menu) {
+        const cps = menu.cps ?? (await readCps(screenshot));
+        const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
+        const tried = cards.map((card, slot) => (sameCard(lastTried[slot], card) ? party[slot] : undefined));
+        const stale = cards.flatMap((_, slot) => (tried[slot] ? [] : [slot]));
+
+        lastTried = cards.map((card, slot) => {
+          const was = tried[slot] && lastTried[slot];
+
+          return was ? { ...card, cp: card.cp ?? was.cp } : card.cp === null ? undefined : { ...card, cp: card.cp };
+        });
+        party = cards.map((card, slot) => tried[slot] ?? card);
+
+        if (stale.length > 0) {
+          const read = await readCards(party, stale, screenshot);
+          party = read.cards;
+          menu = read.back ? menu : { screen: 'unknown' };
+        }
       }
 
       // A scroll is not progress: a tab already at its foot whose portraits go unmatched would be scrolled for ever, so
@@ -1524,6 +1703,7 @@ export async function run(
         if (menu.screen === 'result') {
           battles++;
           battling = false;
+          undefer('the battle ended');
           off = [];
 
           if (done.outcome) {

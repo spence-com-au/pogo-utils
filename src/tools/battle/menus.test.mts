@@ -320,16 +320,18 @@ test('reads no cap off a GO Battle League party with no limit', async () => {
     tap: [0.5, expect.closeTo(0.87, 3)],
     cap: null,
     title: 'recommended battle party i7',
+    cps: [2500, 2495, 2336],
   });
 });
 
-// Ultra League's `Max CP per Pokémon: 2,500` under its name, which a cup's title does not say.
+// Ultra League's `Max CP per Pokémon: 2,500` under its name, which a cup's title does not say; and each card's CP.
 test("taps USE THIS PARTY on GO Battle League's recommended party, reading the league's cap", async () => {
   expect(await readMenu(fixture('menu-gbl-party'), { ...GBL, league: 'ultra' })).toEqual({
     screen: 'party',
     tap: [0.5, expect.closeTo(0.87, 3)],
     cap: 2500,
     title: 'recommended battle party i7',
+    cps: [2500, 2495, 2336],
   });
 });
 
