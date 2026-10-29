@@ -6,6 +6,7 @@
  * phone, and other tabs see no phone held meanwhile.
  */
 
+import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
 import { reconnect as reopen, type Phone } from '../inventory/webusb.js';
 import { type PhoneStore } from '../phone-store.js';
@@ -21,7 +22,7 @@ export interface Endpoint {
 }
 
 export interface Run {
-  /** The latest frame the phone has sent, for a canvas, or `undefined` before the first and once stopped. */
+  /** The latest frame the phone has sent, for a canvas, or `undefined` once the run has stopped. */
   frame(): Promise<Image | undefined>;
   stop(): void;
 
@@ -30,29 +31,31 @@ export interface Run {
 }
 
 /**
- * Hands the phone `store` holds to `worker` for a run, answering once the phone's screen has sent its first frame, or
- * failing with why it never did once the page holds the phone again. The Worker is ended with the run.
+ * Hands the phone `store` holds to the Worker `start` starts, for a run, answering once the phone's screen has sent its
+ * first frame, or failing with why it never did once the page holds the phone again. The Worker is ended with the run.
  */
 export async function lend(
   store: PhoneStore,
-  worker: Endpoint = new Worker(BATTLE_WORKER, { type: 'module' }),
+  start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
   reconnect: (serial: string) => Promise<Phone> = reopen,
 ): Promise<Run> {
   const phone = store.phone;
 
   if (!phone) {
-    worker.terminate();
     throw new Error('no phone is connected');
   }
 
+  // Started only once the phone is let go of, which fails where it is already gone and leaves nothing to end.
   const { serial } = phone;
   await phone.close();
+  const worker = start();
 
   // Frames are answered in the order they were asked for, the Worker taking each message in turn.
   const asked: ((image: Image | undefined) => void)[] = [];
-  let started = () => {};
-  const running = new Promise<void>((resolve) => (started = resolve));
+  let started = false;
   let over = false;
+  let running = () => {};
+  const first = new Promise<void>((resolve) => (running = resolve));
 
   const ended = new Promise<void>((resolve, reject) => {
     const end = (error: string | undefined) => {
@@ -64,18 +67,26 @@ export async function lend(
       worker.terminate();
       asked.splice(0).forEach((answer) => answer(undefined));
 
-      // The run's failure is the news where there is one, over the phone failing to come back after it.
+      // The run's failure is the news where there is one, with the phone failing to come back after it as well.
       reconnect(serial)
         .then((back) => store.hold(back))
         .then(
           () => (error === undefined ? resolve() : reject(new Error(error))),
-          (failure: unknown) => reject(error === undefined ? failure : new Error(error)),
+          (failure: unknown) =>
+            reject(
+              error === undefined
+                ? failure
+                : new Error(
+                    `${error}; the phone could not be taken back, so connect it again from the settings menu: ${said(failure)}`,
+                  ),
+            ),
         );
     };
 
     worker.addEventListener('message', ({ data }) => {
       if (data.type === 'started') {
-        started();
+        started = true;
+        running();
       } else if (data.type === 'frame') {
         asked.shift()?.(data.image);
       } else {
@@ -83,12 +94,19 @@ export async function lend(
       }
     });
 
-    // A Worker that failed to load, or threw past `host`: its context is gone, and the device with it.
+    // A Worker that failed to load, which never claimed the device, or that threw past `host`, which `terminate` ends.
+    // The device goes with its context, which may not have happened by the time the page reconnects: that fails
+    // `ended` with why, rather than leaving the page waiting on a device that may never come free.
     worker.addEventListener('error', (event) => end(event.message || 'the battle Worker failed'));
   });
 
   worker.postMessage({ type: 'start', serial });
-  await Promise.race([running, ended]);
+  await Promise.race([first, ended]);
+
+  // Stopped before the phone sent a frame, its connection closed under the Worker, with nothing to say why.
+  if (!started) {
+    throw new Error('the run stopped before the phone sent a frame');
+  }
 
   return {
     frame: () =>

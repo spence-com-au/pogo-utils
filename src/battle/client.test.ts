@@ -71,15 +71,20 @@ async function setUp(log: string[], open: (serial: string) => Promise<Connection
     return Promise.resolve(back.connection);
   };
 
-  return { store, endpoint, reconnect, back };
+  const start = () => {
+    log.push('worker started');
+    return endpoint;
+  };
+
+  return { store, held, start, reconnect, back };
 }
 
 test('hands the phone to the Worker for the run, answers its frames, and takes the phone back once it stops', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
-  const { store, endpoint, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
 
-  const run = await lend(store, endpoint, reconnect);
+  const run = await lend(store, start, reconnect);
 
   expect(store.phone, 'no other tab may reach it meanwhile').toBeNull();
   expect(await run.frame()).toMatchObject({ width: 360, height: 760 });
@@ -89,30 +94,58 @@ test('hands the phone to the Worker for the run, answers its frames, and takes t
   await run.ended;
 
   expect(store.phone).toBe(back.connection);
-  expect(log).toEqual(['pixel let go', 'worker opened pixel', 'pixel let go', 'worker ended', 'page opened pixel']);
+  expect(log).toEqual([
+    'pixel let go',
+    'worker started',
+    'worker opened pixel',
+    'pixel let go',
+    'worker ended',
+    'page opened pixel',
+  ]);
   expect(await run.frame(), 'a frame asked for once stopped').toBeUndefined();
 });
 
 test('fails with why the Worker could not reach the phone, and holds the phone again all the same', async () => {
   const log: string[] = [];
-  const { store, endpoint, reconnect, back } = await setUp(log, () =>
+  const { store, start, reconnect, back } = await setUp(log, () =>
     Promise.reject(new Error('the phone pixel is not plugged in, or this site may no longer reach it')),
   );
 
-  await expect(lend(store, endpoint, reconnect)).rejects.toThrow(/not plugged in/);
+  await expect(lend(store, start, reconnect)).rejects.toThrow(/not plugged in/);
 
   expect(store.phone).toBe(back.connection);
-  expect(log).toEqual(['pixel let go', 'worker opened pixel', 'worker ended', 'page opened pixel']);
+  expect(log).toEqual(['pixel let go', 'worker started', 'worker opened pixel', 'worker ended', 'page opened pixel']);
 });
 
 test('ends the run when the phone is unplugged, saying so once the page has tried to take it back', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
-  const { store, endpoint, reconnect } = await setUp(log, () => Promise.resolve(there.connection));
-  const run = await lend(store, endpoint, reconnect);
+  const { store, start, reconnect } = await setUp(log, () => Promise.resolve(there.connection));
+  const run = await lend(store, start, reconnect);
 
   there.unplug(new Error('the device was unplugged'));
 
   await expect(run.ended).rejects.toThrow('the device was unplugged');
   await vi.waitFor(() => expect(new Set(there.killed)).toEqual(new Set(['screenrecord', 'sh'])));
+});
+
+test('fails a run whose connection closed before the phone sent a frame, rather than answering one already over', async () => {
+  const log: string[] = [];
+  const there = fakeConnection('pixel', H264, log);
+  const { store, start, reconnect, back } = await setUp(log, async () => {
+    await there.connection.close();
+    return there.connection;
+  });
+
+  await expect(lend(store, start, reconnect)).rejects.toThrow('the run stopped before the phone sent a frame');
+  expect(store.phone).toBe(back.connection);
+});
+
+test('starts no Worker where the phone cannot be let go of, it being gone already', async () => {
+  const { store, held, start, reconnect } = await setUp([], () => Promise.reject(new Error('never asked')));
+  const started = vi.fn(start);
+  vi.spyOn(held.connection, 'close').mockRejectedValue(new Error('the device was unplugged'));
+
+  await expect(lend(store, started, reconnect)).rejects.toThrow('the device was unplugged');
+  expect(started).not.toHaveBeenCalled();
 });
