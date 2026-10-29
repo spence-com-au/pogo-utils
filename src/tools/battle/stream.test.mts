@@ -9,7 +9,8 @@ import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from 'vitest';
-import { decodeFrames, Screen, streamSize, type Recording } from './stream.mts';
+import { streamSize } from './record-command.mts';
+import { decodeFrames, Screen, type Recording } from './stream.mts';
 import { HELD_MS, Video } from './video.mts';
 
 /** The stream a Pixel 4 XL sends, which these clips stand in for. */
