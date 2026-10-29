@@ -331,6 +331,8 @@ simulates, and with these differences:
 - PvPoke asks the 1/1.4 rule only of a fast move doing more than 1.5 HP a turn. Leaving that out can only take a shield
   PvPoke would keep, against a fast move that barely scratches us, and a shield taken is the side these rules err to.
 - PvPoke adds 1 HP of margin a shield to the fast moves' damage, under a point of our bar, which is left out.
+- PvPoke raises the fast moves' damage by the thrown move's own stat changes, a Power-Up Punch's +1 attack say. The
+  prompt never names the move, so the step is taken as measured before the throw.
 - Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or the HUD
   tells apart: shielding the first of a run of attack-lowering moves such as Superpower where it takes over 55% of what
   is left, and its exceptions for Aegislash, Minior and Cramorant.

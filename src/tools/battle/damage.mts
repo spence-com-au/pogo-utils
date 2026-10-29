@@ -405,6 +405,10 @@ export interface Cycle {
  *   hardest it could be.
  * - Its overrides for Aegislash, Minior and Cramorant (lines 1248–1274) are left out: they turn on a form or a move
  *   thrown, neither of which the HUD and the prompt tell apart.
+ * - It works out the fast moves' damage with the thrown move's own stat changes applied (lines 1176–1188), so that a
+ *   Power-Up Punch's +1 attack or an Acid Spray's −2 to our defense raises the cycle. Here the step is as measured
+ *   before the throw: the move coming is not named until the banner after the prompt, and the hardest it could be says
+ *   nothing of whether it moves a stage.
  */
 export function wouldShield(
   data: GameData,
