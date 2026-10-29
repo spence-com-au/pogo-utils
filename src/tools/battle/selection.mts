@@ -149,19 +149,18 @@ const same = (a: readonly string[], b: ReadonlySet<string>) => a.length === b.si
 
 /**
  * What the panel on `image`, a screenshot taken while a Pokémon is held, says of it: its fast move and charged moves,
- * and the species whose forms of the panel's types hold them. `species` is the card's as its silhouette was read, which
- * the moves are matched among first; null, every move is. Undefined where no panel is drawn, or its types or moves went
- * unread. A Pokémon whose moves two species of its types can hold is named by neither, and one whose moves no form of
- * its types holds, by none. Where `proven`, a search by its dex number having found it, the Pokémon is `species`, and
- * its moves are matched among that species' own whatever types were read: a type OCR missed leaves the moves read to
- * fit another, a Metagross whose Steel went unread holding Shadow Claw and Psychic as Mew does.
+ * and its species. `species` is the Pokémon's where a search by its dex number found it, and its moves are matched
+ * among that species' own whatever types were read: a type OCR missed leaves the moves read to fit another, a Metagross
+ * whose Steel went unread holding Shadow Claw and Psychic as Mew does. Null, the moves are matched among every move and
+ * name the species: the one whose forms of the panel's types hold them all. A Pokémon whose moves two species of its
+ * types can hold is named by neither, and one whose moves no form of its types holds, by none. Undefined where no panel
+ * is drawn, or its types or moves went unread.
  */
 export async function readPanel(
   image: Image,
   data: GameData,
   species: string | null,
   read: (image: Image) => Promise<Line[]> = ocr,
-  proven = false,
 ): Promise<Panel | undefined> {
   const band = panelBand(image);
 
@@ -189,7 +188,7 @@ export async function readPanel(
   // capitals throughout.
   const rows = lines.filter((line) => !head.includes(line) && /[a-z]/.test(line.text));
   const pool = (forms: readonly Form[]) => [...new Set(forms.flatMap((form) => form.moves))];
-  const of = (name: string | null) => pool(typed.filter((form) => form.species === name));
+  const of = (name: string) => pool(typed.filter((form) => form.species === name));
 
   // The one species whose forms of these types hold every move read, or null.
   const speciesOf = ({ fast, charged }: Moves) => {
@@ -201,13 +200,12 @@ export async function readPanel(
     return read.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
-  const own = proven ? pool(data.forms.filter((form) => form.species === species)) : of(species);
-  let moves = await readMoves(rows, data, own, panel);
-  let named = proven ? species : speciesOf(moves);
+  let moves = await readMoves(rows, data, pool(data.forms.filter((form) => form.species === species)), panel);
+  let named = species ?? speciesOf(moves);
 
-  // Matched among another species' moves, or every move there is where the card's species was not read: read again
-  // among the moves of the species they name, which affords slack the whole list cannot, for a row the first pass lost.
-  if (!proven && named !== null && named !== species && (moves.fast === null || moves.charged.length < 2)) {
+  // Matched among every move there is: read again among the moves of the species they name, which affords slack the
+  // whole list cannot, for a row the first pass lost.
+  if (species === null && named !== null && (moves.fast === null || moves.charged.length < 2)) {
     moves = await readMoves(rows, data, of(named), panel);
     named = speciesOf(moves);
   }
@@ -238,13 +236,14 @@ const CLEARED_MS = 1_000;
 /**
  * Reads the party card at `card` by its panel: tap it, search for it, hold the pink cell, then clear the search and
  * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp`, and which a search
- * by both finding it proves, as its panel's species. A silhouette misread names a species the search finds nothing of,
- * so a search by both that shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went
- * unread, and whether the party screen is showing again for certain. A tap meant for the party screen that lands on the
- * selection screen swaps a Pokémon in, so the screen is read after the card's tap, after each search and after CANCEL;
- * the taps between those reads, on the search field, its ⊗ and CANCEL, land above or below the grid, where no tap swaps
- * anything. A selection screen not showing after the card's tap is looked for once more, a phone at work being slower
- * to draw it, and may yet be on its way after that, so the party screen still showing then is not taken for certain.
+ * by both finding it proves, as its panel's species; otherwise the panel names it. A silhouette misread names a species
+ * the search finds nothing of, so a search by both that shows no pink cell is followed by one by the CP alone. Answers
+ * the panel, or why it went unread, and whether the party screen is showing again for certain. A tap meant for the
+ * party screen that lands on the selection screen swaps a Pokémon in, so the screen is read after the card's tap, after
+ * each search and after CANCEL; the taps between those reads, on the search field, its ⊗ and CANCEL, land above or
+ * below the grid, where no tap swaps anything. A selection screen not showing after the card's tap is looked for once
+ * more, a phone at work being slower to draw it, and may yet be on its way after that, so the party screen still
+ * showing then is not taken for certain.
  */
 export async function readCard(
   hands: Hands,
@@ -293,7 +292,7 @@ export async function readCard(
   }
 
   const proven = dex !== undefined && found === query(dex, cp);
-  const panel = cell && (await readPanel(await hands.hold(cell), data, species, read, proven));
+  const panel = cell && (await readPanel(await hands.hold(cell), data, proven ? species : null, read));
 
   // Only where a search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL. One
   // that took stays in force under a second that OCR does not see take.

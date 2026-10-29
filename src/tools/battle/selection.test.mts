@@ -142,7 +142,7 @@ test('reads a card its dex number found as that species, among its own moves', a
     })),
   );
 
-  expect(await readPanel(held, DATA, 'Metagross', read)).toEqual({
+  expect(await readPanel(held, DATA, null, read)).toEqual({
     species: 'Mew',
     fast: 'Shadow Claw',
     charged: ['Psychic'],
@@ -152,6 +152,28 @@ test('reads a card its dex number found as that species, among its own moves', a
 
   expect(searches).toEqual(['376&cp3986']);
   expect(panel).toEqual({ species: 'Metagross', fast: 'Shadow Claw', charged: ['Psychic', 'Earthquake'] });
+});
+
+// The search by Metagross's dex number shows no pink cell, ruling Metagross out, and its CP alone finds the card. A row
+// garbled past matching among every move, `oO Meteor Mas`, would be Meteor Mash among Metagross's moves, but is not
+// read among them: with Earthquake unread and Shadow Claw alone left, nothing names the card.
+test('reads a card the CP alone found among every move, its silhouette ruled out', async () => {
+  const screens = [
+    'menu-pixel8-selection',
+    'menu-pixel8-selection-searched',
+    'menu-pixel8-search-metagross',
+    'menu-pixel8-party-master',
+  ].map(fixture);
+  const { hands, searches } = phone(screens, fixture('menu-pixel8-held-metagross'));
+  const read = misreading((lines) =>
+    lines.flatMap((line) =>
+      /Earthquake/.test(line.text) ? [] : [{ ...line, text: line.text.replace('Meteor Mash', 'oO Meteor Mas') }],
+    ),
+  );
+  const { panel } = await readCard(hands, asleep, [0.185, 0.6], { species: 'Metagross', cp: 3986 }, DATA, read);
+
+  expect(searches).toEqual(['376&cp3986', 'cp3986']);
+  expect(panel).toEqual({ species: null, fast: 'Shadow Claw', charged: [] });
 });
 
 // The search by Metagross's dex number takes and shows no pink cell, and OCR misses the toggle on the next search's
