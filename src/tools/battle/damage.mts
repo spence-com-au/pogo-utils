@@ -350,8 +350,8 @@ export function wouldFaint(
 }
 
 /**
- * How many times over what is left a charged move must take for its shield to be taken whatever the hit would leave: at
- * least 1/1.4 of it, as PvPoke's `wouldShield` has it.
+ * What the HP left is divided by for the least a charged move must take of it for its shield to be taken whatever the
+ * hit would leave: at least 1/1.4 of it, as PvPoke's `wouldShield` has it.
  */
 const HARD = 1.4;
 
@@ -399,6 +399,11 @@ export interface Cycle {
  *   the bar would need our HP, a rank-1 guess, to tell.
  * - It asks the cycle of every charged move too (line 1226), where this asks it of the hit alone: a harder move the
  *   count does not afford is the 1/1.4 rule's to weigh.
+ * - It shields the first of a run of moves that lower their user's attack, as Superpower does, where it takes over 0.55
+ *   of what is left (line 1238). That asks which move is coming, which the prompt never says: the hit here is only the
+ *   hardest it could be.
+ * - Its overrides for Aegislash, Minior and Cramorant (lines 1248–1274) are left out: they turn on a form or a move
+ *   thrown, neither of which the HUD and the prompt tell apart.
  */
 export function wouldShield(
   data: GameData,

@@ -325,7 +325,9 @@ The shield prompt never names the move coming, so the hit judged is the hardest 
   was measured to take off our bar ([below](#the-opponents-energy)).
 
 The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
-simulates.
+simulates. Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or
+the HUD tells apart: shielding the first of a run of attack-lowering moves such as Superpower where it takes over 55% of
+what is left, and its exceptions for Aegislash, Minior and Cramorant.
 
 What goes into "the hardest move the opponent could be throwing":
 
