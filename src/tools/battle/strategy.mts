@@ -499,7 +499,7 @@ const better = (a: Weighed, b: Weighed): boolean => {
 };
 
 /** Whether a move always lowers its user's defense, as Close Combat does. */
-const lowersDefense = (data: GameData, move: string): boolean => {
+export const lowersDefense = (data: GameData, move: string): boolean => {
   const buffs = data.combat[move]?.buffs;
 
   return buffs?.chance === 1 && (buffs.ownDefense ?? 0) < 0;

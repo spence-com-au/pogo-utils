@@ -56,7 +56,7 @@ import {
   type Verdict,
 } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, Hits, spare, type Matchup } from './energy.mts';
+import { Energy, holding, Hits, spare, untilTheirsLands, type Hold, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 
@@ -518,6 +518,32 @@ export async function run(
   let unlit: number | undefined;
   let relit: number | undefined;
 
+  // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
+  // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
+  // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
+  // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours fainting, a
+  // switch of ours seen to have gone through or the result screen; a tap dropped, a throw or a switch, leaves it running.
+  // `weigh` asks the hold again as it was last weighed, but for the time waited: what a switch under way leaves it to.
+  let deferring:
+    | {
+        move: string;
+        waited: number;
+        frame: number;
+        at: number;
+        held: boolean;
+        weigh: (waited: number) => Hold | undefined;
+      }
+    | undefined;
+
+  // Ends a hold with the move it held for, told where it was held.
+  const undefer = (why: string) => {
+    if (deferring?.held) {
+      log(`no longer holding ${deferring.move}`, 'own', why);
+    }
+
+    deferring = undefined;
+  };
+
   const drop = (why: string) => {
     if (pending) {
       log(`${pending.move ?? 'our charged move'} not thrown`, 'own', why);
@@ -839,6 +865,7 @@ export async function run(
 
           if (stayed === false) {
             swappedAt = switching.at;
+            undefer('ours switched out');
           }
 
           if (stayed !== undefined) {
@@ -896,6 +923,7 @@ export async function run(
       // and the one switched to gets back what it had. The switch timer is taken to run from it, as it does if it took.
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
+        undefer('ours fainted');
         forgetOwn();
         faintAt = clock.now();
         switchAt = faintAt;
@@ -990,6 +1018,7 @@ export async function run(
           // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
           if (state !== 'switch') {
             log(`${seen.own ?? party[gone] ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            undefer('ours fainted');
             forgetOwn();
           }
         }
@@ -1013,8 +1042,9 @@ export async function run(
       // the HP decided on, a misread's drop and the rise back from it being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
       const theirBar = bars && bars.opponent !== null ? health.opponent : null;
+      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
-      if ((state !== 'battle' && state !== 'charged') || player.minigame) {
+      if (!fighting) {
         energy.pause();
         hits.pause();
       } else {
@@ -1076,6 +1106,7 @@ export async function run(
         const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
         stages = { own: user, their: target };
         thrown = pending.move;
+        undefer(`${pending.move ?? 'a charged move'} thrown`);
         log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
         pending = undefined;
       } else if (relit !== undefined && clock.now() - relit >= RELIT_MS) {
@@ -1140,7 +1171,6 @@ export async function run(
               meta,
             )
           : undefined;
-      const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {
         const names = lit.flatMap((x) => seen.moves.get(x) ?? []);
@@ -1148,6 +1178,78 @@ export async function run(
         log(`holding ${names.length > 0 ? names.join(' and ') : 'our charged moves'} for the next`, 'own', spared);
         sparing = seen.opponent;
       }
+
+      // A hold lasts only as long as our energy grows through it: the fight's own frames, one after another.
+      if (deferring && fighting) {
+        deferring.waited += deferring.frame === frames - 1 ? clock.now() - deferring.at : 0;
+        deferring.frame = frames;
+        deferring.at = clock.now();
+      }
+
+      // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
+      // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
+      // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for fear
+      // of fainting, which go at once. Told as it begins and as it ends. Not weighed afresh while a switch of ours is under
+      // way, which leaves who is out unknown: a hold then stands as it was last weighed, its time limit running, in force
+      // but for a finish or a fear, until the switch is seen to take, ending it, or to be refused.
+      const deferrable =
+        spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending && !switching
+          ? seen.moves.get(pick.x)
+          : undefined;
+      const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
+      const opponent = theirName();
+      const weigh = (waited: number) =>
+        deferrable === undefined
+          ? undefined
+          : untilTheirsLands(data, deferrable, us, opponent, ourShields, verdict, shielding, affordable, waited);
+
+      const standing = switching !== undefined && deferring?.held === true && throwing === pick ? deferring : undefined;
+      const rule = standing ? standing.weigh(standing.waited) : weigh(deferring?.waited ?? 0);
+      const hold = holding(rule, fears);
+      const current = ongoing ?? standing;
+
+      if (ongoing) {
+        ongoing.weigh = weigh;
+      }
+
+      if (deferrable !== undefined && hold?.held && !ongoing?.held) {
+        // A hold of another move ends as this one begins, the move chosen having changed under it.
+        if (deferring?.held) {
+          log(`no longer holding ${deferring.move}`, 'own', `${deferrable} picked`);
+        }
+
+        log(`holding ${deferrable}`, 'own', hold.why);
+        deferring = {
+          move: deferrable,
+          waited: deferring?.waited ?? 0,
+          frame: frames,
+          at: clock.now(),
+          held: true,
+          weigh,
+        };
+      } else if (current?.held && hold && !hold.held) {
+        log(`no longer holding ${current.move}`, 'own', hold.why);
+        current.held = false;
+      } else if (deferring?.held && !ongoing && lit.length > 0 && !switching) {
+        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
+        // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
+        // tells the hold's end once it is seen to go through.
+        const chosen = pick && seen.moves.get(pick.x);
+        const instead =
+          finish?.why ??
+          now?.why ??
+          spared ??
+          (chosen !== deferring.move ? `${chosen ?? 'another'} picked` : undefined);
+
+        if (instead !== undefined) {
+          log(`no longer holding ${deferring.move}`, 'own', instead);
+          deferring.held = false;
+        }
+      }
+
+      // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
+      // as thrown.
+      const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
@@ -1253,7 +1355,6 @@ export async function run(
             )
           : undefined;
       const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
-      const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
       // The opponent's switch answered once, on the first frame the bench is drawn for and again where its tap is
       // dropped, by a counter of ours where one is benched; and for as long as the newcomer stays out, its switch timer
@@ -1332,7 +1433,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
         shield,
         minigame: playing,
@@ -1531,6 +1632,7 @@ export async function run(
         if (menu.screen === 'result') {
           battles++;
           battling = false;
+          undefer('the battle ended');
           off = [];
 
           if (done.outcome) {
