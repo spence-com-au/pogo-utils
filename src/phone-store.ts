@@ -16,7 +16,7 @@ import type { Phone } from './inventory/webusb.js';
 
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
 export class PhoneStore {
-  /** The phone held, or null before one is connected and once it is unplugged. */
+  /** The phone held, or null before one is connected, once it is unplugged and while it is lent to a battle. */
   phone: Phone | null = null;
 
   readonly #listeners = new Set<() => void>();

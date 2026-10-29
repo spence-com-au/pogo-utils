@@ -63,7 +63,8 @@ const result = await build({
    * One chunk per `import()` in `src/shell.tsx`, plus a shared chunk for what more than one page reaches, so Leaflet
    * and the Java serialization codec stay out of the bundle every reader fetches. It also deduplicates what the pages
    * share, which the per-page builds could not: `pokemon/pokedex.ts` and the filter tables were in four bundles at
-   * once, 100,286 bytes of the 455,917 the five came to. Only legal with `format: 'esm'`.
+   * once, 100,286 bytes of the 455,917 the five came to. The battle's Worker shares chunks with the pages as they do
+   * with each other, Tango's among them, which a module Worker imports as a page does. Only legal with `format: 'esm'`.
    */
   splitting: true,
 
