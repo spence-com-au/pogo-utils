@@ -9,6 +9,8 @@
 
 import { ICON_BASE, ICON_DIR } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
+import { formIcons } from '../battle/assets.mts';
+import { silhouetteOfIcon, type Icon } from '../battle/party.mts';
 import { signaturesFor, signatureOfIcon, type Signature } from './artwork.mts';
 import { type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng } from './png.mts';
@@ -506,4 +508,42 @@ export function iconsFor(dir: string, data: GameData, refresh = false): Promise<
       signatureOfIcon(decodePng(bytes)),
     ),
   );
+}
+
+/**
+ * Every form's outline, by its icon, which `pnpm battle` reads the party screen against and `pnpm vend:silhouettes`
+ * publishes for a page to: each icon the game draws, some 1,300 files and 40 MB on the first run, cached beside the ones
+ * `iconsFor` keeps. One that cannot be had leaves its form unmatched rather than stopping the run.
+ */
+export async function silhouettesFor(dir: string, data: GameData): Promise<Map<string, Icon>> {
+  const icons = [...formIcons(data)];
+  const read = new Map<string, Icon>();
+  let missing = 0;
+
+  for (let at = 0; at < icons.length; at += 16) {
+    const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
+      try {
+        const silhouette = await cachedAs(join(dir, 'icons'), icon, ICON_BASE + icon, false, (bytes) =>
+          silhouetteOfIcon(decodePng(bytes)),
+        );
+        read.set(icon, { species, silhouette });
+      } catch {
+        missing++;
+      }
+    });
+
+    await Promise.all(batch);
+  }
+
+  if (missing > 0) {
+    console.error(`${missing} of ${icons.length} form icons could not be had; those forms go unmatched`);
+  }
+
+  // None at all is every party read against nothing. Where no form even names an icon, it is the listing of the artwork
+  // that failed, which `loadGameData` reports and carries on from: `pnpm inventory` loses only its narrowing by artwork.
+  if (read.size === 0) {
+    throw new Error('no form icon could be had, so no party could be read');
+  }
+
+  return read;
 }

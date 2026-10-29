@@ -42,7 +42,7 @@ const HALF = 0.088;
 const ICON = 0.2;
 
 /** How many cells a card is divided into each way: some 2.6 pixels apiece on a 720-wide screen. */
-const GRID = 48;
+export const GRID = 48;
 
 /** The corner the sparkles of a shiny are drawn in, as a fraction of the card each way, which is left out of both. */
 const SPARKLES = 0.3;
