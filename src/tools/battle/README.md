@@ -68,7 +68,7 @@ flowchart LR
 
 ### Reading a frame
 
-Everything read per frame is done by colour samples, which are cheap. OCR is slower, about 220ms a read, so it is kept
+Everything read per frame is done by colour samples, which are cheap. OCR is slower, about 35ms a band, so it is kept
 for text and done every few seconds.
 
 - **[`recognise.mts`](recognise.mts)** says which part of a battle a frame shows: `battle`, `charged` (a charged-move

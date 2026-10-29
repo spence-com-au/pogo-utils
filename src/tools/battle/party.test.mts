@@ -11,18 +11,17 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { beforeAll, expect, test } from 'vitest';
+import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
-import { useEngine } from '../inventory/ocr.mts';
-import { tesseractCli } from '../inventory/ocr-cli.mts';
 import { decodePng } from '../inventory/png.mts';
+import { useWasmEngine } from '../inventory/test-engine.mts';
 import { readCps, readParty, silhouetteOfIcon } from './party.mts';
 
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
 ) as GameData;
 
-beforeAll(() => useEngine(tesseractCli));
+afterAll(useWasmEngine());
 
 const png = (path: string) => decodePng(readFileSync(new URL(path, import.meta.url)));
 

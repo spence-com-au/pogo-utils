@@ -5,14 +5,14 @@
  */
 
 import { decodePng } from '../inventory/png.mts';
-import { fold, ocr, useEngine } from '../inventory/ocr.mts';
-import { tesseractCli } from '../inventory/ocr-cli.mts';
+import { fold, ocr } from '../inventory/ocr.mts';
+import { useWasmEngine } from '../inventory/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, expect, test, vi } from 'vitest';
+import { afterAll, expect, test, vi } from 'vitest';
 import { carousel, isParty, readMenu, readOutcome, searchParty, type Menu } from './menus.mts';
 
-beforeAll(() => useEngine(tesseractCli));
+afterAll(useWasmEngine());
 
 const fixture = (name: string) =>
   decodePng(readFileSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url))));
@@ -308,6 +308,10 @@ test('scrolls the league list to its top where it opened part way down', async (
   });
 });
 
+// The party's name, which is all `isParty` matches: the icon beside it reads as litter, `i7` under one engine and `7`
+// under another.
+const RECOMMENDED = expect.stringMatching(/^recommended battle party\b/);
+
 // Master League's party says `No limit` where Ultra's says 2,500: read off the same screen, its line rewritten.
 test('reads no cap off a GO Battle League party with no limit', async () => {
   const unlimited = async (image: Parameters<typeof ocr>[0]) =>
@@ -319,7 +323,7 @@ test('reads no cap off a GO Battle League party with no limit', async () => {
     screen: 'party',
     tap: [0.5, expect.closeTo(0.87, 3)],
     cap: null,
-    title: 'recommended battle party i7',
+    title: RECOMMENDED,
     cps: [2500, 2495, 2336],
   });
 });
@@ -330,7 +334,7 @@ test("taps USE THIS PARTY on GO Battle League's recommended party, reading the l
     screen: 'party',
     tap: [0.5, expect.closeTo(0.87, 3)],
     cap: 2500,
-    title: 'recommended battle party i7',
+    title: RECOMMENDED,
     cps: [2500, 2495, 2336],
   });
 });
