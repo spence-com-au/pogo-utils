@@ -243,8 +243,8 @@ its damage however little Regigigas hits for, and Icy Wind would gain more than 
 a Steel type, however hard either hits back. PvPoke's battle AI leaves them out too (`Pokemon.js`, `ActionLogic.js`).
 
 **On our last hit,** when we have no shield left and the opponent's next charged move would faint us, or its next fast
-move would whatever our shields, changes to our own stats count for nothing, since there's no next hit for them to
-matter on.
+move would faint us whatever our shields, changes to our own stats count for nothing, since there's no next hit for them
+to matter on.
 
 **Worth per energy.** Once the opponent's shields are gone, it throws the move worth the most for each point of energy
 it costs, and of two worth as much, the cheaper, which fires sooner. With no shield to take a throw, energy is all that
