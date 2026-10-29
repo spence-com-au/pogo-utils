@@ -608,15 +608,17 @@ export interface Hold {
  * can afford its best charged move and it is one we would survive.
  *
  * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
- * count missed, names the hardest move that energy affords and finds it would not faint us. With no shield of ours
+ * count missed, names the hardest move that energy affords; whether that would faint us is the caller's to weigh,
+ * below. With no shield of ours
  * left the throw puts up no prompt, and its banner is read only after it has played, if at all; what says it landed is
  * the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move once its countdown has shown,
  * and `Energy.named` settles at the move's own cost once its banner is read. Affording none of the opponent's moves,
  * the count lets the throw go, as it lets go one never held, and so does no count at all; still affording one, a second
  * throw may be still to come, and the hold goes on, until the banner settles the count or the time below runs out.
  * A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the throw go on that fear, as
- * `beforeFainting` throws on it, whatever this answers. Anything unread lets the throw go too, as `verdict.why` names
- * it.
+ * `beforeFainting` throws on it, whatever this answers, so a hold it keeps is of a hit we would survive. Anything
+ * unread lets the throw go too, as `verdict.why` names it, and so do our fast moves not known, which leave no time to
+ * hold for.
  *
  * And only until `waited` reaches `filling`'s time. PvPoke stops waiting at 100 energy of ours, past which our fast
  * moves gain nothing; the bot cannot see ours, so it stops at the soonest it could be full, against an opponent holding
@@ -663,14 +665,18 @@ export function untilTheirsLands(
 
   const cost = costOf(data, move);
   const limit = filling(data, own, cost);
+  const whose = own.species === null ? 'our' : `${own.species}'s`;
+
+  if (limit === 0) {
+    return { held: false, why: `${whose} fast moves not known` };
+  }
 
   if (waited >= limit) {
-    const whose = own.species === null ? 'our' : `${own.species}'s`;
     const seconds = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
     const fills = `${whose} energy filling from ${cost} in ${seconds(limit)} at the soonest`;
 
     return { held: false, why: `${seconds(waited)} of the fight since the hold began, ${fills}` };
   }
 
-  return { held: true, why: `${opponent} can afford ${verdict.afforded}, which we would survive; ${verdict.why}` };
+  return { held: true, why: `${opponent} can afford ${verdict.afforded}; ${verdict.why}` };
 }

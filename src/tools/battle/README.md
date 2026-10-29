@@ -283,7 +283,7 @@ see, so it waits no longer than the soonest it could fill from the move's cost, 
 species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. Only
 the fight's own time counts, not the opponent's throw playing out, in which our energy stands still. A finish and a
 throw for fear of fainting, both below, go at once. Logged as
-`holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
+`holding Close Combat: Metagross can afford Meteor Mash; …`, and as it ends,
 `no longer holding Close Combat: 7 energy affords none of Metagross's charged moves`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth

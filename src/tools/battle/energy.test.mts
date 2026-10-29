@@ -424,7 +424,7 @@ test('with no shield left, a move lowering our defense waits for a charged move 
 
   expect(holds('Close Combat', 0, survived)).toEqual({
     held: true,
-    why: `Metagross can afford Meteor Mash, which we would survive; ${survived.why}`,
+    why: `Metagross can afford Meteor Mash; ${survived.why}`,
   });
   expect(holds('Close Combat', 0, landed, 7), 'the count lowered by its throw, affording nothing').toEqual({
     held: false,
@@ -456,7 +456,7 @@ test('with no shield left, a move lowering our defense waits for a charged move 
     "5.70s of the fight since the hold began, Moltres's energy filling from 55 in 5.63s at the soonest",
   );
   expect(
-    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0)?.held,
+    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0),
     'none of our fast moves known, so no time to hold for',
-  ).toBe(false);
+  ).toEqual({ held: false, why: 'our fast moves not known' });
 });

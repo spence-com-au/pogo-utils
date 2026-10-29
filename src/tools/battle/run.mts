@@ -522,8 +522,7 @@ export async function run(
   // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
   // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
   // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours fainting, a
-  // switch of ours seen to have gone through, the battle ending or, failing that, the next one starting; a tap dropped,
-  // a throw or a switch, leaves it running.
+  // switch of ours seen to have gone through or the result screen; a tap dropped, a throw or a switch, leaves it running.
   let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
   // Ends a hold with the move it held for, told where it was held.
@@ -746,7 +745,6 @@ export async function run(
         offered = undefined;
         thrown = undefined;
         pending = undefined;
-        undefer('the battle before ended');
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
@@ -1163,7 +1161,6 @@ export async function run(
               meta,
             )
           : undefined;
-      const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {
         const names = lit.flatMap((x) => seen.moves.get(x) ?? []);
@@ -1219,13 +1216,25 @@ export async function run(
         log(`no longer holding ${ongoing.move}`, 'own', hold.why);
         ongoing.held = false;
       } else if (deferring?.held && !ongoing && lit.length > 0 && !switching) {
-        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt. Not while
-        // a switch of ours is under way, which tells the hold's end once it is seen to go through.
-        const instead = finish?.why ?? now?.why ?? spared ?? `${(pick && seen.moves.get(pick.x)) ?? 'another'} picked`;
+        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
+        // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
+        // tells the hold's end once it is seen to go through.
+        const chosen = pick && seen.moves.get(pick.x);
+        const instead =
+          finish?.why ??
+          now?.why ??
+          spared ??
+          (chosen !== deferring.move ? `${chosen ?? 'another'} picked` : undefined);
 
-        log(`no longer holding ${deferring.move}`, 'own', instead);
-        deferring.held = false;
+        if (instead !== undefined) {
+          log(`no longer holding ${deferring.move}`, 'own', instead);
+          deferring.held = false;
+        }
       }
+
+      // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
+      // as thrown.
+      const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };

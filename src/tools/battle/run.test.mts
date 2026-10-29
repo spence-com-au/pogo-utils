@@ -1030,7 +1030,7 @@ const holds = (events: readonly string[]) =>
   events.filter((line) => /^own: (threw|holding|no longer holding)|threw a charged move/.test(line));
 
 const HOLDING =
-  'own: holding Shadow Sneak: Mamoswine can afford Icicle Spear, which we would survive; Icicle Spear would take ~60%, with 80% left, the hardest 40 energy affords';
+  'own: holding Shadow Sneak: Mamoswine can afford Icicle Spear; Icicle Spear would take ~60%, with 80% left, the hardest 40 energy affords';
 
 /**
  * Held, Shadow Sneak goes once Mamoswine's Icicle Spear has landed, its countdown showing with no prompt and lowering
