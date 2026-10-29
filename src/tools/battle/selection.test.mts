@@ -87,6 +87,21 @@ test.each([
   expect(await readPanel(fixture(name), DATA, species)).toEqual(panel);
 });
 
+// A white row 11 px under Metagross's panel, whose white rows end at 690, the first row past the 10 px a gap may span
+// at 1008 wide: the panel's rows are closed as one, not dropped for the row's.
+test('keeps the panel where a white row lies just past its gap', async () => {
+  const held = fixture('menu-pixel8-held-metagross');
+  const data = held.data.slice();
+
+  data.fill(255, 701 * held.width * 4, 702 * held.width * 4);
+
+  expect(await readPanel({ ...held, data }, DATA, 'Metagross')).toEqual({
+    species: 'Metagross',
+    fast: 'Shadow Claw',
+    charged: ['Meteor Mash', 'Earthquake'],
+  });
+});
+
 test('reads no panel where none is held', async () => {
   expect(await readPanel(fixture('menu-pixel8-search-metagross'), DATA, 'Metagross')).toBeUndefined();
 });

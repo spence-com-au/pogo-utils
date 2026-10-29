@@ -124,14 +124,15 @@ function panelBand(image: Image): { top: number; height: number } | undefined {
       white += rgb(image, x, y).every((c) => c >= WHITE) ? 1 : 0;
     }
 
-    if (y < bottom && white >= all * PANEL) {
-      run = run && y - run.last <= gap ? { ...run, last: y } : { top: y, last: y };
-    }
-
+    // A run past its gap is closed before this row can start another.
     if (run && (y === bottom || y - run.last > gap)) {
       const height = run.last + 1 - run.top;
       best = !best || height > best.height ? { top: run.top, height } : best;
       run = undefined;
+    }
+
+    if (y < bottom && white >= all * PANEL) {
+      run = run ? { ...run, last: y } : { top: y, last: y };
     }
   }
 
