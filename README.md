@@ -15,6 +15,8 @@ application and reached from a shared top tab bar:
   [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
 - **Inventory** (`#/inventory`) — one Pokémon's detail screen read end to end, off a phone over WebUSB or from a saved
   screenshot: what [`pnpm inventory parse`](#pokémon-inventory) prints, without installing anything.
+- **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected from the
+  settings menu, as [`pnpm battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
 
 **➡️ [Open the site](https://spence.com.au/pogo-utils/)**
 
@@ -458,7 +460,7 @@ expressed in it at all; the two formats are not interchangeable in either direct
 ## Installing as an app
 
 [`manifest.json`](manifest.json) lets a phone add the site to its home screen and open it without the browser's toolbar,
-starting on the Events page, with a long-press shortcut to each of the six tabs. Those two members are not in the
+starting on the Events page, with a long-press shortcut to each of the seven tabs. Those two members are not in the
 checkout's copy: [`scripts/build-manifest.mts`](scripts/build-manifest.mts) writes them into `dist/manifest.json` from
 the router's page table in [`src/page-table.ts`](src/page-table.ts), so renaming or adding a page moves its shortcut
 with it rather than leaving one that quietly opens the Events page. Its paths are relative, so it works under the Pages
@@ -635,8 +637,9 @@ of them a second to disk, at most about 15 MB a minute and less for a still scre
 `ffmpeg -i run.ts -c copy run.mp4` makes one it does, its times the same. Like any capture of the phone it shows the
 account's trainer names, so it is not to be committed as it is.
 
-How it is put together, and the strategy it plays by in full, is in
-[`src/tools/battle/README.md`](src/tools/battle/README.md).
+The Battle tab plays the same battles from the browser, over WebUSB, with the options `run` takes but for the frames and
+the video kept, and the same panel drawn beside the phone's screen. How it is put together, and the strategy it plays by
+in full, is in [`src/tools/battle/README.md`](src/tools/battle/README.md).
 
 A screenshot takes 0.8–1.9 seconds over `adb` against a turn of half a second, so a battle is watched as video instead:
 `screenrecord` on the phone sends H.264 at 30 frames a second and `ffmpeg` decodes it, which needs `ffmpeg` on `PATH`

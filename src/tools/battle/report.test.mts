@@ -1,6 +1,7 @@
 import { Writable } from 'node:stream';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { describe, live, panel, plain, rule, summary, type Fight, type Status } from './report.mts';
+import { describe, live, panel, plain, rule } from './report.mts';
+import { ending, summary, type Fight, type Status } from './reporter.mts';
 
 const FIGHT: Fight = {
   own: { species: 'Charizard', cp: 2495, hp: 0.74, shields: 1, left: 2 },
@@ -80,6 +81,14 @@ test('says how the run stands, counting down to its stopping once nothing has be
   expect(summary(undefined)).toBe('0 finished; starting');
   expect(summary({ ...STATUS, screen: 'other', lostIn: 19_500 })).toBe('1 of 3 finished; other');
   expect(summary({ ...STATUS, screen: 'other', lostIn: 12_300 })).toBe('1 of 3 finished; other, stopping in 13s');
+});
+
+test('tells how a run that ended on its own went, and why it stopped short of its count', () => {
+  expect(ending({ battles: 3, won: 2, lost: 1 }, 3)).toEqual(['3 battles finished: 2 won and 1 lost']);
+  expect(ending({ battles: 1, won: 0, lost: 0 }, Infinity)).toEqual([
+    '1 battle finished: 0 won, 0 lost and 1 unread',
+    'GO Battle League has no battle to offer until its reward is collected',
+  ]);
 });
 
 test('writes the battle as a line each time it changes, and each event, after how long the run has gone on', () => {

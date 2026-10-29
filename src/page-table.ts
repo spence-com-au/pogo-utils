@@ -8,7 +8,7 @@
 /**
  * Every page, with what the tab bar calls it and what the document is titled while it is open, in tab order.
  *
- * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the six literals rather than widening to
+ * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the seven literals rather than widening to
  * `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
  */
 export const PAGES = [
@@ -18,6 +18,7 @@ export const PAGES = [
   { name: 'pokedex', label: 'Pokédex', icon: '📖', title: 'Pokémon GO Pokédex' },
   { name: 'integrations', label: 'Integrations', icon: '🔌', title: 'Pokémon GO Integrations' },
   { name: 'inventory', label: 'Inventory', icon: '🎒', title: 'Pokémon GO Inventory' },
+  { name: 'battle', label: 'Battle', icon: '⚔️', title: 'Pokémon GO Battle' },
 ] as const satisfies readonly { name: string; label: string; icon: string; title: string }[];
 
 export type Page = (typeof PAGES)[number]['name'];

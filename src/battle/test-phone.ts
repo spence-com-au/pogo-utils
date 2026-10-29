@@ -102,10 +102,14 @@ const LISTED = '  Device 5: pogo-utils touch\n    Sources: 0x00001002\n';
  * A phone reached as over WebUSB, named `name`: its screen the shape of a Pixel 4 XL's, its `screenrecord` sending
  * `h264` and then nothing until killed, and its held `sh` answering each command as a phone's shell would — `dumpsys
  * input` with the touchscreen listed, anything else with nothing — keeping each command it was sent, each write that
- * carried one and each process it started. Its connection being let go is told to `log`.
+ * carried one and each process it started. A command run as a process of its own, as the settings are, is kept in
+ * `ran`, and `settings get` answers `settings` holds, which `settings put` changes. Its connection being let go is
+ * told to `log`.
  */
 export function fakeConnection(name: string, h264: Uint8Array, log: string[] = []) {
   const commands: string[] = [];
+  const ran: string[] = [];
+  const settings = new Map([['stay_on_while_plugged_in', '0']]);
   const writes: string[] = [];
   const spawned: string[] = [];
   const killed: string[] = [];
@@ -172,7 +176,18 @@ export function fakeConnection(name: string, h264: Uint8Array, log: string[] = [
     serial: name,
     transport: {
       state: () => Promise.resolve('device'),
-      shell: () => Promise.reject(new Error('every command goes through the held shell')),
+      shell: (command) => {
+        const [verb, action, , key = '', value = ''] = command;
+        ran.push(command.join(' '));
+
+        if (verb === 'settings' && action === 'put') {
+          settings.set(key, value);
+        }
+
+        return Promise.resolve(
+          new TextEncoder().encode(verb === 'settings' && action === 'get' ? `${settings.get(key) ?? 'null'}\n` : ''),
+        );
+      },
       screencap: () => Promise.resolve(encodePng({ width: 144, height: 304, data: new Uint8Array(144 * 304 * 4) })),
     },
     spawn: (command) => {
@@ -191,5 +206,15 @@ export function fakeConnection(name: string, h264: Uint8Array, log: string[] = [
     disconnected,
   };
 
-  return { connection, commands, writes, spawned, processes, killed, unplug: (error: Error) => unplugged(error) };
+  return {
+    connection,
+    commands,
+    ran,
+    settings,
+    writes,
+    spawned,
+    processes,
+    killed,
+    unplug: (error: Error) => unplugged(error),
+  };
 }

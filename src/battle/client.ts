@@ -10,8 +10,11 @@ import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
 import type { Phone } from '../inventory/webusb.js';
 import { type PhoneStore } from '../phone-store.js';
+import { type Reporter } from '../tools/battle/reporter.mts';
+import { type Tally } from '../tools/battle/run.mts';
 import { type Image } from '../tools/inventory/png.mts';
-import { type Command, type Message } from './protocol.js';
+import { putBack } from './awake.js';
+import { type Command, type Message, type Play } from './protocol.js';
 
 /** What the page posts to and hears from: the Worker, or a channel's end in a test. */
 export interface Endpoint {
@@ -27,19 +30,22 @@ export interface Run {
   stop(): void;
 
   /**
-   * Settles once the run has stopped and the phone has been taken back, rejecting with why the run failed, or with why
-   * the phone could not be taken back.
+   * Settles once the run has stopped and the phone has been taken back: with how the battles went where it finished on
+   * its own, with nothing where it was stopped, and rejecting with why the run failed, or with why the phone could not
+   * be taken back.
    */
-  ended: Promise<void>;
+  ended: Promise<Tally | undefined>;
 }
 
 /**
- * Hands the phone `store` holds to the Worker `start` starts, for a run, answering once the phone's screen has sent its
- * first frame. Where it never does, it fails once the phone has been taken back, with why, or with why the phone could
- * not be. The Worker is ended with the run.
+ * Hands the phone `store` holds to the Worker `start` starts, for a run of `play`, answering once the phone's screen has
+ * sent its first frame, and telling `report` what the run does as it goes. Where it never does, it fails once the phone
+ * has been taken back, with why, or with why the phone could not be. The Worker is ended with the run.
  */
 export async function lend(
   store: PhoneStore,
+  play: Play,
+  report: Reporter,
   start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
 
   // `webusb.ts` fetched only once a run takes the phone back: it brings Tango, which a page that merely imports this
@@ -61,6 +67,9 @@ export async function lend(
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
    * being. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news,
    * and is no failure at all where a phone was connected meanwhile, which may be why it failed.
+   *
+   * Taken back, it is connected again as far as `awake.ts` is concerned: a setting the Worker could not put back, its
+   * shell gone with the run, is put back now, and where that fails too it is told and kept for the connect after.
    */
   const takeBack = async (error?: string) => {
     if (store.phone !== null) {
@@ -68,7 +77,16 @@ export async function lend(
     }
 
     await reconnect(serial)
-      .then((back) => (store.phone === null ? store.hold(back) : back.close()))
+      .then(async (back) => {
+        if (store.phone !== null) {
+          return back.close();
+        }
+
+        await store.hold(back);
+        await putBack(back).catch((failure: unknown) =>
+          report.event(`stay_on_while_plugged_in still not put back, so kept for the next connect: ${said(failure)}`),
+        );
+      })
       .catch((failure: unknown) => {
         if (store.phone !== null) {
           return;
@@ -98,8 +116,8 @@ export async function lend(
   let running = () => {};
   const first = new Promise<void>((resolve) => (running = resolve));
 
-  const ended = new Promise<void>((resolve, reject) => {
-    const end = (error: string | undefined) => {
+  const ended = new Promise<Tally | undefined>((resolve, reject) => {
+    const end = (error: string | undefined, tally?: Tally) => {
       if (over) {
         return;
       }
@@ -108,7 +126,7 @@ export async function lend(
       worker.terminate();
       asked.splice(0).forEach((answer) => answer(undefined));
 
-      takeBack(error).then(() => (error === undefined ? resolve() : reject(new Error(error))), reject);
+      takeBack(error).then(() => (error === undefined ? resolve(tally) : reject(new Error(error))), reject);
     };
 
     worker.addEventListener('message', ({ data }) => {
@@ -117,8 +135,12 @@ export async function lend(
         running();
       } else if (data.type === 'frame') {
         asked.shift()?.(data.image);
+      } else if (data.type === 'event') {
+        report.event(data.line, data.side, data.why);
+      } else if (data.type === 'status') {
+        report.status(data.status);
       } else {
-        end(data.error);
+        end(data.error, data.tally);
       }
     });
 
@@ -128,7 +150,7 @@ export async function lend(
     worker.addEventListener('error', (event) => end(event.message || 'the battle Worker failed'));
   });
 
-  worker.postMessage({ type: 'start', serial });
+  worker.postMessage({ type: 'start', serial, ...play });
   await Promise.race([first, ended]);
 
   // Stopped cleanly before the phone sent a frame, which the Worker does not do today: every stop of its own before then

@@ -19,7 +19,7 @@ import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
 import { place } from './layout.mts';
 import { type Meta } from './meta.mts';
-import { type Fight, type Reporter } from './report.mts';
+import { type Fight, type Reporter } from './reporter.mts';
 import { type Phone } from './phone.mts';
 import { Lost, LOST_MS, run, type Clock } from './run.mts';
 

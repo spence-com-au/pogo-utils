@@ -1,7 +1,7 @@
 /**
  * The one document's shell: the tab bar, and whichever page the fragment names below it.
  *
- * Each page is reached through `import()` rather than imported outright, which is what keeps the six off each other's
+ * Each page is reached through `import()` rather than imported outright, which is what keeps the seven off each other's
  * download — Leaflet is 164KB and the Java serialization codec another 152KB, and imported statically both would land
  * in the bundle every reader fetches to look at the events calendar. A dynamic import is a split point to esbuild.
  */
@@ -19,7 +19,7 @@ export type PageComponent = FunctionComponent<{ query: string }>;
 /**
  * Where each page's chunk comes from. A table of thunks rather than one `import(\`./pages/${name}.js\`)`, because a
  * template literal gives esbuild nothing to resolve at build time: it would bundle every file matching the pattern, or
- * fail, and either way the six names would no longer be checked against anything.
+ * fail, and either way the seven names would no longer be checked against anything.
  */
 const PAGES: Record<Page, () => Promise<{ default: PageComponent }>> = {
   events: () => import('./pages/events.js'),
@@ -28,6 +28,7 @@ const PAGES: Record<Page, () => Promise<{ default: PageComponent }>> = {
   pokedex: () => import('./pages/pokedex.js'),
   integrations: () => import('./pages/integrations.js'),
   inventory: () => import('./pages/inventory.js'),
+  battle: () => import('./pages/battle.js'),
 };
 
 /**

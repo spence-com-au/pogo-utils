@@ -23,7 +23,9 @@ const ROOT = join(import.meta.dirname, '../../..');
  * which reaches all but the loop, and the page's half of it. And what a page loads before a run: PvPoke's meta in
  * `meta.mts` and the type icons in `assets.mts`, each fetched through the `Download` it is handed rather than through
  * `cachedAs`, the decoding of the vended `data/silhouettes.json` beside them, and `src/battle/load.ts`, which fetches
- * that file and hands the others `fetch`.
+ * that file and hands the others `fetch`. And the Battle tab: what the run tells of itself, the options the CLI's flags
+ * and the tab's form are both read by, the setting that keeps the phone awake, kept where page and Worker share it, the
+ * run held for the document, and the page.
  */
 const ENTRIES = [
   'src/tools/battle/run.mts',
@@ -38,6 +40,11 @@ const ENTRIES = [
   'src/tools/inventory/adb.mts',
   'src/battle/worker.ts',
   'src/battle/client.ts',
+  'src/tools/battle/reporter.mts',
+  'src/tools/battle/options.mts',
+  'src/battle/awake.ts',
+  'src/battle/session.ts',
+  'src/pages/battle.tsx',
 ];
 
 /**
