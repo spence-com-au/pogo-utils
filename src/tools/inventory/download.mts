@@ -9,8 +9,6 @@
 
 import { ICON_BASE, ICON_DIR } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { formIcons } from '../battle/assets.mts';
-import { silhouetteOfIcon, type Icon } from '../battle/party.mts';
 import { signaturesFor, signatureOfIcon, type Signature } from './artwork.mts';
 import { type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng } from './png.mts';
@@ -508,35 +506,4 @@ export function iconsFor(dir: string, data: GameData, refresh = false): Promise<
       signatureOfIcon(decodePng(bytes)),
     ),
   );
-}
-
-/**
- * Every form's outline that could be had, by its icon: some 1,300 icons and 40 MB, downloaded into `dir` and cached
- * there as `iconsFor` caches its own. One that cannot be had is left out for the caller to answer for, since the two
- * answer differently: `pnpm battle` reads the party without it, and `pnpm vend:silhouettes` asks again and then refuses.
- *
- * In the order the game master lists the forms rather than the order the downloads finish, so a vend over the same
- * upstream writes the same file.
- */
-export async function silhouettesFor(dir: string, data: GameData): Promise<Map<string, Icon>> {
-  const icons = [...formIcons(data)];
-  const read: (readonly [string, Icon])[] = [];
-
-  for (let at = 0; at < icons.length; at += 16) {
-    const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
-      try {
-        const silhouette = await cachedAs(join(dir, 'icons'), icon, ICON_BASE + icon, false, (bytes) =>
-          silhouetteOfIcon(decodePng(bytes)),
-        );
-
-        return [[icon, { species, silhouette }] as const];
-      } catch {
-        return [];
-      }
-    });
-
-    read.push(...(await Promise.all(batch)).flat());
-  }
-
-  return new Map(read);
 }

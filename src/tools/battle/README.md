@@ -198,8 +198,9 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
   shadow are merged, since the HUD names only the species; the type icons narrow the forms afterwards, but nothing on
   screen tells a shadow apart. If nothing matches, or PvPoke can't be reached, every move stays allowed for. Training
   never uses it.
-- **[`assets.mts`](assets.mts)** reads the type icons, and `meta.mts` PvPoke's files, each with whatever `Download` its
-  caller hands it: the CLI's week-long cache, or `fetch` in a page ([`src/battle/load.ts`](../../battle/load.ts)).
+- **[`assets.mts`](assets.mts)** reads the type icons and outlines the form icons, and `meta.mts` reads PvPoke's files,
+  each with whatever `Download` its caller hands it: the CLI's week-long cache, or `fetch` in a page
+  ([`src/battle/load.ts`](../../battle/load.ts)).
 - **The silhouettes** the party screen is read against are outlined from every form icon, some 1,300 files and 40 MB.
   The CLI downloads and outlines them itself, so a form newer than the last vend is still read. A page fetches
   [`data/silhouettes.json`](../../../data/silhouettes.json) instead: every outline packed to a bit a cell, under 100 KB

@@ -42,7 +42,7 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
-import { formIcons, typeIcons, type Download } from '../src/tools/battle/assets.mts';
+import { formIcons, silhouettesFor, typeIcons, type Download } from '../src/tools/battle/assets.mts';
 import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
 import { type Icon } from '../src/tools/battle/party.mts';
@@ -55,7 +55,7 @@ import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
-import { CACHE, cachedAs, loadGameData, silhouettesFor } from '../src/tools/inventory/download.mts';
+import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
@@ -128,7 +128,7 @@ const cache =
  */
 async function silhouettes(data: GameData): Promise<Icon[]> {
   const wanted = formIcons(data).size;
-  const read = await silhouettesFor(CACHE, data);
+  const read = await silhouettesFor(data, cache(join(CACHE, 'icons')));
 
   if (read.size < wanted) {
     console.error(`${wanted - read.size} of ${wanted} form icons could not be had; those forms go unmatched`);

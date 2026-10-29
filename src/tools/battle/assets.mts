@@ -1,18 +1,18 @@
 /**
  * What a battle reads the screen against beyond the game master and PvPoke's meta, and how each is read: the type icons
- * and the forms' silhouettes. The type icons are fetched through a `Download` the caller hands over, as `meta.mts`
- * fetches PvPoke's files, because the two callers fetch differently: `pnpm battle` keeps a week's copy under `.cache`
- * as `pnpm inventory` does, and a page has `fetch` and nothing to keep a copy on.
+ * and the forms' silhouettes. Each is fetched through a `Download` the caller hands over, as `meta.mts` fetches
+ * PvPoke's files, because the callers fetch differently: `pnpm battle` keeps a week's copy under `.cache` as
+ * `pnpm inventory` does, and a page has `fetch` and nothing to keep a copy on.
  *
- * The silhouettes are the exception. A page would have to fetch some 1,300 form icons and 40 MB to outline them, so
- * `scripts/vend-silhouettes.mts` outlines them once into `data/silhouettes.json`, which is what `encodeSilhouettes`
+ * The silhouettes are the exception in a page. It would have to fetch some 1,300 form icons and 40 MB to outline them,
+ * so `scripts/vend-silhouettes.mts` outlines them once into `data/silhouettes.json`, which is what `encodeSilhouettes`
  * writes and `decodeSilhouettes` reads.
  */
 
-import { typeIcon, typeIconFile } from '../../pokedex/icons.ts';
+import { ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/icons.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
-import { GRID, type Icon } from './party.mts';
+import { GRID, silhouetteOfIcon, type Icon } from './party.mts';
 
 /**
  * `url` fetched and read by `decode`, `file` being the name a cache keeps it under. Decoded inside rather than after,
@@ -46,6 +46,35 @@ export async function typeIcons(data: GameData, download: Download): Promise<Rec
  */
 export function formIcons(data: GameData): Map<string, string> {
   return new Map(data.forms.flatMap((form) => (form.icon ? [[form.icon, form.species] as const] : [])));
+}
+
+/**
+ * Every form's outline that could be had, by its icon, out of some 1,300 icons and 40 MB fetched by `download`. One
+ * that cannot be had is left out for the caller to answer for, since the two answer differently: `pnpm battle` reads
+ * the party without it, and `pnpm vend:silhouettes` asks again and then refuses.
+ *
+ * Sixteen at a time, and in the order the game master lists the forms rather than the order the downloads finish, so a
+ * vend over the same upstream writes the same file.
+ */
+export async function silhouettesFor(data: GameData, download: Download): Promise<Map<string, Icon>> {
+  const icons = [...formIcons(data)];
+  const read: (readonly [string, Icon])[] = [];
+
+  for (let at = 0; at < icons.length; at += 16) {
+    const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
+      try {
+        const silhouette = await download(icon, ICON_BASE + icon, (bytes) => silhouetteOfIcon(decodePng(bytes)));
+
+        return [[icon, { species, silhouette }] as const];
+      } catch {
+        return [];
+      }
+    });
+
+    read.push(...(await Promise.all(batch)).flat());
+  }
+
+  return new Map(read);
 }
 
 /**

@@ -11,8 +11,8 @@
  */
 
 import { GAME_MASTER, SILHOUETTES } from '../src/generated.ts';
-import { encodeSilhouettes, formIcons } from '../src/tools/battle/assets.mts';
-import { silhouettesFor } from '../src/tools/inventory/download.mts';
+import { encodeSilhouettes, formIcons, silhouettesFor, type Download } from '../src/tools/battle/assets.mts';
+import { cachedAs } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,6 +22,7 @@ import prettier from 'prettier';
 const data = JSON.parse(readFileSync(GAME_MASTER, 'utf8')) as GameData;
 const wanted = formIcons(data).size;
 const dir = mkdtempSync(join(tmpdir(), 'silhouettes-'));
+const download: Download = (file, url, decode) => cachedAs(dir, file, url, false, decode);
 let icons;
 
 /*
@@ -31,11 +32,11 @@ let icons;
  * anything still missing after it is refused.
  */
 try {
-  icons = await silhouettesFor(dir, data);
+  icons = await silhouettesFor(data, download);
 
   if (icons.size < wanted) {
     console.error(`${wanted - icons.size} of ${wanted} form icons could not be had; asking for them again`);
-    icons = await silhouettesFor(dir, data);
+    icons = await silhouettesFor(data, download);
   }
 } finally {
   rmSync(dir, { recursive: true });
