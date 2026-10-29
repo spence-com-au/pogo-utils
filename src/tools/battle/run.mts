@@ -42,6 +42,7 @@ import {
   refugeOf,
   stripperOf,
   typesOf,
+  untilTheirsLands,
   type Pick,
   type Switch,
 } from './strategy.mts';
@@ -496,6 +497,11 @@ export async function run(
   let unlit: number | undefined;
   let relit: number | undefined;
 
+  // The move chosen that lowers our defense, held until the opponent's charged move has landed: since when, which a
+  // release and a second hold before it is tapped both keep, our energy filling on throughout, and whether it is held
+  // now. Ended by a tap, or by ours leaving the field.
+  let deferring: { move: string; from: number; held: boolean } | undefined;
+
   const drop = (why: string) => {
     if (pending) {
       log(`${pending.move ?? 'our charged move'} not thrown`, 'own', why);
@@ -515,6 +521,7 @@ export async function run(
     stages = { ...stages, own: NO_STAGES };
     readAt = -Infinity;
     counter = undefined;
+    deferring = undefined;
   };
 
   // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
@@ -707,6 +714,7 @@ export async function run(
         offered = undefined;
         thrown = undefined;
         pending = undefined;
+        deferring = undefined;
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
@@ -1115,6 +1123,36 @@ export async function run(
         sparing = seen.opponent;
       }
 
+      // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
+      // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
+      // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for
+      // fear of fainting, which go at once. Told as it begins and as it ends.
+      const deferrable =
+        spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending
+          ? seen.moves.get(pick.x)
+          : undefined;
+      const kept = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
+      const hold =
+        deferrable === undefined
+          ? undefined
+          : untilTheirsLands(
+              data,
+              deferrable,
+              us,
+              theirName(),
+              ourShields,
+              verdict,
+              kept ? clock.now() - kept.from : 0,
+            );
+
+      if (deferrable !== undefined && hold?.held && !kept?.held) {
+        log(`holding ${deferrable}`, 'own', hold.why);
+        deferring = { move: deferrable, from: kept?.from ?? clock.now(), held: true };
+      } else if (kept?.held && hold && !hold.held) {
+        log(`no longer holding ${kept.move}`, 'own', hold.why);
+        kept.held = false;
+      }
+
       if (state === 'shield' && !offered?.taken) {
         offered = { why: verdict.why, taken: false };
       }
@@ -1298,7 +1336,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
         shield,
         minigame: playing,
@@ -1324,6 +1362,7 @@ export async function run(
 
           drop(`${move ?? 'another'} tapped instead`);
           sparing = undefined;
+          deferring = undefined;
           pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.

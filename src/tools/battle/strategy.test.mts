@@ -21,6 +21,7 @@ import {
   type Shown,
   stripperOf,
   typesOf,
+  untilTheirsLands,
   worth,
 } from './strategy.mts';
 
@@ -581,6 +582,58 @@ test('before a feared faint, the lit move worth the most goes, passing over the 
     )?.why,
     'Hydro Pump over the bait',
   ).toBe(`${fear}; worth more than Avalanche`);
+});
+
+/**
+ * Xerneas against Metagross, both read at their CPs from battle 4 of the Pixel 8 Pro's Master League set, 2026-10-29,
+ * the verdicts `wouldFaint`'s for them: Meteor Mash, at 50 energy counted, would take 78% of a full bar; Flash Cannon,
+ * at 100, 85% of 90%.
+ */
+test('with no shield left, a move lowering our defense waits for a charged move we would survive to land', () => {
+  const xerneas = { species: 'Xerneas', types: ['Fairy'] };
+  const survived = {
+    faints: false,
+    why: 'Meteor Mash would take ~78%, with 100% left, the hardest 50 energy affords',
+    afforded: 'Meteor Mash',
+  };
+  const fainting = { faints: true, why: 'Flash Cannon would take ~85%, with 90% left', afforded: 'Flash Cannon' };
+  const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left' };
+  const holds = (move: string, shields: number, verdict: typeof survived | typeof landed, held = 0) =>
+    untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, held);
+
+  expect(holds('Close Combat', 0, survived)).toEqual({
+    held: true,
+    why: `Metagross can afford Meteor Mash, which we would survive; ${survived.why}`,
+  });
+  expect(holds('Close Combat', 0, landed), 'the count lowered by its throw, affording nothing').toEqual({
+    held: false,
+    why: "Metagross's counted energy affords none of its charged moves",
+  });
+  expect(holds('Close Combat', 0, fainting), 'a hit that would faint us, for `beforeFainting`').toEqual({
+    held: false,
+    why: fainting.why,
+  });
+  expect(holds('Close Combat', 1, survived), 'a shield left to take it').toBe(undefined);
+  expect(holds('Moonblast', 0, survived), 'a move leaving our defense alone').toBe(undefined);
+
+  // Geomancy, 13 energy for 3 turns, fills 100 from Close Combat's 45 in 6346ms.
+  expect(holds('Close Combat', 0, survived, 6300)?.held).toBe(true);
+  expect(holds('Close Combat', 0, survived, 6400)).toEqual({
+    held: false,
+    why: "held 6.3s, the soonest Xerneas's energy fills from 45",
+  });
+
+  // Galarian Moltres's Wing Attack, 8 for 2 turns, fills from Brave Bird's 55 in 5625ms.
+  const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
+
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 5600)?.held).toBe(true);
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 5700)?.why).toBe(
+    "held 5.6s, the soonest Moltres's energy fills from 55",
+  );
+  expect(
+    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 0)?.held,
+    'none of our fast moves known, so no time to hold for',
+  ).toBe(false);
 });
 
 test('an opponent’s form is allowed for what its players run, of what it can hold', () => {

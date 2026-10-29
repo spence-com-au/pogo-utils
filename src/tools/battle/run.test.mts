@@ -974,6 +974,167 @@ test.each([
 });
 
 /**
+ * The game master with Shadow Sneak lowering our defense by 2 as Close Combat does: no committed frame has a move that
+ * does lit with our shields spent and both sides' CPs read, but Giratina's against Mamoswine does with this one.
+ */
+const SNEAK_LOWERS: GameData = {
+  ...DATA,
+  combat: {
+    ...DATA.combat,
+    'Shadow Sneak': { ...DATA.combat['Shadow Sneak'], buffs: { chance: 1, ownDefense: -2 } },
+  } as GameData['combat'],
+};
+
+/**
+ * The same Giratina against Mamoswine, our shields spent and its two up, our grey Poké Ball painted red and each frame
+ * then `paint`ed, through Mamoswine's Powder Snow taking our bar, repainted, down each of `bars` 200ms apart once the
+ * battle's first read has named it, Shadow Sneak's button painted unlit; and then `lit`, our bar at the last of `bars`
+ * and the button lit. Four hits, 32 energy, and one for the count afford Icicle Spear's 40, which takes 60% of a
+ * rank-1 Giratina: survived from 80%, and not from 54%. `ours` is the frame with our bar run on to `px`.
+ */
+function sneaking(
+  bars: readonly number[],
+  lit: Omit<Scene, 'frame'>,
+  paint = (image: Image) => image,
+): { scenes: Record<string, Scene>; ours: (px: number) => Image } {
+  const balls = paint(painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL));
+
+  // Our fill run on to `px` of the bar's 100 at 360 wide, and dark beyond it; and Shadow Sneak's button unlit, as in
+  // the test above.
+  const ours = (px: number) =>
+    painted(
+      painted(balls, [105, 91, 41], [22 / 360, 220 / 360, 122 / 360, 225 / 360]),
+      [26, 255, 187],
+      [22 / 360, 220 / 360, (22 + px) / 360, 225 / 360],
+    );
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const names = bars.map((_, i) => (i === 0 ? 'fight' : `hit${i}`));
+  const hits = bars.map((px, i): [string, Scene] => [
+    names[i] ?? '',
+    { frame: unlit(ours(px)), lasts: { ms: i === 0 ? 400 : 200, to: names[i + 1] ?? 'lit' } },
+  ]);
+
+  return {
+    scenes: {
+      ...battleAndBack(),
+      ...Object.fromEntries(hits),
+      lit: { frame: ours(bars.at(-1) ?? 0), ...lit },
+      minigame: minigameNoneFainted(),
+    },
+    ours,
+  };
+}
+
+/** What is told of a hold and its throw, and of the opponent's throw meanwhile. */
+const holds = (events: readonly string[]) =>
+  events.filter((line) => /^own: (threw|holding|no longer holding)|threw a charged move/.test(line));
+
+const HOLDING =
+  'own: holding Shadow Sneak: Mamoswine can afford Icicle Spear, which we would survive; Icicle Spear would take ~60%, with 80% left, the hardest 40 energy affords';
+
+/**
+ * Held, Shadow Sneak goes once Mamoswine's Icicle Spear has landed, its countdown showing with no prompt and lowering
+ * the count to afford nothing, our bar at 30% after it; or once held as long as Giratina's energy takes to fill from 50
+ * at 8 a second, as any of its fast moves gains: 6.25s, between the 6s `lit` lasts and the 6.5s `late` lasts after it.
+ * Never on `lit`, which takes no tap.
+ */
+test.each([
+  [
+    'lands',
+    { lasts: { ms: 2000, to: 'countdown' } },
+    'back',
+    [
+      HOLDING,
+      'opponent: Mamoswine threw a charged move: none of our shields left to prompt for',
+      "own: no longer holding Shadow Sneak: Mamoswine's counted energy affords none of its charged moves",
+      'own: threw Shadow Sneak',
+    ],
+  ],
+  [
+    'runs out of time',
+    { lasts: { ms: 6000, to: 'late' } },
+    'late',
+    [
+      HOLDING,
+      "own: no longer holding Shadow Sneak: held 6.3s, the soonest Giratina's energy fills from 50",
+      'own: threw Shadow Sneak',
+    ],
+  ],
+])(
+  'with no shield of ours left, a move lowering our defense is held until the hit it waits for %s',
+  async (_, lit, tapped, said) => {
+    const { scenes, ours } = sneaking([96, 92, 88, 84, 80], lit);
+    const { phone, clock, taps } = scripted(
+      {
+        ...scenes,
+        countdown: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 3000, to: 'playing' } },
+        playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+        back: { frame: ours(30), tap: { at: [0.499, 0.889], to: 'minigame' } },
+        late: { frame: ours(80), tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 500, to: 'won' } },
+      },
+      'party',
+    );
+    const report = recorder();
+
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: SNEAK_LOWERS,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    );
+
+    expect(taps.filter((scene) => scene === 'lit' || scene === tapped)).toEqual([tapped]);
+    expect(holds(report.events)).toEqual(said);
+  },
+);
+
+/**
+ * Thrown at once, as above, where there is no hit to wait for: with our two shields painted held, one left to take
+ * Icicle Spear; with Mamoswine's painted spent, Shadow Sneak finishing it at 4%; and from 54%, Icicle Spear fainting us.
+ */
+test.each([
+  [
+    'a shield of ours left',
+    [96, 92, 88, 84, 80],
+    (image: Image) => painted(image, [224, 161, 238], [0.23, 0.2027, 0.242, 0.2153], [0.275, 0.2027, 0.287, 0.2153]),
+    'own: threw Shadow Sneak',
+  ],
+  [
+    'a finish',
+    [96, 92, 88, 84, 80],
+    (image: Image) => painted(image, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
+    'own: threw Shadow Sneak: would finish Mamoswine at 4%',
+  ],
+  ['a faint feared', [70, 66, 62, 58, 54], (image: Image) => image, 'own: threw Shadow Sneak'],
+])('a move lowering our defense goes at once with %s', async (_, bars, paint, said) => {
+  const { scenes } = sneaking(bars, { tap: { at: [0.499, 0.889], to: 'minigame' } }, paint);
+  const { phone, clock, taps } = scripted(scenes, 'party');
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: SNEAK_LOWERS,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).toContain('lit');
+  expect(holds(report.events)).toEqual([said]);
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the

@@ -267,6 +267,18 @@ self-debuffing one costing over 50. The one rule stands in for both. So Xerneas 
 a point to Moonblast's 2.16, and Galarian Moltres holds for Fly, 2.13 a point, rather than Brave Bird, 2.84 and −3 to
 its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 75% of it per energy`.
 
+**Taking their hit first.** With none of our shields left, a move picked that always lowers our defense waits, once lit,
+while the opponent's [counted energy](#the-opponents-energy) affords a charged move we would survive: thrown first, it
+would have that move land on the lowered defense. This is PvPoke's battle AI's deferral (`ActionLogic.js`), with our
+fainting judged as for shielding [below](#when-to-shield). No prompt shows a throw with no shield to take, and its
+banner is read only after, if at all, so what says the hit landed is the count, which the throw's countdown lowers;
+affording nothing, it lets the move go. PvPoke waits no longer than until our energy is full, which the bot can't see,
+so it waits no longer than the soonest it could fill from the move's cost, at the fastest gain of any fast move our
+species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. A
+finish and a throw for fear of fainting, both below, go at once. Logged as
+`holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
+`no longer holding Close Combat: Metagross's counted energy affords none of its charged moves`.
+
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
 the most per energy isn't worth the shield it might not draw, so that move goes instead, logged as
