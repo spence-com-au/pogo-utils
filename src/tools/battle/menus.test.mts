@@ -83,10 +83,19 @@ test('taps the ✓ on the result once a battle has ended', async () => {
   });
 });
 
-test('leaves the teal button alone when no result is due', async () => {
+test('taps the ✓ on a result left over from before the run, off its verdict', async () => {
   expect(
     await readMenu(fixture('menu-result'), { mode: 'training', leader: 'blanche', league: 'ultra', result: false }),
   ).toEqual({
+    screen: 'result',
+    tap: [0.5, expect.closeTo(0.935, 3)],
+  });
+});
+
+// GO Battle League never looks for the leader's speech, so its ✗ comes down to the result's test: with no battle ended
+// and no verdict on it, the ✗ is no ✓.
+test('leaves the ✗ under the leader’s speech alone when no result is due', async () => {
+  expect(await readMenu(fixture('menu-intro'), { mode: 'gbl', league: 'ultra', result: false })).toEqual({
     screen: 'unknown',
   });
 });
