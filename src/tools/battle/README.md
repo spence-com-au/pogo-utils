@@ -311,10 +311,21 @@ it.
 
 ### When to shield
 
-The shield prompt never names the move coming. It takes a shield only if the hardest move the opponent could be throwing
-would take at least **90%** of the HP our bar shows ([`damage.mts`](damage.mts)'s `wouldFaint`). A hit we would survive
-is taken, and the shield kept for one we wouldn't. The margin short of 100% allows for the HP being read off a bar and
-the opponent's build being a guess.
+The shield prompt never names the move coming, so the hit judged is the hardest move the opponent could be throwing
+([`damage.mts`](damage.mts)'s `wouldFaint`). A shield is taken where any of these holds, and kept otherwise
+([`damage.mts`](damage.mts)'s `wouldShield`):
+
+- **The hit would faint us:** it would take at least **90%** of the HP our bar shows. The margin short of 100% allows
+  for the HP being read off a bar and the opponent's build being a guess.
+- **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
+  **1/1.4** of the HP left.
+- **Too little would be left:** the hit would leave less than the opponent's fast moves take before it can throw again,
+  once for each shield we hold, so ours would faint before the next shield could be taken. The fast moves are
+  `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's cost and the energy counted, each taking what one
+  was measured to take off our bar ([below](#the-opponents-energy)).
+
+The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
+simulates.
 
 What goes into "the hardest move the opponent could be throwing":
 
@@ -333,8 +344,10 @@ What goes into "the hardest move the opponent could be throwing":
   reset when its Pokémon leaves the field. A shield stops the damage, not the stat change.
 
 **Anything unknown takes the shield:** either side's species or CP unread, a CP over the cap (so misread), our HP
-unread, or the cap itself not yet known. A shield spent early costs less than a Pokémon lost. Each shield taken or kept
-is logged with the reason, such as `Flamethrower would take ~45%, with 50% left, the hardest 60 energy affords`.
+unread, the cap itself not yet known, or none of the opponent's fast moves yet measured or its energy uncounted. A
+shield spent early costs less than a Pokémon lost. Each shield taken or kept is logged with the hit, such as
+`Drill Peck would take ~34%, with 50% left`, and the rule that decided it, such as
+`leaves ~16%, less than 2 × the ~12% of 6 fast moves before their next charged move`.
 
 ### The opponent's energy
 
