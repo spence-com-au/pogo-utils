@@ -37,6 +37,7 @@
     "vend:events": "node scripts/vend-feed.mts",
     "vend:game-master": "node scripts/vend-game-master.mts",
     "vend:pgsharp": "node scripts/vend-pgsharp.mts",
+    "vend:silhouettes": "node scripts/vend-silhouettes.mts",
     "watch:livepokemap": "node scripts/watch-livepokemap.mts"
   },
   "devDependencies": {

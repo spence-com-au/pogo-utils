@@ -28,6 +28,13 @@ export const GAME_MASTER = 'src/tools/inventory/fixtures/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
+ * Every form's outline, which `scripts/vend-silhouettes.mts` writes out of the game master above and its icons, for the
+ * battle tool in a page to read a party card against without fetching 40 MB of icons. Under `data/`, which the build
+ * publishes whole.
+ */
+export const SILHOUETTES = 'data/silhouettes.json';
+
+/**
  * The artifact each step of `pnpm build` writes its part of the site into, and the one tree `pnpm serve` serves.
  * `package.json`'s scripts and the ignore lists in `.gitignore`, `.prettierignore` and `eslint.config.mjs` spell it as
  * well, being configuration rather than modules.

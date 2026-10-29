@@ -33,6 +33,7 @@ interface Kit {
   icons: ReadonlyMap<Form, Signature>;
 }
 
+let gameMaster: Promise<GameData> | null = null;
 let tables: Promise<GameData> | null = null;
 let kit: Promise<Kit> | null = null;
 
@@ -47,7 +48,7 @@ export function unreadable(): string | null {
     : 'Reading a screenshot needs a secure context too: open this page from localhost or the published site.';
 }
 
-async function fetchOk(url: string): Promise<Response> {
+export async function fetchOk(url: string): Promise<Response> {
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -55,6 +56,20 @@ async function fetchOk(url: string): Promise<Response> {
   }
 
   return response;
+}
+
+/**
+ * The vended game master, fetched once for every page that reads the screen against it: this one's reads and the
+ * battle tool's. A failure is not kept, for the reason `ready` gives.
+ */
+export function gameData(): Promise<GameData> {
+  gameMaster ??= fetchOk(GAME_MASTER).then((response) => response.json() as Promise<GameData>);
+
+  gameMaster.catch(() => {
+    gameMaster = null;
+  });
+
+  return gameMaster;
 }
 
 /**
@@ -80,7 +95,7 @@ function ready(onModel: (fraction: number) => void): Promise<GameData> {
       }),
     );
 
-    return (await (await fetchOk(GAME_MASTER)).json()) as GameData;
+    return gameData();
   })();
 
   tables.catch(() => {

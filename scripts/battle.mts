@@ -42,10 +42,10 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
-import { ICON_BASE, typeIcon, typeIconFile } from '../src/pokedex/icons.ts';
+import { formIcons, silhouettesFor, typeIcons, type Download } from '../src/tools/battle/assets.mts';
 import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
-import { silhouetteOfIcon, type Icon } from '../src/tools/battle/party.mts';
+import { type Icon } from '../src/tools/battle/party.mts';
 import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
@@ -59,7 +59,7 @@ import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.m
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
-import { decodePng, encodePng, type Image } from '../src/tools/inventory/png.mts';
+import { encodePng, type Image } from '../src/tools/inventory/png.mts';
 import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -114,63 +114,33 @@ if (ignored.length > 0) {
   fail(`${command} does not act on ${ignored.map((flag) => `--${flag}`).join(', ')}`);
 }
 
-/**
- * The game's own icon for each type, which the minigame's bubbles and the HUD's type icons are told by: 18 small files,
- * cached beside the form icons. A type whose icon cannot be had is swiped at in rows, as before the bubbles were aimed
- * at, and its icon in the HUD is read as no type.
- */
-async function typeIcons(data: GameData): Promise<Record<string, Image>> {
-  const read = await Promise.all(
-    data.types.map(async (type) => {
-      try {
-        const icon = await cachedAs(join(CACHE, 'types'), typeIconFile(type), typeIcon(type), false, decodePng);
-
-        return [[type, icon] as const];
-      } catch {
-        return [];
-      }
-    }),
-  );
-
-  return Object.fromEntries(read.flat());
-}
+/** What `assets.mts` and `meta.mts` fetch, kept under `dir` for a week as the game master is. */
+const cache =
+  (dir: string): Download =>
+  (file, url, decode) =>
+    cachedAs(dir, file, url, false, decode);
 
 /**
- * Every form's outline, which the party screen is read against: each icon the game draws, some 1,300 files and 40 MB
- * on the first run, cached beside the ones `pnpm inventory` keeps. One that cannot be had leaves its form unmatched
+ * Every form's outline, which the party screen is read against, outlined from the icons out of the game master the run
+ * reads rather than read from the vended `data/silhouettes.json` the site publishes, so a form released since the last
+ * vend is read on its card from the day this game master names it. One that cannot be had leaves its form unmatched
  * rather than stopping the run.
  */
 async function silhouettes(data: GameData): Promise<Icon[]> {
-  const icons = [...new Map(data.forms.flatMap((form) => (form.icon ? [[form.icon, form.species]] : []))).entries()];
-  const read: Icon[] = [];
-  let missing = 0;
+  const wanted = formIcons(data).size;
+  const read = await silhouettesFor(data, cache(join(CACHE, 'icons')));
 
-  for (let at = 0; at < icons.length; at += 16) {
-    const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
-      try {
-        const silhouette = await cachedAs(join(CACHE, 'icons'), icon, ICON_BASE + icon, false, (bytes) =>
-          silhouetteOfIcon(decodePng(bytes)),
-        );
-        read.push({ species, silhouette });
-      } catch {
-        missing++;
-      }
-    });
-
-    await Promise.all(batch);
-  }
-
-  if (missing > 0) {
-    console.error(`${missing} of ${icons.length} form icons could not be had; those forms go unmatched`);
+  if (read.size < wanted) {
+    console.error(`${wanted - read.size} of ${wanted} form icons could not be had; those forms go unmatched`);
   }
 
   // None at all is every party read against nothing. Where no form even names an icon, it is the listing of the artwork
   // that failed, which `loadGameData` reports and carries on from: `pnpm inventory` loses only its narrowing by artwork.
-  if (read.length === 0) {
+  if (read.size === 0) {
     throw new Error('no form icon could be had, so no party could be read');
   }
 
-  return read;
+  return [...read.values()];
 }
 
 function oneOf<T extends string>(name: string, value: string | undefined, allowed: readonly T[]): T {
@@ -223,11 +193,14 @@ if (command === 'run') {
 
   // Which move is worth the most per energy, out of the game master `pnpm inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
+
   const icons = await silhouettes(data);
-  const types = await typeIcons(data);
+
+  // The type icons are 18 small files, cached beside the form icons.
+  const types = await typeIcons(data, cache(join(CACHE, 'types')));
 
   // What GO Battle League's players run in the league, out of PvPoke's rankings; Training allows for every move.
-  const meta = mode.mode === 'gbl' ? await loadMeta(CACHE, data, mode.league) : null;
+  const meta = mode.mode === 'gbl' ? await loadMeta(cache(CACHE), data, mode.league) : null;
 
   // Awake for as long as it runs: a screen gone dark mid-battle reads as nothing recognised and ends the run. The
   // setting is read first and put back as found on every way out, `restore` and the Ctrl-C handler in place before it

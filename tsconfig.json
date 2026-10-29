@@ -74,10 +74,14 @@
   // them, not by where they live.
   //
   // The inventory readers the page runs are named one by one, the rest of that directory being Node's: the CLI's
-  // transports, the download cache and the tests.
+  // transports, the download cache and the tests. So are the battle modules `src/battle/load.ts` reaches.
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "src/tools/battle/assets.mts",
+    "src/tools/battle/layout.mts",
+    "src/tools/battle/meta.mts",
+    "src/tools/battle/party.mts",
     "src/tools/inventory/adb.mts",
     "src/tools/inventory/artwork.mts",
     "src/tools/inventory/badges.mts",
