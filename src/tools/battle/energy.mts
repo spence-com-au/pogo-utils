@@ -614,9 +614,9 @@ export interface Hold {
  * and `Energy.named` settles at the move's own cost once its banner is read. Affording none of the opponent's moves,
  * the count lets the throw go, as it lets go one never held, and so does no count at all; still affording one, a second
  * throw may be still to come, and the hold goes on, until the banner settles the count or the time below runs out.
- * A hit that would faint us leaves no defense to save, and is `beforeFainting`'s to throw before, as is `fast`: why
- * the opponent's next fast move would faint us, where `fastFaints` finds it would. Anything unread lets the throw go
- * too, as `verdict.why` names it.
+ * A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the throw go on that fear, as
+ * `beforeFainting` throws on it, whatever this answers. Anything unread lets the throw go too, as `verdict.why` names
+ * it.
  *
  * And only until `waited` reaches `filling`'s time. PvPoke stops waiting at 100 energy of ours, past which our fast
  * moves gain nothing; the bot cannot see ours, so it stops at the soonest it could be full, against an opponent holding
@@ -641,16 +641,11 @@ export function untilTheirsLands(
   opponent: string,
   shields: number,
   verdict: Verdict,
-  fast: string | undefined,
   affordable: number | undefined,
   waited: number,
 ): Hold | undefined {
   if (!lowersDefense(data, move) || shields > 0) {
     return undefined;
-  }
-
-  if (fast !== undefined) {
-    return { held: false, why: fast };
   }
 
   // Something unread, such as a newcomer of theirs not yet named, leaves no hit calculated, and says so.
@@ -664,10 +659,6 @@ export function untilTheirsLands(
 
   if (verdict.afforded === undefined) {
     return { held: false, why: `${affordable} energy affords none of ${opponent}'s charged moves` };
-  }
-
-  if (verdict.faints) {
-    return { held: false, why: verdict.why };
   }
 
   const cost = costOf(data, move);

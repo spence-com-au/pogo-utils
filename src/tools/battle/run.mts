@@ -1098,7 +1098,7 @@ export async function run(
         const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
         stages = { own: user, their: target };
         thrown = pending.move;
-        deferring = undefined;
+        undefer(`${pending.move ?? 'a charged move'} thrown`);
         log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
         pending = undefined;
       } else if (relit !== undefined && clock.now() - relit >= RELIT_MS) {
@@ -1189,7 +1189,7 @@ export async function run(
           ? seen.moves.get(pick.x)
           : undefined;
       const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
-      const hold =
+      const rule =
         deferrable === undefined
           ? undefined
           : untilTheirsLands(
@@ -1199,10 +1199,13 @@ export async function run(
               theirName(),
               ourShields,
               verdict,
-              fast,
               affordable,
               deferring?.waited ?? 0,
             );
+
+      // A fear of fainting, charged or fast, lets the move go as it does `beforeFainting`'s throw: where the move chosen
+      // is the lit one worth the most, that throw is the move chosen.
+      const hold = rule && fears.length > 0 ? { held: false, why: fears.join('; ') } : rule;
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
         // A hold of another move ends as this one begins, the move chosen having changed under it.

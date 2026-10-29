@@ -1038,8 +1038,8 @@ const HOLDING =
  * Giratina's energy takes to fill from 50 at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off
  * the field between `lit` and `relit` not counting, so after the 6s the two last and before `late`, 0.5s after them,
  * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Or as our bar, at 4%,
- * comes within one of Mamoswine's fast moves, `fastFaints`'s fear coming first of the reasons Icicle Spear would give
- * as well. Never on `lit` or `relit`, which take no tap.
+ * comes within one of Mamoswine's fast moves, `fastFaints`'s fear named with the charged move the drop, counted as its
+ * hits, now affords. Never on `lit` or `relit`, which take no tap.
  */
 test.each([
   [
@@ -1081,7 +1081,7 @@ test.each([
     'low',
     [
       HOLDING,
-      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left',
+      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left; Avalanche would faint us, 108 energy affords it',
       'own: threw Shadow Sneak',
     ],
   ],

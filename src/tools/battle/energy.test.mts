@@ -406,8 +406,8 @@ test('weighs only its two moves once both have been seen', () => {
 
 /**
  * Xerneas against Metagross, both read at their CPs from battle 4 of the Pixel 8 Pro's Master League set, 2026-10-29,
- * the verdicts `wouldFaint`'s for them: Meteor Mash, at 50 energy counted, would take 78% of a full bar; Flash Cannon,
- * at 100, 85% of 90%; and at 7, nothing is afforded.
+ * the verdicts `wouldFaint`'s for them: Meteor Mash, at 50 energy counted, would take 78% of a full bar, and at 7,
+ * nothing is afforded. A hit that would faint us, charged or fast, is the caller's fear to let the throw go on.
  */
 test('with no shield left, a move lowering our defense waits for a charged move we would survive to land', () => {
   const xerneas = { species: 'Xerneas', types: ['Fairy'] };
@@ -417,17 +417,10 @@ test('with no shield left, a move lowering our defense waits for a charged move 
     hardest: 'Meteor Mash',
     afforded: 'Meteor Mash',
   };
-  const fainting = {
-    faints: true,
-    why: 'Flash Cannon would take ~85%, with 90% left',
-    hardest: 'Flash Cannon',
-    afforded: 'Flash Cannon',
-  };
   const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left', hardest: 'Flash Cannon' };
   const unread = { faints: true, why: 'their species unread' };
-  const fear = 'their next fast move would faint us, one taking ~12% with 13% left';
   const holds = (move: string, shields: number, verdict: Verdict, energy = 50, waited = 0) =>
-    untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, undefined, energy, waited);
+    untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, energy, waited);
 
   expect(holds('Close Combat', 0, survived)).toEqual({
     held: true,
@@ -437,19 +430,11 @@ test('with no shield left, a move lowering our defense waits for a charged move 
     held: false,
     why: "7 energy affords none of Metagross's charged moves",
   });
-  expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, landed, undefined, undefined, 0)).toEqual({
+  expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, landed, undefined, 0)).toEqual({
     held: false,
     why: "Metagross's energy not counted",
   });
-  expect(holds('Close Combat', 0, fainting), 'a hit that would faint us, for `beforeFainting`').toEqual({
-    held: false,
-    why: fainting.why,
-  });
   expect(holds('Close Combat', 1, survived), 'a shield left to take it').toBe(undefined);
-  expect(
-    untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, survived, fear, 50, 0),
-    'their next fast move fainting us, for `beforeFainting`',
-  ).toEqual({ held: false, why: fear });
   expect(holds('Moonblast', 0, survived), 'a move leaving our defense alone').toBe(undefined);
   expect(holds('Close Combat', 0, unread), 'a newcomer of theirs not yet named').toEqual({
     held: false,
@@ -466,12 +451,12 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   // Galarian Moltres's Wing Attack, 8 for 2 turns, fills from Brave Bird's 55 in 5625ms.
   const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
 
-  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, undefined, 50, 5600)?.held).toBe(true);
-  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, undefined, 50, 5700)?.why).toBe(
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5600)?.held).toBe(true);
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5700)?.why).toBe(
     "5.70s of the fight since the hold began, Moltres's energy filling from 55 in 5.63s at the soonest",
   );
   expect(
-    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, undefined, 50, 0)?.held,
+    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0)?.held,
     'none of our fast moves known, so no time to hold for',
   ).toBe(false);
 });
