@@ -35,6 +35,9 @@ export interface Fight {
 
   /** The opponent's energy as counted off our bar, and the fast move it is counted by, where it can be counted. */
   energy?: { energy: number; fast: string };
+
+  /** Our energy as counted off the fight's time, and the fast move its card was read with, where it can be counted. */
+  ourEnergy?: { energy: number; fast: string };
 }
 
 export interface Status {
@@ -60,7 +63,7 @@ export interface Reporter {
   status(status: Status): void;
 }
 
-/** The opponent's energy as counted, `40 by Counter`. */
+/** Either side's energy as counted, `40 by Counter`. */
 export const energyOf = ({ energy, fast }: NonNullable<Fight['energy']>) => `${energy} by ${fast}`;
 
 /** How long nothing must go unrecognised before the panel counts down to the run's stopping, in milliseconds. */

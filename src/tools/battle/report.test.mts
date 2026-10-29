@@ -21,6 +21,7 @@ test('draws ours at the left and the opponent at the right, how strong each is a
   expect(panel(FIGHT, 80).split('\n')).toEqual([
     'Charizard           74% │ ●○ │ CP 2495 │ Magmar              50% │ ●● │ CP 1826',
     '◓◓○               ███████████████░░░░░ │ ◓◓◓               ██████████░░░░░░░░░░',
+    EMPTY,
     'Blast Burn, Dragon Claw                │',
     'baiting with Dragon Claw               │',
     'not shielding                          │',
@@ -43,22 +44,35 @@ test('marks what has not been read, each thing still in its place', () => {
   expect(panel({ ...FIGHT, own: unread, moves: [], throwing: undefined }, 80).split('\n')).toEqual([
     '?                    ?% │ ●● │ CP    ? │ Magmar              50% │ ●● │ CP 1826',
     '???               ???????????????????? │ ◓◓◓               ██████████░░░░░░░░░░',
+    EMPTY,
     '?                                      │',
     'baiting with the first ready           │',
     'not shielding                          │',
   ]);
 });
 
-test('tells the opponent’s energy where it is counted, under its bar and at the end of the line', () => {
-  const counted = { ...FIGHT, energy: { energy: 40, fast: 'Karate Chop' } };
+test('tells each side’s energy where it is counted, under its bar and at the end of the line', () => {
+  const theirs = { ...FIGHT, energy: { energy: 40, fast: 'Karate Chop' } };
+  const both = { ...theirs, ourEnergy: { energy: 35, fast: 'Fire Spin' } };
 
-  expect(panel(counted, 80).split('\n')[2]).toBe('Blast Burn, Dragon Claw                │ energy 40 by Karate Chop');
-  expect(describe(counted)).toMatch(/, 1 of our shields left; their energy 40 by Karate Chop$/);
+  expect(panel(theirs, 80).split('\n')[2]).toBe(`${' '.repeat(38)} │ energy 40 by Karate Chop`);
+  expect(panel(both, 80).split('\n')[2]).toBe('energy 35 by Fire Spin                 │ energy 40 by Karate Chop');
+  expect(describe(theirs)).toMatch(/, 1 of our shields left; their energy 40 by Karate Chop$/);
+  expect(describe(both)).toMatch(
+    /, 1 of our shields left; our energy 35 by Fire Spin; their energy 40 by Karate Chop$/,
+  );
   expect(describe(FIGHT)).toMatch(/, 1 of our shields left$/);
 });
 
 test('keeps every line of the panel before a battle', () => {
-  expect(panel(undefined, 80).split('\n')).toEqual([`${'no battle yet'.padEnd(38)} │`, EMPTY, EMPTY, EMPTY, EMPTY]);
+  expect(panel(undefined, 80).split('\n')).toEqual([
+    `${'no battle yet'.padEnd(38)} │`,
+    EMPTY,
+    EMPTY,
+    EMPTY,
+    EMPTY,
+    EMPTY,
+  ]);
 });
 
 test('says how the run stands, counting down to its stopping once nothing has been recognised for a second', () => {
@@ -156,7 +170,6 @@ test('keeps the terminal in fixed parts: the run, the two sides and what each di
     '                                       │ Magmar threw a charged move',
     'tap shield                             │',
     EMPTY,
-    EMPTY,
     rule(80, '┴'),
     '',
     faded('party: Charizard, Gyarados, Mamoswine'),
@@ -187,7 +200,7 @@ test('keeps each part where it is from the first draw, whether or not a status o
   expect(shown()).toHaveLength(24);
 
   for (const screen of [before, shown()]) {
-    expect(screen.indexOf(rule(80))).toBe(8);
+    expect(screen.indexOf(rule(80))).toBe(9);
     expect(screen.indexOf(rule(80, '┴'))).toBe(14);
     expect(screen[16]).toBe(faded('map: tap'));
   }
@@ -202,7 +215,7 @@ test('gives the run’s events at the foot their last eight, and what the sides 
   Array.from({ length: 20 }, (_, i) => report.event(`tap shield ${i}`, 'own'));
   vi.advanceTimersByTime(100);
 
-  expect(shown().slice(9, 20)).toEqual(Array.from({ length: 11 }, (_, i) => `tap shield ${i + 9}`.padEnd(38) + ' │'));
+  expect(shown().slice(10, 20)).toEqual(Array.from({ length: 10 }, (_, i) => `tap shield ${i + 10}`.padEnd(38) + ' │'));
   expect(shown().slice(22)).toEqual(Array.from({ length: 8 }, (_, i) => faded(`tap ${i + 12}`)));
 });
 
@@ -219,7 +232,7 @@ test('keeps each line within the width of the terminal, wrapping what a side did
 
   expect(shown().every((line) => [...unfaded(line)].length <= 20)).toBe(true);
   expect(shown()[3]).toBe(' CP 2495 │  CP 1826');
-  expect(shown().slice(9, 13)).toEqual([
+  expect(shown().slice(10, 14)).toEqual([
     '         │ Magmar',
     '         │   threw a',
     '         │   charged',
@@ -238,7 +251,7 @@ test('draws why a side did something faint after it, carrying on below where it 
   report.event('threw Dragon Claw', 'own');
   vi.advanceTimersByTime(100);
 
-  expect(shown().slice(9, 13)).toEqual([
+  expect(shown().slice(10, 14)).toEqual([
     `took shield:${faded(' Fire Blast would take')}     │`,
     `  ${faded('~48%, with 9% left')}                   │`,
     `${' '.repeat(38)} │ Magmar shielded our Blast Burn:${faded(' a guess')}`,
@@ -279,7 +292,7 @@ test('gives the terminal back when done, writing the last screen into it a line 
   const lines = left[1]?.split('\n') ?? [];
 
   expect(lines).toHaveLength(24);
-  expect(lines.slice(0, 10)).toEqual([
+  expect(lines.slice(0, 11)).toEqual([
     faded('2 of 3 finished; battle'),
     '',
     rule(80, '┬'),

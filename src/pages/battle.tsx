@@ -185,6 +185,7 @@ function Battle({ fight }: { fight: Fight | undefined }) {
   return (
     <div class="sides">
       <SideOf side={fight.own} title="Ours">
+        {fight.ourEnergy && <p>energy {energyOf(fight.ourEnergy)}</p>}
         <p>{fight.moves.join(', ') || '?'}</p>
         <p>
           {fight.bait ? 'baiting with' : 'throwing'} {fight.throwing ?? 'the first ready'}
