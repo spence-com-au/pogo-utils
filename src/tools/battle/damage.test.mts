@@ -399,6 +399,14 @@ test('a harder move the count does not yet afford takes the shield against one i
       'Drill Peck would take ~34%, with 60% left, the hardest 41 energy affords; Thunderbolt would take at least ' +
       '1/1.4 of what is left',
   });
+
+  // At 65%, Thunderbolt is short of 1/1.4 of it, and Drill Peck leaves more than its cycle, but Thunderbolt does not.
+  expect(palkia(0.65, 2, THUNDER_SHOCK, both)).toEqual({
+    shield: true,
+    why:
+      'Drill Peck would take ~34%, with 65% left, the hardest 41 energy affords; Thunderbolt would leave ~21%, less ' +
+      'than 2 × the ~12% of 6 fast moves before their next charged move',
+  });
 });
 
 test('their fast moves unmeasured or their energy uncounted, the shield is taken', () => {

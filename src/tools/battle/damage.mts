@@ -378,9 +378,9 @@ export interface Cycle {
  *
  * - The hit would faint us, or something it rests on is unknown, as `verdict.faints` says.
  * - Any charged move the opponent is allowed for, `verdict.worst`, would take at least 1/`HARD` of what is left.
- * - What the hit would leave is less than the opponent's fast moves take before it can throw again, once for each
- *   shield we hold: with that little left, ours would faint before the next shield could be taken. The fast moves are
- *   counted off `cycle`, and with either unknown the shield is taken.
+ * - What the hit, or any charged move the opponent is allowed for, would leave is less than its fast moves take before
+ *   it can throw the hit's move again, once for each shield we hold: with that little left, ours would faint before the
+ *   next shield could be taken. The fast moves are counted off `cycle`, and with either unknown the shield is taken.
  *
  * The last two are PvPoke's `wouldShield` (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines
  * 1164–1280), its battle AI's model of whether a player shields: what its baiting asks of the opponent (lines 421 and
@@ -390,7 +390,7 @@ export interface Cycle {
  * less, and 8 of the 13 it kept were against hits that left 26% or less. Palkia at 40% kept one against Zapdos's Drill
  * Peck at ~34%, and fainted 2.5s later with both still up.
  *
- * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1` (line 1189),
+ * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1` (line 1192),
  * `energy` being what the opponent has left once it has paid for the hit, as PvPoke's battle has it when it asks
  * (`Battle.js` line 1058, before 1088): the hit's move again, counted from nothing unless a whole cost more is left
  * over, and one more for margin. Where PvPoke calculates what each takes, `cycle.step` is what one was measured to take
@@ -400,8 +400,6 @@ export interface Cycle {
  * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which is left out: it can
  *   only keep a shield the rule would take, against a fast move that barely scratches us, as Magmar's Ember does
  *   Charizard 3 HP in its 2 turns, and a shield taken is the side this errs to.
- * - It asks the cycle of every charged move too (line 1226), where this asks it of the hit alone: a harder move the
- *   count does not afford is the 1/1.4 rule's to weigh.
  * - It shields the first of a run of moves that lower their user's attack, as Superpower does, where it takes over 0.55
  *   of what is left (line 1238). That asks which move is coming, which the prompt never says: the hit here is only the
  *   hardest it could be.
@@ -440,17 +438,22 @@ export function wouldShield(
 
   const kept = Math.max(estimate.energy - cost, 0);
   const fast = Math.ceil((cost - Math.max(kept - cost, 0)) / estimate.gain) + 1;
-  const left = hp - share;
-  const shield = left < fast * step * shields;
+  const cycles = fast * step * shields;
   const times = shields > 1 ? `${shields} × the` : 'the';
-  const moves = `${fast} fast move${fast === 1 ? '' : 's'}`;
+  const than = (left: number) =>
+    `${left < cycles ? 'less' : 'more'} than ${times} ~${percent(fast * step)} of ${fast} fast ` +
+    `move${fast === 1 ? '' : 's'} before their next charged move`;
 
-  return {
-    shield,
-    why:
-      `${verdict.why}; leaves ~${percent(left)}, ${shield ? 'less' : 'more'} than ${times} ~${percent(fast * step)} ` +
-      `of ${moves} before their next charged move`,
-  };
+  // Asked of every move allowed for as well as the hit, as PvPoke asks it (line 1226), the cycle being the hit's either
+  // way: a harder move the count does not yet afford may be the next.
+  if (hp - share >= cycles && hp - worst.share < cycles) {
+    return {
+      shield: true,
+      why: `${verdict.why}; ${worst.name} would leave ~${percent(hp - worst.share)}, ${than(hp - worst.share)}`,
+    };
+  }
+
+  return { shield: hp - share < cycles, why: `${verdict.why}; leaves ~${percent(hp - share)}, ${than(hp - share)}` };
 }
 
 /**
