@@ -443,7 +443,9 @@ const BUDDY_LEVELS: readonly string[] = [
  * **Where the game documents no ceiling, `max` is generous rather than tight.** `bounded` below *clamps* rather than
  * refuses, so a ceiling set under what a search can really ask for turns that search into a different one in silence:
  * the three counts take five digits, which is past any storage or candy total the game can hold, where a figure chosen
- * to look plausible would have rewritten a real `countcandy50000`.
+ * to look plausible would have rewritten a real `countcandy50000`. Age takes five too, rather than a round number of
+ * years: a Pokémon caught at launch in July 2016 goes on getting older, and a ceiling it passes clamps `age3700-` into
+ * a search for younger ones as well.
  *
  * `megalevel` is the one ceiling that is a judgement. Bulbapedia lists a fourth mega level, Super Max, and the
  * community phrase list gives "1/2/3/4 = Base/High/Max/Super Max" — but carries `// Super Max not personally confirmed
@@ -482,7 +484,7 @@ const RANGE_TABLE = [
   { id: 'count', prefix: 'count', label: 'Copies you have', min: 1, max: 99999 },
   { id: 'countcandy', prefix: 'countcandy', label: 'Candy', max: 99999 },
   { id: 'countcandyxl', prefix: 'countcandyxl', label: 'Candy XL', max: 99999 },
-  { id: 'age', prefix: 'age', label: 'Age', max: 3650 },
+  { id: 'age', prefix: 'age', label: 'Age', max: 99999 },
   { id: 'distance', prefix: 'distance', label: 'Kilometres from home', max: 40000 },
   { id: 'year', prefix: 'year', label: 'Year caught', min: 2016, max: 2030 },
 ] as const satisfies readonly Range[];

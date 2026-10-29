@@ -347,6 +347,13 @@ test('a typed span is bounded by the range, so it is a pill the number boxes cou
   }
 });
 
+test('an age a launch-day Pokémon has reached reads back as itself', () => {
+  // Counted from the day the game launched rather than written down, since the oldest catch goes on getting older.
+  const days = Math.floor((Date.now() - Date.UTC(2016, 6, 6)) / 86_400_000);
+
+  expect(stringFor(`age${days}-`)).toBe(`age${days}-`);
+});
+
 test('a family shorthand and a tag stay the text the game reads', () => {
   expect(stringFor('+charmander&@special&#')).toBe('+charmander&@special&#');
   expect(stringFor('!#')).toBe('!#');
