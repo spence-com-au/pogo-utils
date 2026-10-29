@@ -13,8 +13,8 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
-import { cachedAs } from '../inventory/download.mts';
 import { fold } from '../inventory/ocr.mts';
+import { type Download } from './assets.mts';
 
 const PVPOKE = 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data';
 
@@ -185,15 +185,16 @@ export function movesetsOf(data: GameData, rankings: readonly Ranking[], pvpoke:
 }
 
 /**
- * The meta of the league named, PvPoke's game master and the league's rankings downloaded and cached under `dir` for a
- * week as the game master is. Null where no ranking fits the league, or where PvPoke cannot be reached and nothing is
- * cached, either of which leaves every move allowed for rather than stopping the run.
+ * The meta of the league named, out of PvPoke's game master and the league's rankings, fetched by `download`: cached
+ * for a week as the game master is by `pnpm battle`, and fetched afresh by a page. Null where no ranking fits the
+ * league, or where PvPoke cannot be reached and nothing is cached, either of which leaves every move allowed for
+ * rather than stopping the run.
  */
-export async function loadMeta(dir: string, data: GameData, league: string, refresh = false): Promise<Meta | null> {
+export async function loadMeta(download: Download, data: GameData, league: string): Promise<Meta | null> {
+  const json = (bytes: Uint8Array): unknown => JSON.parse(new TextDecoder().decode(bytes));
+
   try {
-    const pvpoke = await cachedAs(dir, 'pvpoke-gamemaster.json', `${PVPOKE}/gamemaster.json`, refresh, (bytes) => {
-      return JSON.parse(String(bytes)) as PvPokeData;
-    });
+    const pvpoke = (await download('pvpoke-gamemaster.json', `${PVPOKE}/gamemaster.json`, json)) as PvPokeData;
     const format = formatOf(league, pvpoke.formats);
 
     if (!format) {
@@ -203,13 +204,11 @@ export async function loadMeta(dir: string, data: GameData, league: string, refr
     }
 
     const { cup, cp } = format;
-    const rankings = await cachedAs(
-      dir,
+    const rankings = (await download(
       `pvpoke-${cup}-${cp}.json`,
       `${PVPOKE}/rankings/${cup}/overall/rankings-${cp}.json`,
-      refresh,
-      (bytes) => JSON.parse(String(bytes)) as Ranking[],
-    );
+      json,
+    )) as Ranking[];
 
     return { cup, cap: cp >= NO_CAP ? null : cp, movesets: movesetsOf(data, rankings, pvpoke) };
   } catch (error) {
