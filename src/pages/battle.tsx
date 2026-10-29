@@ -19,11 +19,15 @@ import { OptionError, readOptions, type Asked } from '../tools/battle/options.mt
 import { energyOf, PARTY, summary, type Fight, type Side } from '../tools/battle/reporter.mts';
 import { type Image } from '../tools/inventory/png.mts';
 
-/** The form as typed: every field, whichever mode leaves it out. */
+/**
+ * The form as typed: every field, whichever mode leaves it out. Each mode has its own league, Training's one of three
+ * and GO Battle League's any name, so that switching modes leaves neither holding the other's.
+ */
 export interface Fields {
   mode: 'training' | 'gbl';
   leader: string;
   league: string;
+  gblLeague: string;
   party: string;
   count: string;
 }
@@ -42,10 +46,10 @@ const LABELS: Record<keyof Asked, string> = {
  * Battle League alone, whatever was typed into the other's field before the mode changed, and a blank party or count
  * as one not given, which is whichever party the screen opens on, and battles until stopped.
  */
-export function askedOf({ mode, leader, league, party, count }: Fields): Asked {
+export function askedOf({ mode, leader, league, gblLeague, party, count }: Fields): Asked {
   return {
     mode,
-    league,
+    league: mode === 'training' ? league : gblLeague,
     ...(mode === 'training' ? { leader } : party.trim() && { party }),
     ...(count.trim() && { count: count.trim() }),
   };
@@ -241,6 +245,7 @@ export default function BattlePage() {
     mode: 'training',
     leader: 'spark',
     league: 'great',
+    gblLeague: '',
     party: '',
     count: '',
   });
@@ -328,9 +333,9 @@ export default function BattlePage() {
                     type="text"
                     autocomplete="off"
                     placeholder="ultra, fantasy cup…"
-                    value={fields.league}
+                    value={fields.gblLeague}
                     disabled={busy}
-                    onInput={field('league')}
+                    onInput={field('gblLeague')}
                   />
                 </label>
                 <label>
