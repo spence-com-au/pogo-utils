@@ -19,16 +19,17 @@ const ROOT = join(import.meta.dirname, '../../..');
 /**
  * What a Worker driving the phone over WebUSB imports: the loop, the touchscreen, a picture cut out of `screenrecord`'s
  * H.264 for WebCodecs, what `screenrecord` is asked for, and the `Device` built on the same `Transport` the touchscreen
- * takes.
- *
- * `meta.mts` is the one a page needs and cannot have yet: it reads the PvPoke rankings through the download cache in
- * `inventory/download.mts`, which is Node's file system. The pull request that makes it loadable in a browser adds it
- * here.
+ * takes. And what a page loads before a run: PvPoke's meta in `meta.mts` and the type icons and silhouettes in
+ * `assets.mts`, each fetched through the `Download` it is handed rather than the CLI's cache in
+ * `inventory/download.mts`, and `src/battle/load.ts`, which hands them `fetch`.
  */
 const ENTRIES = [
   'src/tools/battle/run.mts',
   'src/tools/battle/pictures.mts',
   'src/tools/battle/record-command.mts',
+  'src/tools/battle/meta.mts',
+  'src/tools/battle/assets.mts',
+  'src/battle/load.ts',
   'src/tools/inventory/touchscreen.mts',
   'src/tools/inventory/adb.mts',
 ];
