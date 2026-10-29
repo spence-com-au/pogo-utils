@@ -358,10 +358,31 @@ it.
 
 ### When to shield
 
-The shield prompt never names the move coming. It takes a shield only if the hardest move the opponent could be throwing
-would take at least **90%** of the HP our bar shows ([`damage.mts`](damage.mts)'s `wouldFaint`). A hit we would survive
-is taken, and the shield kept for one we wouldn't. The margin short of 100% allows for the HP being read off a bar and
-the opponent's build being a guess.
+The shield prompt never names the move coming, so the hit judged is the hardest move the opponent could be throwing
+([`damage.mts`](damage.mts)'s `wouldFaint`). A shield is taken where any of these holds, and kept otherwise
+([`damage.mts`](damage.mts)'s `wouldShield`):
+
+- **The hit would faint us:** it would take at least **90%** of the HP our bar shows. The margin short of 100% allows
+  for the HP being read off a bar and the opponent's build being a guess.
+- **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
+  **1/1.4** of the HP left.
+- **Too little would be left:** the hit, or any charged move it could have, would leave no more than the opponent's fast
+  moves take before it can throw the hit's move again, once for each shield we hold, so ours would faint before the next
+  shield could be taken. The fast moves are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's
+  cost and the energy counted less that cost, each taking what one was measured to take off our bar
+  ([below](#the-opponents-energy)).
+
+The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
+simulates, and with these differences:
+
+- PvPoke asks the 1/1.4 rule only of a fast move doing more than 1.5 HP a turn. Leaving that out can only take a shield
+  PvPoke would keep, against a fast move that barely scratches us, and a shield taken is the side these rules err to.
+- PvPoke adds 1 HP of margin a shield to the fast moves' damage, under a point of our bar, which is left out.
+- PvPoke raises the fast moves' damage by the thrown move's own stat changes, a Power-Up Punch's +1 attack say. The
+  prompt never names the move, so the step is taken as measured before the throw.
+- Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or the HUD
+  tells apart: shielding the first of a run of attack-lowering moves such as Superpower where it takes over 55% of what
+  is left, and its exceptions for Aegislash, Minior and Cramorant.
 
 What goes into "the hardest move the opponent could be throwing":
 
@@ -380,8 +401,10 @@ What goes into "the hardest move the opponent could be throwing":
   reset when its Pokémon leaves the field. A shield stops the damage, not the stat change.
 
 **Anything unknown takes the shield:** either side's species or CP unread, a CP over the cap (so misread), our HP
-unread, or the cap itself not yet known. A shield spent early costs less than a Pokémon lost. Each shield taken or kept
-is logged with the reason, such as `Flamethrower would take ~45%, with 50% left, the hardest 60 energy affords`.
+unread, the cap itself not yet known, or none of the opponent's fast moves yet measured or its energy uncounted. A
+shield spent early costs less than a Pokémon lost. Each shield taken or kept is logged with the hit, such as
+`Drill Peck would take ~34%, with 50% left`, and the rule that decided it, such as
+`leaves ~16%, no more than 2 × the ~12% of 6 fast moves before their next charged move`.
 
 ### The opponent's energy
 
