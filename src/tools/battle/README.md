@@ -460,8 +460,8 @@ The strategy still leaves some gaps:
 - **Our own energy.** Reading the fill on the unlit charged-move buttons would say how far off the best move is. That
   needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
 - **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
-  would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
-  fills, which needs our own energy to see coming.
+  would faint us, or its next fast move would ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing
+  us down before the best move fills, seen sooner than the last of them, which needs our own energy to see coming.
 - **Our own fast move.** Holding for the next ([above](#which-charged-move-to-throw)) takes ours to be the longest our
   species has. Told apart by the size of our hits, as the opponent's is by its, it would hold more often.
 - **Out of scope for now:**

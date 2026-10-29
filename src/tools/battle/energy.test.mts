@@ -304,6 +304,30 @@ test.each([
   expect(energy.fastFaints(MATCHUP, hp)).toBe(said);
 });
 
+/**
+ * Our defense at −2, as Close Combat leaves it, takes Counter's hit from 4.5% to 6.8%: modelled so where no hit has
+ * been measured, and over a step measured before the drop, which the stretch does not start again for.
+ */
+test.each([
+  ['no hit measured', 0],
+  ['a hit measured before our defense fell', 3],
+])('with %s, a fast move is weighed at the stages that move it', (_, hits) => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast: 'Counter', fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+  const lowered = { own: { attack: 0, defense: -2 }, their: { attack: 0, defense: 0 } };
+
+  fight(energy, { step: COUNTER, hits });
+
+  expect(energy.fastFaints(MATCHUP, 0.08), 'at no stages').toBe(undefined);
+  expect(energy.fastFaints(MATCHUP, 0.08, lowered)).toBe(
+    'their next fast move would faint us, Counter modelled at ~7% with 8% left',
+  );
+});
+
 test('nothing is told of a fast move where our HP or a build to model it on is unknown', () => {
   const energy = new Energy(DATA);
   const uncapped: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: null }, cap: null };

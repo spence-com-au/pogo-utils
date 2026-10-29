@@ -1030,7 +1030,7 @@ export async function run(
       const shield = ourShields > 0 && verdict.faints;
 
       // One more of the opponent's fast moves fainting us, which no shield stops.
-      const fast = energy.fastFaints(facing, health.own);
+      const fast = energy.fastFaints(facing, health.own, stages);
 
       // With no shield left, a hit that would faint us makes this throw our last, so what it does to our own stats is
       // past mattering, and so does a fast move that would, whatever the shields. The shield's verdict, unknowns and an

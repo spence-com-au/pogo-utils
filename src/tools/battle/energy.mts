@@ -21,7 +21,7 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
-import { buildsOf, capped, hit, MOVES_HELD, type Side } from './damage.mts';
+import { buildsOf, capped, hit, MOVES_HELD, NO_STAGES, type Side, type Stages } from './damage.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, type Shown } from './strategy.mts';
 
@@ -228,7 +228,7 @@ export class Energy {
   /**
    * Why the opponent's next fast move would faint us, `hp` being the fraction of our bar left, or undefined where it
    * would not or cannot be told: one hit taking at least what is left less the bar's `WANDER`, a hit of 12% counting
-   * against 14% left. PvPoke's battle AI throws the charged move it has lit that does the most damage once one more of
+   * against 13% left. PvPoke's battle AI throws the charged move it has lit that does the most damage once one more of
    * the opponent's fast moves would faint it, as it does for a charged move the opponent can afford, the energy
    * otherwise going with it (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js`, the `turnsToLive` queue,
    * lines 125–206). Unlike PvPoke's, the throw is not put off while one of our own fast moves would land before
@@ -236,36 +236,42 @@ export class Energy {
    * nothing on screen places.
    *
    * One hit is the `step` measured in this stretch, and before any the most the fast move the count goes by would take
-   * on any pairing of builds the model has for the two, as `wouldFaint` takes the hardest charged move. A step is
-   * measured off the first hit to land cleanly, so it is missing just where a new stretch starts: the opponent's next
-   * Pokémon sent in against ours left low by the last, with energy banked and lit, whose first hit may be the one that
-   * faints us. And wrong either way costs unequally: thrown a hit early, the move lit goes in place of a bigger one
-   * held for; held a hit too long, all the energy goes. So the model stands in, at its hardest, where the count takes
-   * its smallest, erring there towards more energy. A shadow hits a fifth harder than it is modelled, leaving the throw
-   * to wait as it would without this. Nothing to model it on, either side's species or CP unread or a CP over the cap,
-   * leaves it undefined, as a charged move feared but not counted throws nothing.
+   * on any pairing of builds the model has for the two, as `wouldFaint` takes the hardest charged move, `stages` moving
+   * it as they move that: their attack and our defense. A step is measured off the first hit to land cleanly, so it is
+   * missing just where a new stretch starts: the opponent's next Pokémon sent in against ours left low by the last,
+   * with energy banked and lit, whose first hit may be the one that faints us. And wrong either way costs unequally:
+   * thrown a hit early, the move lit goes in place of a bigger one held for; held a hit too long, all the energy goes.
+   * So the model stands in, at its hardest, where the count takes its smallest, erring there towards more energy. A
+   * shadow hits a fifth harder than it is modelled, leaving the throw to wait as it would without this.
+   *
+   * Where the stages have moved the hit, the model's counts too where it is the larger: a stretch does not start again
+   * when they move, so the step can be one measured before our Close Combat lowered our defense. Nothing to model it
+   * on — our species or CP unread, theirs unread with no cap to take it as, their species unread or a CP over the
+   * cap — leaves only the step, and with none, undefined, as a charged move feared but not counted throws nothing.
    */
-  fastFaints(matchup: Matchup, hp: number | null): string | undefined {
+  fastFaints(
+    matchup: Matchup,
+    hp: number | null,
+    stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  ): string | undefined {
     const { species } = matchup.opponent;
 
     if (hp === null || species === null) {
       return undefined;
     }
 
-    const left = `with ${Math.round(hp * 100)}% left`;
     const step = this.#stretch && keyOf(this.#stretch.matchup) === keyOf(matchup) ? this.#stretch.step : undefined;
-
-    if (step !== undefined) {
-      return step >= hp - WANDER
-        ? `their next fast move would faint us, one taking ~${Math.round(step * 100)}% ${left}`
+    const staged = stages.their.attack !== 0 || stages.own.defense !== 0;
+    const fast =
+      step === undefined || staged
+        ? this.#fastOf({ species, types: matchup.opponent.types }, this.#tallyOf(species))
         : undefined;
-    }
+    const modelled = Math.max(...(fast === undefined ? [] : this.#fractions(fast, { matchup }, stages)));
+    const [share, by] =
+      step !== undefined && !(modelled > step) ? [step, 'one taking'] : [modelled, `${fast} modelled at`];
 
-    const fast = this.#fastOf({ species, types: matchup.opponent.types }, this.#tallyOf(species));
-    const modelled = Math.max(...(fast === undefined ? [] : this.#fractions(fast, { matchup })));
-
-    return fast !== undefined && Number.isFinite(modelled) && modelled >= hp - WANDER
-      ? `their next fast move would faint us, ${fast} modelled at ~${Math.round(modelled * 100)}% ${left}`
+    return Number.isFinite(share) && share >= hp - WANDER
+      ? `their next fast move would faint us, ${by} ~${Math.round(share * 100)}% with ${Math.round(hp * 100)}% left`
       : undefined;
   }
 
@@ -410,8 +416,15 @@ export class Energy {
     );
   }
 
-  /** What one hit of `fast` takes of our bar in a matchup, for every pairing of builds whose attacker can hold it. */
-  #fractions(fast: string, { matchup }: { matchup: Matchup }): number[] {
+  /**
+   * What one hit of `fast` takes of our bar in a matchup, for every pairing of builds whose attacker can hold it, at
+   * their attack and our defense `stages`.
+   */
+  #fractions(
+    fast: string,
+    { matchup }: { matchup: Matchup },
+    stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  ): number[] {
     const move = this.#data.combat[fast];
     const attackers = buildsOf(this.#data, capped(matchup.opponent, matchup.cap), matchup.cap).filter((attacker) =>
       attacker.form.moves.some((m) => m.name === fast),
@@ -420,7 +433,10 @@ export class Energy {
 
     return move
       ? attackers.flatMap((attacker) =>
-          defenders.map((defender) => hit(this.#data, move, attacker, defender) / defender.build.hp),
+          defenders.map(
+            (defender) =>
+              hit(this.#data, move, attacker, defender, stages.their.attack, stages.own.defense) / defender.build.hp,
+          ),
         )
       : [];
   }
