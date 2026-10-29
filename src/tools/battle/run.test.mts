@@ -974,6 +974,51 @@ test.each([
 });
 
 /**
+ * Kyogre against Entei in Master League with Avalanche lit, and with Entei's shield hexagons painted a spent one's
+ * purple, Hydro Pump held for: worth more per energy, as `strategy.test.mts` has it. Our bar, its fill painted over
+ * past the HP wanted, is seen to lose 12 points to one of Entei's fast moves once the battle's first read has named it.
+ * Left within one more, Avalanche goes now rather than faint with its energy; left more, Hydro Pump is held for.
+ */
+test.each([
+  [
+    '13%',
+    25,
+    13,
+    [
+      'own: threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump',
+    ],
+  ],
+  ['28%', 40, 28, []],
+])('with %s left, a lit move goes only once the next fast move would faint us', async (_, before, after, said) => {
+  const spent = painted(fixture('charged-two-right'), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
+  const ours = (px: number) => painted(spent, [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: ours(before), lasts: { ms: 400, to: 'hit' } },
+      hit: { frame: ours(after), tap: { at: [0.69, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the
@@ -1783,23 +1828,54 @@ test.each([
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(tapped);
 });
 
+/** Where Charizard's bar ends on `battle-charizard-magmar`, at 93%, and two points of it short of there, as a box. */
+const CHARIZARD_HIT = [114 / 360, 243 / 360, 117 / 360, 248 / 360];
+
+/** Where the right of our two shields is on the Pixel 4 XL's frames, as a box for `painted`: it goes first. */
+const OUR_SECOND_SHIELD = [0.273, 0.2, 0.289, 0.218];
+
 /**
- * Charizard, CP 2495, against Magmar, CP 1826, in the Ultra League, as played live: Magmar's hardest charged move takes
- * about half of Charizard. At 87% the shield is declined, the hit survived; at 9% it is taken, where live it was not
- * and Charizard fainted to it. Either way, it says why.
+ * Charizard against Magmar as `battle-charizard-magmar` shows them, then one of Magmar's fast moves landing on
+ * Charizard, a 2-point step as Ember's or Karate Chop's 3 of its 149 HP is, and then `prompt`. With `spent`, Charizard
+ * has spent one of its shields throughout.
+ */
+function charizardHit(prompt: Image, spent = false): Record<string, Scene> {
+  const fight = spent
+    ? painted(fixture('battle-charizard-magmar'), [111, 81, 118], OUR_SECOND_SHIELD)
+    : fixture('battle-charizard-magmar');
+
+  return {
+    fight: { frame: fight, lasts: { ms: 1000, to: 'hit' } },
+    hit: { frame: painted(fight, [52, 86, 97], CHARIZARD_HIT), swipes: { count: 10, to: 'prompt' } },
+    prompt: { frame: prompt, tap: { at: [0.5, 0.82], to: 'won' }, lasts: { ms: 3000, to: 'won' } },
+  };
+}
+
+/**
+ * Charizard, CP 2495, against Magmar, CP 1826, in the Ultra League, as played live: Magmar's hardest charged move, Fire
+ * Blast, takes about half of Charizard, and its fast moves 2 points. Fire Blast's 80 energy is nine of them at 9 apiece
+ * and one more for margin, 20% of Charizard. At 86% with both shields, the 38% Fire Blast would leave is less than
+ * twice that, and the shield is taken; with one, it is more, and the shield kept. At 9% it is taken against a hit that
+ * would faint Charizard, where live it was not and Charizard fainted to it. Each says why.
  */
 test.each([
-  ['shield-charizard-high', [], 'own: kept shield: Fire Blast would take ~48%, with 86% left'],
-  ['shield-low', ['prompt'], 'own: took shield: Fire Blast would take ~48%, with 9% left'],
-])('at %s, the shield is taken only against a hit that would faint us: %j', async (prompt, tapped, said) => {
-  const { phone, clock, taps } = scripted(
-    {
-      ...battleAndBack(),
-      fight: { frame: fixture('battle-charizard-magmar'), swipes: { count: 10, to: 'prompt' } },
-      prompt: { frame: fixture(prompt), tap: { at: [0.5, 0.82], to: 'won' }, lasts: { ms: 3000, to: 'won' } },
-    },
-    'fight',
-  );
+  [
+    'shield-charizard-high',
+    false,
+    ['prompt'],
+    'own: took shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, no more than 2 × the ~20% of 10 ' +
+      'fast moves before their next charged move',
+  ],
+  [
+    'shield-charizard-high',
+    true,
+    [],
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move',
+  ],
+  ['shield-low', false, ['prompt'], 'own: took shield: Fire Blast would take ~48%, with 9% left; that would faint us'],
+])('at %s with one shield spent %s, the shield is tapped in %j', async (prompt, spent, tapped, said) => {
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), ...charizardHit(fixture(prompt), spent) }, 'fight');
   const report = recorder();
 
   await run(
@@ -1820,20 +1896,14 @@ test.each([
 });
 
 /**
- * The same prompt at 86%, every other frame of it reading as 9%, as Dialga's bar flickered between 64% and 2% live: a
- * misread snapping back is no hit, so the shield is kept for one that would faint us.
+ * The same prompt at 86% with one shield left, every other frame of it reading as 9%, as Dialga's bar flickered
+ * between 64% and 2% live: a misread snapping back is no hit, so the shield is kept, the 38% Fire Blast would leave
+ * outlasting Magmar's fast moves before its next.
  */
 test('keeps the shield through a prompt whose bar flickers low', async () => {
   const high = fixture('shield-charizard-high');
   const low = fixture('shield-low');
-  const { phone, clock, taps } = scripted(
-    {
-      ...battleAndBack(),
-      fight: { frame: fixture('battle-charizard-magmar'), swipes: { count: 10, to: 'prompt' } },
-      prompt: { frame: high, tap: { at: [0.5, 0.82], to: 'won' }, lasts: { ms: 3000, to: 'won' } },
-    },
-    'fight',
-  );
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), ...charizardHit(high, true) }, 'fight');
   let frames = 0;
   const flickering: Phone = {
     ...phone,
@@ -1860,7 +1930,8 @@ test('keeps the shield through a prompt whose bar flickers low', async () => {
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
-    'own: kept shield: Fire Blast would take ~48%, with 86% left',
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move',
   ]);
 });
 
@@ -1974,17 +2045,13 @@ test('counts no throw off the countdown on a switch prompt taken for `other`', a
   expect(report.events.filter((line) => line.includes('threw a charged move'))).toEqual([]);
 });
 
-// Started mid-battle in GO Battle League, the party screen that states the league's cap never seen: every shield taken.
+// Started mid-battle in GO Battle League, the party screen that states the league's cap never seen: every shield taken,
+// even the one Charizard keeps in Training.
 test('takes every shield in GO Battle League until the party screen has given the cap', async () => {
   const { phone, clock, taps } = scripted(
     {
       ...league(),
-      fight: { frame: fixture('battle-charizard-magmar'), swipes: { count: 10, to: 'prompt' } },
-      prompt: {
-        frame: fixture('shield-charizard-high'),
-        tap: { at: [0.5, 0.82], to: 'won' },
-        lasts: { ms: 3000, to: 'won' },
-      },
+      ...charizardHit(fixture('shield-charizard-high'), true),
       result: { frame: fixture('menu-gbl-result-last'), tap: { at: [0.5, 0.935], to: 'collect' } },
       collect: { frame: fixture('menu-gbl-collect') },
     },
@@ -1997,17 +2064,12 @@ test('takes every shield in GO Battle League until the party screen has given th
 });
 
 // The same, but with the league's meta loaded: `--league ultra` gives the cap the party screen would have, so Charizard
-// at 86% eats the hit as it does in Training.
+// at 86% with one shield eats the hit as it does in Training.
 test('takes the cap from the league named until the party screen gives it', async () => {
   const { phone, clock, taps } = scripted(
     {
       ...league(),
-      fight: { frame: fixture('battle-charizard-magmar'), swipes: { count: 10, to: 'prompt' } },
-      prompt: {
-        frame: fixture('shield-charizard-high'),
-        tap: { at: [0.5, 0.82], to: 'won' },
-        lasts: { ms: 3000, to: 'won' },
-      },
+      ...charizardHit(fixture('shield-charizard-high'), true),
       result: { frame: fixture('menu-gbl-result-last'), tap: { at: [0.5, 0.935], to: 'collect' } },
       collect: { frame: fixture('menu-gbl-collect') },
     },
@@ -2020,7 +2082,8 @@ test('takes the cap from the league named until the party screen gives it', asyn
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
-    'own: kept shield: Fire Blast would take ~48%, with 86% left',
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move',
   ]);
 });
 
@@ -2058,7 +2121,7 @@ test('keeps the frames a second either side of a shield prompt', async () => {
   expect(kept).toEqual([
     ['fight', 3080, 'shield'],
     ['prompt', 3630, 'shield'],
-    ['after', 4030, 'shield'],
+    ['after', 4040, 'shield'],
   ]);
 });
 

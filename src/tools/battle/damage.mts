@@ -1,6 +1,7 @@
 /**
- * How much a charged move takes off in a trainer battle, in HP, and so whether the one coming would faint us: what
- * `strategy.mts` never needs, its comparisons being between one Pokémon's own moves, where every stat cancels.
+ * How much a charged move takes off in a trainer battle, in HP, and so whether the one coming would faint us and
+ * whether to shield it: what `strategy.mts` never needs, its comparisons being between one Pokémon's own moves, where
+ * every stat cancels.
  *
  * The HUD shows each side's species and CP and nothing else that damage depends on: not the IVs, not the level and
  * not which charged moves the opponent has. So the moves are the worst its forms can hold, or in a league PvPoke ranks
@@ -210,6 +211,15 @@ export interface Verdict {
   /** The hardest move, where the hit was calculated: undefined where something unknown decided `faints` instead. */
   hardest?: string;
 
+  /** How much of our maximum HP `hardest` would take, on the form of ours it hurts most. */
+  share?: number;
+
+  /**
+   * The hardest of every charged move allowed for, whatever the opponent's counted energy affords, and how much of our
+   * maximum HP it would take: `hardest` again where the count rules out nothing harder.
+   */
+  worst?: { name: string; share: number };
+
   /**
    * The hardest move, where it is one the opponent's counted energy affords. Undefined where the energy is not counted,
    * or where the count affords nothing and so every move is allowed for.
@@ -290,9 +300,11 @@ export function wouldFaint(
 
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
 
-  // The hardest hit of all, as a share of our maximum HP: past `FAINTS` of what is left on any of our forms is past it
-  // on the form it hurts most.
+  // The hardest hits, as shares of our maximum HP: past `FAINTS` of what is left on any of our forms is past it on the
+  // form it hurts most. `hardest` is the hardest of the moves the count affords, or of every move allowed for where it
+  // affords none; `worst` the hardest of every move allowed for, whatever the count affords, for `wouldShield`.
   let hardest = { name: '', share: 0, afforded: false };
+  let worst = { name: '', share: 0 };
   let narrowed = false;
 
   for (const attacker of theirs) {
@@ -309,11 +321,16 @@ export function wouldFaint(
     }
 
     for (const defender of ours) {
-      for (const { name, move } of moves) {
+      for (const entry of allowed) {
+        const { name, move } = entry;
         const share = hit(data, move, attacker, defender, stages.their.attack, stages.own.defense) / defender.build.hp;
 
-        if (share > hardest.share) {
+        if (share > hardest.share && moves.includes(entry)) {
           hardest = { name, share, afforded: counted };
+        }
+
+        if (share > worst.share) {
+          worst = { name, share };
         }
       }
     }
@@ -327,8 +344,121 @@ export function wouldFaint(
     faints: hardest.share >= FAINTS * hp,
     why: taken + afforded + staged(stages.their.attack, stages.own.defense) + assumed,
     hardest: hardest.name,
+    share: hardest.share,
+    worst,
     ...(hardest.afforded && { afforded: hardest.name }),
   };
+}
+
+/**
+ * What the HP left is divided by for the least a charged move must take of it for its shield to be taken whatever the
+ * hit would leave: at least 1/1.4 of it, as PvPoke's `wouldShield` has it.
+ */
+const HARD = 1.4;
+
+/** Whether to take a shield against the opponent's charged move, and why. */
+export interface Shielding {
+  shield: boolean;
+  why: string;
+}
+
+/** The opponent's fast moves, as `energy.mts` measures and counts them. */
+export interface Cycle {
+  /** What one of them takes of our bar, `Energy.step`: undefined before one has been measured. */
+  step: number | undefined;
+
+  /** The opponent's energy as counted, and what each fast move gains: `Energy.estimate`'s, null where uncounted. */
+  estimate: { energy: number; gain: number } | null;
+}
+
+/**
+ * Whether to take a shield against the opponent's charged move, and why: `verdict` is `wouldFaint`'s on it, `hp` the
+ * fraction of our bar left and `shields` how many we hold. Taken where any of these holds, the first that does naming
+ * why, and otherwise kept:
+ *
+ * - The hit would faint us, or something it rests on is unknown, as `verdict.faints` says.
+ * - Any charged move the opponent is allowed for, `verdict.worst`, would take at least 1/`HARD` of what is left.
+ * - What the hit, or any charged move the opponent is allowed for, would leave is no more than its fast moves take
+ *   before it can throw the hit's move again, once for each shield we hold: with that little left, ours would faint
+ *   before the next shield could be taken. The fast moves are counted off `cycle`, and with either unknown the shield is
+ *   taken.
+ *
+ * The last two are PvPoke's `wouldShield` (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines
+ * 1164–1280), its battle AI's model of whether a player shields: what its baiting asks of the opponent (lines 421 and
+ * 894) and its randomized battles weigh, its own simulations taking every shield they can bar a few moves and forms
+ * (`src/js/battle/Battle.js` lines 1081–1144). The first alone is too late: in the two Master League sets of GO Battle
+ * League logged, 2026-10-28 and 2026-10-29, 9 of the 14 shields it took against a hit it calculated were at 25% HP or
+ * less, and 8 of the 13 it kept were against hits that left 26% or less. Palkia at 40% kept one against Zapdos's Drill
+ * Peck at ~34%, and fainted 2.5s later with both still up.
+ *
+ * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1` (line 1192),
+ * `energy` being what the opponent has left once it has paid for the hit, as PvPoke's battle has it when it asks
+ * (`Battle.js` line 1058, before 1088): the hit's move again, counted from nothing unless a whole cost more is left
+ * over, and one more for margin. Where PvPoke calculates what each takes, `cycle.step` is what one was measured to take
+ * of our bar; and where it knows the move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
+ *
+ * - Its `+ 1` HP of margin a shield, under a point of our bar, is left out.
+ * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which is left out: it can
+ *   only keep a shield the rule would take, against a fast move that barely scratches us, as Magmar's Ember does
+ *   Charizard 3 HP in its 2 turns, and a shield taken is the side this errs to.
+ * - It shields the first of a run of moves that lower their user's attack, as Superpower does, where it takes over 0.55
+ *   of what is left (line 1238). That asks which move is coming, which the prompt never says: the hit here is only the
+ *   hardest it could be.
+ * - Its overrides for Aegislash, Minior and Cramorant (lines 1248–1274) are left out: they turn on a form or a move
+ *   thrown, neither of which the HUD and the prompt tell apart.
+ * - It works out the fast moves' damage with the thrown move's own stat changes applied (lines 1176–1188), so that a
+ *   Power-Up Punch's +1 attack or an Acid Spray's −2 to our defense raises the cycle. Here the step is as measured
+ *   before the throw: the move coming is not named until the banner after the prompt, and the hardest it could be says
+ *   nothing of whether it moves a stage.
+ */
+export function wouldShield(
+  data: GameData,
+  verdict: Verdict,
+  hp: number | null,
+  shields: number,
+  cycle: Cycle,
+): Shielding {
+  const { hardest, share, worst } = verdict;
+
+  if (verdict.faints || hp === null || hardest === undefined || share === undefined || worst === undefined) {
+    return { shield: true, why: hardest === undefined ? verdict.why : `${verdict.why}; that would faint us` };
+  }
+
+  if (worst.share * HARD >= hp) {
+    const which = worst.name === hardest ? '' : `${worst.name} would take `;
+
+    return { shield: true, why: `${verdict.why}; ${which}at least 1/${HARD} of what is left` };
+  }
+
+  const { step, estimate } = cycle;
+  const cost = -(data.combat[hardest]?.energy ?? 0);
+
+  if (step === undefined) {
+    return { shield: true, why: `${verdict.why}; their fast moves unmeasured` };
+  }
+
+  if (estimate === null || !(estimate.gain > 0) || !(cost > 0)) {
+    return { shield: true, why: `${verdict.why}; their energy uncounted` };
+  }
+
+  const kept = Math.max(estimate.energy - cost, 0);
+  const fast = Math.ceil((cost - Math.max(kept - cost, 0)) / estimate.gain) + 1;
+  const cycles = fast * step * shields;
+  const times = shields > 1 ? `${shields} × the` : 'the';
+  const than = (left: number) =>
+    `${left <= cycles ? 'no more' : 'more'} than ${times} ~${percent(fast * step)} of ${fast} fast ` +
+    `move${fast === 1 ? '' : 's'} before their next charged move`;
+
+  // Asked of every move allowed for as well as the hit, as PvPoke asks it (line 1226), the cycle being the hit's either
+  // way: a harder move the count does not yet afford may be the next.
+  if (hp - share > cycles && hp - worst.share <= cycles) {
+    return {
+      shield: true,
+      why: `${verdict.why}; ${worst.name} would leave ~${percent(hp - worst.share)}, ${than(hp - worst.share)}`,
+    };
+  }
+
+  return { shield: hp - share <= cycles, why: `${verdict.why}; leaves ~${percent(hp - share)}, ${than(hp - share)}` };
 }
 
 /**

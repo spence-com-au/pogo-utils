@@ -31,7 +31,9 @@ flowchart LR
 
 - **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
   decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen` keeps one recording going after
-  another, since `screenrecord` stops after 180s, and always answers the latest frame.
+  another, since `screenrecord` stops after 180s, and always answers the latest frame. What `screenrecord` is asked for,
+  the picture's size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process`
+  so that a page streaming over WebUSB asks for the same picture.
 - **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
   which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
   until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
@@ -54,7 +56,8 @@ flowchart LR
   being known until the next recording's first byte, bar the last before the screen goes still, which is known to be
   whole only once the screen next changes. The first picture is shown from 0, there being nothing earlier, so a player's
   clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
-  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped.
+  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped. The cutting is
+  [`pictures.mts`](pictures.mts), which a browser can run too.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
@@ -249,8 +252,9 @@ the move's own damage is no measure of. Priced against it, a Close Combat super 
 its damage however little Regigigas hits for, and Icy Wind would gain more than twice as much into a Dragon type as into
 a Steel type, however hard either hits back. PvPoke's battle AI leaves them out too (`Pokemon.js`, `ActionLogic.js`).
 
-**On our last hit,** when we have no shield left and the opponent's next charged move would faint us, changes to our own
-stats count for nothing, since there's no next hit for them to matter on.
+**On our last hit,** when we have no shield left and the opponent's next charged move would faint us, or its next fast
+move would faint us whatever our shields, changes to our own stats count for nothing, since there's no next hit for them
+to matter on.
 
 **Worth per energy.** Once the opponent's shields are gone, it throws the move worth the most for each point of energy
 it costs, and of two worth as much, the cheaper, which fires sooner. With no shield to take a throw, energy is all that
@@ -289,6 +293,18 @@ is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords i
 the move picked is lit as well, as Body Slam is when Earthquake lights beside it, the throw passes it over rather than
 holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy affords it; worth more than Body Slam`.
 
+**A fast move that would faint us.** The same throw goes, shields or not, where one more of the opponent's fast moves
+would faint us: one hit, as [measured off our bar](#the-opponents-energy), taking at least what the bar shows less 2
+points for its wander. Until a hit has been measured against the Pokémon out, it is modelled instead, for the fast move
+the count goes by, at the most it would take of any form either side could be. That is where a measured hit is missing,
+the opponent's newcomer facing one of ours left low by the last, and throwing a hit early costs less than fainting with
+the energy. Once their attack or our defense has moved, the model counts as well wherever it is the larger, the hit
+perhaps measured before they moved. With no hit measured and nothing to model it on, such as our CP unread, the move
+held for stays held. The rule is PvPoke's (`ActionLogic.js`), which also fits in fast moves of its own while it would
+land one before the opponent's next, a timing that needs to know how far into its fast move the opponent is, to a turn.
+It is logged as
+`threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump`.
+
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
 throw for fear of fainting, since the opponent gone can't land the hit we feared, where the one lit worth the most might
@@ -318,10 +334,31 @@ it.
 
 ### When to shield
 
-The shield prompt never names the move coming. It takes a shield only if the hardest move the opponent could be throwing
-would take at least **90%** of the HP our bar shows ([`damage.mts`](damage.mts)'s `wouldFaint`). A hit we would survive
-is taken, and the shield kept for one we wouldn't. The margin short of 100% allows for the HP being read off a bar and
-the opponent's build being a guess.
+The shield prompt never names the move coming, so the hit judged is the hardest move the opponent could be throwing
+([`damage.mts`](damage.mts)'s `wouldFaint`). A shield is taken where any of these holds, and kept otherwise
+([`damage.mts`](damage.mts)'s `wouldShield`):
+
+- **The hit would faint us:** it would take at least **90%** of the HP our bar shows. The margin short of 100% allows
+  for the HP being read off a bar and the opponent's build being a guess.
+- **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
+  **1/1.4** of the HP left.
+- **Too little would be left:** the hit, or any charged move it could have, would leave no more than the opponent's fast
+  moves take before it can throw the hit's move again, once for each shield we hold, so ours would faint before the next
+  shield could be taken. The fast moves are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's
+  cost and the energy counted less that cost, each taking what one was measured to take off our bar
+  ([below](#the-opponents-energy)).
+
+The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
+simulates, and with these differences:
+
+- PvPoke asks the 1/1.4 rule only of a fast move doing more than 1.5 HP a turn. Leaving that out can only take a shield
+  PvPoke would keep, against a fast move that barely scratches us, and a shield taken is the side these rules err to.
+- PvPoke adds 1 HP of margin a shield to the fast moves' damage, under a point of our bar, which is left out.
+- PvPoke raises the fast moves' damage by the thrown move's own stat changes, a Power-Up Punch's +1 attack say. The
+  prompt never names the move, so the step is taken as measured before the throw.
+- Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or the HUD
+  tells apart: shielding the first of a run of attack-lowering moves such as Superpower where it takes over 55% of what
+  is left, and its exceptions for Aegislash, Minior and Cramorant.
 
 What goes into "the hardest move the opponent could be throwing":
 
@@ -340,8 +377,10 @@ What goes into "the hardest move the opponent could be throwing":
   reset when its Pokémon leaves the field. A shield stops the damage, not the stat change.
 
 **Anything unknown takes the shield:** either side's species or CP unread, a CP over the cap (so misread), our HP
-unread, or the cap itself not yet known. A shield spent early costs less than a Pokémon lost. Each shield taken or kept
-is logged with the reason, such as `Flamethrower would take ~45%, with 50% left, the hardest 60 energy affords`.
+unread, the cap itself not yet known, or none of the opponent's fast moves yet measured or its energy uncounted. A
+shield spent early costs less than a Pokémon lost. Each shield taken or kept is logged with the hit, such as
+`Drill Peck would take ~34%, with 50% left`, and the rule that decided it, such as
+`leaves ~16%, no more than 2 × the ~12% of 6 fast moves before their next charged move`.
 
 ### The opponent's energy
 
@@ -456,8 +495,8 @@ The strategy still leaves some gaps:
 - **Our own energy.** Reading the fill on the unlit charged-move buttons would say how far off the best move is. That
   needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
 - **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
-  would faint us ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing us down before the best move
-  fills, which needs our own energy to see coming.
+  would faint us, or its next fast move would ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing
+  us down before the best move fills, seen sooner than the last of them, which needs our own energy to see coming.
 - **Our own fast move.** Holding for the next ([above](#which-charged-move-to-throw)) takes ours to be the longest our
   species has. Told apart by the size of our hits, as the opponent's is by its, it would hold more often.
 - **Out of scope for now:**
