@@ -1021,7 +1021,8 @@ export async function run(
 
       // Whether the opponent's hardest charged move would faint us: hardest of those it can afford, where its energy is
       // counted. A league whose cap went unread takes every shield, as anything else unknown does. Taken also by
-      // PvPoke's rules, `wouldShield`'s, against a hit that leaves too little for the fast moves before the next.
+      // PvPoke's rules, `wouldShield`'s: against any move that would take 1/1.4 of what is left, and against a hit that
+      // leaves too little for the fast moves before the next.
       const verdict: Verdict =
         cap === undefined
           ? { faints: true, why: "the league's cap unread" }

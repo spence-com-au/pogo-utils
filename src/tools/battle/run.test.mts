@@ -1803,7 +1803,8 @@ test.each([
 
 /**
  * The same prompt at 86% with one shield left, every other frame of it reading as 9%, as Dialga's bar flickered
- * between 64% and 2% live: a misread snapping back is no hit, so the shield is kept for one that would faint us.
+ * between 64% and 2% live: a misread snapping back is no hit, so the shield is kept, the 38% Fire Blast would leave
+ * outlasting Magmar's fast moves before its next.
  */
 test('keeps the shield through a prompt whose bar flickers low', async () => {
   const high = fixture('shield-charizard-high');
