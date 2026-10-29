@@ -52,9 +52,9 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
 const TIMEOUT_MS = 30_000;
 
 /**
- * Why this page cannot reach a phone, or null where it can. WebUSB needs a secure context, which is `localhost` and the
- * published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so Firefox and Safari have
- * none.
+ * Why this context, a page or its Worker, cannot reach a phone, or null where it can. WebUSB needs a secure context,
+ * which is `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so
+ * Firefox and Safari have none.
  */
 function unreachable(): string | null {
   // The global rather than `window`'s, which a Worker has none of.
@@ -74,10 +74,10 @@ function unreachable(): string | null {
 
 /**
  * Lets go of a connection no transport was built on, as where authentication fails: Tango releases its locks on the
- * streams but closes nothing, which would leave the phone's ADB interface claimed by this page until it is reloaded —
- * and the `adb kill-server` advice for a busy phone useless. Closing either stream closes the device and drops the
- * listener for it being unplugged; both are tried, as one may already have errored, and neither failing is worth more
- * than the error that brought the caller here.
+ * streams but closes nothing, which would leave the phone's ADB interface claimed by this context until it is reloaded
+ * or ended — and the `adb kill-server` advice for a busy phone useless. Closing either stream closes the device and
+ * drops the listener for it being unplugged; both are tried, as one may already have errored, and neither failing is
+ * worth more than the error that brought the caller here.
  */
 export async function release(connection: {
   readable: { cancel(): Promise<void> };
@@ -95,10 +95,7 @@ export interface Process {
   kill(): void;
 }
 
-/**
- * A phone this context holds a connection to, the page or a battle's Worker, with what the chooser called it where it
- * was picked there.
- */
+/** A phone this context holds a connection to, the page or a battle's Worker, with its device's name. */
 export interface Phone {
   name: string;
 
@@ -118,7 +115,7 @@ export interface Phone {
   disconnected: Promise<void>;
 }
 
-/** WebUSB, or a throw saying why this page has none. */
+/** WebUSB, or a throw saying why this context has none. */
 function usb(): AdbDaemonWebUsbDeviceManager {
   const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
 

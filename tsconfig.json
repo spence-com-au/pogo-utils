@@ -73,8 +73,9 @@
   // by name rather than by directory because they sit among the files that import them: they are shared by what reads
   // them, not by where they live.
   //
-  // The inventory readers the page runs are named one by one, the rest of that directory being Node's: the CLI's
-  // transports, the download cache and the tests. So are the battle modules `src/battle/` reaches.
+  // The inventory readers the page runs are named one by one, and the held shell and touchscreen the battle Worker in
+  // `src/battle/` drives the phone through, the rest of that directory being Node's: the CLI's transports, the download
+  // cache and the tests. So are the battle modules `src/battle/` reaches.
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
