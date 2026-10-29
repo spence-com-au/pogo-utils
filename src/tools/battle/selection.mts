@@ -6,7 +6,8 @@
  * The selection screen lists the whole storage by CP, opened at the top, so the Pokémon tapped is in view only where
  * its CP is near the top of storage. It is searched for instead, by the species and CP its card shows, and is the cell
  * tinted pink: the card being swapped. The rest of the party is tinted green, and anything else the search finds is
- * white. The game keeps a search for the screen's next opening, so it is cleared before CANCEL.
+ * white. The game keeps a search for the screen's next opening, so one seen to take is cleared before CANCEL, and one
+ * OCR did not see take is cleared by keys before the next is typed.
  *
  * Positions are widths from the anchor each is pinned to, as `layout.mts` places them, measured on a Pixel 8 Pro's
  * full-size screenshots: the header, search field and grid pinned to the top, CANCEL to the foot.
@@ -295,7 +296,9 @@ export async function readCard(
   const panel = cell && (await readPanel(await hands.hold(cell), data, proven ? species : null, read));
 
   // Only where a search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL. One
-  // that took stays in force under a second that OCR does not see take.
+  // that took stays in force under a second that OCR does not see take. A pink cell is no sign of one, the party often
+  // being at the top of storage, in view unsearched: taken for one, a search that did not take would end the run, where
+  // one left over is cleared by keys before the next is typed.
   if (took) {
     await hands.tap(at(CLEAR, TOP));
     await sleep(CLEARED_MS);
