@@ -16,6 +16,7 @@
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, place, tall, TOP } from './layout.mts';
+import { cpsOf } from './party.mts';
 import { type Point } from './play.mts';
 
 export const LEADERS = ['blanche', 'candela', 'spark'] as const;
@@ -41,7 +42,8 @@ export type Menu =
   | { screen: 'map' | 'main' | 'training' | 'gbl' | 'welcome' | 'intro' | 'league' | 'result'; tap: Point }
 
   // The league's CP cap as GO Battle League's party screen states it: `null` for no limit, `undefined` where unread.
-  | { screen: 'party'; tap: Point; cap?: number | null; title?: string }
+  // And the CP over each card, off the same read; Training's party screen is told by colour, and read for none.
+  | { screen: 'party'; tap: Point; cap?: number | null; title?: string; cps?: (number | null)[] }
   | { screen: 'battle-tab' | 'league' | 'party'; swipe: readonly [Point, Point] }
   | { screen: 'matchmaking' | 'no-battle' | 'unknown' };
 
@@ -412,6 +414,16 @@ function gblLeagues(lines: readonly Line[], image: Image): { title: string; tap:
 }
 
 /**
+ * Whether `image` shows USE THIS PARTY on the party's white panel, with no ✗ at the foot: the party screen, or the
+ * welcome before a GO Battle League set, which only its words tell apart.
+ */
+export function onParty(image: Image): boolean {
+  const party = place(USE_PARTY, USE_PARTY_ANCHOR, image);
+
+  return green(image, party) && panel(image, party[1]) && !teal(image);
+}
+
+/**
  * Which screen `image` is, and where to tap on it for the `mode`'s battles. `read` is the OCR, which is only asked for
  * where colour cannot answer. Training's screens are never looked for in GO Battle League, nor its screens in Training:
  * a portrait scrolled into view on the Battle tab is not to be tapped for GO Battle League.
@@ -436,7 +448,7 @@ export async function readMenu(
     return { screen: 'intro', tap: fight };
   }
 
-  if (green(image, party) && panel(image, party[1]) && !teal(image)) {
+  if (onParty(image)) {
     if (training) {
       return { screen: 'party', tap: party };
     }
@@ -450,7 +462,7 @@ export async function readMenu(
 
     const title = partyTitle(lines, image);
 
-    return { screen: 'party', tap: party, cap: capOf(lines), ...(title && { title }) };
+    return { screen: 'party', tap: party, cap: capOf(lines), cps: cpsOf(lines, image), ...(title && { title }) };
   }
 
   if (pokeBall(image)) {

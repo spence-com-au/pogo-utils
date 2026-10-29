@@ -16,6 +16,7 @@
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
 import { type Meta, type Moveset } from './meta.mts';
+import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
 
 /** What a move sharing a type with the Pokémon using it multiplies its damage by. */
@@ -137,22 +138,54 @@ export function chargedOf(form: Form, moveset?: Moveset): string[] {
   return plausible.length > 0 ? plausible : pool.filter((name) => !SHADOW_AND_PURIFIED.has(name));
 }
 
-/** Every charged move any form of a species can hold, by name. */
-function chargedMoves(data: GameData, species: string): Set<string> {
-  const forms = data.forms.filter((form) => form.species === species);
+/**
+ * A card's two charged moves, where the panel the selection screen shows for it held read both. One read alone is no
+ * surer than its species: a Pokémon whose second move is locked has one, but so does a panel whose other row OCR missed.
+ */
+const ownMoves = ({ moves }: Card) => (moves && moves.charged.length >= 2 ? moves.charged : undefined);
 
-  return new Set(forms.flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name)));
+/**
+ * Every charged move a party card can hold, by name: its own two, where read, and otherwise every one any form of its
+ * species can hold, with any one read among them.
+ */
+function chargedMoves(data: GameData, card: Card): Set<string> {
+  const own = ownMoves(card);
+
+  if (own) {
+    return new Set(own);
+  }
+
+  const forms = data.forms.filter((form) => form.species === card.species);
+  const pool = forms.flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
+
+  return new Set([...pool, ...(card.moves?.charged ?? [])]);
 }
 
 /**
+ * The charged moves a benched card is judged by: its own two where both were read, Frustration or Return among them if
+ * it has one; otherwise every one its species can hold and the one read, bar Frustration and Return unless read, whose
+ * 130 power for Return would tie every species with a shadow form, few of ours being purified.
+ */
+const judgedBy = (data: GameData, card: Card): string[] =>
+  [...(ownMoves(card) ?? chargedMoves(data, card))].filter(
+    (move) => !SHADOW_AND_PURIFIED.has(move) || card.moves?.charged.includes(move),
+  );
+
+/**
+ * Whether too little was read of a card to judge it by: no species, and not both its charged moves, which alone would
+ * leave it judged by the one move read where a species would add the rest it can hold.
+ */
+const unread = (card: Card) => card.species === null && !ownMoves(card);
+
+/**
  * Which slot of the party is out: `sent`, the slot last sent in, or before any faint the lead, a battle opening with
- * it. Passed over for the next not fainted, in party order, where its species cannot hold every charged move read under
- * the buttons, which a misread card would show; a card that was not read cannot be checked, and stands. Undefined where
- * no slot is left that fits.
+ * it. Passed over for the next not fainted, in party order, where its card cannot hold every charged move read under
+ * the buttons, which a misread card would show; a card with no species read and not both its charged moves cannot be
+ * checked, and stands. Undefined where no slot is left that fits.
  */
 export function activeOf(
   data: GameData,
-  party: readonly (string | null)[],
+  party: readonly Card[],
   fainted: ReadonlySet<number>,
   moves: Iterable<string>,
   sent = 0,
@@ -160,12 +193,12 @@ export function activeOf(
   const read = [...moves];
 
   const fits = (slot: number) => {
-    const species = party[slot];
+    const card = party[slot];
 
     return (
-      species !== undefined &&
+      card !== undefined &&
       !fainted.has(slot) &&
-      (species === null || read.every((move) => chargedMoves(data, species).has(move)))
+      (unread(card) || read.every((move) => chargedMoves(data, card).has(move)))
     );
   };
 
@@ -177,29 +210,29 @@ export function activeOf(
  * banked on the bench finishes the opponent the moment it lands, by `finishing`'s move for it, then one the opponent
  * cannot hit super effectively, then the one with the hardest hit on it, then the first. A banked finish comes before
  * safety, the opponent gone before it can land what we would be unsafe from: live, a Galarian Moltres at a tenth of its
- * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of every charged
- * move its species can hold, which of them it has being shown only once it is out, bar Frustration and Return: Return's
- * 130 would otherwise tie every species that has a shadow form, few of ours being purified. A card that was not read is
- * neither safe nor known to hit, so it goes in only where its banked energy finishes, where nothing named is left, or
- * where it is first and nothing named is safe or hits at all.
+ * HP went back in with Fly banked and finished a Buzzwole before it could fast-move again. Hardest out of the moves
+ * `judgedBy` gives it. A card whose species was not read is never safe, its types unknown, and hits for what its two
+ * charged moves land without STAB where both were read. Short of both it is not known to hit either, so it goes in only
+ * where its banked energy finishes, where nothing named is left, or where it is first and nothing named is safe or hits
+ * at all.
  */
 export function nextOut(
   data: GameData,
-  party: readonly (string | null)[],
+  party: readonly Card[],
   fainted: ReadonlySet<number>,
   opponent: Shown,
   meta?: Meta | null,
   finishing: ReadonlyMap<number, string> = new Map(),
 ): { slot: number; why: string } | undefined {
-  const scored = party.flatMap((species, slot) =>
+  const scored = party.flatMap((card, slot) =>
     fainted.has(slot)
       ? []
       : [
           {
             slot,
             finishes: finishing.get(slot),
-            safe: species !== null && !shouldShield(data, { species }, opponent, meta),
-            ...hardest(data, species, opponent),
+            safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
+            ...hardest(data, card, opponent),
           },
         ],
   );
@@ -234,17 +267,13 @@ export function nextOut(
 }
 
 /**
- * The hardest hit any charged move a species can hold lands on `opponent`, bar Frustration and Return, as `nextOut`
- * ranks by; nothing for a species not read.
+ * The hardest hit any charged move a card is judged by lands on `opponent`, as `nextOut` ranks by; nothing for a card
+ * with no species and not both its charged moves read.
  */
-function hardest(
-  data: GameData,
-  species: string | null,
-  opponent: Shown,
-): { hardest: number; move: string | undefined } {
-  const own = typesOf(data, { species });
+function hardest(data: GameData, card: Card, opponent: Shown): { hardest: number; move: string | undefined } {
+  const own = typesOf(data, { species: card.species });
   const types = typesOf(data, opponent);
-  const moves = species === null ? [] : [...chargedMoves(data, species)].filter((m) => !SHADOW_AND_PURIFIED.has(m));
+  const moves = unread(card) ? [] : judgedBy(data, card);
   let best = { hardest: 0, move: undefined as string | undefined };
 
   for (const move of moves) {
@@ -265,12 +294,12 @@ function hardest(
  * equals the first card. Undefined where ours is not threatened, as by `shouldShield`'s rule, or where either species
  * is not known: a switch spends the switch timer, so it is made only where it is clearly better.
  *
- * Super effective out of every move its species can hold, as `nextOut` judges, which of them it has being shown only
- * once it is out.
+ * Super effective out of the moves `judgedBy` gives it, as `nextOut` judges: its own two where both were read, and
+ * otherwise every one its species can hold bar Frustration and Return, unless one of those was read.
  */
 export function counterOf(
   data: GameData,
-  party: readonly (string | null)[],
+  party: readonly Card[],
   out: number,
   own: Shown,
   fainted: ReadonlySet<number>,
@@ -282,19 +311,20 @@ export function counterOf(
   }
 
   const types = typesOf(data, opponent);
-  const counters = party.flatMap((species, slot) => {
+  const counters = party.flatMap((card, slot) => {
+    const { species } = card;
+
     if (species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)) {
       return [];
     }
 
-    const moves = [...chargedMoves(data, species)].filter((m) => !SHADOW_AND_PURIFIED.has(m));
-    const beats = moves.find((name) => {
+    const beats = judgedBy(data, card).find((name) => {
       const type = data.combat[name]?.type;
 
       return type !== undefined && types.every((typing) => effectiveness(data, type, typing) > 1);
     });
 
-    return beats === undefined ? [] : [{ slot, beats, ...hardest(data, species, opponent) }];
+    return beats === undefined ? [] : [{ slot, beats, ...hardest(data, card, opponent) }];
   });
 
   const [best] = counters.sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
@@ -326,7 +356,7 @@ export interface Switch {
  */
 export function refugeOf(
   data: GameData,
-  party: readonly (string | null)[],
+  party: readonly Card[],
   out: number,
   own: Shown,
   fainted: ReadonlySet<number>,
@@ -338,11 +368,13 @@ export function refugeOf(
   }
 
   const [best] = party
-    .flatMap((species, slot) =>
-      species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)
+    .flatMap((card, slot) => {
+      const { species } = card;
+
+      return species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)
         ? []
-        : [{ slot, species, ...hardest(data, species, opponent) }],
-    )
+        : [{ slot, species, ...hardest(data, card, opponent) }];
+    })
     .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
 
   return (
@@ -366,7 +398,7 @@ export function refugeOf(
  */
 export function stripperOf(
   data: GameData,
-  party: readonly (string | null)[],
+  party: readonly Card[],
   out: number,
   fainted: ReadonlySet<number>,
   banked: ReadonlyMap<number, readonly string[]>,
@@ -379,16 +411,16 @@ export function stripperOf(
 
   const [best] = [...banked]
     .flatMap(([slot, moves]) => {
-      const species = party[slot];
+      const card = party[slot];
 
-      return species === undefined || slot === out || fainted.has(slot) || moves.length === 0
+      return card === undefined || slot === out || fainted.has(slot) || moves.length === 0
         ? []
         : [
             {
               slot,
               moves,
-              safe: species !== null && !shouldShield(data, { species }, opponent, meta),
-              ...hardest(data, species, opponent),
+              safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
+              ...hardest(data, card, opponent),
             },
           ];
     })
@@ -397,7 +429,7 @@ export function stripperOf(
   return (
     best && {
       slot: best.slot,
-      why: `${party[best.slot] ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
+      why: `${party[best.slot]?.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
     }
   );
 }

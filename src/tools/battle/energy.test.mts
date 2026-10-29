@@ -396,6 +396,18 @@ test('counts its fast moves by the turns ours take, never fewer than ours', () =
   expect(spare(DATA, { ...FOOTAGE, estimate: { energy: 0, fast: 'Dragon Tail', gain: 12 } })).toBe(undefined);
 });
 
+/**
+ * A Snorlax with the hits of the footage's Moltres. Taken to have Yawn, the longest of its fast moves at four turns,
+ * its four hits let 16 Dragon Breaths land, 68 energy with the one for the count. With its Lick read off its card's
+ * panel, at one turn, four land, 20 with the one for the count, short of Ancient Power's 45.
+ */
+test('counts its fast moves by the turns of ours as its card’s panel was read', () => {
+  const snorlax: Standing = { ...FOOTAGE, matchup: { ...FOOTAGE.matchup, own: { species: 'Snorlax', cp: 2500 } } };
+
+  expect(spare(DATA, snorlax)).toBe(undefined);
+  expect(spare(DATA, { ...snorlax, fast: 'Lick' })).toBe('fast moves finish Giratina at 15%');
+});
+
 test('weighs only its two moves once both have been seen', () => {
   const standing: Standing = { ...FOOTAGE, estimate: { energy: 10, fast: 'Dragon Breath', gain: 4 } };
 

@@ -604,24 +604,27 @@ weaker one is ready instead, unless such a hit can come first: a charged move th
 our bar affords, or their next fast move. It reads the moves off the labels under their buttons and the two Pokémon off
 the names along the top, every few seconds. A nicknamed Pokémon of yours is named by the party screen instead, whose
 pictures it matches against the game's icons, as the lead and then whichever it sent in after a faint, passing over any
-that cannot hold the moves read; one it still cannot name, or an opponent it cannot read, counts as neutral. After a
-faint it sends in one the opponent cannot hit super effectively, then the one that hits it hardest. In the minigame it
-finds the bubbles by the thrown move's type colour, read off the game's icon for the type, and swipes along each chain
-of them, sweeping rows only where none are found. The shield prompt never says which move is coming, so it judges by the
-hardest the opponent could have — of those its players run, or both of its own once the banners after earlier prompts
-have named them, and of those the energy it is counted as having off the hits on our bar affords — with each side built
-as the strongest spread for the CP its HUD shows, and takes a shield where that hit would take nine tenths of the HP
-left, where any move it could have would take 1/1.4 of it, or where the hit, or any move it could have, would leave no
-more than the opponent's fast moves take before it can throw its next charged move, once for each shield we hold, as
-PvPoke's battle AI would judge it; or where it does not know enough to tell. A charged move that always raises or drops
-attack or defense, such as Close Combat or Icy Wind, moves the hit too, shielded or not: ours as it throws them, the
-opponent's off those banners, each side's undone when its Pokémon leaves the field. With none of our shields left, a
-move that drops our own defense waits while the opponent's counted energy affords a charged move we would survive, and
-none it could have would take 1/1.4 of the HP left, until that lands or our energy could have filled. Training has no
-rematch, so between battles it taps its way back round — the result's ✓, the leader, BATTLE, the league, then USE THIS
-PARTY on the game's recommended party. It keeps the screen awake while it runs and puts the setting back after. Where
-nothing on screen has been recognised for 20 seconds it stops rather than tap at a screen it does not know, and
-`--keep-frames DIR` saves the last few frames it saw.
+that cannot hold the moves read; one it still cannot name, or an opponent it cannot read, counts as neutral. Before it
+uses a party it reads each card's moves off the game, once for each card it has not tried: it taps the card for the
+selection screen, searches for it by species and CP, holds it to show its moves, then clears the search and cancels,
+leaving the party as it was. The moves name a nicknamed Pokémon its picture did not, and judge each benched one by the
+charged moves it has rather than all its species can learn. After a faint it sends in one the opponent cannot hit super
+effectively, then the one that hits it hardest. In the minigame it finds the bubbles by the thrown move's type colour,
+read off the game's icon for the type, and swipes along each chain of them, sweeping rows only where none are found. The
+shield prompt never says which move is coming, so it judges by the hardest the opponent could have — of those its
+players run, or both of its own once the banners after earlier prompts have named them, and of those the energy it is
+counted as having off the hits on our bar affords — with each side built as the strongest spread for the CP its HUD
+shows, and takes a shield where that hit would take nine tenths of the HP left, where any move it could have would take
+1/1.4 of it, or where the hit, or any move it could have, would leave no more than the opponent's fast moves take before
+it can throw its next charged move, once for each shield we hold, as PvPoke's battle AI would judge it; or where it does
+not know enough to tell. A charged move that always raises or drops attack or defense, such as Close Combat or Icy Wind,
+moves the hit too, shielded or not: ours as it throws them, the opponent's off those banners, each side's undone when
+its Pokémon leaves the field. With none of our shields left, a move that drops our own defense waits while the
+opponent's counted energy affords a charged move we would survive, and none it could have would take 1/1.4 of the HP
+left, until that lands or our energy could have filled. Training has no rematch, so between battles it taps its way back
+round — the result's ✓, the leader, BATTLE, the league, then USE THIS PARTY on the game's recommended party. It keeps
+the screen awake while it runs and puts the setting back after. Where nothing on screen has been recognised for 20
+seconds it stops rather than tap at a screen it does not know, and `--keep-frames DIR` saves the last few frames it saw.
 
 `--keep-video FILE` keeps the whole of the screen the run watched, battles and the menus between them, as MPEG-TS video
 that `mpv` or `ffplay` plays, so any moment the log names can be looked at afterwards, not only those around a faint or

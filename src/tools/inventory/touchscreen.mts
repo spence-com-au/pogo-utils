@@ -178,6 +178,12 @@ export interface Touchscreen {
   /** Down and up at `at`, fractions of the screen across and down. */
   tap(at: readonly [number, number]): Promise<void>;
 
+  /** Down at `at` and left there, until `up`: a touch held for as long as the caller needs, however long that is. */
+  down(at: readonly [number, number]): Promise<void>;
+
+  /** Up at `at`, where `down` put the finger. */
+  up(at: readonly [number, number]): Promise<void>;
+
   /** Down at `from`, moved towards `to` over `ms`, and up there. */
   swipe(from: readonly [number, number], to: readonly [number, number], ms: number): Promise<void>;
 }
@@ -213,6 +219,8 @@ export async function touchscreen(transport: Transport): Promise<Touchscreen> {
 
   return {
     tap: (at) => send(`${write(report(true, at))}; ${write(report(false, at))}`),
+    down: (at) => send(write(report(true, at))),
+    up: (at) => send(write(report(false, at))),
     swipe: (from, to, ms) => send(swipe(from, to, ms)),
   };
 }

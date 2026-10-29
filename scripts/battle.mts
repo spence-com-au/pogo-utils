@@ -54,6 +54,7 @@ import { Screen, screenrecord } from '../src/tools/battle/stream.mts';
 import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
+import { replaceSearch } from '../src/tools/inventory/storage.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
@@ -113,6 +114,13 @@ function fail(message: string): never {
 if (ignored.length > 0) {
   fail(`${command} does not act on ${ignored.map((flag) => `--${flag}`).join(', ')}`);
 }
+
+/**
+ * How far into a hold of a Pokémon on the selection screen its panel is screenshot, in milliseconds. The panel goes as
+ * the hold is let go, so the hold lasts until the screenshot is done, however long that takes: screenshots 1.8s into a
+ * hold showed it on a Pixel 8 Pro.
+ */
+const PANEL_MS = 1_500;
 
 /** What `assets.mts` and `meta.mts` fetch, kept under `dir` for a week as the game master is. */
 const cache =
@@ -407,11 +415,24 @@ if (command === 'run') {
     screen = recording;
     const touch = await touchscreen(held);
 
+    // A hold screenshots what it shows as it goes on, a screenshot being a process of its own beside the held shell.
     const phone: Phone = {
       frame: () => recording.latest()?.image,
       screenshot: () => device.screenshot(),
       tap: (point) => touch.tap(point),
       swipe: (from, to, ms) => touch.swipe(from, to, ms),
+      hold: async (point) => {
+        await touch.down(point);
+
+        try {
+          await sleep(PANEL_MS);
+
+          return await device.screenshot();
+        } finally {
+          await touch.up(point);
+        }
+      },
+      search: (text) => replaceSearch(device, text),
     };
 
     await recording.first();

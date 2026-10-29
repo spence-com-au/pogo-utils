@@ -129,7 +129,39 @@ for text and done every few seconds.
     screens told apart by their words. GO Battle League's party screen also states the league's CP cap.
 - **[`party.mts`](party.mts)** says which species each party card holds by silhouette, by laying each form icon's
   outline over the card. The card's own name is no help, since it may be a nickname. Silhouettes rather than colours,
-  because a shiny is drawn in colours its icon doesn't have.
+  because a shiny is drawn in colours its icon doesn't have. It also reads the CP over each card.
+- **[`selection.mts`](selection.mts)** reads each card's moves before USE THIS PARTY is tapped. Tapping a card opens the
+  Pokémon selection screen, to swap it for another, and holding a Pokémon there shows a panel of its types, HP, fast
+  move and charged moves until it is let go. Neither the hold nor CANCEL changes the party.
+  - **Finding it:** the selection screen lists the whole storage by CP and opens at the top, so the Pokémon tapped is in
+    view only where its CP is near the top. It is searched for instead, `376&cp3986`, by the dex number of the species
+    its silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
+    species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
+  - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
+    rows matched as `pnpm inventory` matches the detail screen's moves
+    ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. One its dex number found
+    is that species, its moves matched among its own whatever types the panel reads, a type OCR missed leaving them to
+    fit another. Otherwise its types and moves name the species, which a nickname hides: the one species whose forms of
+    those types hold every move read. Where they name none, the silhouette's species stands, unless the search by its
+    dex number took on a selection screen recognised as such and showed no pink cell, which rules it out and leaves the
+    card unnamed.
+  - **Leaving it as found:** the game keeps a search for the next opening, so one seen to take is cleared before CANCEL.
+    One OCR did not see take is left, a pink cell being no sign of one: the party is often at the top of storage, in
+    view unsearched, and ⊗ tapped with no search in force opens the keyboard over CANCEL. The next search typed clears
+    it by keys first. A tap meant for the party screen that lands on the selection screen swaps the Pokémon there in, so
+    the screen is read after the card's tap, after each search and after CANCEL, and the taps between, on the search
+    field, its ⊗ and CANCEL, land above or below the grid, where no tap swaps anything. Where CANCEL leaves anything but
+    the party screen showing, nothing more is tapped. A selection screen not showing after a card's tap is looked for
+    once more, and where it still is not, the screen is read afresh before USE THIS PARTY is tapped, the selection
+    screen perhaps arriving late.
+  - **Once per card:** a card waits 8s on the screens drawing and the hold, and takes four screenshots of 0.8–1.9s each,
+    so the three take 33s or more. A card is tried again only when the party screen shows another species or CP for it,
+    a CP OCR missed matching any, and the moves read of the others are kept. One tried and not read is not tried again,
+    what failed once being likely to fail again, nor are the cards after one that stopped the reading, the selection
+    screen not opening or not closing. One passed over for its CP going unread is tried once its CP is read.
+  - **Judging it:** a card read with both charged moves is judged by those two. One read alone could be a row OCR
+    missed, as much as a second move locked, so that card is judged as one not read is, by every move its species can
+    learn bar Frustration and Return, unless one of those was read, and the one read.
 
 ### The run loop
 
@@ -225,6 +257,8 @@ gaps safely.
 
 - **The HUD:** each side's species and CP, its types, HP bar, shields and Pokémon left.
 - **Our side:** which of our charged-move buttons are lit, and the moves under them.
+- **Our party:** each card's fast and charged moves, read off the selection screen before the party is used
+  ([`selection.mts`](selection.mts)), where they could be.
 - **Banners:** the opponent's charged moves as they land.
 
 **What it can't see:**
@@ -341,8 +375,8 @@ opponent's shields spent and more than one of its Poké Balls red, and only on w
   median clean step. No more than **4** of them may be left to finish it, with the bar's 2 points of wander: about what
   Sucker Punch needed for that Giratina.
 - **Its throw.** Its counted energy must afford none of its charged moves after the fast moves of its that land
-  meanwhile, plus one for a hit the count missed. Meanwhile is our hits at the longest fast move our species has, and
-  never fewer of its than of ours.
+  meanwhile, plus one for a hit the count missed. Meanwhile is our hits at our fast move where its card was read, and
+  otherwise the longest fast move our species has, and never fewer of its than of ours.
 - **Our survival.** Those fast moves of its, at its measured step, must leave us standing.
 
 Anything unmeasured or unread throws as before. The hold is logged once, such as
@@ -440,9 +474,11 @@ lands, judged as [finishing](#which-charged-move-to-throw) is, which comes befor
 its lands. It's logged as `its banked Fly finishes Buzzwole`. Otherwise it prefers one that none of the opponent's
 allowed moves can hit super effectively. Among those, or among all of them if none is safe, it picks the one whose
 hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
-The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species wasn't read goes in only
-when its banked energy finishes the opponent, when nothing named is left, or when it is first and nothing named is safe
-or hits at all.
+Its hardest move is of its two charged moves where both were read, and otherwise of every one its species can learn bar
+Frustration and Return, unless one of those was read. The reason is logged, such as
+`the only one safe from Glaceon's moves`. A card whose species wasn't read is never safe; where both its charged moves
+were read it hits for what they land without STAB, and short of both it goes in only when its banked energy finishes the
+opponent, when nothing named is left, or when it is first and nothing named is safe or hits at all.
 
 ### When the opponent switches
 
@@ -450,10 +486,10 @@ An opponent that switches out (rather than faints) has spent its switch timer, s
 straight away. If the newcomer's allowed moves can hit ours super effectively, it switches to a benched Pokémon that
 counters it outright: safe from every one of those moves, and holding a charged move that is super effective against
 every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that hits
-hardest; with none, it stays in. Like `nextOut`, it judges our benched Pokémon by every move their species can learn,
-since their actual moves only show once they're out. Unread species never switch, and nor does one with a lit move that
-would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor one
-[doomed](#banking-energy) with a move lit to throw into a shield.
+hardest; with none, it stays in. Like `nextOut`, it judges a benched Pokémon by its two charged moves where both were
+read, and otherwise by every move its species can learn bar Frustration and Return, unless one of those was read. Unread
+species never switch, and nor does one with a lit move that would [finish](#which-charged-move-to-throw) the newcomer,
+since the bench is tapped ahead of a lit move, nor one [doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
 once, with nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the
@@ -497,10 +533,14 @@ time, it's tried again at once.
 
 ### Knowing who is out
 
-- **Ours:** a nicknamed Pokémon's species comes from the party screen: the lead, then whichever card was sent in. If the
-  moves read under the buttons can't belong to that species, which a misread card would cause, it moves on to the next
-  card that fits. A switch prompt is answered only once our Poké Balls show a faint since the last one: a dark field at
-  night can match its slate panel, and was once answered with all three of ours still red.
+- **Ours:** a nicknamed Pokémon's species comes from the party screen: the lead, then whichever card was sent in, named
+  by its silhouette where its panel went unread. Where the panel was read, a card its dex number's search found keeps
+  its silhouette's species, and any other takes the species the panel's types and moves name; where they name none, its
+  silhouette's, unless that search took on a recognised selection screen and showed no pink cell, which leaves it
+  unnamed. If the moves read under the buttons can't belong to that card, its own two where they were read and otherwise
+  its species', which a misread card would cause, it moves on to the next card that fits. A switch prompt is answered
+  only once our Poké Balls show a faint since the last one: a dark field at night can match its slate panel, and was
+  once answered with all three of ours still red.
 - **Theirs:** a switch made with the HUD up shows as their HP bar reading fuller than before. Fewer Poké Balls left than
   when the last name was read means the old one fainted, logged as `Entei fainted; sent in Salamence`; otherwise it
   switched out, `switched to Sneasel`.
@@ -509,13 +549,16 @@ time, it's tried again at once.
 
 The strategy still leaves some gaps:
 
-- **Our own energy.** Reading the fill on the unlit charged-move buttons would say how far off the best move is. That
-  needs fixtures cut from a recording of moves of different types filling up, against light and dark skies.
+- **Our own energy.** With our fast move read off its card, our energy can be counted from it, given that we swipe
+  non-stop, and corrected by the buttons lighting ([#485](https://github.com/spence-com-au/pogo-utils/issues/485)).
 - **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
   would faint us, or its next fast move would ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing
   us down before the best move fills, seen sooner than the last of them, which needs our own energy to see coming.
-- **Our own fast move.** Holding for the next ([above](#which-charged-move-to-throw)) takes ours to be the longest our
-  species has. Told apart by the size of our hits, as the opponent's is by its, it would hold more often.
+- **Our own fast move, unread.** Where its card's panel went unread, holding for the next
+  ([above](#which-charged-move-to-throw)) takes ours to be the longest our species has. Told apart by the size of our
+  hits, as the opponent's is by its, it would hold more often.
+- **Our moves under the buttons.** The labels are matched among every move our species can hold, where its card's own
+  two would leave a misread less to land on.
 - **Out of scope for now:**
   - Getting a throw in before the opponent's.
   - Choosing who to send in by the opponent's energy.
