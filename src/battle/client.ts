@@ -45,10 +45,34 @@ export async function lend(
     throw new Error('no phone is connected');
   }
 
-  // Started only once the phone is let go of, which fails where it is already gone and leaves nothing to end.
   const { serial } = phone;
+
+  /**
+   * The phone held by the page again, unless the settings menu connected another meanwhile: that one is the user's
+   * choice and stays held, this one being let go of again. Failing to come back is told after `error`, the run's own
+   * failure, where there is one, that being the news.
+   */
+  const takeBack = (error?: string) =>
+    reconnect(serial)
+      .then((back) => (store.phone === null ? store.hold(back) : back.close()))
+      .catch((failure: unknown) => {
+        throw error === undefined
+          ? failure
+          : new Error(
+              `${error}; the phone could not be taken back, so connect it again from the settings menu: ${said(failure)}`,
+            );
+      });
+
+  // Started only once the phone is let go of, which fails where it is already gone and leaves nothing to end.
   await phone.close();
-  const worker = start();
+  let worker: Endpoint;
+
+  try {
+    worker = start();
+  } catch (error) {
+    await takeBack(said(error));
+    throw error;
+  }
 
   // Frames are answered in the order they were asked for, the Worker taking each message in turn.
   const asked: ((image: Image | undefined) => void)[] = [];
@@ -67,21 +91,7 @@ export async function lend(
       worker.terminate();
       asked.splice(0).forEach((answer) => answer(undefined));
 
-      // The run's failure is the news where there is one, with the phone failing to come back after it as well. A phone
-      // the settings menu connected meanwhile is the one the user chose, and stays held; this one is let go of again.
-      reconnect(serial)
-        .then((back) => (store.phone === null ? store.hold(back) : back.close()))
-        .then(
-          () => (error === undefined ? resolve() : reject(new Error(error))),
-          (failure: unknown) =>
-            reject(
-              error === undefined
-                ? failure
-                : new Error(
-                    `${error}; the phone could not be taken back, so connect it again from the settings menu: ${said(failure)}`,
-                  ),
-            ),
-        );
+      takeBack(error).then(() => (error === undefined ? resolve() : reject(new Error(error))), reject);
     };
 
     worker.addEventListener('message', ({ data }) => {

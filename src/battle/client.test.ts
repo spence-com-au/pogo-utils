@@ -165,3 +165,18 @@ test('starts no Worker where the phone cannot be let go of, it being gone alread
   await expect(lend(store, started, reconnect)).rejects.toThrow('the device was unplugged');
   expect(started).not.toHaveBeenCalled();
 });
+
+test('holds the phone again where the Worker cannot be started', async () => {
+  const { store, reconnect, back } = await setUp([], () => Promise.reject(new Error('never asked')));
+
+  await expect(
+    lend(
+      store,
+      () => {
+        throw new Error('no Worker here');
+      },
+      reconnect,
+    ),
+  ).rejects.toThrow('no Worker here');
+  expect(store.phone).toBe(back.connection);
+});
