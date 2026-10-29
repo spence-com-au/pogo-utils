@@ -5,7 +5,7 @@
  * Held until another phone replaces it or it is unplugged, so a tab switch costs no reconnection. The phone stays
  * claimed meanwhile, which is the trade: an `adb` server on this computer cannot reach it until it is unplugged or the
  * site is closed. A battle's Worker borrows it for a run, through `lend` in `battle/client.ts`, and none is held here
- * until the run gives it back.
+ * meanwhile, unless the settings menu connects another, which then stays held in place of the lent one.
  *
  * Only the `Phone` type comes from `webusb.ts`, so a tab that merely asks whether a phone is held loads none of Tango.
  */
