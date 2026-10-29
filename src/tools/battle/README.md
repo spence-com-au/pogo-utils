@@ -204,20 +204,25 @@ for text and done every few seconds.
 
 `run` is driven through a [`Phone`](phone.mts) (latest frame, screenshot, tap, swipe) and a `Clock`, never `adb`
 directly, so tests stand in a scripted phone that plays committed frames as scenes, and a page one over WebUSB
-([`src/battle/phone.ts`](../../battle/phone.ts)). That one is built in a dedicated Worker, for `run` to play through
-there once the Battle tab runs it, since a Worker's timers keep time while the tab is hidden where the page's fall to
-one a second. Only one context can claim the phone's USB device, so the page lets go of the phone it holds, the Worker
-opens it again by its serial from the devices the site was granted, and once the Worker has stopped and let go in turn
-the page opens it again ([`src/battle/client.ts`](../../battle/client.ts)).
+([`src/battle/phone.ts`](../../battle/phone.ts)). The Battle tab runs `run` through that one in a dedicated Worker
+([`src/battle/host.ts`](../../battle/host.ts)), since a Worker's timers keep time while the tab is hidden where the
+page's fall to one a second. Only one context can claim the phone's USB device, so the page lets go of the phone it
+holds, the Worker opens it again by its serial from the devices the site was granted, and once the Worker has stopped
+and let go in turn the page opens it again ([`src/battle/client.ts`](../../battle/client.ts)). The page loads the game
+data and hands it over with the run's options, which both it and the CLI read by [`options.mts`](options.mts); the
+Worker reads the menus with the WebAssembly Tesseract, whose own workers it starts as a page would, and keeps the phone
+awake as the CLI does, noting in IndexedDB what to put back so that a tab closed mid-run is put right at the phone's
+next connect ([`src/battle/awake.ts`](../../battle/awake.ts)).
 
-**[`report.mts`](report.mts)** is how a run tells of itself: events (a tap, a throw, a shield taken and why, a faint)
-and a status sent every frame. On a terminal, `live` draws a fixed full-screen panel with our side on the left and the
-opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty, Ghostty and WezTerm do, the
-phone's latest frame is drawn down the panel's left edge at full height, so long as the table beside it still has 80
-columns and `--no-graphics` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as a temporary
-file the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one, draws no
-picture rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what `--verbose`
-gives there.
+**[`reporter.mts`](reporter.mts)** is how a run tells of itself: events (a tap, a throw, a shield taken and why, a
+faint) and a status sent every frame, which the Worker passes on to the Battle tab to draw.
+**[`report.mts`](report.mts)** draws them in a terminal. There, `live` draws a fixed full-screen panel with our side on
+the left and the opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty, Ghostty and
+WezTerm do, the phone's latest frame is drawn down the panel's left edge at full height, so long as the table beside it
+still has 80 columns and `--no-graphics` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as
+a temporary file the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one,
+draws no picture rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what
+`--verbose` gives there.
 
 The phone is drawn ten times a second rather than every frame. At 30 a second Ghostty fell behind reading the 1.2 MB
 files, and the run sat blocked writing the panel to it, for 181ms at the longest. Ten a second costs the run itself

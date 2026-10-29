@@ -22,7 +22,7 @@ export interface Route {
 }
 
 /**
- * Whether this names one of the six. A reader's URL is the input, so the names are checked against the table rather
+ * Whether this names one of the seven. A reader's URL is the input, so the names are checked against the table rather
  * than trusted — the same reading every `fromFragment` in `src/` gives the parts of a fragment it does not recognise.
  */
 export const isPage = (value: string): value is Page => PAGES.some((page) => page.name === value);

@@ -73,6 +73,22 @@ export function gameData(): Promise<GameData> {
 }
 
 /**
+ * The WebAssembly Tesseract, its worker and cores found against `base`, the page's URL. Tesseract.js resolves a
+ * relative path against the page itself, but in a Worker it takes one as it is, and the worker it starts from a blob
+ * has no URL of its own to resolve one against, so a battle's Worker hands its page's.
+ */
+export function wasmEngine(base: string, progress?: (fraction: number) => void) {
+  return tesseractWasm({
+    langPath: MODEL,
+    workers: Math.min(navigator.hardwareConcurrency || 1, MAX_WORKERS),
+    workerPath: new URL(TESSERACT_VENDOR + 'worker.min.js', base).href,
+    corePath: new URL(TESSERACT_VENDOR, base).href,
+    cache: true,
+    ...(progress && { progress }),
+  });
+}
+
+/**
  * The engine installed and the game master loaded, once: all a storage search needs, the game master being what tells
  * a detail screen from the map, and the first half of a read. A failure is not kept, so the next call tries again
  * rather than answering every later one with the network as it was the first time.
@@ -84,16 +100,7 @@ function ready(onModel: (fraction: number) => void): Promise<GameData> {
     // The CLI narrates the icons it is about to read, which a page has no terminal for.
     showProgress(false);
 
-    useEngine(
-      tesseractWasm({
-        langPath: MODEL,
-        workers: Math.min(navigator.hardwareConcurrency || 1, MAX_WORKERS),
-        workerPath: TESSERACT_VENDOR + 'worker.min.js',
-        corePath: TESSERACT_VENDOR,
-        cache: true,
-        progress: onModel,
-      }),
-    );
+    useEngine(wasmEngine(location.href, onModel));
 
     return gameData();
   })();

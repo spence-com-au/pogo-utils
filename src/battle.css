@@ -1,0 +1,270 @@
+/**
+ * The Battle page. Shares the colour tokens in theme.css, the tab bar in nav.css and the heading block in chrome.css
+ * with the other pages; the form starts a run and the panel below draws it, the phone's screen beside it, as the
+ * terminal draws `pnpm battle run`.
+ */
+
+/* Scoped to the open page, for the reason integrations.css gives at length: one document loads every page's sheet. */
+body[data-page='battle'] {
+  /* Wide enough for the phone beside the panel's two sides, each with room for a Pokémon's name and its moves. */
+  --content-w: 980px;
+
+  .battle {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: var(--content-w);
+    margin: 0 auto;
+    padding: 8px 22px 40px;
+    font-size: 13px;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    color: var(--text);
+  }
+
+  p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  code {
+    font-size: 12px;
+  }
+
+  .fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  label {
+    display: flex;
+    flex: 1 1 140px;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  input,
+  select {
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  /* Beside the button that starts it, in the accent the site warns in, so it is read before the run is. */
+
+  .warning {
+    padding: 10px 12px;
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .run {
+    padding: 9px 18px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .run:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  .ghost {
+    padding: 9px 18px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .ghost:hover:not(:disabled) {
+    border-color: var(--track);
+    color: var(--track);
+  }
+
+  .run:disabled,
+  .ghost:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .status span {
+    display: block;
+  }
+
+  /* The phone down the left, as the terminal draws it, and the panel in what is left. */
+
+  .arena {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+  }
+
+  .screen {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #000;
+  }
+
+  .summary {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .sides {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  .name {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  .name strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hp {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .hp span {
+    display: block;
+    height: 100%;
+    background: var(--start);
+  }
+
+  .strength {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* What each side did, ours at the left and theirs at the right, laid out from the foot up so the latest stays in view. */
+
+  .did {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    max-height: 320px;
+    margin: 0;
+    padding: 8px 0 0;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    list-style: none;
+  }
+
+  .did li {
+    width: 50%;
+    color: var(--text);
+  }
+
+  .did li.opponent {
+    margin-left: 50%;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+  }
+
+  .did li.own {
+    padding-right: 8px;
+  }
+
+  .why {
+    color: var(--muted);
+  }
+
+  .runs {
+    margin: 0;
+    padding: 8px 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+    color: var(--muted);
+  }
+
+  .none {
+    font-style: italic;
+  }
+
+  /* A phone's width: the screen above the panel rather than beside it, short enough to leave the panel in view. */
+
+  @media (width <= 640px) {
+    .arena {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .screen {
+      width: auto;
+      max-width: 100%;
+      max-height: 50vh;
+      justify-self: center;
+    }
+  }
+}

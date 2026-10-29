@@ -9,6 +9,7 @@
 import { useRef, useState } from 'preact/hooks';
 
 import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBackup } from './backup.js';
+import { putBack } from './battle/awake.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
 import { phoneStore, usePhone } from './phone-store.js';
@@ -75,6 +76,11 @@ export function Settings() {
 
       await phoneStore.hold(picked);
       setPhoneStatus(null);
+
+      // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
+      await putBack(picked).catch((e: unknown) =>
+        setPhoneStatus(`Could not put back the setting a battle kept the phone awake by: ${said(e)}`),
+      );
     } catch (e) {
       setPhoneStatus(`Could not connect: ${said(e)}`);
     } finally {

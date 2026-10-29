@@ -1,19 +1,55 @@
 /**
  * The page and the battle's Worker talking over a channel as they would across the Worker's boundary, each message
- * cloned, with stand-ins for the phone over WebUSB and `FakeDecoder` for WebCodecs: who holds the phone when, what the
- * page is answered, and how a run that fails hands the phone back all the same.
+ * cloned, with stand-ins for the phone over WebUSB, `FakeDecoder` for WebCodecs and an OCR engine that reads nothing,
+ * and the battle loop itself playing what the phone's screen shows: who holds the phone when, what the page is told and
+ * answered, how the phone is kept awake and put back, and how a run that fails hands the phone back all the same.
  */
 
+import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import type { Phone as Connection } from '../inventory/webusb.js';
 import { PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
+import { type Status } from '../tools/battle/reporter.mts';
+import { type GameData } from '../tools/inventory/game-master.mts';
+import { putBack } from './awake.js';
 import { lend, type Endpoint } from './client.js';
 import { host } from './host.js';
+import { type Play } from './protocol.js';
 import { FakeChunk, FakeDecoder, fakeConnection } from './test-phone.js';
 
 const H264 = fixture(new URL('../tools/battle/fixtures/charge.h264', import.meta.url));
+
+/** A Great League training battle against Spark, the opponents' moves narrowed to none, which the run says first. */
+const PLAY: Play = {
+  battle: {
+    mode: { mode: 'training', leader: 'spark', league: 'great' },
+    data: JSON.parse(
+      new TextDecoder().decode(fixture(new URL('../tools/inventory/fixtures/game-master.json', import.meta.url))),
+    ) as GameData,
+    icons: [],
+    typeIcons: {},
+    meta: { cup: 'all', cap: 1500, movesets: new Map() },
+  },
+  base: 'http://localhost:8000/#/battle',
+};
+
+/** What the page is told, event by event and the latest status. */
+function told() {
+  const events: string[] = [];
+  const statuses: Status[] = [];
+
+  return {
+    events,
+    statuses,
+    report: {
+      event: (line: string, side?: string, why?: string) =>
+        events.push([side, line, why].filter((part) => part !== undefined).join(': ')),
+      status: (status: Status) => statuses.push(status),
+    },
+  };
+}
 
 let channel: MessageChannel;
 
@@ -22,6 +58,7 @@ beforeEach(() => {
   FakeDecoder.failing = false;
   vi.stubGlobal('VideoDecoder', FakeDecoder);
   vi.stubGlobal('EncodedVideoChunk', FakeChunk);
+  vi.stubGlobal('indexedDB', new IDBFactory());
   channel = new MessageChannel();
 });
 
@@ -35,7 +72,7 @@ afterEach(() => {
  * A page holding a phone and a Worker reaching it through `open`, with what each opens and lets go of told to `log` in
  * the order it happens.
  */
-async function setUp(log: string[], open: (serial: string) => Promise<Connection>) {
+async function setUp(log: string[], open: (serial: string) => Promise<Connection>, bases: string[] = []) {
   const store = new PhoneStore();
   const held = fakeConnection('pixel', H264, log);
   await store.hold(held.connection);
@@ -51,6 +88,11 @@ async function setUp(log: string[], open: (serial: string) => Promise<Connection
     (serial) => {
       log.push(`worker opened ${serial}`);
       return open(serial);
+    },
+    (base) => {
+      bases.push(base);
+
+      return { tsv: () => Promise.resolve(''), terminate: () => Promise.resolve() };
     },
   );
 
@@ -84,7 +126,7 @@ test('lends the phone to the Worker for a run, answers its frames, and takes it 
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
 
-  const run = await lend(store, start, reconnect);
+  const run = await lend(store, PLAY, told().report, start, reconnect);
 
   expect(store.phone, 'no other tab may reach it meanwhile').toBeNull();
   expect(await run.frame()).toMatchObject({ width: 360, height: 760 });
@@ -105,13 +147,56 @@ test('lends the phone to the Worker for a run, answers its frames, and takes it 
   expect(await run.frame(), 'a frame asked for once stopped').toBeUndefined();
 });
 
+test('plays the battle in the Worker, telling the page what it does, and puts the phone back as found when stopped', async () => {
+  const there = fakeConnection('pixel', H264);
+  there.settings.set('stay_on_while_plugged_in', '1');
+  const bases: string[] = [];
+  const { store, start, reconnect } = await setUp([], () => Promise.resolve(there.connection), bases);
+  const { events, statuses, report } = told();
+
+  const run = await lend(store, PLAY, report, start, reconnect);
+
+  await vi.waitFor(() => expect(statuses.length).toBeGreaterThan(0));
+  expect(events[0]).toBe("opponents' moves as PvPoke ranks all at 1500 CP: 0 species");
+  expect(statuses.at(-1)).toMatchObject({ battles: 0, count: Infinity, screen: 'other', lostAfter: 20_000 });
+  expect(bases, 'the OCR found against the page').toEqual([PLAY.base]);
+  expect(there.ran).toEqual(['settings get global stay_on_while_plugged_in', 'svc power stayon usb']);
+
+  run.stop();
+
+  await expect(run.ended).resolves.toBeUndefined();
+  expect(there.ran.at(-1)).toBe('settings put global stay_on_while_plugged_in 1');
+
+  // Nothing left kept for the next connect to put back.
+  const next = fakeConnection('pixel', H264);
+  await putBack(next.connection);
+  expect(next.ran).toEqual([]);
+});
+
+test('puts the phone back as found at its next connect, where its tab was closed mid-run', async () => {
+  const there = fakeConnection('pixel', H264);
+  there.settings.set('stay_on_while_plugged_in', '1');
+  const { store, start, reconnect } = await setUp([], () => Promise.resolve(there.connection));
+  const run = await lend(store, PLAY, told().report, start, reconnect);
+
+  // The Worker ended with its tab, mid-run, before it could put anything back: what the next page finds.
+  const next = fakeConnection('pixel', H264);
+  await putBack(next.connection);
+  await putBack(next.connection);
+
+  expect(next.ran, 'put back once, then forgotten').toEqual(['settings put global stay_on_while_plugged_in 1']);
+
+  run.stop();
+  await run.ended;
+});
+
 test('fails with why the Worker could not reach the phone, and holds the phone again all the same', async () => {
   const log: string[] = [];
   const { store, start, reconnect, back } = await setUp(log, () =>
     Promise.reject(new Error('the phone pixel is not plugged in, or this site may no longer reach it')),
   );
 
-  await expect(lend(store, start, reconnect)).rejects.toThrow(/not plugged in/);
+  await expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow(/not plugged in/);
 
   expect(store.phone).toBe(back.connection);
   expect(log).toEqual(['pixel let go', 'worker started', 'worker opened pixel', 'worker ended', 'page opened pixel']);
@@ -121,7 +206,7 @@ test('ends the run when the phone is unplugged, saying so once the page has trie
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
-  const run = await lend(store, start, reconnect);
+  const run = await lend(store, PLAY, told().report, start, reconnect);
 
   there.unplug(new Error('the device was unplugged'));
 
@@ -138,7 +223,7 @@ test.for([
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
-  const run = await lend(store, start, reconnect);
+  const run = await lend(store, PLAY, told().report, start, reconnect);
 
   there.processes[which]?.kill();
 
@@ -149,9 +234,9 @@ test.for([
 test('lends a phone once, a second `lend` meanwhile finding none', async () => {
   const there = fakeConnection('pixel', H264);
   const { store, start, reconnect } = await setUp([], () => Promise.resolve(there.connection));
-  const first = lend(store, start, reconnect);
+  const first = lend(store, PLAY, told().report, start, reconnect);
 
-  await expect(lend(store, start, reconnect)).rejects.toThrow('no phone is connected');
+  await expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow('no phone is connected');
 
   const run = await first;
   run.stop();
@@ -163,7 +248,7 @@ test('leaves a phone connected during the run held, not reopening the lent one',
   const there = fakeConnection('pixel', H264, log);
   const { store, start } = await setUp(log, () => Promise.resolve(there.connection));
   const reconnect = vi.fn(() => Promise.reject(new Error('unplugged for the other')));
-  const run = await lend(store, start, reconnect);
+  const run = await lend(store, PLAY, told().report, start, reconnect);
   const other = fakeConnection('other', H264, log);
 
   await store.hold(other.connection);
@@ -180,7 +265,7 @@ test('lets the lent phone go again where another is connected while it is being 
   const { store, start, back } = await setUp(log, () => Promise.resolve(there.connection));
   const other = fakeConnection('other', H264, log);
 
-  const run = await lend(store, start, async () => {
+  const run = await lend(store, PLAY, told().report, start, async () => {
     await store.hold(other.connection);
     return back.connection;
   });
@@ -197,7 +282,7 @@ test('takes a reopen that fails as no failure where another phone was connected 
   const { store, start } = await setUp([], () => Promise.resolve(there.connection));
   const other = fakeConnection('other', H264);
 
-  const run = await lend(store, start, async () => {
+  const run = await lend(store, PLAY, told().report, start, async () => {
     await store.hold(other.connection);
     throw new Error('the phone is held by something else');
   });
@@ -216,14 +301,16 @@ test('fails a run whose connection closed unasked before the first frame, saying
     return there.connection;
   });
 
-  await expect(lend(store, start, reconnect)).rejects.toThrow('the connection to the phone closed');
+  await expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow(
+    'the connection to the phone closed',
+  );
   expect(store.phone).toBe(back.connection);
 });
 
 test('fails a run whose connection closed unasked, rather than end it as if stopped', async () => {
   const there = fakeConnection('pixel', H264);
   const { store, start, reconnect, back } = await setUp([], () => Promise.resolve(there.connection));
-  const run = await lend(store, start, reconnect);
+  const run = await lend(store, PLAY, told().report, start, reconnect);
 
   await there.connection.close();
 
@@ -236,7 +323,7 @@ test('starts no Worker where the phone cannot be let go of, it being gone alread
   const started = vi.fn(start);
   vi.spyOn(held.connection, 'close').mockRejectedValue(new Error('the device was unplugged'));
 
-  await expect(lend(store, started, reconnect)).rejects.toThrow('the device was unplugged');
+  await expect(lend(store, PLAY, told().report, started, reconnect)).rejects.toThrow('the device was unplugged');
   expect(started).not.toHaveBeenCalled();
 });
 
@@ -246,6 +333,8 @@ test('holds the phone again where the Worker cannot be started', async () => {
   await expect(
     lend(
       store,
+      PLAY,
+      told().report,
       () => {
         throw new Error('no Worker here');
       },
