@@ -188,6 +188,17 @@ const OFF_MS = 3_000;
  */
 const STALE_MS = 3_000;
 
+/**
+ * How long after its last frame the switch prompt is still taken to be up, in milliseconds: still owed its answer, and
+ * our side still forgotten on its frames. Sliding in or out, it reads as the fight for the odd frame. Replayed off a
+ * live run's video, Palkia's prompt showed for a frame, read as the fight for the next 113ms, showed for half a second,
+ * read as the fight for 90ms and showed for a last frame, its frames 152ms apart at the most, at a frame each 25–40ms.
+ * Ended by the first frame of the fight, its later frames were owed nothing: none was tapped, and none forgot our side.
+ * About three times that gap leaves room for a run slower to take frames than the video. Held past the prompt's end it
+ * costs nothing, the fight played meanwhile and no faint coming so soon after one, the newcomer taking 1.5s to fly in.
+ */
+const FLICKER_MS = 500;
+
 /** Frames kept for a run that gets lost, about the last three seconds of it at one frame in ten. */
 const KEPT_FRAMES = 10;
 
@@ -426,8 +437,10 @@ export async function run(
   let left: { own: number | null; opponent: number | null } = { own: null, opponent: null };
   let leftAtName: number | null = null;
 
-  // How many of ours the Poké Balls showed left when the last switch prompt showed: three, before any has.
+  // How many of ours the Poké Balls showed left when the last switch prompt showed: three, before any has. And when a
+  // frame last showed one, `FLICKER_MS` after which it is gone.
   let promptedAt = 3;
+  let switchAt = -Infinity;
 
   // The opponent a fuller bar said was replaced, its name cleared to be read again, until the newcomer's is: what the
   // newcomer is told as having replaced.
@@ -894,6 +907,7 @@ export async function run(
         drop(`${seen.own ?? 'ours'} fainted first`);
         forgetOwn();
         faintAt = clock.now();
+        switchAt = faintAt;
 
         if (switching) {
           swappedAt = switching.at;
@@ -954,23 +968,21 @@ export async function run(
         );
       }
 
-      // A prompt gone unanswered, the game's timer having picked, still owes the faint the Poké Balls caught on it.
-      if (
-        state !== 'switch' &&
-        prompt?.fainted !== undefined &&
-        !prompt.answered &&
-        !prompt.told &&
-        fainted.has(prompt.fainted)
-      ) {
+      // The prompt is gone once no frame has shown it for `FLICKER_MS`, not at the first frame of the fight, which may
+      // be the prompt sliding in or out. Gone unanswered, the game's timer having picked, it still owes the faint the
+      // Poké Balls caught on it.
+      const over = clock.now() - switchAt >= FLICKER_MS;
+
+      if (over && prompt?.fainted !== undefined && !prompt.answered && !prompt.told && fainted.has(prompt.fainted)) {
         log(`${party[prompt.fainted] ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
       }
 
-      prompt = state === 'switch' ? prompt : undefined;
+      prompt = over ? undefined : prompt;
 
       // One fewer of ours by the Poké Balls than the faints counted is the one out fainting, counted whether or not a
       // switch prompt is answered for it: the game's timer picks when one is not, or it goes unrecognised, and counted
-      // only off our taps, every slot named after it was the one before. Told here unless a prompt is showing, whose
-      // answer tells it, and kept for the prompt only where none has shown yet.
+      // only off our taps, every slot named after it was the one before. Told here unless this frame is the switch
+      // prompt, whose answer tells it, and kept for the prompt only where none has shown yet.
       if (left.own !== null && left.own < party.length - fainted.size) {
         // A move read that none of ours still standing can hold is a misread, which says nothing of who is out, and
         // leaves it to the one last sent in: with our name unread a label is matched among every move, and live `TIVE`,
@@ -1048,11 +1060,14 @@ export async function run(
             );
       const shield = ourShields > 0 && verdict.faints;
 
+      // One more of the opponent's fast moves fainting us, which no shield stops.
+      const fast = energy.fastFaints(facing, health.own, stages);
+
       // With no shield left, a hit that would faint us makes this throw our last, so what it does to our own stats is
-      // past mattering. The shield's verdict, unknowns and an unread cap counting as fainting here too: guessed wrong,
-      // either way it costs no more than the stages of one move, where telling a guess from a read would take `Verdict`
-      // saying which it is.
-      const lastHit = ourShields === 0 && verdict.faints;
+      // past mattering, and so does a fast move that would, whatever the shields. The shield's verdict, unknowns and an
+      // unread cap counting as fainting here too: guessed wrong, either way it costs no more than the stages of one
+      // move, where telling a guess from a read would take `Verdict` saying which it is.
+      const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined;
       const ownTypes = typesOf(data, us);
       const theirTypes = typesOf(data, them);
       const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
@@ -1084,14 +1099,19 @@ export async function run(
           ? undefined
           : finisher(data, seen.moves, lit, facing.own, facing.opponent, health.opponent, theirShields, cap, stages);
 
-      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, and
-      // there may be no time left to hold energy for the move chosen: the lit button worth the most goes now, a shield
-      // drawn or damage dealt being better than fainting with the energy stored. Only on the count's word, a faint feared
-      // for something unknown being no sign that one is coming.
-      const fear = `${verdict.afforded} would faint us, ${affordable} energy affords it`;
+      // No shield to be taken against a move the opponent's counted energy already affords and that would faint us, or
+      // its next fast move fainting us whatever the shields, and there may be no time left to hold energy for the move
+      // chosen: the lit button worth the most goes now, a shield drawn or damage dealt being better than fainting with
+      // the energy stored. Only on the count's word or a fast hit measured or modelled, a faint feared for something
+      // unknown being no sign that one is coming.
+      const afforded =
+        !shield && verdict.faints && verdict.afforded !== undefined
+          ? `${verdict.afforded} would faint us, ${affordable} energy affords it`
+          : undefined;
+      const fears = [fast, afforded].filter((fear) => fear !== undefined);
       const now =
-        pick && !shield && verdict.faints && verdict.afforded !== undefined
-          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fear, { lastHit })
+        pick && fears.length > 0
+          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fears.join('; '), { lastHit })
           : undefined;
 
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
@@ -1109,23 +1129,26 @@ export async function run(
       // can throw leave the energy lit for the next, as a player held Brave Bird for a Mewtwo while Galarian Moltres's
       // fast moves finished a Giratina at 15%. Held by handing `Player` nothing to throw. Never once a throw is tapped and
       // not yet played: a banner read landing meanwhile can lower the count into a hold, which would stop a lost tap's
-      // retap, the counts it rests on staying paused until the throw plays.
+      // retap, the counts it rests on staying paused until the throw plays. Nor where the next fast move would faint us:
+      // `spare` weighs their fast moves by the step measured, where `fastFaints` may have found one hit enough by the
+      // model at the stages as they stand, and a Pokémon fainted carries no energy on.
       const going = !player.minigame && lit.some((x) => throwing === undefined || x === throwing.x);
-      const spared = going
-        ? spare(
-            data,
-            {
-              matchup: facing,
-              hp: health,
-              shields: theirShields,
-              left: left.opponent,
-              steps: { ours: hits.step, theirs: energy.step },
-              estimate,
-              seen: theirMoves.get(seen.opponent ?? ''),
-            },
-            meta,
-          )
-        : undefined;
+      const spared =
+        going && fast === undefined
+          ? spare(
+              data,
+              {
+                matchup: facing,
+                hp: health,
+                shields: theirShields,
+                left: left.opponent,
+                steps: { ours: hits.step, theirs: energy.step },
+                estimate,
+                seen: theirMoves.get(seen.opponent ?? ''),
+              },
+              meta,
+            )
+          : undefined;
       const best = spared === undefined ? throwing?.x : undefined;
 
       if (spared !== undefined && sparing !== seen.opponent) {
@@ -1154,7 +1177,17 @@ export async function run(
       const hold =
         deferrable === undefined
           ? undefined
-          : untilTheirsLands(data, deferrable, us, theirName(), ourShields, verdict, affordable, ongoing?.waited ?? 0);
+          : untilTheirsLands(
+              data,
+              deferrable,
+              us,
+              theirName(),
+              ourShields,
+              verdict,
+              fast,
+              affordable,
+              ongoing?.waited ?? 0,
+            );
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
         // A hold of another move ends as this one begins, the move chosen having changed under it.

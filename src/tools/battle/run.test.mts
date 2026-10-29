@@ -1037,8 +1037,9 @@ const HOLDING =
  * the count to 8, one hit's allowance, which affords nothing, our bar at 30% after it. Or once held as long as
  * Giratina's energy takes to fill from 50 at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off
  * the field between `lit` and `relit` not counting, so after the 6s the two last and before `late`, 0.5s after them,
- * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit` or
- * `relit`, which take no tap.
+ * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Or as our bar, at 4%,
+ * comes within one of Mamoswine's fast moves, `fastFaints`'s fear coming first of the reasons Icicle Spear would give
+ * as well. Never on `lit` or `relit`, which take no tap.
  */
 test.each([
   [
@@ -1074,6 +1075,16 @@ test.each([
       'own: threw Shadow Sneak: would finish Mamoswine at 4%',
     ],
   ],
+  [
+    'gives way to a fast move fainting us',
+    { lasts: { ms: 2000, to: 'low' } },
+    'low',
+    [
+      HOLDING,
+      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left',
+      'own: threw Shadow Sneak',
+    ],
+  ],
 ])(
   'with no shield of ours left, a move lowering our defense is held until the hit it waits for %s',
   async (_, lit, tapped, said) => {
@@ -1087,6 +1098,7 @@ test.each([
         gap: { frame: fixture('other-vs-fade'), lasts: { ms: 3000, to: 'relit' } },
         relit: { frame: ours(80), lasts: { ms: 2000, to: 'late' } },
         late: { frame: ours(80), tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 500, to: 'won' } },
+        low: { frame: ours(4), tap: { at: [0.499, 0.889], to: 'minigame' } },
         finishing: {
           frame: painted(ours(80), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
           tap: { at: [0.499, 0.889], to: 'minigame' },
@@ -1153,6 +1165,51 @@ test.each([
 
   expect(taps).toContain('lit');
   expect(holds(report.events)).toEqual([said]);
+});
+
+/**
+ * Kyogre against Entei in Master League with Avalanche lit, and with Entei's shield hexagons painted a spent one's
+ * purple, Hydro Pump held for: worth more per energy, as `strategy.test.mts` has it. Our bar, its fill painted over
+ * past the HP wanted, is seen to lose 12 points to one of Entei's fast moves once the battle's first read has named it.
+ * Left within one more, Avalanche goes now rather than faint with its energy; left more, Hydro Pump is held for.
+ */
+test.each([
+  [
+    '13%',
+    25,
+    13,
+    [
+      'own: threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump',
+    ],
+  ],
+  ['28%', 40, 28, []],
+])('with %s left, a lit move goes only once the next fast move would faint us', async (_, before, after, said) => {
+  const spent = painted(fixture('charged-two-right'), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
+  const ours = (px: number) => painted(spent, [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: ours(before), lasts: { ms: 400, to: 'hit' } },
+      hit: { frame: ours(after), tap: { at: [0.69, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
 });
 
 /**
@@ -1636,6 +1693,55 @@ test('names the lead from the party, and the next of it after a faint', async ()
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
   expect([...named]).toEqual(['Latias against null', 'Latias against Glaceon', 'Mamoswine against Glaceon']);
+});
+
+/**
+ * Latias faints to Glaceon, and the switch prompt reads as the fight for the odd frame as it slides in and out, as
+ * Palkia's did replayed off a live run's video: a frame of it, 110ms of the fight, the prompt until it is tapped, and
+ * as it goes, 90ms of the fight and a last frame of it. Ended by the first frame of the fight, the prompt was owed
+ * nothing after it, and went untapped: live until the game's timer picked, here until the run ends `Lost`.
+ */
+test('answers a switch prompt that reads as the fight for a frame as it slides in and out', async () => {
+  const latias = fixture('battle-latias');
+  const prompt = fixture('switch-glaceon');
+  const scenes: Record<string, Scene> = {
+    ...battleAndBack(),
+    fight: { frame: latias, swipes: { count: 10, to: 'sliding' } },
+    sliding: { frame: prompt, lasts: { ms: 20, to: 'flicker' } },
+    flicker: { frame: latias, lasts: { ms: 110, to: 'fainted' } },
+    fainted: { frame: prompt, tap: { at: [0.33, 0.87], to: 'leaving' }, lasts: { ms: 3000, to: 'stuck' } },
+    leaving: { frame: prompt, lasts: { ms: 500, to: 'fading' } },
+    fading: { frame: latias, lasts: { ms: 90, to: 'gone' } },
+    gone: { frame: prompt, lasts: { ms: 20, to: 'next' } },
+    stuck: { frame: fixture('other-loss') },
+    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+  };
+  const { phone, clock, taps, strokes } = scripted(scenes, 'party');
+  const report = recorder();
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+
+  const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
+
+  expect(taps).toEqual(['party', 'fainted', 'result']);
+  expect(strokes.map(({ scene }) => scene)).toEqual(expect.arrayContaining(['flicker', 'fading']));
+  expect(report.events.filter((line) => line.startsWith('own: ') && line.includes('fainted'))).toEqual([
+    "own: Latias fainted; sending in Mamoswine: none safe from Glaceon's moves; hits hardest (Stone Edge)",
+  ]);
+  expect([...named].at(-1)).toBe('Mamoswine against Glaceon');
 });
 
 /**

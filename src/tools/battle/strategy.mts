@@ -621,7 +621,7 @@ export function bestLit(
 }
 
 /**
- * What to throw instead of `pick`, the move chosen, where a hit the opponent can afford would faint us and there may be
+ * What to throw instead of `pick`, the move chosen, where a hit the opponent has coming would faint us and there may be
  * no time left to hold energy for it: the lit button `bestLit` finds worth the most. Undefined where that is the move
  * chosen, or where no lit button has a move to weigh. `why` says what would faint us, `fear`, and what becomes of the
  * move chosen: not held for where it is not lit, and passed over where it is, chosen as the bait or for its worth per
