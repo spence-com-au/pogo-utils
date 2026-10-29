@@ -120,13 +120,42 @@ test('fails with why the Worker could not reach the phone, and holds the phone a
 test('ends the run when the phone is unplugged, saying so once the page has tried to take it back', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
-  const { store, start, reconnect } = await setUp(log, () => Promise.resolve(there.connection));
+  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
   const run = await lend(store, start, reconnect);
 
   there.unplug(new Error('the device was unplugged'));
 
   await expect(run.ended).rejects.toThrow('the device was unplugged');
+  expect(log.at(-1)).toBe('page opened pixel');
+  expect(store.phone).toBe(back.connection);
   await vi.waitFor(() => expect(new Set(there.killed)).toEqual(new Set(['screenrecord', 'sh'])));
+});
+
+test.for([
+  ['its screen recording', 1, /^screen recording ended: /],
+  ['its shell', 0, /^the phone's shell ended; is the phone still connected\?$/],
+] as const)('ends the run when %s ends, with no frame asked for', async ([, which, reason]) => {
+  const log: string[] = [];
+  const there = fakeConnection('pixel', H264, log);
+  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const run = await lend(store, start, reconnect);
+
+  there.processes[which]?.kill();
+
+  await expect(run.ended).rejects.toThrow(reason);
+  expect(store.phone).toBe(back.connection);
+});
+
+test('lends a phone once, a second `lend` meanwhile finding none', async () => {
+  const there = fakeConnection('pixel', H264);
+  const { store, start, reconnect } = await setUp([], () => Promise.resolve(there.connection));
+  const first = lend(store, start, reconnect);
+
+  await expect(lend(store, start, reconnect)).rejects.toThrow('no phone is connected');
+
+  const run = await first;
+  run.stop();
+  await run.ended;
 });
 
 test('leaves a phone connected during the run held, letting the lent one go again once it is back', async () => {

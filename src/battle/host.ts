@@ -48,6 +48,9 @@ export function host(port: Port, reconnect: (serial: string) => Promise<Connecti
 
     phone = await battlePhone(connection);
 
+    // Heard as it happens rather than at the next frame the page asks for, which may not come for a while.
+    void phone.failed.then((error) => stop(error));
+
     if (!stopped) {
       port.postMessage({ type: 'started' });
     }

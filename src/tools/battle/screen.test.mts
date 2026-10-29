@@ -133,6 +133,9 @@ test('fails with what the recording said once the newest one ends', async () => 
   await vi.advanceTimersByTimeAsync(0);
 
   expect(() => screen.latest()).toThrow(/^screen recording ended: Unable to get output buffers$/);
+  expect((await screen.failed).message, 'told without being asked').toBe(
+    'screen recording ended: Unable to get output buffers',
+  );
 });
 
 test("fails with the decoder's reason where the recording said nothing", async () => {

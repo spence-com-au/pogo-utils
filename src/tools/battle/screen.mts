@@ -57,10 +57,18 @@ export class Screen {
   #started = 0;
   #live = 0;
 
+  /**
+   * Why a recording failed, once one has, for whoever cannot wait to ask `latest`: a Worker no frame may be asked of
+   * for a while, still holding the phone. Never settles for a screen closed without one failing.
+   */
+  readonly failed: Promise<Error>;
+  #fail: (error: Error) => void = () => {};
+
   /** `record` starts a recording: `screenrecord` in a battle, and anything else that sends frames in a test. */
   constructor(record: () => Feed, segmentMs = SEGMENT_MS) {
     this.#record = record;
     this.#segmentMs = segmentMs;
+    this.failed = new Promise((resolve) => (this.#fail = resolve));
     this.#start();
   }
 
@@ -141,6 +149,7 @@ export class Screen {
         if (!this.#closed && generation === this.#started) {
           const reason = feed.reason() || (error instanceof Error ? error.message : 'it stopped sending frames');
           this.#failure = new Error(`screen recording ended: ${reason}`);
+          this.#fail(this.#failure);
           this.close();
         }
       });
