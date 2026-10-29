@@ -1103,6 +1103,19 @@ function painted(image: Image, colour: readonly number[], ...boxes: (readonly nu
   return { ...image, data };
 }
 
+/** `image` with the box, as `[left, top, right, bottom]` in widths, copied from `from`, a frame of the same size. */
+function pasted(image: Image, from: Image, [left = 0, top = 0, right = 0, bottom = 0]: readonly number[]): Image {
+  const data = image.data.slice();
+
+  for (let y = Math.round(top * image.width); y < bottom * image.width; y++) {
+    const start = (y * image.width + Math.round(left * image.width)) * 4;
+    const end = (y * image.width + Math.round(right * image.width)) * 4;
+    data.set(from.data.subarray(start, end), start);
+  }
+
+  return { ...image, data };
+}
+
 /** Where our first Poké Ball is on the Pixel 4 XL's frames, as a box for `painted`. */
 const FIRST_BALL = [0.045, 0.19, 0.071, 0.215];
 
@@ -1453,6 +1466,67 @@ test.each([
   );
 
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
+});
+
+/** The game master with Geomancy gaining 4 energy rather than 13, which leaves Moonblast two of them past Close Combat. */
+const SLOW_GEOMANCY: GameData = {
+  ...DATA,
+  combat: { ...DATA.combat, Geomancy: { ...DATA.combat.Geomancy, energy: 4 } } as GameData['combat'],
+};
+
+/**
+ * Xerneas, its card read as Geomancy, against Garchomp with its shields spent, Moonblast held for as worth more per
+ * energy into a Dragon. Close Combat's button and Moonblast's label are copied from a frame where the one is lit and the
+ * other reads, and Close Combat lit makes our energy at least its 45, as the report shows; Moonblast's 50 is then two
+ * of `SLOW_GEOMANCY`'s Geomancy off, 6 turns. Our bar, its fill painted over past the HP wanted, is seen to lose 2
+ * points to one of Garchomp's fast moves, counted as Mud Shot's 2 turns, once the battle's first read has named it,
+ * and our grey Poké Ball is painted red, as if none of ours had fainted. Left at 5%, two more faint us in 4 turns,
+ * before Moonblast fills, and Close Combat goes now; left at 15%, seven more, and Moonblast is held for.
+ */
+test.each([
+  [
+    '5%',
+    7,
+    [
+      "own: threw Close Combat: Moonblast fills in 6 turns, 5 energy short; 2 of Garchomp's fast moves faint us in 4, one taking ~2% with 5% left; not holding for Moonblast",
+    ],
+  ],
+  ['15%', 17, []],
+])('with %s left, a lit move goes once our energy fills the move held for too late', async (_, from, said) => {
+  const widths = (...px: number[]) => px.map((x) => x / 360);
+  const balls = painted(fixture('battle-pixel8-xerneas-super-effective'), [200, 60, 60], widths(15, 69, 30, 82));
+  const donor = fixture('charged-pixel8-xerneas-not-very-effective');
+  const lit = pasted(pasted(balls, donor, widths(205, 670, 292, 755)), donor, widths(40, 755, 180, 779));
+  const ours = (px: number) => painted(lit, [22, 31, 36], widths(22 + px, 242, 122, 248));
+  const { phone, clock } = scripted(
+    {
+      ...masterParty(),
+      minigame: minigameNoneFainted(),
+      fight: { frame: ours(from), lasts: { ms: 400, to: 'hit' } },
+      hit: { frame: ours(from - 2), tap: { at: [0.69, 0.895], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: SLOW_GEOMANCY,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
+  expect(report.fights.find((fight) => fight.ourEnergy?.fast === 'Geomancy')?.ourEnergy).toEqual({
+    energy: 45,
+    fast: 'Geomancy',
+  });
 });
 
 /**

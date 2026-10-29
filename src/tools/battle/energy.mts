@@ -20,6 +20,10 @@
  * alone finish it before it can throw, and so whether our charged moves are better kept for the next one: `spare`. And
  * the count says whether a move of ours lowering our defense is better kept until the opponent's throw has landed:
  * `untilTheirsLands`.
+ *
+ * Our own energy is counted too, off the fight's time at the fast move each card's panel was read with: `OurEnergy`.
+ * With what one of their fast moves takes of our bar, it says whether the move we hold for fills before those fast
+ * moves faint us: `wornDown`.
  */
 
 import { type GameData } from '../inventory/game-master.mts';
@@ -710,4 +714,136 @@ export function untilTheirsLands(
  */
 export function holding(rule: Hold | undefined, fears: readonly string[]): Hold | undefined {
   return rule && fears.length > 0 ? { held: false, why: fears.join('; ') } : rule;
+}
+
+/** One Pokémon of ours as counted: its energy when last settled, and the fight's time since, in milliseconds. */
+interface Count {
+  settled: number;
+  ms: number;
+}
+
+/**
+ * Our own energy, per party slot, counted off the fight's time at the fast move each card's panel was read with: the
+ * HUD shows which of our charged moves are lit, never how near the rest are. We swipe without a break, so a fast move
+ * lands each time one takes, and gains its energy; the time the fight stands still for — a charged move, a prompt, the
+ * minigame — gains nothing, neither side's fast moves landing in it. Kept per slot, a Pokémon keeping its energy on the
+ * bench, and capped at `FULL`.
+ *
+ * Counted as if every swipe lands at once, the count runs ahead of the energy rather than behind it. A button lit
+ * corrects it the other way, proving at least its move's cost; one unlit is not taken to prove less, a lit button being
+ * misread unlit for a frame now and then. Each throw of ours settles it at what is left after the move's own cost.
+ */
+export class OurEnergy {
+  readonly #data: GameData;
+  readonly #fast: readonly (string | null | undefined)[];
+  readonly #counts = new Map<number, Count>();
+  #at: number | undefined;
+
+  /** `fast` is each slot's fast move, as its card's panel was read, in party order. */
+  constructor(data: GameData, fast: readonly (string | null | undefined)[]) {
+    this.#data = data;
+    this.#fast = fast;
+  }
+
+  /** The fight read at `at` milliseconds with `slot` out: the time since the last reading went on its fast moves. */
+  read(slot: number, at: number): void {
+    const count = this.#countOf(slot);
+    count.ms += this.#at === undefined ? 0 : at - this.#at;
+    this.#at = at;
+  }
+
+  /** Anything the fight stands still for: the time across it gains nothing. */
+  pause(): void {
+    this.#at = undefined;
+  }
+
+  /** A button of `slot`'s lit for `move`: at least its cost, the fast move under way counted afresh from there. */
+  lit(slot: number, move: string): void {
+    const cost = costOf(this.#data, move);
+    const energy = this.estimate(slot)?.energy;
+
+    if (energy !== undefined && energy < cost) {
+      this.#counts.set(slot, { settled: cost, ms: 0 });
+    }
+  }
+
+  /** `slot` threw `move`: what it had, less the move's cost, the fast move under way going on from where it was. */
+  threw(slot: number, move: string): void {
+    const estimate = this.estimate(slot);
+    const count = this.#countOf(slot);
+
+    if (estimate) {
+      count.settled = Math.max(0, estimate.energy - costOf(this.#data, move));
+      count.ms %= this.#duration(estimate.fast);
+    }
+  }
+
+  /** `slot`'s energy as counted, or null where its card's fast move was not read or is not known. */
+  estimate(slot: number): Estimate | null {
+    const fast = this.#fast[slot];
+    const move = fast ? this.#data.combat[fast] : undefined;
+
+    if (!fast || !move || !(move.turns > 0)) {
+      return null;
+    }
+
+    const { settled, ms } = this.#countOf(slot);
+    const landed = Math.floor(ms / this.#duration(fast));
+
+    return { energy: Math.min(FULL, settled + landed * move.energy), fast, gain: move.energy };
+  }
+
+  #duration(fast: string): number {
+    return (this.#data.combat[fast]?.turns ?? 0) * TURN_MS;
+  }
+
+  #countOf(slot: number): Count {
+    const count = this.#counts.get(slot) ?? { settled: 0, ms: 0 };
+    this.#counts.set(slot, count);
+
+    return count;
+  }
+}
+
+/**
+ * Why `move`, the one chosen and not yet lit, will not fill before the opponent's fast moves faint us, or undefined
+ * where it will or cannot be told. Thrown now, whatever is lit lands while we stand, and what is left over goes on
+ * towards another throw; held, everything goes with the faint, which `fastFaints` sees coming only a hit ahead.
+ *
+ * It fills after the fast moves of ours that make up what `ours`, our energy as counted, is short of its cost, and we
+ * faint after the fast moves of theirs that take what is left of our bar, `hp`, at `step` apiece as measured, less the
+ * bar's `WANDER`. Each side's are timed in whole turns of its own fast move, `theirs` being the one the opponent's
+ * energy is counted by, as if each began now: nothing on screen says how far into its fast move either side is.
+ * Filling on the turn we would faint counts as too late, the throw not going before the hit. Anything unread or
+ * unmeasured says nothing, and the move is held for as before.
+ */
+export function wornDown(
+  data: GameData,
+  move: string,
+  ours: Estimate | null,
+  hp: number | null,
+  step: number | undefined,
+  theirs: Estimate | null,
+  opponent: string,
+): string | undefined {
+  if (!ours || !theirs || hp === null || step === undefined || !(step > 0)) {
+    return undefined;
+  }
+
+  const short = costOf(data, move) - ours.energy;
+  const ourTurns = data.combat[ours.fast]?.turns ?? 0;
+  const theirTurns = data.combat[theirs.fast]?.turns ?? 0;
+
+  if (short <= 0 || !(ours.gain > 0) || !(ourTurns > 0) || !(theirTurns > 0)) {
+    return undefined;
+  }
+
+  const fills = Math.ceil(short / ours.gain) * ourTurns;
+  const hits = Math.max(1, Math.ceil((hp - WANDER) / step));
+  const faints = hits * theirTurns;
+  const percent = (fraction: number) => Math.round(fraction * 100);
+
+  return fills >= faints
+    ? `${move} fills in ${fills} turns, ${short} energy short; ${hits} of ${opponent}'s fast moves faint us in ${faints}, one taking ~${percent(step)}% with ${percent(hp)}% left`
+    : undefined;
 }
