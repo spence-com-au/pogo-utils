@@ -58,17 +58,22 @@ export async function lend(
 
   /**
    * The phone held by the page again, unless the settings menu connected another meanwhile: that one is the user's
-   * choice and stays held, this one being let go of again. Failing to come back is told after `error`, the run's own
-   * failure, where there is one, that being the news.
+   * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
+   * being. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news.
    */
-  const takeBack = (error?: string) =>
-    reconnect(serial)
+  const takeBack = async (error?: string) => {
+    if (store.phone !== null) {
+      return;
+    }
+
+    await reconnect(serial)
       .then((back) => (store.phone === null ? store.hold(back) : back.close()))
       .catch((failure: unknown) => {
         throw error === undefined
           ? failure
           : new Error(`${error}; the phone could not be taken back, so connect it again in settings: ${said(failure)}`);
       });
+  };
 
   // Started only once the phone is let go of, which fails where it is already gone and leaves nothing to end.
   await phone.close();

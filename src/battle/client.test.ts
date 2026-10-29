@@ -158,10 +158,11 @@ test('lends a phone once, a second `lend` meanwhile finding none', async () => {
   await run.ended;
 });
 
-test('leaves a phone connected during the run held, letting the lent one go again once it is back', async () => {
+test('leaves a phone connected during the run held, not reopening the lent one', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
-  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const { store, start } = await setUp(log, () => Promise.resolve(there.connection));
+  const reconnect = vi.fn(() => Promise.reject(new Error('unplugged for the other')));
   const run = await lend(store, start, reconnect);
   const other = fakeConnection('other', H264, log);
 
@@ -170,7 +171,24 @@ test('leaves a phone connected during the run held, letting the lent one go agai
   await run.ended;
 
   expect(store.phone).toBe(other.connection);
-  expect(log.slice(-2)).toEqual(['page opened pixel', 'pixel let go']);
+  expect(reconnect).not.toHaveBeenCalled();
+});
+
+test('lets the lent phone go again where another is connected while it is being reopened', async () => {
+  const log: string[] = [];
+  const there = fakeConnection('pixel', H264, log);
+  const { store, start, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const other = fakeConnection('other', H264, log);
+
+  const run = await lend(store, start, async () => {
+    await store.hold(other.connection);
+    return back.connection;
+  });
+
+  run.stop();
+  await run.ended;
+
+  expect(store.phone).toBe(other.connection);
   await expect(back.connection.disconnected).resolves.toBeUndefined();
 });
 
