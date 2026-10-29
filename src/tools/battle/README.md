@@ -320,11 +320,9 @@ The shield prompt never names the move coming, so the hit judged is the hardest 
 - **Any move would hit too hard:** any charged move it could have, whatever its energy affords, would take at least
   **1/1.4** of the HP left.
 - **Too little would be left:** the hit would leave less than the opponent's fast moves take before it can throw again,
-  once for each shield we hold, so ours would faint before the next shield could be taken. The fast moves are
-  `max(ceil((cost − max(energy − cost, 0)) / gain), 0) + 1`, from the hit's cost and the energy counted, each taking
-  what one was measured to take off our bar ([below](#the-opponents-energy)). PvPoke's lacks the outer `max(…, 0)`, and
-  counts none where the opponent holds a fast move's gain past twice the cost, and fewer than none from twice its gain
-  past that.
+  once for each shield we hold, so ours would faint before the next shield could be taken. The fast moves are PvPoke's
+  `ceil((cost − max(energy − cost, 0)) / gain) + 1`, from the hit's cost and the energy counted less that cost, each
+  taking what one was measured to take off our bar ([below](#the-opponents-energy)).
 
 The last two are PvPoke's battle AI's (its `wouldShield`), with what the bot has measured in place of what PvPoke
 simulates. Its other rules are left out, since each turns on the move thrown or a form, neither of which the prompt or

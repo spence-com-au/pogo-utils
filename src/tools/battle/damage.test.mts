@@ -374,19 +374,19 @@ test.each<[string, number, number, Shielding]>([
   expect(palkia(hp, shields)).toEqual(shielding);
 });
 
-test('energy the opponent had past what the hit costs shortens the cycle, the next throw coming sooner', () => {
-  // 80 is Drill Peck twice: thrown again with no fast move between, and one for margin.
-  expect(palkia(0.5, 2, { ...THUNDER_SHOCK, estimate: { energy: 80, gain: 9 } })).toEqual({
-    shield: false,
-    why:
-      'Drill Peck would take ~34%, with 50% left; leaves ~16%, more than 2 × the ~2% of 1 fast move before their ' +
-      'next charged move',
+/**
+ * What is left once Drill Peck is paid for counts only past a whole Drill Peck more, as PvPoke counts it: 80 leaves 40,
+ * which still counts six Thunder Shocks from nothing, and 100 leaves 60, 20 short of the next Drill Peck, three Thunder
+ * Shocks and one for margin.
+ */
+test.each<[number, boolean, string]>([
+  [80, true, 'less than 2 × the ~12% of 6 fast moves'],
+  [100, false, 'more than 2 × the ~8% of 4 fast moves'],
+])('with %s energy counted, Palkia at 55%% shields Drill Peck: %s', (energy, shield, than) => {
+  expect(palkia(0.55, 2, { ...THUNDER_SHOCK, estimate: { energy, gain: 9 } })).toEqual({
+    shield,
+    why: `Drill Peck would take ~34%, with 55% left; leaves ~21%, ${than} before their next charged move`,
   });
-
-  // 100, past twice Drill Peck, is no fewer: still the one for margin, where PvPoke's sum comes to −1.
-  expect(palkia(0.5, 2, { ...THUNDER_SHOCK, estimate: { energy: 100, gain: 9 } }).why).toMatch(
-    /the ~2% of 1 fast move before/,
-  );
 });
 
 test('a harder move the count does not yet afford takes the shield against one it does', () => {

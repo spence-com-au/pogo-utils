@@ -390,16 +390,13 @@ export interface Cycle {
  * less, and 8 of the 13 it kept were against hits that left 26% or less. Palkia at 40% kept one against Zapdos's Drill
  * Peck at ~34%, and fainted 2.5s later with both still up.
  *
- * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1`, one more than
- * the hit's move takes to be thrown again from what the opponent had before paying for it (lines 1190–1194). Where
- * PvPoke calculates what each takes, `cycle.step` is what one was measured to take of our bar; and where it knows the
- * move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
+ * The fast moves before the next throw are PvPoke's `ceil((cost − max(energy − cost, 0)) / gain) + 1` (line 1189),
+ * `energy` being what the opponent has left once it has paid for the hit, as PvPoke's battle has it when it asks
+ * (`Battle.js` line 1058, before 1088): the hit's move again, counted from nothing unless a whole cost more is left
+ * over, and one more for margin. Where PvPoke calculates what each takes, `cycle.step` is what one was measured to take
+ * of our bar; and where it knows the move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
  *
  * - Its `+ 1` HP of margin a shield, under a point of our bar, is left out.
- * - Its count of fast moves goes below the one of margin, to none or fewer, where the opponent had at least a fast
- *   move's gain past twice the move's cost, which `FULL` leaves room for with a cheap move: Drill Peck's 40 twice and
- *   Thunder Shock's 9 come to 89. That would keep every shield against an opponent able to throw again at once, when
- *   the next hit comes soonest. Here it stops at none before the margin.
  * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which is left out: it can
  *   only keep a shield the rule would take, against a fast move that barely scratches us, as Magmar's Ember does
  *   Charizard 3 HP in its 2 turns, and a shield taken is the side this errs to.
@@ -441,7 +438,8 @@ export function wouldShield(
     return { shield: true, why: `${verdict.why}; their energy uncounted` };
   }
 
-  const fast = Math.max(Math.ceil((cost - Math.max(estimate.energy - cost, 0)) / estimate.gain), 0) + 1;
+  const kept = Math.max(estimate.energy - cost, 0);
+  const fast = Math.ceil((cost - Math.max(kept - cost, 0)) / estimate.gain) + 1;
   const left = hp - share;
   const shield = left < fast * step * shields;
   const times = shields > 1 ? `${shields} × the` : 'the';
