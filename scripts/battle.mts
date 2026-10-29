@@ -60,9 +60,10 @@ import { Device } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.mts';
 import { type GameData } from '../src/tools/inventory/game-master.mts';
-import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
+import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-wasm.mts';
 import { encodePng, type Image } from '../src/tools/inventory/png.mts';
+import { createHash } from 'node:crypto';
 import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -167,7 +168,20 @@ if (command === 'run') {
   const held = adbHeld(options.serial);
   const device = new Device(held);
   await device.check();
-  useEngine(tesseractCli);
+
+  // OCR in long-lived tesseract.js workers rather than a `tesseract` started for each read, which spent most of its
+  // 100ms of CPU loading the model: a worker reads a battle's band for about 30ms. Two, so a banner read never waits on
+  // the names and moves, the one other read a battle can have under way. The model is the Inventory page's, cached for
+  // a week beside the game master and checked as it is read off disk, so a copy cut short fails here and is fetched
+  // again next run rather than failing the first read mid-run.
+  const tessdata = join(CACHE, 'tessdata');
+  await cachedAs(tessdata, 'eng.traineddata', `${MODEL}/eng.traineddata`, false, (bytes) => {
+    if (createHash('sha256').update(bytes).digest('hex') !== MODEL_SHA256) {
+      throw new Error("not tessdata_fast 4.1.0's model");
+    }
+  });
+  const ocr = tesseractWasm({ langPath: tessdata, workers: 2, cache: false });
+  useEngine(ocr);
 
   // Which move is worth the most per energy, out of the game master `pnpm inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
@@ -419,6 +433,7 @@ if (command === 'run') {
     screen?.close();
     closeVideo();
     held.close();
+    await ocr.terminate();
 
     if (!interrupted) {
       await restore();

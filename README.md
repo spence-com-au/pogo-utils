@@ -643,16 +643,17 @@ in full, is in [`src/tools/battle/README.md`](src/tools/battle/README.md).
 
 A screenshot takes 0.8–1.9 seconds over `adb` against a turn of half a second, so a battle is watched as video instead:
 `screenrecord` on the phone sends H.264 at 30 frames a second and `ffmpeg` decodes it, which needs `ffmpeg` on `PATH`
-beside `adb`, and Tesseract for the league screen and the names and moves. The first run also downloads the game's form
-icons for the party screen, some 40 MB, kept for a week like the game master.
-[`src/tools/battle/recognise.mts`](src/tools/battle/recognise.mts) reads which part of a battle a frame shows from
-colour samples alone, cheap enough for every frame; [`src/tools/battle/menus.mts`](src/tools/battle/menus.mts) reads the
-screens between battles off full screenshots. No phone's shape is the reference: a position down the screen is written
-as where the game pins the piece — the top edge, the foot, or a fraction of the height between — and how many of the
-screen's widths it sits from there, a number every phone agrees on, as
-[`src/tools/battle/layout.mts`](src/tools/battle/layout.mts) explains. A position added needs its anchor too, measured
-on both the Pixel 8 Pro's fixtures and the Pixel 4 XL's, which the tests read alike. `pnpm battle record` saves what the
-recognisers are tuned against, at the phone's own shape:
+beside `adb`. Text is read with the Inventory page's tesseract.js rather than the Tesseract CLI: two workers kept for
+the run read a battle's band for about a third of the CPU a `tesseract` started afresh spends loading its model. The
+first run also downloads that model, 4 MB, and the game's form icons for the party screen, some 40 MB, each kept for a
+week like the game master. [`src/tools/battle/recognise.mts`](src/tools/battle/recognise.mts) reads which part of a
+battle a frame shows from colour samples alone, cheap enough for every frame;
+[`src/tools/battle/menus.mts`](src/tools/battle/menus.mts) reads the screens between battles off full screenshots. No
+phone's shape is the reference: a position down the screen is written as where the game pins the piece — the top edge,
+the foot, or a fraction of the height between — and how many of the screen's widths it sits from there, a number every
+phone agrees on, as [`src/tools/battle/layout.mts`](src/tools/battle/layout.mts) explains. A position added needs its
+anchor too, measured on both the Pixel 8 Pro's fixtures and the Pixel 4 XL's, which the tests read alike.
+`pnpm battle record` saves what the recognisers are tuned against, at the phone's own shape:
 
 ```sh
 pnpm battle record --seconds 60 battle.h264

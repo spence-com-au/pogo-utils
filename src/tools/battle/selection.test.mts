@@ -6,15 +6,15 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, expect, test } from 'vitest';
+import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
-import { ocr, useEngine, type Line } from '../inventory/ocr.mts';
-import { tesseractCli } from '../inventory/ocr-cli.mts';
+import { ocr, type Line } from '../inventory/ocr.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
+import { useWasmEngine } from '../inventory/test-engine.mts';
 import { type Point } from './play.mts';
 import { isSelection, pinkCell, query, readCard, readPanel, searched, type Hands } from './selection.mts';
 
-beforeAll(() => useEngine(tesseractCli));
+afterAll(useWasmEngine());
 
 const DATA = JSON.parse(
   readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),

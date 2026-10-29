@@ -34,7 +34,18 @@ export function useTestEngine(): () => Promise<void> {
     return () => Promise.resolve();
   }
 
-  const engine = tesseractWasm({ langPath: tessdata(), workers: availableParallelism(), cache: false });
+  return useWasmEngine();
+}
+
+/**
+ * The WebAssembly build whatever the environment asks for, which is what the battle readers' tests run under: `pnpm
+ * battle` and the Battle tab both read with it, so the CLI's answers are no reader's to keep.
+ */
+export const wasmEngine = () => tesseractWasm({ langPath: tessdata(), workers: availableParallelism(), cache: false });
+
+/** Installs `wasmEngine`, and answers what to call once the file's reads are done. */
+export function useWasmEngine(): () => Promise<void> {
+  const engine = wasmEngine();
   useEngine(engine);
 
   return () => engine.terminate();

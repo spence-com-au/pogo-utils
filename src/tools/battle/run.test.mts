@@ -8,12 +8,12 @@
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
 import { useEngine, type Engine } from '../inventory/ocr.mts';
-import { tesseractCli } from '../inventory/ocr-cli.mts';
+import { wasmEngine } from '../inventory/test-engine.mts';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { setImmediate } from 'node:timers/promises';
-import { expect, test } from 'vitest';
+import { afterAll, expect, test } from 'vitest';
 import { readCps, silhouetteOfIcon } from './party.mts';
 import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
@@ -23,23 +23,29 @@ import { type Fight, type Reporter } from './reporter.mts';
 import { type Phone } from './phone.mts';
 import { Lost, LOST_MS, run, type Clock } from './run.mts';
 
-/** How long Tesseract takes over a band of a battle's frame, in milliseconds: `readBattle` reads two, about 220ms. */
-const OCR_MS = 110;
+/**
+ * How long Tesseract takes over a band of a battle's frame, in milliseconds: 33 on average over 112 bands of two live
+ * Training battles on a Pixel 4 XL, so `readBattle`'s two take about 70ms.
+ */
+const OCR_MS = 35;
 
 /**
  * Tesseract's answer to each read, by the band and how it was asked, kept across the file's tests: the scripted battles
- * read the same few fixture frames over and over, 1316 reads of 74 distinct bands, and the CLI answers a band the same
- * way every time, so asking it again would spend some 350 of the file's 430 seconds on answers already had. A
- * remembered read still takes `ocrMs` on the scripted clock, which is the only time a run sees.
+ * read the same few fixture frames over and over, 1316 reads of 74 distinct bands, and Tesseract answers a band the
+ * same way every time, so asking it again would spend most of the file's time on answers already had. A remembered
+ * read still takes `ocrMs` on the scripted clock, which is the only time a run sees.
  */
 const READS = new Map<string, Promise<string>>();
+
+const engine = wasmEngine();
+afterAll(() => engine.terminate());
 
 const tsv: Engine['tsv'] = (image, psm, whitelist) => {
   const key = `${createHash('sha1').update(image.data).digest('hex')} ${image.width} ${psm} ${whitelist}`;
   let read = READS.get(key);
 
   if (!read) {
-    read = tesseractCli.tsv(image, psm, whitelist);
+    read = engine.tsv(image, psm, whitelist);
     READS.set(key, read);
   }
 
@@ -700,8 +706,8 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(kept).toEqual([
-    ['fainted', 14150, 'faint-own'],
-    ['again', 14760, 'faint-own'],
+    ['fainted', 13850, 'faint-own'],
+    ['again', 14460, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([
