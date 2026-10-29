@@ -48,7 +48,6 @@ import {
   IN_PERSON_URL,
   jsonLd,
   latestDateNamed,
-  NEWS_URL,
   newsUrl,
   siteLocales,
   slugOf,
@@ -345,7 +344,7 @@ const updates = undated
   .filter(({ found }) => found.length > 0);
 
 print(
-  `${news.length} articles archived across ${locales.length} editions of ${NEWS_URL} ` +
+  `${news.length} articles archived across ${locales.length} editions of ${newsUrl('<locale>')} ` +
     `(${news.at(-1)?.published} to ${news[0]?.published}), ${news.filter((article) => editionsOf(article)).length} ` +
     `of them missing from the English one; ` +
     `${inPerson.length} on the in-person index; ${feed.length} feed events, ${local.length} in ${LOCAL_EVENTS}`,

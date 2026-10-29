@@ -75,7 +75,7 @@ function monthNames(locales: string[]) {
 // A Thai year may be in the Buddhist era, 543 ahead: 2569 is 2026. Only read as a year where it sits in a date, since a
 // bare 25xx is as likely an amount of Stardust.
 const YEAR = '(20\\d{2}|25\\d{2})(?!\\d)';
-const DAY = '(?<!\\d)(\\d{1,2})(?!\\d)';
+const DAY = '(?<!\\d)(3[01]|[12]\\d|0?[1-9])(?!\\d)';
 const DASH = '[~～‐-―-]';
 
 // How far apart, in characters, the two ends of a range may sit for a yearless one to take the other's year: enough for
@@ -98,7 +98,10 @@ function* datesIn(text: string, months: Map<string, number>) {
     .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|')})(?![\\p{L}\\p{M}])`;
   const monthFirst = `${month}\\s*(?:${DAY}(?:\\s*${DASH}\\s*(\\d{1,2})(?!\\d))?)?(?:,?\\s*${YEAR})?`;
-  const dayFirst = `${DAY}(?:\\.|er|ᵉʳ|º|ª|°|\\.º)?\\s*(?:de\\s+)?${month}(?:\\s+de)?(?:,?\\s*${YEAR})?`;
+
+  // A month name with a day straight after it is month first, so a number before it is not its day: `Tier 1 October 3,
+  // 2026` is October 3, not October 1.
+  const dayFirst = `${DAY}(?:\\.|er|ᵉʳ|º|ª|°|\\.º)?\\s*(?:de\\s+)?${month}(?!\\s*\\d{1,2}(?!\\d))(?:\\s+de)?(?:,?\\s*${YEAR})?`;
   const numeric = `(?:(20\\d{2})\\s*[年년]\\s*)?${DAY}\\s*[月월](?:\\s*(\\d{1,2})\\s*[日일])?`;
   const bareYear = `(?<!\\d)(20\\d{2})(?!\\d)`;
   const pattern = new RegExp(`${monthFirst}|${dayFirst}|${numeric}|${bareYear}`, 'giu');
