@@ -26,13 +26,17 @@ export interface Run {
   frame(): Promise<Image | undefined>;
   stop(): void;
 
-  /** Settles once the page holds the phone again, rejecting with why the run stopped where it failed. */
+  /**
+   * Settles once the run has stopped and the phone has been taken back, rejecting with why the run failed, or with why
+   * the phone could not be taken back.
+   */
   ended: Promise<void>;
 }
 
 /**
  * Hands the phone `store` holds to the Worker `start` starts, for a run, answering once the phone's screen has sent its
- * first frame, or failing with why it never did once the page holds the phone again. The Worker is ended with the run.
+ * first frame. Where it never does, it fails once the phone has been taken back, with why, or with why the phone could
+ * not be. The Worker is ended with the run.
  */
 export async function lend(
   store: PhoneStore,
