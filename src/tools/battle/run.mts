@@ -2,7 +2,7 @@
  * Team Leader or GO Battle League battles one after another: `Player` through each battle, read off the stream frame by
  * frame, and `readMenu` between them, read off full screenshots, from the result round to the next USE THIS PARTY.
  *
- * Driven through `Phone` rather than `adb`, so a test can stand a scripted phone in for a real one.
+ * Driven through the `Phone` in `phone.mts` rather than `adb`, so a test can stand a scripted phone in for a real one.
  */
 
 import { type GameData } from '../inventory/game-master.mts';
@@ -58,15 +58,8 @@ import {
 import { iconColour, readTypes } from './typing.mts';
 import { Energy, Hits, spare, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
+import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './report.mts';
-
-export interface Phone {
-  /** The latest frame of the stream, or `undefined` before the first. */
-  frame(): Image | undefined;
-  screenshot(): Promise<Image>;
-  tap(at: Point): Promise<void>;
-  swipe(from: Point, to: Point, ms: number): Promise<void>;
-}
 
 export interface Clock {
   now(): number;

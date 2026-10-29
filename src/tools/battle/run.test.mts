@@ -19,7 +19,8 @@ import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
 import { place } from './layout.mts';
 import { type Fight, type Reporter } from './report.mts';
-import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
+import { type Phone } from './phone.mts';
+import { Lost, LOST_MS, run, type Clock } from './run.mts';
 
 /** How long Tesseract takes over a band of a battle's frame, in milliseconds: `readBattle` reads two, about 220ms. */
 const OCR_MS = 110;
