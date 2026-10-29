@@ -383,14 +383,14 @@ export async function run(
   // Each card as the party screen showed it when it was last tried on the selection screen, by silhouette and CP, of
   // which `party` holds what was read: a GO Battle League set comes back to the party screen before every battle, and
   // reading three cards takes 33s or more. A card is the one tried before where its silhouette names the same species
-  // and its CP is the same or went unread either time, OCR having missed one CP of 24. One tried and not read is not
+  // and its CP is the same or went unread this time, OCR having missed one CP of 24. One tried and not read is not
   // tried again, a search or a panel that failed once being likely to fail again at some 11s a battle; nor are those
   // after one that stopped the reading, the selection screen not opening or not closing being what they would meet too.
-  // One passed over for its CP going unread was never tried, and is tried once its CP is read.
-  let lastTried: (Card | undefined)[] = [];
+  // One passed over for its CP going unread was never tried, and is tried once its CP is read, so each held has its CP.
+  let lastTried: ({ species: string | null; cp: number } | undefined)[] = [];
 
-  const sameCard = (was: Card | undefined, card: Card) =>
-    was !== undefined && was.species === card.species && (was.cp === null || card.cp === null || was.cp === card.cp);
+  const sameCard = (was: (typeof lastTried)[number], card: Card) =>
+    was !== undefined && was.species === card.species && (card.cp === null || was.cp === card.cp);
 
   // `cards` with the moves of each card in `slots` merged in, read off the selection screen in turn as `readCard` reads
   // them, and whether the party screen is showing again. Stops at one that left anything but the party screen showing,
@@ -1576,9 +1576,11 @@ export async function run(
         const tried = cards.map((card, slot) => (sameCard(lastTried[slot], card) ? party[slot] : undefined));
         const stale = cards.flatMap((_, slot) => (tried[slot] ? [] : [slot]));
 
-        lastTried = cards.map((card, slot) =>
-          tried[slot] ? { ...card, cp: card.cp ?? lastTried[slot]?.cp ?? null } : card.cp === null ? undefined : card,
-        );
+        lastTried = cards.map((card, slot) => {
+          const was = tried[slot] && lastTried[slot];
+
+          return was ? { ...card, cp: card.cp ?? was.cp } : card.cp === null ? undefined : { ...card, cp: card.cp };
+        });
         party = cards.map((card, slot) => tried[slot] ?? card);
 
         if (stale.length > 0) {
