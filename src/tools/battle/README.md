@@ -158,7 +158,7 @@ for text and done every few seconds.
     screen not opening or not closing. One passed over for its CP going unread is tried once its CP is read.
   - **Judging it:** a card read with both charged moves is judged by those two. One read alone could be a row OCR
     missed, as much as a second move locked, so that card is judged as one not read is, by every move its species can
-    learn.
+    learn bar Frustration and Return, unless one of those was read, and the one read.
 
 ### The run loop
 
