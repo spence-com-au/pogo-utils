@@ -73,8 +73,9 @@
   // by name rather than by directory because they sit among the files that import them: they are shared by what reads
   // them, not by where they live.
   //
-  // The inventory readers the page runs are named one by one, the rest of that directory being Node's: the CLI's
-  // transports, the download cache and the tests. So are the battle modules `src/battle/load.ts` reaches.
+  // The inventory readers the page runs are named one by one, and the held shell and touchscreen the battle Worker in
+  // `src/battle/` drives the phone through, the rest of that directory being Node's: the CLI's transports, the download
+  // cache and the tests. So are the battle modules `src/battle/` reaches.
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
@@ -82,12 +83,19 @@
     "src/tools/battle/layout.mts",
     "src/tools/battle/meta.mts",
     "src/tools/battle/party.mts",
+    "src/tools/battle/phone.mts",
+    "src/tools/battle/pictures.mts",
+    "src/tools/battle/play.mts",
+    "src/tools/battle/recognise.mts",
+    "src/tools/battle/record-command.mts",
+    "src/tools/battle/screen.mts",
     "src/tools/inventory/adb.mts",
     "src/tools/inventory/artwork.mts",
     "src/tools/inventory/badges.mts",
     "src/tools/inventory/config.mts",
     "src/tools/inventory/detail.mts",
     "src/tools/inventory/game-master.mts",
+    "src/tools/inventory/held-shell.mts",
     "src/tools/inventory/identify.mts",
     "src/tools/inventory/moves.mts",
     "src/tools/inventory/ocr-wasm.mts",
@@ -97,7 +105,8 @@
     "src/tools/inventory/progress.mts",
     "src/tools/inventory/report.mts",
     "src/tools/inventory/stitch.mts",
-    "src/tools/inventory/storage.mts"
+    "src/tools/inventory/storage.mts",
+    "src/tools/inventory/touchscreen.mts"
   ],
   "exclude": [
     "src/coin-bag/release.ts",

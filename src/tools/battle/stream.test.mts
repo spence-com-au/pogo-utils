@@ -10,7 +10,8 @@ import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test } from 'vitest';
 import { streamSize } from './record-command.mts';
-import { decodeFrames, Screen, type Recording } from './stream.mts';
+import { Screen } from './screen.mts';
+import { decodeFrames, feed, type Recording } from './stream.mts';
 import { HELD_MS, Video } from './video.mts';
 
 /** The stream a Pixel 4 XL sends, which these clips stand in for. */
@@ -43,6 +44,9 @@ const clip = (colour: string, seconds: number): Recording =>
     ],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
+
+/** The screen out of each process `record` starts, decoded by `ffmpeg` as a battle's are. */
+const watched = (record: () => Recording, segmentMs?: number) => new Screen(() => feed(record(), size), segmentMs);
 
 /** What `command` writes to stdout, given `input` on stdin. */
 function output(command: string, args: string[], input: Uint8Array): Promise<Buffer> {
@@ -149,15 +153,11 @@ test('hands the screen to the next recording without going back to the last', as
   const recordings: Recording[] = [];
   const colours = ['red', 'blue'];
 
-  const screen = new Screen(
-    () => {
-      const recording = clip(colours[recordings.length] ?? 'blue', 3);
-      recordings.push(recording);
-      return recording;
-    },
-    size,
-    1000,
-  );
+  const screen = watched(() => {
+    const recording = clip(colours[recordings.length] ?? 'blue', 3);
+    recordings.push(recording);
+    return recording;
+  }, 1000);
 
   try {
     expect(rgb((await screen.first()).image, 10, 10)[0]).toBeGreaterThan(200);
@@ -180,15 +180,11 @@ test('keeps the whole screen as video across the hand-over, the first recording 
   const started = performance.now();
   const video = new Video((bytes) => written.push(bytes), started);
 
-  const screen = new Screen(
-    () => {
-      const recording = clip(colours[recordings.length] ?? 'blue', 3);
-      recordings.push(recording);
-      return video.watch(recording);
-    },
-    size,
-    1000,
-  );
+  const screen = watched(() => {
+    const recording = clip(colours[recordings.length] ?? 'blue', 3);
+    recordings.push(recording);
+    return video.watch(recording);
+  }, 1000);
 
   try {
     await screen.first();
@@ -234,9 +230,8 @@ test('keeps the whole screen as video across the hand-over, the first recording 
 });
 
 test('fails when a recording ends without a later one taking over', async () => {
-  const screen = new Screen(
-    () => spawn('sh', ['-c', 'echo "Unable to get output buffers" >&2'], { stdio: ['ignore', 'pipe', 'pipe'] }),
-    size,
+  const screen = watched(() =>
+    spawn('sh', ['-c', 'echo "Unable to get output buffers" >&2'], { stdio: ['ignore', 'pipe', 'pipe'] }),
   );
 
   try {
@@ -267,16 +262,12 @@ test('stops a recording that has started but not yet taken over when closed', as
   const recordings: Recording[] = [];
 
   // The second never sends a frame, so it is still waiting to take over when the screen closes.
-  const screen = new Screen(
-    () => {
-      const recording =
-        recordings.length === 0 ? clip('red', 5) : spawn('sleep', ['30'], { stdio: ['ignore', 'pipe', 'pipe'] });
-      recordings.push(recording);
-      return recording;
-    },
-    size,
-    500,
-  );
+  const screen = watched(() => {
+    const recording =
+      recordings.length === 0 ? clip('red', 5) : spawn('sleep', ['30'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    recordings.push(recording);
+    return recording;
+  }, 500);
 
   await screen.first();
   await sleep(700);
@@ -289,7 +280,7 @@ test('stops a recording that has started but not yet taken over when closed', as
 });
 
 test('fails with the reason when a recording cannot start', async () => {
-  const screen = new Screen(() => spawn('no-such-recorder', [], { stdio: ['ignore', 'pipe', 'pipe'] }), size);
+  const screen = watched(() => spawn('no-such-recorder', [], { stdio: ['ignore', 'pipe', 'pipe'] }));
 
   try {
     await expect(screen.first(5000)).rejects.toThrow(/screen recording ended: spawn no-such-recorder ENOENT/);

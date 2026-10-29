@@ -15,7 +15,9 @@ function fake(name: string, close: () => Promise<void> = () => Promise.resolve()
   });
   const phone: Phone = {
     name,
+    serial: name,
     transport: { state: vi.fn(), shell: vi.fn(), screencap: vi.fn() },
+    spawn: vi.fn(),
     close: vi.fn(close),
     disconnected,
   };
@@ -69,4 +71,23 @@ test('a phone already replaced ending leaves the one held alone', async () => {
   await settle();
 
   expect(store.phone).toBe(second.phone);
+});
+
+test('a phone released is taken out at once, the listeners told, and its connection ending later is no news', async () => {
+  const store = new PhoneStore();
+  const heard = vi.fn();
+  const { phone, end } = fake('only');
+
+  await store.hold(phone);
+  store.subscribe(heard);
+
+  expect(store.release()).toBe(phone);
+  expect(store.phone).toBeNull();
+  expect(store.release(), 'nothing left to release').toBeNull();
+
+  end(false);
+  await settle();
+
+  expect(heard).toHaveBeenCalledOnce();
+  expect(phone.close).not.toHaveBeenCalled();
 });

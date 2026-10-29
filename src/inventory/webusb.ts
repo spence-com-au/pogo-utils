@@ -14,7 +14,7 @@ import { AdbDaemonWebUsbDevice, AdbDaemonWebUsbDeviceManager } from '@yume-chan/
 
 import { type Transport } from '../tools/inventory/adb.mts';
 
-/** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `connect`. */
+/** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `open`. */
 const EXIT_MARK = 'pogo-utils-exit:';
 
 /**
@@ -52,12 +52,13 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
 const TIMEOUT_MS = 30_000;
 
 /**
- * Why this page cannot reach a phone, or null where it can. WebUSB needs a secure context, which is `localhost` and the
- * published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so Firefox and Safari have
- * none.
+ * Why this context, a page or its Worker, cannot reach a phone, or null where it can. WebUSB needs a secure context,
+ * which is `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so
+ * Firefox and Safari have none.
  */
 function unreachable(): string | null {
-  if (!window.isSecureContext) {
+  // The global rather than `window`'s, which a Worker has none of.
+  if (!globalThis.isSecureContext) {
     return (
       'WebUSB needs a secure context: ' +
       'open this page from localhost or the published site rather than a LAN address.'
@@ -73,10 +74,10 @@ function unreachable(): string | null {
 
 /**
  * Lets go of a connection no transport was built on, as where authentication fails: Tango releases its locks on the
- * streams but closes nothing, which would leave the phone's ADB interface claimed by this page until it is reloaded —
- * and the `adb kill-server` advice for a busy phone useless. Closing either stream closes the device and drops the
- * listener for it being unplugged; both are tried, as one may already have errored, and neither failing is worth more
- * than the error that brought the caller here.
+ * streams but closes nothing, which would leave the phone's ADB interface claimed by this context until it is reloaded
+ * or ended — and the `adb kill-server` advice for a busy phone useless. Closing either stream closes the device and
+ * drops the listener for it being unplugged; both are tried, as one may already have errored, and neither failing is
+ * worth more than the error that brought the caller here.
  */
 export async function release(connection: {
   readable: { cancel(): Promise<void> };
@@ -86,36 +87,78 @@ export async function release(connection: {
   await connection.readable.cancel().catch(() => undefined);
 }
 
-/** A phone this page holds a connection to, with what the chooser called it. */
+/** A process on the phone, its stdin held open and its stdout apart from its stderr. */
+export interface Process {
+  stdin: WritableStream<Uint8Array>;
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+  kill(): void;
+}
+
+/** A phone this context holds a connection to, the page or a battle's Worker, with its device's name. */
 export interface Phone {
   name: string;
+
+  /** What `reconnect` finds it again by, once the connection has been let go. */
+  serial: string;
   transport: Transport;
+
+  /**
+   * `command` started and left running, for what a `Transport` cannot do: a recording read as it comes, and a shell
+   * written to command after command. By the shell protocol, which keeps a recording's stderr out of its H.264, and
+   * which any phone Pokémon GO runs on has, it being Android 7's.
+   */
+  spawn(command: readonly string[]): Promise<Process>;
   close(): Promise<void>;
 
   /** Settles once the connection is over: resolving where it was closed, rejecting where the phone was unplugged. */
   disconnected: Promise<void>;
 }
 
-/**
- * Offers the browser's device chooser and connects to whatever is picked, or answers null where the chooser was
- * dismissed. Only ADB interfaces are offered, Tango's default filter being the class ADB declares.
- *
- * A phone the `adb` server on this machine already holds cannot be claimed twice, which is the commonest way for this
- * to fail and so is the one said in full.
- */
-export async function connect(): Promise<Phone | null> {
+/** WebUSB, or a throw saying why this context has none. */
+function usb(): AdbDaemonWebUsbDeviceManager {
   const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
 
   if (manager === undefined) {
     throw new Error(unreachable() ?? 'This browser has no WebUSB.');
   }
 
-  const device = await manager.requestDevice();
+  return manager;
+}
+
+/**
+ * Offers the browser's device chooser and connects to whatever is picked, or answers null where the chooser was
+ * dismissed. Only ADB interfaces are offered, Tango's default filter being the class ADB declares.
+ */
+export async function connect(): Promise<Phone | null> {
+  const device = await usb().requestDevice();
+
+  return device === undefined ? null : open(device);
+}
+
+/**
+ * Connects to the phone `serial` names without the chooser, which only one the page was granted before can be: what a
+ * battle's Worker reaches the phone by once the page has let it go, and what the page takes it back by after. The
+ * permission is the origin's rather than the document's, so a Worker is granted what its page was, and the key
+ * authorising this browser is in the origin's IndexedDB, so neither asks the phone again.
+ */
+export async function reconnect(serial: string): Promise<Phone> {
+  const device = (await usb().getDevices()).find((candidate) => candidate.serial === serial);
 
   if (device === undefined) {
-    return null;
+    throw new Error(`the phone ${serial} is not plugged in, or this site may no longer reach it`);
   }
 
+  return open(device);
+}
+
+/**
+ * The phone `device` is, connected and authenticated. A phone already held cannot be claimed twice, which is the
+ * commonest way for this to fail and so is the one said in full: usually by the `adb` server on this machine, but it
+ * can be the site in another tab, or this site's own battle Worker, which holds it for as long as a run goes on and may
+ * not yet have let it go when `reconnect` takes it back.
+ */
+async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
   let connection;
 
   try {
@@ -123,8 +166,8 @@ export async function connect(): Promise<Phone | null> {
   } catch (error) {
     if (error instanceof AdbDaemonWebUsbDevice.DeviceBusyError) {
       throw new Error(
-        'the phone is held by another program, usually an adb server on this computer: ' +
-          'run `adb kill-server` and try again',
+        'the phone is held by something else: usually an adb server on this computer, which `adb kill-server` stops, ' +
+          'or this site in another tab or a battle running on it, which holds the phone until it ends',
         { cause: error },
       );
     }
@@ -201,8 +244,27 @@ export async function connect(): Promise<Phone | null> {
     return stdout;
   };
 
+  // Tango types its streams as its own polyfill's, which are the platform's at run time.
+  const spawn = async (command: readonly string[]): Promise<Process> => {
+    const shell = adb.subprocess.shellProtocol;
+
+    if (shell === undefined) {
+      throw new Error("this phone's adb has no shell protocol, which Android has had since 7");
+    }
+
+    const process = await shell.spawn(command);
+
+    return {
+      stdin: process.stdin as unknown as WritableStream<Uint8Array>,
+      stdout: process.stdout as unknown as ReadableStream<Uint8Array>,
+      stderr: process.stderr as unknown as ReadableStream<Uint8Array>,
+      kill: () => void Promise.resolve(process.kill()).catch(() => undefined),
+    };
+  };
+
   return {
     name: device.name || device.serial,
+    serial: device.serial,
     transport: {
       // Authenticated is what `adb get-state` calls `device`; a phone that refused the key never gets this far.
       state: () => Promise.resolve('device'),
@@ -210,6 +272,7 @@ export async function connect(): Promise<Phone | null> {
       shell: run,
       screencap: () => run(['screencap', '-p']),
     },
+    spawn,
     close: () => adb.close(),
     disconnected: adb.disconnected,
   };

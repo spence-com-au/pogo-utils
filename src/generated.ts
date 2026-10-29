@@ -28,6 +28,12 @@ export const GAME_MASTER = 'src/tools/inventory/fixtures/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
+ * Where the battle's Worker is published, which `scripts/bundle.mts` builds it to and a page starts it from: no markup
+ * names it, so the markup cannot be where the bundler learns of it as it learns of a page's module.
+ */
+export const BATTLE_WORKER = 'src/battle/worker.js';
+
+/**
  * Every form's outline, which `scripts/vend-silhouettes.mts` writes out of the game master above and its icons, for the
  * battle tool in a page to read a party card against without fetching 40 MB of icons. Under `data/`, which the build
  * publishes whole.

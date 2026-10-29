@@ -4,21 +4,17 @@
  * 30 frames a second, and `ffmpeg` decodes it here into the same `Image` the inventory readers take.
  *
  * `decodeFrames` is the half that knows nothing of the phone, so a test can hand it a recording off disk and exercise
- * the very decoder a battle runs on. `Screen` is the half that does: it keeps one recording going after another and
- * answers the latest frame.
+ * the very decoder a battle runs on. `screenrecord` is the half that does. `feed` makes whatever process it is handed
+ * into the `Feed` that the `Screen` in `screen.mts` watches, which keeps one recording going after another and answers
+ * the latest frame.
  */
 
 import { type Image } from '../inventory/png.mts';
 import { type Size } from './layout.mts';
 import { RECORD_LIMIT_S, recordCommand } from './record-command.mts';
+import { type Feed } from './screen.mts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { type Readable } from 'node:stream';
-
-/**
- * When the next recording starts, in milliseconds after the last. Short of `RECORD_LIMIT_S` by enough for it to have
- * sent its first frame before the old one stops — two at once were measured both running whole.
- */
-const SEGMENT_MS = (RECORD_LIMIT_S - 10) * 1000;
 
 /** A process writing H.264 to its stdout, and why it stopped to its stderr. */
 export type Recording = ChildProcess & { stdout: Readable; stderr: Readable };
@@ -112,142 +108,21 @@ export async function* decodeFrames(h264: Readable, { width, height }: Size): As
   }
 }
 
-/** The latest frame and when it arrived, by `performance.now()`. */
-export interface Frame {
-  image: Image;
-  at: number;
-}
-
 /**
- * The phone's screen, kept current. One recording runs at a time but for the moment the next takes over, which starts
- * `SEGMENT_MS` after the last and stops it on its first frame, so a battle longer than `RECORD_LIMIT_S` — a Team Leader
- * fight can run to four minutes — is watched without a gap.
- *
- * `latest` is the frame most recently decoded, and can be old: `screenrecord` encodes a frame only when the screen has
- * changed, so a screen standing still sends nothing. A caller asks whether what it shows has changed, not how long
- * since a frame came.
+ * `recording` as `Screen` watches it, decoded by `ffmpeg` at `size`. Heard from at once, before this turn of the event
+ * loop ends: a process that could not start — `adb` missing from `PATH` — says so only through `error`, which unheard
+ * is an uncaught exception. Heard, it is the reason the recording ended, its streams having closed empty.
  */
-export class Screen {
-  readonly #record: () => Recording;
-  readonly #size: Size;
-  readonly #segmentMs: number;
-  #latest: Frame | undefined;
-  #failure: Error | undefined;
-  #current: Recording | undefined;
-  #timer: NodeJS.Timeout | undefined;
-  #closed = false;
+export function feed(recording: Recording, size: Size): Feed {
+  let stderr = '';
+  let unstarted: Error | undefined;
 
-  /**
-   * Every recording still running, which `close` stops. The one `latest` answers from is not enough: through a
-   * hand-over its successor is running too, unadopted until its first frame.
-   */
-  readonly #running = new Set<Recording>();
+  recording.once('error', (error) => (unstarted = error));
+  recording.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
 
-  /** How many recordings have started, and which of them is the one `latest` answers from. */
-  #started = 0;
-  #live = 0;
-
-  /**
-   * `record` is `screenrecord` in a battle, and anything else that writes H.264 to its stdout in a test, at `size`.
-   */
-  constructor(record: () => Recording, size: Size, segmentMs = SEGMENT_MS) {
-    this.#record = record;
-    this.#size = size;
-    this.#segmentMs = segmentMs;
-    this.#start();
-  }
-
-  /** The most recent frame, or `undefined` before the first. Throws once a recording has failed. */
-  latest(): Frame | undefined {
-    if (this.#failure) {
-      throw this.#failure;
-    }
-
-    return this.#latest;
-  }
-
-  /** The first frame, which a recording that will not start never sends. */
-  async first(timeoutMs = 10_000): Promise<Frame> {
-    const until = performance.now() + timeoutMs;
-
-    while (performance.now() < until) {
-      const frame = this.latest();
-
-      if (frame) {
-        return frame;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    throw new Error(`no frame from the phone in ${timeoutMs / 1000}s`);
-  }
-
-  close(): void {
-    this.#closed = true;
-    clearTimeout(this.#timer);
-
-    for (const recording of this.#running) {
-      recording.kill();
-    }
-  }
-
-  #start(): void {
-    const recording = this.#record();
-    const generation = ++this.#started;
-    let stderr = '';
-
-    // A process that could not start — `adb` missing from `PATH` — says so only through `error`, which unheard is an
-    // uncaught exception. Heard, it is the reason the recording ended, its streams having closed empty.
-    let unstarted: Error | undefined;
-    recording.once('error', (error) => (unstarted = error));
-
-    this.#running.add(recording);
-    recording.once('close', () => this.#running.delete(recording));
-    recording.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-    this.#timer = setTimeout(() => this.#start(), this.#segmentMs);
-
-    // Taking over only ever forwards, by `generation`: the old recording goes on sending frames for as long as its kill
-    // takes, and one of those must not hand the screen back to it.
-    const decoded = (async () => {
-      for await (const image of decodeFrames(recording.stdout, this.#size)) {
-        if (this.#closed) {
-          recording.kill();
-          break;
-        }
-
-        if (generation > this.#live) {
-          this.#current?.kill();
-          this.#current = recording;
-          this.#live = generation;
-        }
-
-        if (generation === this.#live) {
-          this.#latest = { image, at: performance.now() };
-        }
-      }
-    })();
-
-    // The newest recording ending is a failure: the phone unplugged, `adb` gone, or `screenrecord` refusing, which it
-    // does with exit 0 and the reason on stderr. An older one ending is not, a successor having started — it is the
-    // limit, met while the successor is still starting. What the recording itself said is the reason before `ffmpeg`'s,
-    // which for a recording that sent nothing only says that there was nothing to decode.
-    decoded
-      .catch((error: unknown) => error)
-      .then((error) => {
-        if (!this.#closed && generation === this.#started) {
-          const reason =
-            unstarted?.message ||
-            stderr.trim() ||
-            (error instanceof Error ? error.message : 'it stopped sending frames');
-          this.#failure = new Error(`screen recording ended: ${reason}`);
-          this.close();
-        }
-      });
-
-    if (!this.#current) {
-      this.#current = recording;
-      this.#live = generation;
-    }
-  }
+  return {
+    frames: decodeFrames(recording.stdout, size),
+    reason: () => unstarted?.message || stderr.trim() || undefined,
+    stop: () => recording.kill(),
+  };
 }

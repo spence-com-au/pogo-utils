@@ -4,7 +4,8 @@
  *
  * Held until another phone replaces it or it is unplugged, so a tab switch costs no reconnection. The phone stays
  * claimed meanwhile, which is the trade: an `adb` server on this computer cannot reach it until it is unplugged or the
- * site is closed.
+ * site is closed. A battle's Worker borrows it for a run, through `lend` in `battle/client.ts`, and none is held here
+ * meanwhile, unless the settings menu connects another, which then stays held in place of the lent one.
  *
  * Only the `Phone` type comes from `webusb.ts`, so a tab that merely asks whether a phone is held loads none of Tango.
  */
@@ -15,7 +16,7 @@ import type { Phone } from './inventory/webusb.js';
 
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
 export class PhoneStore {
-  /** The phone held, or null before one is connected and once it is unplugged. */
+  /** The phone held, or null before one is connected, once it is unplugged and while it is lent to a battle. */
   phone: Phone | null = null;
 
   readonly #listeners = new Set<() => void>();
@@ -42,6 +43,21 @@ export class PhoneStore {
     next.disconnected.then(gone, gone);
 
     await was?.close().catch(() => undefined);
+  }
+
+  /**
+   * The phone held, taken out at once rather than once its connection has ended, for whoever is to close it and use it
+   * elsewhere: until then it would still be handed to a tab, or lent twice.
+   */
+  release(): Phone | null {
+    const was = this.phone;
+
+    if (was) {
+      this.phone = null;
+      this.#emit();
+    }
+
+    return was;
   }
 
   subscribe(listener: () => void) {
