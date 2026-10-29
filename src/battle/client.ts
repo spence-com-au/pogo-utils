@@ -13,6 +13,7 @@ import { type PhoneStore } from '../phone-store.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { type Tally } from '../tools/battle/run.mts';
 import { type Image } from '../tools/inventory/png.mts';
+import { putBack } from './awake.js';
 import { type Command, type Message, type Play } from './protocol.js';
 
 /** What the page posts to and hears from: the Worker, or a channel's end in a test. */
@@ -66,6 +67,9 @@ export async function lend(
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
    * being. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news,
    * and is no failure at all where a phone was connected meanwhile, which may be why it failed.
+   *
+   * Taken back, it is connected again as far as `awake.ts` is concerned: a setting the Worker could not put back, its
+   * shell gone with the run, is put back now, and where that fails too it is told and kept for the connect after.
    */
   const takeBack = async (error?: string) => {
     if (store.phone !== null) {
@@ -73,7 +77,16 @@ export async function lend(
     }
 
     await reconnect(serial)
-      .then((back) => (store.phone === null ? store.hold(back) : back.close()))
+      .then(async (back) => {
+        if (store.phone !== null) {
+          return back.close();
+        }
+
+        await store.hold(back);
+        await putBack(back).catch((failure: unknown) =>
+          report.event(`stay_on_while_plugged_in still not put back, so kept for the next connect: ${said(failure)}`),
+        );
+      })
       .catch((failure: unknown) => {
         if (store.phone !== null) {
           return;

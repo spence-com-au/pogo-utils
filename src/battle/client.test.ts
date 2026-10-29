@@ -190,6 +190,28 @@ test('puts the phone back as found at its next connect, where its tab was closed
   await run.ended;
 });
 
+test('puts the phone back as found once the page takes it back, where the Worker could not', async () => {
+  const there = fakeConnection('pixel', H264);
+  there.settings.set('stay_on_while_plugged_in', '1');
+  const { store, start, reconnect, back } = await setUp([], () => Promise.resolve(there.connection));
+  const { events, report } = told();
+  const run = await lend(store, PLAY, report, start, reconnect);
+
+  there.connection.transport.shell = () => Promise.reject(new Error('the shell has gone'));
+  run.stop();
+  await run.ended;
+
+  expect(events).toContain(
+    'stay_on_while_plugged_in not put back to 1 until the phone is next connected: the shell has gone',
+  );
+  expect(store.phone).toBe(back.connection);
+  expect(back.ran).toEqual(['settings put global stay_on_while_plugged_in 1']);
+
+  const next = fakeConnection('pixel', H264);
+  await putBack(next.connection);
+  expect(next.ran, 'nothing left kept').toEqual([]);
+});
+
 test('fails with why the Worker could not reach the phone, and holds the phone again all the same', async () => {
   const log: string[] = [];
   const { store, start, reconnect, back } = await setUp(log, () =>
