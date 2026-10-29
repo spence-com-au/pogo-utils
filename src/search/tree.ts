@@ -163,7 +163,7 @@ function text(leaf: Leaf): string | null {
 
 /**
  * Whether a span pill takes in every value its range holds, and so cannot change what a query matches — `cp0-`,
- * `cp-5000` and `buddy0-5` alike. Read off the range's own bounds rather than any one spelling, so it reaches a span
+ * `hp-500` and `buddy0-5` alike. Read off the range's own bounds rather than any one spelling, so it reaches a span
  * however it was arrived at: typed into the boxes, pasted, shared or picked. An open end reaches past its bound, and
  * two ends filled the wrong way round are the span `text` swaps them into.
  *

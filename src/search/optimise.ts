@@ -141,14 +141,9 @@ function intersected(one: readonly Span[], two: readonly Span[]): Span[] {
 const spansText = (spans: readonly Span[]) =>
   spans.map(([from, to]) => (from === to ? `${from}` : `${from}-${to}`)).join(',');
 
-/**
- * Whether a set of spans is the whole dex, in which case it says nothing and has earned no pill — judged by the `whole`
- * that judges every other range's span, so the two cannot disagree over where the dex ends.
- */
-const everything = ([only, ...rest]: readonly Span[]) =>
-  only !== undefined &&
-  rest.length === 0 &&
-  whole({ kind: 'range', id: 'dex', from: only[0], to: only[1], negated: false });
+/** Whether a set of spans is the whole dex, in which case it says nothing and has earned no pill. */
+const everything = (spans: readonly Span[]) =>
+  spans.length === 1 && spans.every(([from, to]) => from <= WHOLE[0] && to >= WHOLE[1]);
 
 /**
  * The species a fragment of a name reaches, as dex numbers, or null where the answer cannot be trusted — the gate every
