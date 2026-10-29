@@ -1,8 +1,8 @@
 /**
  * The page's loading end to end, against a `fetch` serving a game master of one form and one type: that each piece is
  * asked of the address the site publishes it under or upstream serves it from, and arrives as `run` takes it. Written
- * out rather than read off the vended files, which this project cannot open — `node:fs` is what the empty `types` keeps
- * out — and which `assets.test.mts` holds to the icons and the game master instead.
+ * out rather than read off the vended files, which this project cannot open — its `types` leave out `@types/node`, and
+ * with it `node:fs` — and which `assets.test.mts` holds to the icons and the game master instead.
  */
 
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
