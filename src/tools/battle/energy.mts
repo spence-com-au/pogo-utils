@@ -246,8 +246,9 @@ export class Energy {
    *
    * Where the stages have moved the hit, the model's counts too where it is the larger: a stretch does not start again
    * when they move, so the step can be one measured before our Close Combat lowered our defense. Nothing to model it
-   * on — our species or CP unread, theirs unread with no cap to take it as, their species unread or a CP over the
-   * cap — leaves only the step, and with none, undefined, as a charged move feared but not counted throws nothing.
+   * on — our species or CP unread, theirs unread with no cap to take it as, or a CP over the cap — leaves only the
+   * step, and with none, undefined, as a charged move feared but not counted throws nothing. Their species unread
+   * leaves it undefined outright, a stretch being counted only against an opponent named.
    */
   fastFaints(
     matchup: Matchup,
