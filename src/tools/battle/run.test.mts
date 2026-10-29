@@ -508,7 +508,14 @@ test('names nobody a card its CP alone found where its panel names nobody', asyn
   const scenes = masterParty();
   const unnamed = painted(fixture('menu-pixel8-held-palkia'), [255, 255, 255], [0.085, 0.38, 0.235, 0.45]);
   const { phone, clock } = scripted(
-    { ...scenes, found0: { ...scenes.found0, hold: { at: SELECTION.first, shows: unnamed } } },
+    {
+      ...scenes,
+      found0: {
+        ...scenes.found0,
+        frame: fixture('menu-pixel8-search-palkia'),
+        hold: { at: SELECTION.first, shows: unnamed },
+      },
+    },
     'party',
   );
   const report = recorder();
