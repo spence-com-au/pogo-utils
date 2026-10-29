@@ -57,7 +57,17 @@ import {
   type Verdict,
 } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, holding, Hits, spare, untilTheirsLands, type Hold, type Matchup } from './energy.mts';
+import {
+  Energy,
+  holding,
+  Hits,
+  OurEnergy,
+  spare,
+  untilTheirsLands,
+  wornDown,
+  type Hold,
+  type Matchup,
+} from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './report.mts';
@@ -520,6 +530,9 @@ export async function run(
   let prompted = 0;
   let unprompted = 0;
 
+  // Our own energy, counted per party slot off the fight's time at the fast move its card was read with.
+  let ourEnergy = new OurEnergy(data, []);
+
   // The colour of the bubbles the minigame now showing draws, that of the move last tapped, where its type is known.
   let bubbleColour: Colour | undefined;
   let seen: Sighting = unseen();
@@ -824,6 +837,10 @@ export async function run(
         energy = new Energy(data, meta);
         hits = new Hits();
         sparing = undefined;
+        ourEnergy = new OurEnergy(
+          data,
+          party.map((card) => card.moves?.fast),
+        );
         theirMoves = new Map();
         bannerUntil = -Infinity;
         stages = { own: NO_STAGES, their: NO_STAGES };
@@ -1093,7 +1110,15 @@ export async function run(
       if (!fighting) {
         energy.pause();
         hits.pause();
+        ourEnergy.pause();
       } else {
+        // Our fast moves gain energy only for the one whose card's moves are ours, the one out.
+        if (slot !== undefined && ours) {
+          ourEnergy.read(slot, clock.now());
+        } else {
+          ourEnergy.pause();
+        }
+
         if (bar !== null) {
           energy.read(clock.now(), bar, facing);
         }
@@ -1142,6 +1167,13 @@ export async function run(
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
 
+      // A lit button proves at least its move's cost, which a count run short is raised to.
+      if (slot !== undefined && ours) {
+        for (const move of lit.flatMap((x) => seen.moves.get(x) ?? [])) {
+          ourEnergy.lit(slot, move);
+        }
+      }
+
       // The throw pending plays once its minigame has run `PLAYING_MS`, `Player` swiping it as one where the opponent's
       // move, or a frame of no fight early in the minigame, ended the wait for it that its tap began. Its button lit
       // again for `RELIT_MS` once that wait has ended, and not tapped again, is the tap dropped, its energy kept.
@@ -1152,6 +1184,11 @@ export async function run(
         const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
         stages = { own: user, their: target };
         thrown = pending.move;
+
+        if (slot !== undefined && pending.move !== undefined) {
+          ourEnergy.threw(slot, pending.move);
+        }
+
         undefer(`${pending.move ?? 'a charged move'} thrown`);
         log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
         pending = undefined;
@@ -1176,7 +1213,16 @@ export async function run(
         !shield && verdict.faints && verdict.afforded !== undefined
           ? `${verdict.afforded} would faint us, ${affordable} energy affords it`
           : undefined;
-      const fears = [fast, afforded].filter((fear) => fear !== undefined);
+
+      // Seen sooner than either, where our energy is counted: the move chosen filling only after their fast moves have
+      // worn us down.
+      const counted = slot !== undefined && ours ? ourEnergy.estimate(slot) : null;
+      const chosen = pick && seen.moves.get(pick.x);
+      const worn =
+        fast === undefined && afforded === undefined && chosen
+          ? wornDown(data, chosen, counted, health.own, energy.step, estimate, theirName())
+          : undefined;
+      const fears = [fast, afforded, worn].filter((fear) => fear !== undefined);
       const now =
         pick && fears.length > 0
           ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fears.join('; '), { lastHit })
@@ -1281,7 +1327,6 @@ export async function run(
         // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
         // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
         // tells the hold's end once it is seen to go through.
-        const chosen = pick && seen.moves.get(pick.x);
         const instead =
           finish?.why ??
           now?.why ??
@@ -1316,6 +1361,7 @@ export async function run(
         bait: throwing?.bait ?? theirShields > 0,
         shield,
         ...(estimate && { energy: { energy: estimate.energy, fast: estimate.fast } }),
+        ...(counted && { ourEnergy: { energy: counted.energy, fast: counted.fast } }),
       };
       battling = true;
       known = clock.now();
@@ -1579,6 +1625,7 @@ export async function run(
     player.next(state, clock.now());
     energy.pause();
     hits.pause();
+    ourEnergy.pause();
 
     if (otherSince === undefined) {
       otherSince = clock.now();

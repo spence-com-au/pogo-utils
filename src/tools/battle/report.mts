@@ -36,6 +36,9 @@ export interface Fight {
 
   /** The opponent's energy as counted off our bar, and the fast move it is counted by, where it can be counted. */
   energy?: { energy: number; fast: string };
+
+  /** Our energy as counted off the fight's time, and the fast move its card was read with, where it can be counted. */
+  ourEnergy?: { energy: number; fast: string };
 }
 
 export interface Status {
@@ -62,14 +65,15 @@ export interface Reporter {
 }
 
 /** The status's battle as one line, the one `--verbose` has always written. */
-export function describe({ own, opponent, moves, throwing, bait, shield, energy }: Fight): string {
+export function describe({ own, opponent, moves, throwing, bait, shield, energy, ourEnergy }: Fight): string {
   const side = ({ cp, hp }: Side) => `CP ${cp ?? '?'} at ${hp === null ? '?' : Math.round(hp * 100)}%`;
+  const ours = ourEnergy ? `; our energy ${energyOf(ourEnergy)}` : '';
   const counted = energy ? `; their energy ${energyOf(energy)}` : '';
 
-  return `${own.species ?? '?'} against ${opponent.species ?? '?'} (${opponent.shields} shields): ${moves.join(', ') || '?'}, ${bait ? 'baiting with' : 'throwing'} ${throwing ?? 'the first ready'}, ${shield ? '' : 'not '}shielding; ${side(own)} against ${side(opponent)}, ${own.shields} of our shields left${counted}`;
+  return `${own.species ?? '?'} against ${opponent.species ?? '?'} (${opponent.shields} shields): ${moves.join(', ') || '?'}, ${bait ? 'baiting with' : 'throwing'} ${throwing ?? 'the first ready'}, ${shield ? '' : 'not '}shielding; ${side(own)} against ${side(opponent)}, ${own.shields} of our shields left${ours}${counted}`;
 }
 
-/** The opponent's energy as counted, `40 by Counter`. */
+/** Either side's energy as counted, `40 by Counter`. */
 const energyOf = ({ energy, fast }: NonNullable<Fight['energy']>) => `${energy} by ${fast}`;
 
 /**
@@ -138,7 +142,7 @@ export function summary(status: Status | undefined): string {
 }
 
 /** How many lines the panel is, whatever is known. */
-const PANEL_ROWS = 5;
+const PANEL_ROWS = 6;
 
 /**
  * The battle as the panel's lines, `width` wide, ours at the left and theirs at the right. Always `PANEL_ROWS` of them,
@@ -173,10 +177,13 @@ export function panel(fight: Fight | undefined, width: number): string {
     return fit(balls + bar.padStart(column - PARTY), column);
   };
 
+  const counted = (energy: Fight['energy']) => (energy ? `energy ${energyOf(energy)}` : '');
+
   return [
     beside(name(fight.own), name(fight.opponent), width),
     beside(health(fight.own), health(fight.opponent), width),
-    beside(fight.moves.join(', ') || '?', fight.energy ? `energy ${energyOf(fight.energy)}` : '', width),
+    beside(counted(fight.ourEnergy), counted(fight.energy), width),
+    beside(fight.moves.join(', ') || '?', '', width),
     beside(`${fight.bait ? 'baiting with' : 'throwing'} ${fight.throwing ?? 'the first ready'}`, '', width),
     beside(fight.shield ? 'shielding' : 'not shielding', '', width),
   ].join('\n');

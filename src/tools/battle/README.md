@@ -271,7 +271,8 @@ gaps safely.
 
 **What it can't see:**
 
-- either side's IVs or level, or our own energy
+- either side's IVs or level
+- our own energy, which it [counts](#our-energy) where our fast move was read
 - the opponent's energy or fast move
 - the opponent's charged moves before they're thrown
 - whether a move's chance-based stat change actually happened
@@ -279,6 +280,21 @@ gaps safely.
 ### Fast moves
 
 It swipes for fast moves continuously, about six a second, so no turn goes unused.
+
+### Our energy
+
+Where a card's fast move was read off its panel, our energy is counted from it ([`energy.mts`](energy.mts)'s
+`OurEnergy`), since we swipe non-stop: one fast move lands each time one takes, and gains its energy. Only the fight's
+own time counts, not a charged move, a prompt or the minigame, in which neither side's fast moves land.
+
+- **Corrected by the buttons.** A lit button proves at least its move's cost, and a count short of it is raised to it.
+  An unlit one isn't taken to prove less, a lit button being misread unlit for a frame now and then. Counted as if every
+  swipe landed at once, the count runs ahead rather than behind.
+- **Settled at each throw** of ours, at what is left after the move's own cost.
+- **Kept per card**, across a switch, as a Pokémon keeps its energy on the bench, and capped at 100.
+
+It is shown under our HP bar, as the opponent's is under theirs, as `energy 45 by Geomancy`. A card whose fast move
+wasn't read has no count, and plays as before.
 
 ### Which charged move to throw
 
@@ -363,6 +379,16 @@ held for stays held. The rule is PvPoke's (`ActionLogic.js`), which also fits in
 land one before the opponent's next, a timing that needs to know how far into its fast move the opponent is, to a turn.
 It is logged as
 `threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump`.
+
+**Filling in time.** Seen sooner, where [our energy is counted](#our-energy): the same throw goes once the move held for
+would fill only after the opponent's fast moves have fainted us ([`energy.mts`](energy.mts)'s `wornDown`). It fills
+after the fast moves of ours that make up what our count is short of its cost, and we faint after those of theirs that
+take what is left of our bar at the hit measured, less its 2 points of wander, each side's timed in turns of its own
+fast move, theirs the one their count goes by. Filling on the turn we would faint is too late. Thrown now, what's lit
+lands while we stand and what is left over goes on towards another throw; held, all of it goes with the faint. PvPoke's
+battle AI has no such rule, throwing only once not one more of its fast moves fits. Anything unread or unmeasured holds
+as before. It is logged as
+`threw Close Combat: Moonblast fills in 6 turns, 5 energy short; 2 of Garchomp's fast moves faint us in 4, one taking ~2% with 5% left; not holding for Moonblast`.
 
 **Finishing.** Ahead of both, a ready move that would finish the opponent once its shields are gone is thrown at once,
 whatever the move held for, the cheapest of two that would ([`damage.mts`](damage.mts)'s `finisher`). It wins over a
@@ -557,11 +583,9 @@ time, it's tried again at once.
 
 The strategy still leaves some gaps:
 
-- **Our own energy.** With our fast move read off its card, our energy can be counted from it, given that we swipe
-  non-stop, and corrected by the buttons lighting ([#485](https://github.com/spence-com-au/pogo-utils/issues/485)).
-- **Throwing what's ready before fainting.** A lit move goes now once the opponent's counted energy affords a move that
-  would faint us, or its next fast move would ([above](#which-charged-move-to-throw)). Still missing: fast moves wearing
-  us down before the best move fills, seen sooner than the last of them, which needs our own energy to see coming.
+- **Holding until we're full.** A move lowering our defense waits for the opponent's throw no longer than our energy
+  could fill at the soonest ([above](#which-charged-move-to-throw)), where PvPoke waits until it is full. Where
+  [our energy is counted](#our-energy), the count could say when it is.
 - **Our own fast move, unread.** Where its card's panel went unread, holding for the next
   ([above](#which-charged-move-to-throw)) takes ours to be the longest our species has. Told apart by the size of our
   hits, as the opponent's is by its, it would hold more often.

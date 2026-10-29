@@ -7,7 +7,17 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Verdict, wouldShield } from './damage.mts';
-import { Energy, holding, Hits, spare, untilTheirsLands, type Matchup, type Standing } from './energy.mts';
+import {
+  Energy,
+  holding,
+  Hits,
+  OurEnergy,
+  spare,
+  untilTheirsLands,
+  wornDown,
+  type Matchup,
+  type Standing,
+} from './energy.mts';
 import { type Meta } from './meta.mts';
 
 const DATA = JSON.parse(
@@ -500,5 +510,76 @@ test('a hold goes on a fear of fainting, whatever weighed it', () => {
   expect(holding(undefined, [fear]), 'no hold to let go').toBe(undefined);
   expect(holding({ held: false, why: 'the time' }, [fear, 'Earthquake would faint us'])?.why).toBe(
     `${fear}; Earthquake would faint us`,
+  );
+});
+
+/**
+ * Xerneas out first with Geomancy read off its card, 13 energy each 3 turns, and the second card's fast move unread:
+ * 1.5s of the fight gains it 13, the time the fight stands still for nothing, and its energy waits on the bench.
+ */
+test('counts our energy off the fight’s time at the fast move read, per slot', () => {
+  const ours = new OurEnergy(DATA, ['Geomancy', null]);
+
+  const fight = (slot: number, from: number, to: number) => {
+    for (let at = from; at <= to; at += 100) {
+      ours.read(slot, at);
+    }
+  };
+
+  fight(0, 0, 4400);
+  expect(ours.estimate(0), 'two Geomancy, the third not yet landed').toEqual({
+    energy: 26,
+    fast: 'Geomancy',
+    gain: 13,
+  });
+
+  ours.pause();
+  fight(0, 10_000, 10_100);
+  expect(ours.estimate(0)?.energy, 'the time across a pause gaining nothing').toBe(39);
+
+  ours.pause();
+  fight(1, 20_000, 30_000);
+  expect(ours.estimate(1), 'a card whose fast move went unread').toBe(null);
+  expect(ours.estimate(0)?.energy, 'kept on the bench').toBe(39);
+
+  ours.lit(0, 'Close Combat');
+  expect(ours.estimate(0)?.energy, 'raised to a lit move’s cost').toBe(45);
+  ours.lit(0, 'Body Slam');
+  expect(ours.estimate(0)?.energy, 'never lowered by one').toBe(45);
+
+  ours.pause();
+  fight(0, 40_000, 41_000);
+  ours.threw(0, 'Close Combat');
+  expect(ours.estimate(0)?.energy, 'what is left after the throw').toBe(0);
+  fight(0, 41_100, 41_500);
+  expect(ours.estimate(0)?.energy, 'the fast move under way going on').toBe(13);
+
+  fight(0, 41_600, 100_000);
+  expect(ours.estimate(0)?.energy, 'capped').toBe(100);
+});
+
+/**
+ * Xerneas holding for Moonblast's 50 against Garchomp, whose Mud Shot, 2 turns, takes 2% a hit: from 30 energy it is
+ * two Geomancy short, 6 turns, and at 5% two Mud Shots faint it in 4.
+ */
+test('throws rather than hold for a move our energy fills only after their fast moves faint us', () => {
+  const xerneas = (energy: number) => ({ energy, fast: 'Geomancy', gain: 13 });
+  const garchomp = { energy: 0, fast: 'Mud Shot', gain: 9 };
+
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), 0.05, 0.02, garchomp, 'Garchomp')).toBe(
+    "Moonblast fills in 6 turns, 20 energy short; 2 of Garchomp's fast moves faint us in 4, one taking ~2% with 5% left",
+  );
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), 0.07, 0.02, garchomp, 'Garchomp'), 'filling as we faint').toMatch(
+    /^Moonblast fills in 6 turns, 20 energy short; 3 of Garchomp's fast moves faint us in 6,/,
+  );
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), 0.09, 0.02, garchomp, 'Garchomp'), 'filling in time').toBe(undefined);
+  expect(wornDown(DATA, 'Moonblast', xerneas(50), 0.05, 0.02, garchomp, 'Garchomp'), 'already afforded').toBe(
+    undefined,
+  );
+  expect(wornDown(DATA, 'Moonblast', null, 0.05, 0.02, garchomp, 'Garchomp'), 'our energy uncounted').toBe(undefined);
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), 0.05, 0.02, null, 'Garchomp'), 'theirs uncounted').toBe(undefined);
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), null, 0.02, garchomp, 'Garchomp'), 'our HP unread').toBe(undefined);
+  expect(wornDown(DATA, 'Moonblast', xerneas(30), 0.05, undefined, garchomp, 'Garchomp'), 'no hit measured').toBe(
+    undefined,
   );
 });
