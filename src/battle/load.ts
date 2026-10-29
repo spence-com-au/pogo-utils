@@ -30,7 +30,9 @@ const download: Download = async (_file, url, decode) => {
 export async function loadBattle(league: string | null) {
   const data = await gameData();
   const [silhouettes, types, meta] = await Promise.all([
-    fetchOk(SILHOUETTES).then(async (response) => decodeSilhouettes((await response.json()) as Silhouettes)),
+    download(SILHOUETTES, SILHOUETTES, (bytes) =>
+      decodeSilhouettes(JSON.parse(new TextDecoder().decode(bytes)) as Silhouettes),
+    ),
     typeIcons(data, download),
     league === null ? null : loadMeta(download, data, league),
   ]);
