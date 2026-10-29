@@ -19,7 +19,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** A feed whose frames come as the test sends them, until it ends, and which says whether it was stopped. */
+/**
+ * A feed whose frames come as the test sends them, until it ends, and which says whether it was stopped. A stop ends
+ * nothing by itself, as a recording goes on sending for as long as its kill takes: the test ends it.
+ */
 function scripted(said?: string) {
   const queued: (Image | Error | null)[] = [];
   let wake = () => {};
@@ -49,10 +52,7 @@ function scripted(said?: string) {
   const feed: Feed = {
     frames: frames(),
     reason: () => said,
-    stop: () => {
-      stopped = true;
-      push(null);
-    },
+    stop: () => (stopped = true),
   };
 
   return {
@@ -102,8 +102,10 @@ test('answers the first recording until the next sends its first frame, then sto
     expect(await red(screen)).toBe(3);
     expect(first.stopped()).toBe(true);
 
+    // Still sending as its stop takes effect, which must not hand the screen back to it.
     first.send(4);
     expect(await red(screen), 'never handed back to the first').toBe(3);
+    first.end();
   } finally {
     screen.close();
   }
