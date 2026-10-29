@@ -252,25 +252,27 @@ export function latestDateNamed(text: string, locales: string[]) {
 type Named = ReturnType<typeof datesIn> extends Iterable<infer T> ? T : never;
 
 /**
- * The year a yearless date belongs to, from the nearest stated date or year after it, else before it, within a range's
- * length of it, or `undefined` where none is that close.
+ * The year a yearless date belongs to, from the nearer of the stated dates or years either side of it within a range's
+ * length, or `undefined` where neither is that close.
  *
- * The one after it is asked first, because English and most other editions write the year on a range's end — `Tuesday,
- * December 2, at 10:00 a.m. to Tuesday, January 6, 2026` — and a December before a January is the year before. The one
- * before it is asked next, for the editions that write it on the start: `2026年10月19日から11月1日まで`, or
- * `gamescom 2026 … vom 26. bis 30. August`, and there a November after an October is the same year while a January
- * after a December is the next. Nothing further is reached for: a year a paragraph away is as likely another event's.
+ * Whichever side is nearer is the other end of its range. English and most other editions write the year on a range's
+ * end — `Tuesday, December 2, at 10:00 a.m. to Tuesday, January 6, 2026` — and there a December before a January is
+ * the year before. Others write it on the start — `2026年12月28日から1月3日まで`, `gamescom 2026 … vom 26. bis 30.
+ * August` — and there a January after a December is the year after. The far side is ignored even when it is in reach,
+ * since `2026年12月28日から1月3日まで開催！参加券は2026年11月1日から` is about two things. A tie goes to the date after, the more
+ * common shape. Nothing further is reached for: a year a paragraph away is as likely another event's.
  */
 function yearNear(at: Named[3], month: number, stated: Named[]) {
   const after = stated.find(([, , , other]) => other.start >= at.end && other.start - at.end <= RANGE_GAP);
+  const before = stated.findLast(([, , , other]) => other.end <= at.start && at.start - other.end <= RANGE_GAP);
+  const gapAfter = after ? after[3].start - at.end : Infinity;
+  const gapBefore = before ? at.start - before[3].end : Infinity;
 
-  if (after) {
+  if (after && gapAfter <= gapBefore) {
     const [year = 0, otherMonth] = after;
 
     return otherMonth !== undefined && month > otherMonth ? year - 1 : year;
   }
-
-  const before = stated.findLast(([, , , other]) => other.end <= at.start && at.start - other.end <= RANGE_GAP);
 
   if (before) {
     const [year = 0, otherMonth] = before;

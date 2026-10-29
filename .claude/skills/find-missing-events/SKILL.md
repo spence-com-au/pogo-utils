@@ -1,11 +1,12 @@
 ---
 name: find-missing-events
 description: >-
-  Cross-checks the official news list at pokemongo.com/en/news against data/events.json and the ScrapedDuck feed, finds
-  announced regional or in-person events that neither source carries, and proposes entries for data/events.json. Use
-  this whenever the user asks whether any events are missing, wants the event list checked, audited, refreshed or
-  brought up to date, mentions comparing against pokemongo.com or the official news, asks why an announced event is not
-  showing on the Events page, or wants a regional event added — even if they never name the news page or the feed.
+  Cross-checks the official news list in every language edition of pokemongo.com (/en/news, /es-MX/news, /ja/news and
+  the rest) against data/events.json and the ScrapedDuck feed, finds announced regional or in-person events that neither
+  source carries, and proposes entries for data/events.json. Use this whenever the user asks whether any events are
+  missing, wants the event list checked, audited, refreshed or brought up to date, mentions comparing against
+  pokemongo.com or the official news, asks why an announced event is not showing on the Events page, or wants a regional
+  event added — even if they never name the news page or the feed.
 ---
 
 # Finding events the Events page does not carry

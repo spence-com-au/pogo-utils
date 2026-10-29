@@ -3,7 +3,7 @@
  * nothing here accounts for and has not yet finished.
  *
  * Two announcement surfaces are read. The news archive is paginated by `?nr=<offset>`, thirty articles a page, and
- * walking it to exhaustion reaches every article back to mid-2025 in nine fetches. It is walked in every language the
+ * walking it to exhaustion reaches every article back to mid-2025 in nine fetches per edition. It is walked in every language the
  * site publishes in, because each edition lists announcements the English one never does — a regional event is often
  * written only for its own country, as Día de Muertos in Mexico was in Spanish alone, and the Japanese edition alone
  * carried some fifty such articles. The in-person index carries one schema.org `Event` per listing with its dates
@@ -260,6 +260,14 @@ function byScore(a: Scored, b: Scored) {
   return b.score - a.score || compare(b.source, a.source) || compare(b.eventID, a.eventID) || compare(b.name, a.name);
 }
 
+/**
+ * What an article is scored against: its headline, or its slug where the headline has no words `tokens` can read. A
+ * Japanese, Korean, Chinese, Russian or Thai headline folds to nothing, and an article only one of those editions lists
+ * keeps it, so without this it could never be matched — not even a postponement of an event we hold. Its slug is still
+ * ASCII, `202610aeonmall-halloween`.
+ */
+const matchText = ({ headline, slug }: Article) => (tokens(headline).size ? headline : slug);
+
 /** The few events a headline most plausibly refers to, best first, or nothing if none is close enough. */
 function candidatesFor(headline: string, candidates: Candidate[]) {
   return candidates
@@ -340,7 +348,7 @@ const ended = dated.length - live.length;
 // out. City Safari Boston was postponed for a storm two days before the date `data/events.json` still advertised, and
 // its article names no date at all. Matching what we hold is the signal that finds it.
 const updates = undated
-  .map((article) => ({ article, found: candidatesFor(article.headline, candidates) }))
+  .map((article) => ({ article, found: candidatesFor(matchText(article), candidates) }))
   .filter(({ found }) => found.length > 0);
 
 print(
@@ -362,7 +370,7 @@ for (const article of live.toSorted((a, b) => compare(runsTo(b) ?? '', runsTo(a)
       `    ${article.headline}`,
   );
 
-  for (const { score, source, eventID, name } of candidatesFor(article.headline, candidates)) {
+  for (const { score, source, eventID, name } of candidatesFor(matchText(article), candidates)) {
     print(`    ?  ${score.toFixed(2)} ${source}: ${eventID} | ${name}`);
   }
 
