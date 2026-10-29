@@ -610,9 +610,10 @@ export interface Hold {
  * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
  * count missed, names the hardest move that energy affords and finds it would not faint us. With no shield of ours
  * left the throw puts up no prompt, and its banner is read only after it has played, if at all; what says it landed is
- * the count, which `Energy.threw` lowers by the move once its countdown has shown. Affording none of the opponent's
- * moves, the count lets the throw go, as it lets go one never held, and so does no count at all; still affording one, a
- * second throw is still to come, and the hold goes on.
+ * the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move once its countdown has shown,
+ * and `Energy.named` settles at the move's own cost once its banner is read. Affording none of the opponent's moves,
+ * the count lets the throw go, as it lets go one never held, and so does no count at all; still affording one, a second
+ * throw may be still to come, and the hold goes on, until the banner settles the count or the time below runs out.
  * A hit that would faint us leaves no defense to save, and is `beforeFainting`'s to throw before, as is `fast`: why
  * the opponent's next fast move would faint us, where `fastFaints` finds it would. Anything unread lets the throw go
  * too, as `verdict.why` names it.

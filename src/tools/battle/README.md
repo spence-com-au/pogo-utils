@@ -277,11 +277,12 @@ would have that move land on the lowered defense. This is PvPoke's battle AI's d
 [`energy.mts`](energy.mts)'s `untilTheirsLands`, with our fainting judged by nine tenths of the HP left, as
 [below](#when-to-shield), but not PvPoke's 1/1.4 or its cycle of fast moves. No prompt shows a throw with no shield to
 take, and its banner is read only after, if at all, so what says the hit landed is the count, which the throw's
-countdown lowers; affording nothing, or not counted at all, it lets the move go. PvPoke waits no longer than until our
-energy is full, which the bot can't see, so it waits no longer than the soonest it could fill from the move's cost, at
-the fastest gain of any fast move our species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian
-Moltres's Brave Bird by Wing Attack. Only the fight's own time counts, not the opponent's throw playing out, in which
-our energy stands still. A finish and a throw for fear of fainting, both below, go at once. Logged as
+countdown lowers by the cheapest move it could be and its banner, once read, by the move's own cost; affording nothing,
+or not counted at all, it lets the move go. PvPoke waits no longer than until our energy is full, which the bot can't
+see, so it waits no longer than the soonest it could fill from the move's cost, at the fastest gain of any fast move our
+species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. Only
+the fight's own time counts, not the opponent's throw playing out, in which our energy stands still. A finish and a
+throw for fear of fainting, both below, go at once. Logged as
 `holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
 `no longer holding Close Combat: 7 energy affords none of Metagross's charged moves`.
 

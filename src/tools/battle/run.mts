@@ -521,8 +521,9 @@ export async function run(
   // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
   // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
   // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
-  // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours leaving the
-  // field, the battle ending or, failing that, the next one starting; a tap that is dropped leaves it running.
+  // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours fainting, a
+  // switch of ours seen to have gone through, the battle ending or, failing that, the next one starting; a tap dropped,
+  // a throw or a switch, leaves it running.
   let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
   // Ends a hold with the move it held for, told where it was held.
@@ -553,7 +554,6 @@ export async function run(
     stages = { ...stages, own: NO_STAGES };
     readAt = -Infinity;
     counter = undefined;
-    undefer('ours left the field');
   };
 
   // Each part of the stretch the battle has been off its field for, if it is: what showed, and from when. Told once the
@@ -857,6 +857,7 @@ export async function run(
 
           if (stayed === false) {
             swappedAt = switching.at;
+            undefer('ours switched out');
           }
 
           if (stayed !== undefined) {
@@ -914,6 +915,7 @@ export async function run(
       // and the one switched to gets back what it had. The switch timer is taken to run from it, as it does if it took.
       if (state === 'switch') {
         drop(`${seen.own ?? 'ours'} fainted first`);
+        undefer('ours fainted');
         forgetOwn();
         faintAt = clock.now();
         switchAt = faintAt;
@@ -1008,6 +1010,7 @@ export async function run(
           // The prompt forgot it already; with none, as for the last one sent in, nothing else does.
           if (state !== 'switch') {
             log(`${seen.own ?? party[gone] ?? '?'} fainted`, 'own', 'one fewer of our Poké Balls');
+            undefer('ours fainted');
             forgetOwn();
           }
         }
@@ -1178,10 +1181,11 @@ export async function run(
 
       // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
       // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
-      // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for
-      // fear of fainting, which go at once. Told as it begins and as it ends.
+      // stands. Only once it is lit, and never once tapped, as for the hold above, nor while a switch of ours is under
+      // way, which leaves who is out unknown; never for a finish or a throw for fear of fainting, which go at once. Told
+      // as it begins and as it ends.
       const deferrable =
-        spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending
+        spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending && !switching
           ? seen.moves.get(pick.x)
           : undefined;
       const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
@@ -1211,8 +1215,9 @@ export async function run(
       } else if (ongoing?.held && hold && !hold.held) {
         log(`no longer holding ${ongoing.move}`, 'own', hold.why);
         ongoing.held = false;
-      } else if (deferring?.held && !ongoing && lit.length > 0) {
-        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt.
+      } else if (deferring?.held && !ongoing && lit.length > 0 && !switching) {
+        // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt. Not while
+        // a switch of ours is under way, which tells the hold's end once it is seen to go through.
         const instead = finish?.why ?? now?.why ?? spared ?? `${(pick && seen.moves.get(pick.x)) ?? 'another'} picked`;
 
         log(`no longer holding ${deferring.move}`, 'own', instead);
