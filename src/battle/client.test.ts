@@ -129,6 +129,22 @@ test('ends the run when the phone is unplugged, saying so once the page has trie
   await vi.waitFor(() => expect(new Set(there.killed)).toEqual(new Set(['screenrecord', 'sh'])));
 });
 
+test('leaves a phone connected during the run held, letting the lent one go again once it is back', async () => {
+  const log: string[] = [];
+  const there = fakeConnection('pixel', H264, log);
+  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const run = await lend(store, start, reconnect);
+  const other = fakeConnection('other', H264, log);
+
+  await store.hold(other.connection);
+  run.stop();
+  await run.ended;
+
+  expect(store.phone).toBe(other.connection);
+  expect(log.slice(-2)).toEqual(['page opened pixel', 'pixel let go']);
+  await expect(back.connection.disconnected).resolves.toBeUndefined();
+});
+
 test('fails a run whose connection closed before the phone sent a frame, rather than answering one already over', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);

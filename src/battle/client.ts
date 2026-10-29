@@ -67,9 +67,10 @@ export async function lend(
       worker.terminate();
       asked.splice(0).forEach((answer) => answer(undefined));
 
-      // The run's failure is the news where there is one, with the phone failing to come back after it as well.
+      // The run's failure is the news where there is one, with the phone failing to come back after it as well. A phone
+      // the settings menu connected meanwhile is the one the user chose, and stays held; this one is let go of again.
       reconnect(serial)
-        .then((back) => store.hold(back))
+        .then((back) => (store.phone === null ? store.hold(back) : back.close()))
         .then(
           () => (error === undefined ? resolve() : reject(new Error(error))),
           (failure: unknown) =>
