@@ -594,11 +594,18 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   const survived = {
     faints: false,
     why: 'Meteor Mash would take ~78%, with 100% left, the hardest 50 energy affords',
+    hardest: 'Meteor Mash',
     afforded: 'Meteor Mash',
   };
-  const fainting = { faints: true, why: 'Flash Cannon would take ~85%, with 90% left', afforded: 'Flash Cannon' };
-  const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left' };
-  const holds = (move: string, shields: number, verdict: typeof survived | typeof landed, held = 0) =>
+  const fainting = {
+    faints: true,
+    why: 'Flash Cannon would take ~85%, with 90% left',
+    hardest: 'Flash Cannon',
+    afforded: 'Flash Cannon',
+  };
+  const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left', hardest: 'Flash Cannon' };
+  const unread = { faints: true, why: 'their species unread' };
+  const holds = (move: string, shields: number, verdict: Parameters<typeof untilTheirsLands>[5], held = 0) =>
     untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, held);
 
   expect(holds('Close Combat', 0, survived)).toEqual({
@@ -615,6 +622,10 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   });
   expect(holds('Close Combat', 1, survived), 'a shield left to take it').toBe(undefined);
   expect(holds('Moonblast', 0, survived), 'a move leaving our defense alone').toBe(undefined);
+  expect(holds('Close Combat', 0, unread), 'a newcomer of theirs not yet named').toEqual({
+    held: false,
+    why: unread.why,
+  });
 
   // Geomancy, 13 energy for 3 turns, fills 100 from Close Combat's 45 in 6346ms.
   expect(holds('Close Combat', 0, survived, 6300)?.held).toBe(true);

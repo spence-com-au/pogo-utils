@@ -693,7 +693,7 @@ export interface Hold {
  * has played, if at all; what says it landed is the count, which `Energy.threw` lowers by the move once its countdown
  * has shown. Affording none of the opponent's moves, the count lets the throw go, as it lets go one never held; still
  * affording one, a second throw is still to come, and the hold goes on. A hit that would faint us leaves no defense to
- * save, and is `beforeFainting`'s to throw before.
+ * save, and is `beforeFainting`'s to throw before; anything unread lets the throw go too, as `verdict.why` names it.
  *
  * And only until `held`, how long it has been held in milliseconds, reaches `filling`'s time. PvPoke stops waiting at
  * 100 energy of ours, past which our fast moves gain nothing; the bot cannot see ours, so it stops at the soonest it
@@ -714,11 +714,16 @@ export function untilTheirsLands(
   own: Shown,
   opponent: string,
   shields: number,
-  verdict: { faints: boolean; why: string; afforded?: string },
+  verdict: { faints: boolean; why: string; hardest?: string; afforded?: string },
   held: number,
 ): Hold | undefined {
   if (!lowersDefense(data, move) || shields > 0) {
     return undefined;
+  }
+
+  // Something unread, such as a newcomer of theirs not yet named, leaves no hit calculated, and says so.
+  if (verdict.hardest === undefined) {
+    return { held: false, why: verdict.why };
   }
 
   if (verdict.afforded === undefined) {

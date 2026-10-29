@@ -1035,8 +1035,9 @@ const HOLDING =
 /**
  * Held, Shadow Sneak goes once Mamoswine's Icicle Spear has landed, its countdown showing with no prompt and lowering
  * the count to afford nothing, our bar at 30% after it; or once held as long as Giratina's energy takes to fill from 50
- * at 8 a second, as any of its fast moves gains: 6.25s, between the 6s `lit` lasts and the 6.5s `late` lasts after it.
- * Never on `lit`, which takes no tap.
+ * at 8 a second, as any of its fast moves gains: 6.25s, between the 6s `lit` lasts and the 6.5s `late` lasts after it;
+ * or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Never on `lit`, which takes
+ * no tap.
  */
 test.each([
   [
@@ -1060,6 +1061,16 @@ test.each([
       'own: threw Shadow Sneak',
     ],
   ],
+  [
+    'gives way to a finish',
+    { lasts: { ms: 2000, to: 'finishing' } },
+    'finishing',
+    [
+      HOLDING,
+      'own: no longer holding Shadow Sneak: would finish Mamoswine at 4%',
+      'own: threw Shadow Sneak: would finish Mamoswine at 4%',
+    ],
+  ],
 ])(
   'with no shield of ours left, a move lowering our defense is held until the hit it waits for %s',
   async (_, lit, tapped, said) => {
@@ -1071,6 +1082,10 @@ test.each([
         playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
         back: { frame: ours(30), tap: { at: [0.499, 0.889], to: 'minigame' } },
         late: { frame: ours(80), tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 500, to: 'won' } },
+        finishing: {
+          frame: painted(ours(80), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
+          tap: { at: [0.499, 0.889], to: 'minigame' },
+        },
       },
       'party',
     );

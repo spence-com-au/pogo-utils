@@ -1151,6 +1151,12 @@ export async function run(
       } else if (kept?.held && hold && !hold.held) {
         log(`no longer holding ${kept.move}`, 'own', hold.why);
         kept.held = false;
+      } else if (deferring?.held && !kept && lit.length > 0) {
+        // Another throw taking over on a frame with a button lit, rather than the buttons hidden by a throw or a prompt.
+        const instead = finish?.why ?? now?.why ?? spared ?? `${(pick && seen.moves.get(pick.x)) ?? 'another'} picked`;
+
+        log(`no longer holding ${deferring.move}`, 'own', instead);
+        deferring.held = false;
       }
 
       if (state === 'shield' && !offered?.taken) {
