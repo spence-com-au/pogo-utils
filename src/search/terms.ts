@@ -446,14 +446,15 @@ const BUDDY_LEVELS: readonly string[] = [
  * filled from the range's own `min` or `max`, so one box filled writes `cp3000-`; `tree.js` says why.
  *
  * `max` bounds the input so a typo cannot write a range nothing can match, and is the ceiling the game itself has where
- * there is one — 1025 is the dex, and a CP above 5000 belongs to nothing.
+ * there is one — 1025 is the dex, and no Pokémon reaches 500 HP.
  *
  * **Where the game documents no ceiling, `max` is generous rather than tight.** `bounded` below *clamps* rather than
  * refuses, so a ceiling set under what a search can really ask for turns that search into a different one in silence:
  * the three counts take five digits, which is past any storage or candy total the game can hold, where a figure chosen
  * to look plausible would have rewritten a real `countcandy50000`. Age takes five too, rather than a round number of
  * years: a Pokémon caught at launch in July 2016 goes on getting older, and a ceiling it passes clamps `age3700-` into
- * a search for younger ones as well.
+ * a search for younger ones as well. So does CP, which looks like it has a ceiling and does not: a perfect Crowned
+ * Zacian at level 50 is 5629 CP by the game master's own stats, and a Mega Mewtwo Y is past 7000.
  *
  * `megalevel` is the one ceiling that is a judgement. Bulbapedia lists a fourth mega level, Super Max, and the
  * community phrase list gives "1/2/3/4 = Base/High/Max/Super Max" — but carries `// Super Max not personally confirmed
@@ -476,7 +477,7 @@ const BUDDY_LEVELS: readonly string[] = [
  * span: `countcandy248-` is not a `count` search, because `candy248-` is not a number.
  */
 const RANGE_TABLE = [
-  { id: 'cp', prefix: 'cp', label: 'CP', max: 5000 },
+  { id: 'cp', prefix: 'cp', label: 'CP', max: 99999 },
   { id: 'hp', prefix: 'hp', label: 'HP', max: 500 },
   { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: 1025 },
   { id: 'ivattack', prefix: '', suffix: 'attack', label: 'Attack IV', max: 4 },
@@ -558,7 +559,7 @@ export const SPAN = /^(\d+)?(-)?(\d+)?$/;
  *
  * Four builders make a span pill — the number boxes, a fragment a stranger wrote, a typed query and a preset — and a
  * pill out of any of them has to be one the others could have made. Otherwise the bound changes under the reader: a
- * typed `cp99999` composed `cp99999`, and the link that string wrote read back as `cp5000`. A preset is this
+ * typed `9hp` composed `9hp`, and the link that string wrote read back as `4hp`. A preset is this
  * repository's own writing rather than a stranger's, so what it is held to is that its string and its link agree.
  */
 export const bounded = (value: number, range: Range) => Math.min(Math.max(value, range.min ?? 0), range.max);
