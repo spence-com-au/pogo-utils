@@ -119,7 +119,7 @@ if (ignored.length > 0) {
  * the hold is let go, so the hold lasts until the screenshot is done, however long that takes: screenshots 1.8s into a
  * hold showed it on a Pixel 8 Pro.
  */
-const HELD_MS = 1_500;
+const PANEL_MS = 1_500;
 
 /**
  * The game's own icon for each type, which the minigame's bubbles and the HUD's type icons are told by: 18 small files,
@@ -451,7 +451,7 @@ if (command === 'run') {
         await touch.down(point);
 
         try {
-          await sleep(HELD_MS);
+          await sleep(PANEL_MS);
 
           return await device.screenshot();
         } finally {
