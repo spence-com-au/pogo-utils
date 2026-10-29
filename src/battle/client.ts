@@ -117,7 +117,8 @@ export async function lend(
   worker.postMessage({ type: 'start', serial });
   await Promise.race([first, ended]);
 
-  // Stopped before the phone sent a frame, its connection closed under the Worker, with nothing to say why.
+  // Stopped cleanly before the phone sent a frame, which the Worker does not do today: every stop of its own before then
+  // carries why, and the page cannot ask for one before `lend` returns. Kept so that a `Run` is never one already over.
   if (!started) {
     throw new Error('the run stopped before the phone sent a frame');
   }
