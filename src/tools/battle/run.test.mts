@@ -1049,7 +1049,7 @@ test.each([
     [
       HOLDING,
       'opponent: Mamoswine threw a charged move: none of our shields left to prompt for',
-      "own: no longer holding Shadow Sneak: 8 energy, as counted, affords none of Mamoswine's charged moves",
+      "own: no longer holding Shadow Sneak: 8 energy affords none of Mamoswine's charged moves",
       'own: threw Shadow Sneak',
     ],
   ],

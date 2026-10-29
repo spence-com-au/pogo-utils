@@ -279,7 +279,7 @@ fill from the move's cost, at the fastest gain of any fast move our species has:
 Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. Only the fight's own time counts, not the opponent's
 throw playing out, in which our energy stands still. A finish and a throw for fear of fainting, both below, go at once.
 Logged as `holding Close Combat: Metagross can afford Meteor Mash, which we would survive; …`, and as it ends,
-`no longer holding Close Combat: 7 energy, as counted, affords none of Metagross's charged moves`.
+`no longer holding Close Combat: 7 energy affords none of Metagross's charged moves`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth

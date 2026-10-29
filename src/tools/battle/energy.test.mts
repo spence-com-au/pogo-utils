@@ -435,7 +435,7 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   });
   expect(holds('Close Combat', 0, landed, 7), 'the count lowered by its throw, affording nothing').toEqual({
     held: false,
-    why: "7 energy, as counted, affords none of Metagross's charged moves",
+    why: "7 energy affords none of Metagross's charged moves",
   });
   expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, landed, undefined, undefined, 0)).toEqual({
     held: false,

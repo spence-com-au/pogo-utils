@@ -520,7 +520,7 @@ export interface Standing {
  * - The opponent's shields are spent: one left is what a player would draw before anything else.
  * - It has another Pokémon to come. With its last, a finish is a finish however it comes.
  * - Our hits on its bar have been measured, and `SPARE_HITS` of them at most take what it has left and the bar's wander.
- * - Its energy, as counted, affords none of its charged moves after the fast moves of its that land meanwhile and one
+ * - Its energy affords none of its charged moves after the fast moves of its that land meanwhile and one
  *   more for a hit the count missed. Meanwhile is our hits at the longest of our forms' fast moves, and never counts
  *   fewer of its fast moves than of ours, whatever the turns say.
  * - Those fast moves of its, at what one was measured to take of our bar, leave us standing: a Pokémon fainted carries
@@ -607,8 +607,8 @@ export interface Hold {
  * defers such a move (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines 977–983) while the opponent
  * can afford its best charged move and it is one we would survive.
  *
- * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy, names the hardest move that energy
- * affords and finds it would not faint us. With no shield of ours left the throw puts up no prompt, and its banner is
+ * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
+ * count missed, names the hardest move that energy affords and finds it would not faint us. With no shield of ours left the throw puts up no prompt, and its banner is
  * read only after it has played, if at all; what says it landed is the count, which `Energy.threw` lowers by the move
  * once its countdown has shown. Affording none of the opponent's moves, the count lets the throw go, as it lets go one
  * never held, and so does no count at all; still affording one, a second throw is still to come, and the hold goes on.
@@ -661,7 +661,7 @@ export function untilTheirsLands(
   }
 
   if (verdict.afforded === undefined) {
-    return { held: false, why: `${affordable} energy, as counted, affords none of ${opponent}'s charged moves` };
+    return { held: false, why: `${affordable} energy affords none of ${opponent}'s charged moves` };
   }
 
   if (verdict.faints) {
