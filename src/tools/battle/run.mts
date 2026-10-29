@@ -188,6 +188,17 @@ const OFF_MS = 3_000;
  */
 const STALE_MS = 3_000;
 
+/**
+ * How long after its last frame the switch prompt is still taken to be up, in milliseconds: still owed its answer, and
+ * our side still forgotten on its frames. Sliding in or out, it reads as the fight for the odd frame. Replayed off a
+ * live run's video, Palkia's prompt showed for a frame, read as the fight for the next 113ms, showed for half a second,
+ * read as the fight for 90ms and showed for a last frame, its frames 152ms apart at the most, at a frame each 25–40ms.
+ * Ended by the first frame of the fight, its later frames were owed nothing: none was tapped, and none forgot our side.
+ * Three times that gap leaves room for a run slower to take frames than the video. Held past the prompt's end it costs
+ * nothing, the fight played meanwhile and no faint coming so soon after one, the newcomer taking 1.5s to fly in.
+ */
+const FLICKER_MS = 500;
+
 /** Frames kept for a run that gets lost, about the last three seconds of it at one frame in ten. */
 const KEPT_FRAMES = 10;
 
@@ -426,8 +437,10 @@ export async function run(
   let left: { own: number | null; opponent: number | null } = { own: null, opponent: null };
   let leftAtName: number | null = null;
 
-  // How many of ours the Poké Balls showed left when the last switch prompt showed: three, before any has.
+  // How many of ours the Poké Balls showed left when the last switch prompt showed: three, before any has. And when a
+  // frame last showed one, `FLICKER_MS` after which it is gone.
   let promptedAt = 3;
+  let switchAt = -Infinity;
 
   // The opponent a fuller bar said was replaced, its name cleared to be read again, until the newcomer's is: what the
   // newcomer is told as having replaced.
@@ -876,6 +889,7 @@ export async function run(
         drop(`${seen.own ?? 'ours'} fainted first`);
         forgetOwn();
         faintAt = clock.now();
+        switchAt = faintAt;
 
         if (switching) {
           swappedAt = switching.at;
@@ -936,18 +950,16 @@ export async function run(
         );
       }
 
-      // A prompt gone unanswered, the game's timer having picked, still owes the faint the Poké Balls caught on it.
-      if (
-        state !== 'switch' &&
-        prompt?.fainted !== undefined &&
-        !prompt.answered &&
-        !prompt.told &&
-        fainted.has(prompt.fainted)
-      ) {
+      // The prompt is gone once no frame has shown it for `FLICKER_MS`, not at the first frame of the fight, which may
+      // be the prompt sliding in or out. Gone unanswered, the game's timer having picked, it still owes the faint the
+      // Poké Balls caught on it.
+      const over = clock.now() - switchAt >= FLICKER_MS;
+
+      if (over && prompt?.fainted !== undefined && !prompt.answered && !prompt.told && fainted.has(prompt.fainted)) {
         log(`${party[prompt.fainted] ?? '?'} fainted`, 'own', 'the switch prompt went unanswered');
       }
 
-      prompt = state === 'switch' ? prompt : undefined;
+      prompt = over ? undefined : prompt;
 
       // One fewer of ours by the Poké Balls than the faints counted is the one out fainting, counted whether or not a
       // switch prompt is answered for it: the game's timer picks when one is not, or it goes unrecognised, and counted

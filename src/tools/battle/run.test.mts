@@ -1457,6 +1457,55 @@ test('names the lead from the party, and the next of it after a faint', async ()
 });
 
 /**
+ * Latias faints to Glaceon, and the switch prompt reads as the fight for the odd frame as it slides in and out, as
+ * Palkia's did replayed off a live run's video: a frame of it, 110ms of the fight, the prompt until it is tapped, and
+ * as it goes, 90ms of the fight and a last frame of it. Ended by the first frame of the fight, the prompt was owed
+ * nothing after it, and went untapped: live until the game's timer picked, here until the run ends `Lost`.
+ */
+test('answers a switch prompt that reads as the fight for a frame as it slides in', async () => {
+  const latias = fixture('battle-latias');
+  const prompt = fixture('switch-glaceon');
+  const scenes: Record<string, Scene> = {
+    ...battleAndBack(),
+    fight: { frame: latias, swipes: { count: 10, to: 'sliding' } },
+    sliding: { frame: prompt, lasts: { ms: 20, to: 'flicker' } },
+    flicker: { frame: latias, lasts: { ms: 110, to: 'fainted' } },
+    fainted: { frame: prompt, tap: { at: [0.33, 0.87], to: 'leaving' }, lasts: { ms: 3000, to: 'stuck' } },
+    leaving: { frame: prompt, lasts: { ms: 500, to: 'fading' } },
+    fading: { frame: latias, lasts: { ms: 90, to: 'gone' } },
+    gone: { frame: prompt, lasts: { ms: 20, to: 'next' } },
+    stuck: { frame: fixture('other-loss') },
+    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+  };
+  const { phone, clock, taps, strokes } = scripted(scenes, 'party');
+  const report = recorder();
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+
+  const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
+
+  expect(taps).toEqual(['party', 'fainted', 'result']);
+  expect(strokes.map(({ scene }) => scene)).toEqual(expect.arrayContaining(['flicker', 'fading']));
+  expect(report.events.filter((line) => line.startsWith('own: ') && line.includes('fainted'))).toEqual([
+    "own: Latias fainted; sending in Mamoswine: none safe from Glaceon's moves; hits hardest (Stone Edge)",
+  ]);
+  expect([...named].at(-1)).toBe('Mamoswine against Glaceon');
+});
+
+/**
  * What matches the switch prompt with all three of our Poké Balls red follows no faint, and is not answered as one: live,
  * a charged move's burst over a night field was, and Mewtwo was told as fainted for a battle it fought on in. Here the
  * prompt itself, its grey ball painted red, stands in for it, `recognise` no longer reading that burst as the prompt.
