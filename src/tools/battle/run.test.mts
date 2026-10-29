@@ -1462,7 +1462,7 @@ test('names the lead from the party, and the next of it after a faint', async ()
  * as it goes, 90ms of the fight and a last frame of it. Ended by the first frame of the fight, the prompt was owed
  * nothing after it, and went untapped: live until the game's timer picked, here until the run ends `Lost`.
  */
-test('answers a switch prompt that reads as the fight for a frame as it slides in', async () => {
+test('answers a switch prompt that reads as the fight for a frame as it slides in and out', async () => {
   const latias = fixture('battle-latias');
   const prompt = fixture('switch-glaceon');
   const scenes: Record<string, Scene> = {

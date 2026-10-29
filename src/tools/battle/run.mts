@@ -194,8 +194,8 @@ const STALE_MS = 3_000;
  * live run's video, Palkia's prompt showed for a frame, read as the fight for the next 113ms, showed for half a second,
  * read as the fight for 90ms and showed for a last frame, its frames 152ms apart at the most, at a frame each 25–40ms.
  * Ended by the first frame of the fight, its later frames were owed nothing: none was tapped, and none forgot our side.
- * Three times that gap leaves room for a run slower to take frames than the video. Held past the prompt's end it costs
- * nothing, the fight played meanwhile and no faint coming so soon after one, the newcomer taking 1.5s to fly in.
+ * About three times that gap leaves room for a run slower to take frames than the video. Held past the prompt's end it
+ * costs nothing, the fight played meanwhile and no faint coming so soon after one, the newcomer taking 1.5s to fly in.
  */
 const FLICKER_MS = 500;
 
@@ -963,8 +963,8 @@ export async function run(
 
       // One fewer of ours by the Poké Balls than the faints counted is the one out fainting, counted whether or not a
       // switch prompt is answered for it: the game's timer picks when one is not, or it goes unrecognised, and counted
-      // only off our taps, every slot named after it was the one before. Told here unless a prompt is showing, whose
-      // answer tells it, and kept for the prompt only where none has shown yet.
+      // only off our taps, every slot named after it was the one before. Told here unless this frame is the switch
+      // prompt, whose answer tells it, and kept for the prompt only where none has shown yet.
       if (left.own !== null && left.own < party.length - fainted.size) {
         // A move read that none of ours still standing can hold is a misread, which says nothing of who is out, and
         // leaves it to the one last sent in: with our name unread a label is matched among every move, and live `TIVE`,
