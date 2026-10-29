@@ -1178,9 +1178,10 @@ export async function run(
 
       // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
       // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
-      // stands. Only once it is lit, and never once tapped, as for the hold above, nor while a switch of ours is under
-      // way, which leaves who is out unknown; never for a finish or a throw for fear of fainting, which go at once. Told
-      // as it begins and as it ends.
+      // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for fear
+      // of fainting, which go at once. Told as it begins and as it ends. Not weighed again while a switch of ours is under
+      // way, which leaves who is out unknown: a hold then stays as it was, in force but for a finish or a fear, until the
+      // switch is seen to take, ending it, or to be refused, leaving it to be weighed again.
       const deferrable =
         spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending && !switching
           ? seen.moves.get(pick.x)
@@ -1234,7 +1235,8 @@ export async function run(
 
       // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
       // as thrown.
-      const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
+      const held = hold?.held ?? (switching !== undefined && deferring?.held === true && throwing === pick);
+      const best = spared === undefined && !held ? throwing?.x : undefined;
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
@@ -1418,7 +1420,7 @@ export async function run(
       const bubbles =
         (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
+        ready: spared === undefined && !naming && !flying && !held ? ready : [],
         best,
         shield,
         minigame: playing,

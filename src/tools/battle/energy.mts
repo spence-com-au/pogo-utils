@@ -520,7 +520,7 @@ export interface Standing {
  * - The opponent's shields are spent: one left is what a player would draw before anything else.
  * - It has another Pokémon to come. With its last, a finish is a finish however it comes.
  * - Our hits on its bar have been measured, and `SPARE_HITS` of them at most take what it has left and the bar's wander.
- * - Its energy affords none of its charged moves after the fast moves of its that land meanwhile and one
+ * - Its energy, as counted, affords none of its charged moves after the fast moves of its that land meanwhile and one
  *   more for a hit the count missed. Meanwhile is our hits at the longest of our forms' fast moves, and never counts
  *   fewer of its fast moves than of ours, whatever the turns say.
  * - Those fast moves of its, at what one was measured to take of our bar, leave us standing: a Pokémon fainted carries
@@ -609,16 +609,15 @@ export interface Hold {
  *
  * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
  * count missed, names the hardest move that energy affords; whether that would faint us is the caller's to weigh,
- * below. With no shield of ours
- * left the throw puts up no prompt, and its banner is read only after it has played, if at all; what says it landed is
- * the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move once its countdown has shown,
- * and `Energy.named` settles at the move's own cost once its banner is read. Affording none of the opponent's moves,
- * the count lets the throw go, as it lets go one never held, and so does no count at all; still affording one, a second
- * throw may be still to come, and the hold goes on, until the banner settles the count or the time below runs out.
- * A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the throw go on that fear, as
- * `beforeFainting` throws on it, whatever this answers, so a hold it keeps is of a hit we would survive. Anything
- * unread lets the throw go too, as `verdict.why` names it, and so do our fast moves not known, which leave no time to
- * hold for.
+ * below. With no shield of ours left the throw puts up no prompt, and its banner is read only after it has played, if
+ * at all; what says it landed is the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move
+ * once its countdown has shown, and `Energy.named` settles at the move's own cost once its banner is read. Affording
+ * none of the opponent's moves, the count lets the throw go, as it lets go one never held, and so does no count at all;
+ * still affording one, a second throw may be still to come, and the hold goes on, until the banner settles the count or
+ * the time below runs out. A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the
+ * throw go on that fear, as `beforeFainting` throws on it, whatever this answers, so a hold it keeps is of a hit we
+ * would survive. Anything unread lets the throw go too, as `verdict.why` names it, and so do our fast moves not known,
+ * which leave no time to hold for.
  *
  * And only until `waited` reaches `filling`'s time. PvPoke stops waiting at 100 energy of ours, past which our fast
  * moves gain nothing; the bot cannot see ours, so it stops at the soonest it could be full, against an opponent holding
