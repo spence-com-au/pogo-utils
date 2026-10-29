@@ -3,11 +3,10 @@
  * four Marowak, Medicham, Registeel and Galarian Stunfisk, with the species and moves they name out of its game master.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { afterEach, expect, test, vi } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
+import { type Download } from './assets.mts';
 import { formatOf, loadMeta, movesetsOf, type PvPokeData, type Ranking } from './meta.mts';
 
 const DATA = JSON.parse(
@@ -98,26 +97,39 @@ test('a variant is the move the screen prints, and what the game master lacks go
   ]);
 });
 
-test('the meta is read from the cache, as the league’s rankings and PvPoke’s game master', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'meta-'));
+/** PvPoke's files by the name `pnpm battle` caches each under, a file not among them answering as a 404. */
+const served: Record<string, unknown> = {
+  'pvpoke-gamemaster.json': PVPOKE,
+  'pvpoke-fantasy-1500.json': PVPOKE.rankings,
+  'pvpoke-all-10000.json': PVPOKE.rankings,
+};
 
-  try {
-    writeFileSync(join(dir, 'pvpoke-gamemaster.json'), JSON.stringify(PVPOKE));
-    writeFileSync(join(dir, 'pvpoke-fantasy-1500.json'), JSON.stringify(PVPOKE.rankings));
-    writeFileSync(join(dir, 'pvpoke-all-10000.json'), JSON.stringify(PVPOKE.rankings));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const fantasy = await loadMeta(dir, DATA, 'fantasy cup');
-
-    expect(fantasy && { cup: fantasy.cup, cap: fantasy.cap, species: [...fantasy.movesets.keys()] }).toStrictEqual({
-      cup: 'fantasy',
-      cap: 1500,
-      species: ['Marowak', 'Medicham', 'Registeel', 'Stunfisk'],
-    });
-    expect((await loadMeta(dir, DATA, 'master'))?.cap, 'Master League has no cap').toBe(null);
-    expect(await loadMeta(dir, DATA, 'retro cup'), 'every move allowed for').toBe(null);
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('PvPoke ranks nothing called retro cup'));
-  } finally {
-    rmSync(dir, { recursive: true });
+const download: Download = async (file, url, decode) => {
+  if (!(file in served)) {
+    throw new Error(`${url}: 404 Not Found`);
   }
+
+  return decode(new TextEncoder().encode(JSON.stringify(served[file])));
+};
+
+test('the meta is read as the league’s rankings and PvPoke’s game master', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  const fantasy = await loadMeta(download, DATA, 'fantasy cup');
+
+  expect(fantasy && { cup: fantasy.cup, cap: fantasy.cap, species: [...fantasy.movesets.keys()] }).toStrictEqual({
+    cup: 'fantasy',
+    cap: 1500,
+    species: ['Marowak', 'Medicham', 'Registeel', 'Stunfisk'],
+  });
+  expect((await loadMeta(download, DATA, 'master'))?.cap, 'Master League has no cap').toBe(null);
+  expect(await loadMeta(download, DATA, 'retro cup'), 'every move allowed for').toBe(null);
+  expect(console.error).toHaveBeenCalledWith(expect.stringContaining('PvPoke ranks nothing called retro cup'));
+});
+
+test('rankings that cannot be had allow for every move rather than stopping the run', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  expect(await loadMeta(download, DATA, 'great')).toBe(null);
+  expect(console.error).toHaveBeenCalledWith(expect.stringContaining('rankings-1500.json: 404 Not Found'));
 });

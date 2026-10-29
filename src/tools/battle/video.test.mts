@@ -9,8 +9,9 @@ import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
+import { Pictures } from './pictures.mts';
 import { type Recording } from './stream.mts';
-import { HELD_MS, Pictures, Video } from './video.mts';
+import { HELD_MS, Video } from './video.mts';
 
 const width = 64;
 const height = 128;

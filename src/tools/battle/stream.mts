@@ -10,28 +10,9 @@
 
 import { type Image } from '../inventory/png.mts';
 import { type Size } from './layout.mts';
+import { RECORD_LIMIT_S, recordCommand } from './record-command.mts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { type Readable } from 'node:stream';
-
-/**
- * A quarter of the Pixel 4 XL's 1440×3040 across, 360×760, and as tall on another phone as its shape makes it, rounded
- * to even for H.264. A size of any other shape `screenrecord` fits inside with black bars down two sides, which every
- * position measured across the frame would miss by. Colour samples need no more, and the frames `ffmpeg` hands back
- * are a quarter of what `screenrecord`'s 720×1520 would be — 33 MB a second rather than 131. The screens read by OCR
- * are still, and take a full screenshot instead.
- */
-export function streamSize({ width, height }: Size): Size {
-  return { width: 360, height: 2 * Math.round((180 * height) / width) };
-}
-
-/**
- * Enough for the picture at `streamSize`, against `screenrecord`'s default of 20 Mbps, which made 6 MB of four
- * seconds. Nothing here watches for detail a lower rate would blur; the cost of a higher one is USB and decoding time.
- */
-const BIT_RATE = 2_000_000;
-
-/** The longest `screenrecord` will record for, in seconds; it refuses a `--time-limit` past it. */
-export const RECORD_LIMIT_S = 180;
 
 /**
  * When the next recording starts, in milliseconds after the last. Short of `RECORD_LIMIT_S` by enough for it to have
@@ -49,21 +30,10 @@ const adbArgs = (serial: string | undefined, ...args: string[]) => [...(serial ?
  * `screenrecord` writing H.264 to its stdout, for `seconds`. Its stdout carries nothing else — `exec-out` keeps stderr
  * apart, where `shell` would merge it — so whatever arrives decodes.
  */
-export function screenrecord(serial: string | undefined, { width, height }: Size, seconds = RECORD_LIMIT_S): Recording {
-  return spawn(
-    'adb',
-    adbArgs(
-      serial,
-      'exec-out',
-      'screenrecord',
-      '--output-format=h264',
-      `--size=${width}x${height}`,
-      `--bit-rate=${BIT_RATE}`,
-      `--time-limit=${seconds}`,
-      '-',
-    ),
-    { stdio: ['ignore', 'pipe', 'pipe'] },
-  );
+export function screenrecord(serial: string | undefined, size: Size, seconds = RECORD_LIMIT_S): Recording {
+  return spawn('adb', adbArgs(serial, 'exec-out', ...recordCommand(size, seconds)), {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 /**

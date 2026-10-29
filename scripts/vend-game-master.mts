@@ -12,7 +12,8 @@
  *
  * Re-vending is a reviewed commit rather than a refresh — the counts the test pins move when upstream releases a
  * species, and a form that shares a dex, types and stamina with one already here changes which forms an HP can tell
- * apart.
+ * apart. One that adds a form is followed by `pnpm vend:silhouettes`, which outlines this file's forms for the battle
+ * tool in a page and which `assets.test.mts` holds to them.
  */
 
 import { GAME_MASTER } from '../src/generated.ts';

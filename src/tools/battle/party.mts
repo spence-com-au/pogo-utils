@@ -15,7 +15,6 @@ import { type Moves } from '../inventory/moves.mts';
 import { ocr, type Line } from '../inventory/ocr.mts';
 import { rgb, type Image } from '../inventory/png.mts';
 import { down, place, type Size } from './layout.mts';
-import { type Point } from './play.mts';
 
 /**
  * What is known of a party card: its species, null where its silhouette named none and its panel none either, or the
@@ -56,7 +55,7 @@ const HALF = 0.088;
 const ICON = 0.2;
 
 /** How many cells a card is divided into each way: some 2.6 pixels apiece on a 720-wide screen. */
-const GRID = 48;
+export const GRID = 48;
 
 /** The corner the sparkles of a shiny are drawn in, as a fraction of the card each way, which is left out of both. */
 const SPARKLES = 0.3;
@@ -143,7 +142,7 @@ export function readParty(image: Image, icons: readonly Icon[]): (string | null)
 }
 
 /** Where each card is tapped to open the selection screen for it, at its centre. */
-export const cardAt = (card: number, screen: Size): Point => place([CARD_XS[card] ?? 0.5, CARD_Y], CARD_ANCHOR, screen);
+export const cardAt = (card: number, screen: Size) => place([CARD_XS[card] ?? 0.5, CARD_Y], CARD_ANCHOR, screen);
 
 /**
  * The CP each card shows above it, `CP 4673`, at -0.130 to -0.135 widths from the cards' centres across eight committed

@@ -11,7 +11,9 @@
  */
 
 import { type Transport } from './adb.mts';
-import { setTimeout as sleep } from 'node:timers/promises';
+
+/** A pause, by the global timer rather than `node:timers/promises`, so a page can make the touchscreen too. */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** What Android lists the device as in `dumpsys input`. */
 const NAME = 'pogo-utils touch';

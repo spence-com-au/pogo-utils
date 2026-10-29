@@ -31,7 +31,9 @@ flowchart LR
 
 - **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
   decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen` keeps one recording going after
-  another, since `screenrecord` stops after 180s, and always answers the latest frame.
+  another, since `screenrecord` stops after 180s, and always answers the latest frame. What `screenrecord` is asked for,
+  the picture's size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process`
+  so that a page streaming over WebUSB asks for the same picture.
 - **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
   which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
   until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
@@ -54,7 +56,8 @@ flowchart LR
   being known until the next recording's first byte, bar the last before the screen goes still, which is known to be
   whole only once the screen next changes. The first picture is shown from 0, there being nothing earlier, so a player's
   clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
-  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped.
+  so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped. The cutting is
+  [`pictures.mts`](pictures.mts), which a browser can run too.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
@@ -227,6 +230,15 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
   shadow are merged, since the HUD names only the species; the type icons narrow the forms afterwards, but nothing on
   screen tells a shadow apart. If nothing matches, or PvPoke can't be reached, every move stays allowed for. Training
   never uses it.
+- **[`assets.mts`](assets.mts)** reads the type icons and outlines the form icons, and `meta.mts` reads PvPoke's files,
+  each with whatever `Download` its caller hands it: the CLI's week-long cache, or `fetch` in a page
+  ([`src/battle/load.ts`](../../battle/load.ts)).
+- **The silhouettes** the party screen is read against are outlined from every form icon, some 1,300 files and 40 MB.
+  The CLI downloads and outlines them itself, so a form newer than the last vend is still read. A page fetches
+  [`data/silhouettes.json`](../../../data/silhouettes.json) instead: every outline packed to a bit a cell, under 100 KB
+  gzipped, written by `pnpm vend:silhouettes` out of the vended game master. `assets.test.mts` fails when
+  `data/silhouettes.json` and the vended game master name different forms, so a re-vend of the game master that adds one
+  is followed by `pnpm vend:silhouettes`.
 
 ### Testing
 
