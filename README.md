@@ -619,10 +619,12 @@ shows, and takes a shield where that hit would take nine tenths of the HP left, 
 it can throw its next charged move, once for each shield we hold, as PvPoke's battle AI would judge it; or where it does
 not know enough to tell. A charged move that always raises or drops attack or defense, such as Close Combat or Icy Wind,
 moves the hit too, shielded or not: ours as it throws them, the opponent's off those banners, each side's undone when
-its Pokémon leaves the field. Training has no rematch, so between battles it taps its way back round — the result's ✓,
-the leader, BATTLE, the league, then USE THIS PARTY on the game's recommended party. It keeps the screen awake while it
-runs and puts the setting back after. Where nothing on screen has been recognised for 20 seconds it stops rather than
-tap at a screen it does not know, and `--keep-frames DIR` saves the last few frames it saw.
+its Pokémon leaves the field. With none of our shields left, a move that drops our own defense waits while the
+opponent's counted energy affords a charged move we would survive, and none it could have would take 1/1.4 of the HP
+left, until that lands or our energy could have filled. Training has no rematch, so between battles it taps its way back
+round — the result's ✓, the leader, BATTLE, the league, then USE THIS PARTY on the game's recommended party. It keeps
+the screen awake while it runs and puts the setting back after. Where nothing on screen has been recognised for 20
+seconds it stops rather than tap at a screen it does not know, and `--keep-frames DIR` saves the last few frames it saw.
 
 `--keep-video FILE` keeps the whole of the screen the run watched, battles and the menus between them, as MPEG-TS video
 that `mpv` or `ffplay` plays, so any moment the log names can be looked at afterwards, not only those around a faint or

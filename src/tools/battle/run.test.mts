@@ -18,6 +18,7 @@ import { readCps, silhouetteOfIcon } from './party.mts';
 import { BENCH, BENCH_ANCHOR, type Point } from './play.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
 import { place } from './layout.mts';
+import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 import { Lost, LOST_MS, run, type Clock, type Phone } from './run.mts';
 
@@ -1200,6 +1201,212 @@ test.each([
   );
 
   expect(report.events.filter((line) => /^own: (threw|holding)/.test(line))).toEqual(said);
+});
+
+/**
+ * The game master with Shadow Sneak lowering our defense by 2 as Close Combat does: no committed frame has a move that
+ * does lit with our shields spent and both sides' CPs read, but Giratina's against Mamoswine does with this one.
+ */
+const SNEAK_LOWERS: GameData = {
+  ...DATA,
+  combat: {
+    ...DATA.combat,
+    'Shadow Sneak': { ...DATA.combat['Shadow Sneak'], buffs: { chance: 1, ownDefense: -2 } },
+  } as GameData['combat'],
+};
+
+/** A meta in which Mamoswine is run with Powder Snow, Ancient Power and Bulldoze. */
+const MAMOSWINE_RUN: Meta = {
+  cup: 'all',
+  cap: 2500,
+  movesets: new Map([
+    ['Mamoswine', { fast: 'Powder Snow', fastMoves: ['Powder Snow'], chargedMoves: ['Ancient Power', 'Bulldoze'] }],
+  ]),
+};
+
+/**
+ * The same Giratina against Mamoswine, our shields spent and its two up, our grey Poké Ball painted red and each frame
+ * then `paint`ed, through Mamoswine's Powder Snow taking our bar, repainted, down each of `bars` 200ms apart once the
+ * battle's first read has named it, Shadow Sneak's button painted unlit; and then `lit`, our bar at the last of `bars`
+ * and the button lit. Five hits, 40 energy, and one for the count afford Ancient Power's 45, which takes 27% of a
+ * rank-1 Giratina, where Bulldoze, the hardest Mamoswine is run with in `MAMOSWINE_RUN`, takes 43%: less than 1/1.4 of
+ * 76%, and not of 54%. `ours` is the frame with our bar run on to `px`.
+ */
+function sneaking(
+  bars: readonly number[],
+  lit: Omit<Scene, 'frame'>,
+  paint = (image: Image) => image,
+): { scenes: Record<string, Scene>; ours: (px: number) => Image } {
+  const balls = paint(painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL));
+
+  // Our fill run on to `px` of the bar's 100 at 360 wide, and dark beyond it; and Shadow Sneak's button unlit, as in
+  // the test above.
+  const ours = (px: number) =>
+    painted(
+      painted(balls, [105, 91, 41], [22 / 360, 220 / 360, 122 / 360, 225 / 360]),
+      [26, 255, 187],
+      [22 / 360, 220 / 360, (22 + px) / 360, 225 / 360],
+    );
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const names = bars.map((_, i) => (i === 0 ? 'fight' : `hit${i}`));
+  const hits = bars.map((px, i): [string, Scene] => [
+    names[i] ?? '',
+    { frame: unlit(ours(px)), lasts: { ms: i === 0 ? 400 : 200, to: names[i + 1] ?? 'lit' } },
+  ]);
+
+  return {
+    scenes: {
+      ...battleAndBack(),
+      ...Object.fromEntries(hits),
+      lit: { frame: ours(bars.at(-1) ?? 0), ...lit },
+      minigame: minigameNoneFainted(),
+    },
+    ours,
+  };
+}
+
+/** What is told of a hold and its throw, and of the opponent's throw meanwhile. */
+const holds = (events: readonly string[]) =>
+  events.filter((line) => /^own: (threw|holding|no longer holding)|threw a charged move/.test(line));
+
+const HOLDING =
+  'own: holding Shadow Sneak: Mamoswine can afford Ancient Power; Ancient Power would take ~27%, with 76% left, the hardest 48 energy affords';
+
+/**
+ * Held, Shadow Sneak goes once Mamoswine's Ancient Power has landed, its countdown showing with no prompt and lowering
+ * the count to 8, one hit's allowance, which affords nothing, our bar at 30% after it. Or once held as long as
+ * Giratina's energy takes to fill from 50 at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off
+ * the field between `lit` and `relit` not counting, so after the 6s the two last and before `late`, 0.5s after them,
+ * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Or as our bar, at 4%,
+ * comes within one of Mamoswine's fast moves, `fastFaints`'s fear named with the charged move the drop, counted as its
+ * hits, now affords. Never on `lit` or `relit`, which take no tap.
+ */
+test.each([
+  [
+    'lands',
+    { lasts: { ms: 2000, to: 'countdown' } },
+    'back',
+    [
+      HOLDING,
+      'opponent: Mamoswine threw a charged move: none of our shields left to prompt for',
+      "own: no longer holding Shadow Sneak: 8 energy affords none of Mamoswine's charged moves",
+      'own: threw Shadow Sneak',
+    ],
+  ],
+  [
+    'runs out of time',
+    { lasts: { ms: 4000, to: 'gap' } },
+    'late',
+    [
+      HOLDING,
+      expect.stringMatching(
+        /^own: no longer holding Shadow Sneak: 6\.(2[5-9]|30)s of the fight since the hold began, Giratina's energy filling from 50 in 6\.25s at the soonest$/,
+      ),
+      'own: threw Shadow Sneak',
+    ],
+  ],
+  [
+    'gives way to a finish',
+    { lasts: { ms: 2000, to: 'finishing' } },
+    'finishing',
+    [
+      HOLDING,
+      'own: no longer holding Shadow Sneak: would finish Mamoswine at 4%',
+      'own: threw Shadow Sneak: would finish Mamoswine at 4%',
+    ],
+  ],
+  [
+    'gives way to a fast move fainting us',
+    { lasts: { ms: 2000, to: 'low' } },
+    'low',
+    [
+      HOLDING,
+      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left; Bulldoze would faint us, 108 energy affords it',
+      'own: threw Shadow Sneak',
+    ],
+  ],
+])(
+  'with no shield of ours left, a move lowering our defense is held until the hit it waits for %s',
+  async (_, lit, tapped, said) => {
+    const { scenes, ours } = sneaking([96, 92, 88, 84, 80, 76], lit);
+    const { phone, clock, taps } = scripted(
+      {
+        ...scenes,
+        countdown: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 3000, to: 'playing' } },
+        playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+        back: { frame: ours(30), tap: { at: [0.499, 0.889], to: 'minigame' } },
+        gap: { frame: fixture('other-vs-fade'), lasts: { ms: 3000, to: 'relit' } },
+        relit: { frame: ours(76), lasts: { ms: 2000, to: 'late' } },
+        late: { frame: ours(76), tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 500, to: 'won' } },
+        low: { frame: ours(4), tap: { at: [0.499, 0.889], to: 'minigame' } },
+        finishing: {
+          frame: painted(ours(76), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
+          tap: { at: [0.499, 0.889], to: 'minigame' },
+        },
+      },
+      'party',
+    );
+    const report = recorder();
+
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: SNEAK_LOWERS,
+        meta: MAMOSWINE_RUN,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    );
+
+    expect(taps.filter((scene) => scene === 'lit' || scene === 'relit' || scene === tapped)).toEqual([tapped]);
+    expect(holds(report.events)).toEqual(said);
+  },
+);
+
+/**
+ * Thrown at once, as above, where there is no hit to wait for: with our two shields painted held, one left to take
+ * Ancient Power; with Mamoswine's painted spent, Shadow Sneak finishing it at 4%; and from 54%, Bulldoze taking 1/1.4
+ * of what is left, as PvPoke would not have us wait for.
+ */
+test.each([
+  [
+    'a shield of ours left',
+    [96, 92, 88, 84, 80, 76],
+    (image: Image) => painted(image, [224, 161, 238], [0.23, 0.2027, 0.242, 0.2153], [0.275, 0.2027, 0.287, 0.2153]),
+    'own: threw Shadow Sneak',
+  ],
+  [
+    'a finish',
+    [96, 92, 88, 84, 80, 76],
+    (image: Image) => painted(image, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
+    'own: threw Shadow Sneak: would finish Mamoswine at 4%',
+  ],
+  ['a hit taking 1/1.4 of what is left', [74, 70, 66, 62, 58, 54], (image: Image) => image, 'own: threw Shadow Sneak'],
+])('a move lowering our defense goes at once with %s', async (_, bars, paint, said) => {
+  const { scenes } = sneaking(bars, { tap: { at: [0.499, 0.889], to: 'minigame' } }, paint);
+  const { phone, clock, taps } = scripted(scenes, 'party');
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: SNEAK_LOWERS,
+      meta: MAMOSWINE_RUN,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).toContain('lit');
+  expect(holds(report.events)).toEqual([said]);
 });
 
 /**

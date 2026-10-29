@@ -17,13 +17,25 @@
  * `fastFaints`.
  *
  * Our own fast moves' hits are measured off the opponent's bar the same way, and with the count they say whether those
- * alone finish it before it can throw, and so whether our charged moves are better kept for the next one: `spare`.
+ * alone finish it before it can throw, and so whether our charged moves are better kept for the next one: `spare`. And
+ * the count says whether a move of ours lowering our defense is better kept until the opponent's throw has landed:
+ * `untilTheirsLands`.
  */
 
 import { type GameData } from '../inventory/game-master.mts';
-import { buildsOf, capped, hit, MOVES_HELD, NO_STAGES, type Side, type Stages } from './damage.mts';
+import {
+  buildsOf,
+  capped,
+  hit,
+  MOVES_HELD,
+  NO_STAGES,
+  type Shielding,
+  type Side,
+  type Stages,
+  type Verdict,
+} from './damage.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, formsOf, type Shown } from './strategy.mts';
+import { chargedOf, formsOf, lowersDefense, type Shown } from './strategy.mts';
 
 /** As much energy as a Pokémon can hold. */
 export const FULL = 100;
@@ -570,4 +582,132 @@ export function spare(data: GameData, standing: Standing, meta?: Meta | null): s
   }
 
   return `fast moves finish ${species} at ${Math.round(hp.opponent * 100)}%`;
+}
+
+/** How long a turn of a trainer battle lasts, in milliseconds, a fast move taking one to five of them. */
+const TURN_MS = 500;
+
+/**
+ * How soon ours could have filled its energy from `cost`, in milliseconds: what is left of `FULL` after it, at the rate
+ * of whichever fast move its forms can hold gains energy fastest. Not a measure of our energy, which nothing reads, but
+ * the soonest it could be full having just afforded `cost`: Xerneas's Geomancy, 13 for 3 turns, fills from Close
+ * Combat's 45 in 6.3s, and Galarian Moltres's Wing Attack, 8 for 2, from Brave Bird's 55 in 5.6s. Zero where none of
+ * its fast moves is known.
+ */
+function filling(data: GameData, own: Shown, cost: number): number {
+  const rates = formsOf(data, own).flatMap((form) =>
+    form.moves
+      .filter((move) => move.fast)
+      .map(({ name }) => {
+        const move = data.combat[name];
+
+        return move && move.turns > 0 ? move.energy / (move.turns * TURN_MS) : 0;
+      }),
+  );
+  const fastest = Math.max(0, ...rates);
+
+  return fastest > 0 ? (FULL - cost) / fastest : 0;
+}
+
+/** Whether the move chosen is held and why, or, where this rule would have held it, why it goes. */
+export interface Hold {
+  held: boolean;
+  why: string;
+}
+
+/**
+ * Whether to hold `move`, the one chosen, until the opponent's charged move has landed. One that always lowers our
+ * defense, thrown with none of our `shields` left while the opponent can afford a charged move, has that move land on
+ * the lowered defense; held, the hit lands on our defense as it stands, and the move goes after. PvPoke's battle AI
+ * defers such a move (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines 977–983) while the opponent
+ * can afford its best charged move and we would not shield it, which with none of our shields left `wouldShield`
+ * answers yes to where the hit would faint us or where any charged move the opponent has would take 1/1.4 of the HP
+ * left (line 1221).
+ *
+ * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
+ * count missed, names the hardest move that energy affords, and while `shielding`, `wouldShield`'s answer with none of
+ * our shields left, would not take one: PvPoke's test, nothing it allows for taking 1/1.4 of the HP left. With no
+ * shield of ours left the throw puts up no prompt, and its banner is read only after it has played, if at all; what
+ * says it landed is the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move once its
+ * countdown has shown, and `Energy.named` settles at the move's own cost once its banner is read. Affording none of the
+ * opponent's moves, the count lets the throw go, as it lets go one never held, and so does no count at all; still
+ * affording one, a second throw may be still to come, and the hold goes on, until the banner, correcting the count to
+ * the move's own cost, leaves it affording none, or the time below runs out. A hit that would faint us, charged or
+ * fast, leaves no defense to save: the caller lets the throw go on that fear, as `beforeFainting` throws on it,
+ * whatever this answers, so a hold it keeps is of a hit we would survive. Anything unread lets the throw go too, as
+ * `verdict.why` names it, and so do our fast moves not known, which leave no time to hold for.
+ *
+ * And only until `waited` reaches `filling`'s time. PvPoke stops waiting at 100 energy of ours, past which our fast
+ * moves gain nothing; the bot cannot see ours, so it stops at the soonest it could be full, against an opponent holding
+ * its move for longer or a count that is wrong. So `waited` is the time our fast moves have had to gain energy in since
+ * the hold first began, in milliseconds: the fight's own, not the opponent's throw playing out, and whether held or
+ * released meanwhile, our energy growing either way. It is the soonest from `cost`, where a move lit before the hold
+ * began, as one `spare` kept for the next, already has more and fills sooner than this allows.
+ *
+ * Otherwise unlike PvPoke's: it asks whether the opponent can afford its best move, where this asks whether it can
+ * afford any, a cheaper one landing on the lowered defense as surely; it judges a faint by its own model, where this
+ * goes by `wouldFaint`'s `FAINTS`, as a shield is judged; and it never lacks its fast moves' measure, where
+ * `wouldShield` takes the shield, and so lets the throw go, until one of theirs has been measured off our bar. Nor does
+ * it throw at once where our cheapest move raises our own stats, as PvPoke's does: the Xerneas and Galarian Moltres
+ * played hold no such move beside Close Combat and Brave Bird. A finish, `finisher`'s, is the caller's to throw at
+ * once, as PvPoke's comes ahead of its deferral.
+ *
+ * Undefined where `move` does not always lower our defense, or where a shield of ours is left to take the hit.
+ */
+export function untilTheirsLands(
+  data: GameData,
+  move: string,
+  own: Shown,
+  opponent: string,
+  shields: number,
+  verdict: Verdict,
+  shielding: Shielding,
+  affordable: number | undefined,
+  waited: number,
+): Hold | undefined {
+  if (!lowersDefense(data, move) || shields > 0) {
+    return undefined;
+  }
+
+  // Something unread, such as a newcomer of theirs not yet named, leaves no hit calculated, and says so.
+  if (verdict.hardest === undefined) {
+    return { held: false, why: verdict.why };
+  }
+
+  if (affordable === undefined) {
+    return { held: false, why: `${opponent}'s energy not counted` };
+  }
+
+  if (verdict.afforded === undefined) {
+    return { held: false, why: `${affordable} energy affords none of ${opponent}'s charged moves` };
+  }
+
+  if (shielding.shield) {
+    return { held: false, why: shielding.why };
+  }
+
+  const cost = costOf(data, move);
+  const limit = filling(data, own, cost);
+  const whose = own.species === null ? 'our' : `${own.species}'s`;
+
+  if (limit === 0) {
+    return { held: false, why: `${whose} fast moves not known` };
+  }
+
+  if (waited >= limit) {
+    const seconds = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
+    const fills = `${whose} energy filling from ${cost} in ${seconds(limit)} at the soonest`;
+
+    return { held: false, why: `${seconds(waited)} of the fight since the hold began, ${fills}` };
+  }
+
+  return { held: true, why: `${opponent} can afford ${verdict.afforded}; ${verdict.why}` };
+}
+
+/**
+ * The hold as it stands this frame, `rule`, let go on any of `fears`, the fears of fainting, charged or fast, that
+ * `beforeFainting` throws on: where the move chosen is the lit one worth the most, its throw is the move chosen.
+ */
+export function holding(rule: Hold | undefined, fears: readonly string[]): Hold | undefined {
+  return rule && fears.length > 0 ? { held: false, why: fears.join('; ') } : rule;
 }
