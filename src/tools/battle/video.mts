@@ -1,5 +1,5 @@
 /**
- * The whole of a run's screen kept as video, out of the very H.264 `Screen` decodes: each recording's bytes are cut into
+ * The whole of a run's screen kept as video, out of the very H.264 `feed` decodes: each recording's bytes are cut into
  * pictures as they arrive, stamped with when they did, and written as MPEG-TS, which carries a time for each picture
  * where raw H.264 carries none. `screenrecord` sends a picture only when the screen changes, so a still screen is one
  * picture held, not thirty a second, and only the stamps put the next one where it belongs.
@@ -208,9 +208,9 @@ export class Video {
   }
 
   /**
-   * Keeps what `recording` sends, and hands it back for `Screen` to decode. Heard beside `Screen`'s own pipe, which must
-   * be in place before this turn of the event loop ends: a stream flowing to a listener alone drops what the pipe
-   * would have had.
+   * Keeps what `recording` sends, and hands it back for `feed` to decode. Heard beside the pipe into `ffmpeg` that
+   * `decodeFrames` sets up, which must be in place before this turn of the event loop ends: a stream flowing to a
+   * listener alone drops what the pipe would have had.
    */
   watch(recording: Recording): Recording {
     const segment: Segment = { pictures: [], ended: false };

@@ -153,8 +153,9 @@ export async function reconnect(serial: string): Promise<Phone> {
 }
 
 /**
- * The phone `device` is, connected and authenticated. A phone the `adb` server on this machine already holds cannot be
- * claimed twice, which is the commonest way for this to fail and so is the one said in full.
+ * The phone `device` is, connected and authenticated. A phone already held cannot be claimed twice, which is the
+ * commonest way for this to fail and so is the one said in full: usually by the `adb` server on this machine, but on
+ * `reconnect` it can be this site's own battle Worker, not yet done letting it go, or the site in another tab.
  */
 async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
   let connection;
@@ -164,8 +165,8 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
   } catch (error) {
     if (error instanceof AdbDaemonWebUsbDevice.DeviceBusyError) {
       throw new Error(
-        'the phone is held by another program, usually an adb server on this computer: ' +
-          'run `adb kill-server` and try again',
+        'the phone is held by something else: usually an adb server on this computer, which `adb kill-server` stops, ' +
+          'or this site in another tab or a battle still letting it go; try again once it is free',
         { cause: error },
       );
     }
