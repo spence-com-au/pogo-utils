@@ -8,7 +8,7 @@
 
 import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
-import { reconnect as reopen, type Phone } from '../inventory/webusb.js';
+import type { Phone } from '../inventory/webusb.js';
 import { type PhoneStore } from '../phone-store.js';
 import { type Image } from '../tools/inventory/png.mts';
 import { type Command, type Message } from './protocol.js';
@@ -41,7 +41,11 @@ export interface Run {
 export async function lend(
   store: PhoneStore,
   start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
-  reconnect: (serial: string) => Promise<Phone> = reopen,
+
+  // `webusb.ts` fetched only once a run takes the phone back: it brings Tango, which a page that merely imports this
+  // need not load.
+  reconnect: (serial: string) => Promise<Phone> = async (serial) =>
+    (await import('../inventory/webusb.js')).reconnect(serial),
 ): Promise<Run> {
   // Out of the store before anything is awaited, so that a second `lend` meanwhile finds none to lend.
   const phone = store.release();
