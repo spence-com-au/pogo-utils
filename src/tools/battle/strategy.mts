@@ -268,7 +268,7 @@ export function nextOut(
 
 /**
  * The hardest hit any charged move a card is judged by lands on `opponent`, as `nextOut` ranks by; nothing for a card
- * of which nothing was read.
+ * with no species and not both its charged moves read.
  */
 function hardest(data: GameData, card: Card, opponent: Shown): { hardest: number; move: string | undefined } {
   const own = typesOf(data, { species: card.species });
