@@ -287,11 +287,12 @@ export async function readCard(
     took ||= searched(lines);
 
     if (cell || !searched(lines)) {
-      found = cell && term;
+      found = cell && searched(lines) ? term : undefined;
       break;
     }
   }
 
+  // Found by the dex number only where that search was seen to take: unsearched, the party's own cells are in view.
   const proven = dex !== undefined && found === query(dex, cp);
   const panel = cell && (await readPanel(await hands.hold(cell), data, proven ? species : null, read));
 
