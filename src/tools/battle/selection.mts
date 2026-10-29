@@ -264,6 +264,7 @@ export async function readCard(
   let lines = await read(opened);
   let cell: Point | undefined;
   let found: string | undefined;
+  let took = false;
 
   if (!isSelection(lines)) {
     await sleep(OPENS_MS);
@@ -283,6 +284,7 @@ export async function readCard(
     const results = await hands.screenshot();
     lines = await read(results);
     cell = isSelection(lines) ? pinkCell(results) : undefined;
+    took ||= searched(lines);
 
     if (cell || !searched(lines)) {
       found = cell && term;
@@ -292,9 +294,9 @@ export async function readCard(
 
   const proven = dex !== undefined && found === query(dex, cp);
   const panel = cell && (await readPanel(await hands.hold(cell), data, species, read, proven));
-  const took = searched(lines);
 
-  // Only where the search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL.
+  // Only where a search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL. One
+  // that took stays in force under a second that OCR does not see take.
   if (took) {
     await hands.tap(at(CLEAR, TOP));
     await sleep(CLEARED_MS);
@@ -308,7 +310,7 @@ export async function readCard(
     ? 'its panel went unread'
     : !isSelection(lines)
       ? 'the selection screen went unrecognised after the search'
-      : took
+      : searched(lines)
         ? `no pink cell for ${terms.join(' or ')}`
         : 'the search did not take';
 

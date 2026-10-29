@@ -153,3 +153,20 @@ test('reads a card its dex number found as that species, among its own moves', a
   expect(searches).toEqual(['376&cp3986']);
   expect(panel).toEqual({ species: 'Metagross', fast: 'Shadow Claw', charged: ['Psychic', 'Earthquake'] });
 });
+
+// The search by Metagross's dex number takes and shows no pink cell, and OCR misses the toggle on the next search's
+// results: the first is in force all the same, so ⊗ is tapped before CANCEL, five taps with the card's and two
+// searches'.
+test('clears a search that took before one OCR does not see take', async () => {
+  const searched = fixture('menu-pixel8-selection-searched');
+  const unseen = { ...searched };
+  const screens = [fixture('menu-pixel8-selection'), searched, unseen, fixture('menu-pixel8-party-master')];
+  const { hands, taps, searches } = phone(screens, fixture('menu-pixel8-held-metagross'));
+  const read = async (image: Image) =>
+    (await ocr(image)).filter((line) => image !== unseen || !/evolutionary/i.test(line.text));
+  const { why } = await readCard(hands, asleep, [0.185, 0.6], { species: 'Metagross', cp: 3986 }, DATA, read);
+
+  expect(searches).toEqual(['376&cp3986', 'cp3986']);
+  expect(why).toBe('the search did not take');
+  expect(taps).toHaveLength(5);
+});
