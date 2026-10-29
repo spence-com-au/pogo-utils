@@ -95,7 +95,10 @@ export interface Process {
   kill(): void;
 }
 
-/** A phone this page holds a connection to, with what the chooser called it. */
+/**
+ * A phone this context holds a connection to, the page or a battle's Worker, with what the chooser called it where it
+ * was picked there.
+ */
 export interface Phone {
   name: string;
 

@@ -1,10 +1,10 @@
 /**
  * One shell held open on the phone, commands written to it one after another, apart from whatever carries its bytes:
- * the `adb` binary's `adb shell` in `adb-cli.mts`, and Tango's process over WebUSB in a page. Each command's end is a
- * marker line the shell prints after it with its exit status, which no command's own output carries. The shell writes
- * stderr to stdout, so that what a command wrote to either comes back in order ahead of its marker and is all its own:
- * a command that fails is told by what it wrote, and one that succeeds answers that too, as its output, where a
- * separate stderr would arrive on its own stream in either order.
+ * the `adb` binary's `adb shell` in `adb-cli.mts`, and Tango's process over WebUSB in the battle Worker. Each command's
+ * end is a marker line the shell prints after it with its exit status, which no command's own output carries. The
+ * shell writes stderr to stdout, so that what a command wrote to either comes back in order ahead of its marker and is
+ * all its own: a command that fails is told by what it wrote, and one that succeeds answers that too, as its output,
+ * where a separate stderr would arrive on its own stream in either order.
  *
  * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell ending, a
  * write to it failing, or a command going unanswered for `TIMEOUT_MS` fails the command under way and every one after
