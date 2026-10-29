@@ -300,8 +300,9 @@ export function wouldFaint(
 
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
 
-  // The hardest hit of all, as a share of our maximum HP: past `FAINTS` of what is left on any of our forms is past it
-  // on the form it hurts most. Of the moves the count affords, and of every move allowed for, `wouldShield`'s worst.
+  // The hardest hits, as shares of our maximum HP: past `FAINTS` of what is left on any of our forms is past it on the
+  // form it hurts most. `hardest` is the hardest of the moves the count affords, or of every move allowed for where it
+  // affords none; `worst` the hardest of every move allowed for, whatever the count affords, for `wouldShield`.
   let hardest = { name: '', share: 0, afforded: false };
   let worst = { name: '', share: 0 };
   let narrowed = false;
@@ -395,11 +396,13 @@ export interface Cycle {
  * move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
  *
  * - Its `+ 1` HP of margin a shield, under a point of our bar, is left out.
- * - Its count of fast moves goes below the one of margin, to none or fewer, where the opponent had more than twice the
- *   move's cost, as up to `FULL` it can: that would keep every shield against an opponent able to throw again at once,
- *   when the next hit comes soonest. Here it stops at none before the margin.
- * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which a hit measured off
- *   the bar would need our HP, a rank-1 guess, to tell.
+ * - Its count of fast moves goes below the one of margin, to none or fewer, where the opponent had at least a fast
+ *   move's gain past twice the move's cost, which `FULL` leaves room for with a cheap move: Drill Peck's 40 twice and
+ *   Thunder Shock's 9 come to 89. That would keep every shield against an opponent able to throw again at once, when
+ *   the next hit comes soonest. Here it stops at none before the margin.
+ * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which is left out: it can
+ *   only keep a shield the rule would take, against a fast move that barely scratches us, as Magmar's Ember does
+ *   Charizard 3 HP in its 2 turns, and a shield taken is the side this errs to.
  * - It asks the cycle of every charged move too (line 1226), where this asks it of the hit alone: a harder move the
  *   count does not afford is the 1/1.4 rule's to weigh.
  * - It shields the first of a run of moves that lower their user's attack, as Superpower does, where it takes over 0.55
