@@ -74,16 +74,6 @@ body[data-page='battle'] {
     letter-spacing: normal;
   }
 
-  /* Beside the button that starts it, in the accent the site warns in, so it is read before the run is. */
-
-  .warning {
-    padding: 10px 12px;
-    border-left: 3px solid var(--accent);
-    border-radius: 6px;
-    background: var(--accent-soft);
-    color: var(--text);
-  }
-
   .actions {
     display: flex;
     flex-wrap: wrap;

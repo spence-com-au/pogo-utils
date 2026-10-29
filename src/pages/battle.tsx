@@ -361,11 +361,6 @@ export default function BattlePage() {
             </label>
           </div>
 
-          <p class="warning" role="note">
-            <strong>This breaks Niantic’s terms of service.</strong> It automates input, tapping through battles on its
-            own, so play it on an account whose loss you would accept.
-          </p>
-
           <div class="actions">
             <button class="run" type="submit" disabled={busy || phone === null}>
               Start
