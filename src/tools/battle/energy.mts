@@ -700,13 +700,9 @@ export function untilTheirsLands(
 }
 
 /**
- * The hold as it stands this frame: `rule`, `untilTheirsLands`'s answer where the move chosen was weighed, or, where it
- * was not for a switch of ours under way, which leaves who is out unknown, the hold `standing` from before it, kept in
- * force. Either way let go on any of `fears`, the fears of fainting, charged or fast, that `beforeFainting` throws on:
- * where the move chosen is the lit one worth the most, its throw is the move chosen.
+ * The hold as it stands this frame, `rule`, let go on any of `fears`, the fears of fainting, charged or fast, that
+ * `beforeFainting` throws on: where the move chosen is the lit one worth the most, its throw is the move chosen.
  */
-export function holding(rule: Hold | undefined, standing: boolean, fears: readonly string[]): Hold | undefined {
-  const hold = rule ?? (standing ? { held: true, why: 'a switch of ours under way' } : undefined);
-
-  return hold && fears.length > 0 ? { held: false, why: fears.join('; ') } : hold;
+export function holding(rule: Hold | undefined, fears: readonly string[]): Hold | undefined {
+  return rule && fears.length > 0 ? { held: false, why: fears.join('; ') } : rule;
 }

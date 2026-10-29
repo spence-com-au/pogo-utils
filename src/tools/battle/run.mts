@@ -56,7 +56,7 @@ import {
   type Verdict,
 } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
-import { Energy, holding, Hits, spare, untilTheirsLands, type Matchup } from './energy.mts';
+import { Energy, holding, Hits, spare, untilTheirsLands, type Hold, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './report.mts';
 
@@ -523,7 +523,17 @@ export async function run(
   // whichever is picked, counted only across the fight's own frames, back to back, where alone our fast moves gain it;
   // the frame and the time last counted; and whether it is held now. Ended by a throw of ours playing, ours fainting, a
   // switch of ours seen to have gone through or the result screen; a tap dropped, a throw or a switch, leaves it running.
-  let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
+  // `weigh` asks the hold again as it was last weighed, but for the time waited: what a switch under way leaves it to.
+  let deferring:
+    | {
+        move: string;
+        waited: number;
+        frame: number;
+        at: number;
+        held: boolean;
+        weigh: (waited: number) => Hold | undefined;
+      }
+    | undefined;
 
   // Ends a hold with the move it held for, told where it was held.
   const undefer = (why: string) => {
@@ -1179,32 +1189,28 @@ export async function run(
       // With none of our shields left, the move chosen, where it lowers our defense, waits for the charged move the
       // opponent's counted energy affords to land, where we would survive it, so that it lands on our defense as it
       // stands. Only once it is lit, and never once tapped, as for the hold above; never for a finish or a throw for fear
-      // of fainting, which go at once. Told as it begins and as it ends. Not weighed again while a switch of ours is under
-      // way, which leaves who is out unknown: a hold then stays as it was, in force but for a finish or a fear, until the
-      // switch is seen to take, ending it, or to be refused, leaving it to be weighed again.
+      // of fainting, which go at once. Told as it begins and as it ends. Not weighed afresh while a switch of ours is under
+      // way, which leaves who is out unknown: a hold then stands as it was last weighed, its time limit running, in force
+      // but for a finish or a fear, until the switch is seen to take, ending it, or to be refused.
       const deferrable =
         spared === undefined && throwing === pick && pick && lit.includes(pick.x) && !pending && !switching
           ? seen.moves.get(pick.x)
           : undefined;
       const ongoing = deferrable !== undefined && deferring?.move === deferrable ? deferring : undefined;
-      const rule =
+      const opponent = theirName();
+      const weigh = (waited: number) =>
         deferrable === undefined
           ? undefined
-          : untilTheirsLands(
-              data,
-              deferrable,
-              us,
-              theirName(),
-              ourShields,
-              verdict,
-              shielding,
-              affordable,
-              deferring?.waited ?? 0,
-            );
+          : untilTheirsLands(data, deferrable, us, opponent, ourShields, verdict, shielding, affordable, waited);
 
       const standing = switching !== undefined && deferring?.held === true && throwing === pick ? deferring : undefined;
-      const hold = holding(rule, standing !== undefined, fears);
+      const rule = standing ? standing.weigh(standing.waited) : weigh(deferring?.waited ?? 0);
+      const hold = holding(rule, fears);
       const current = ongoing ?? standing;
+
+      if (ongoing) {
+        ongoing.weigh = weigh;
+      }
 
       if (deferrable !== undefined && hold?.held && !ongoing?.held) {
         // A hold of another move ends as this one begins, the move chosen having changed under it.
@@ -1213,7 +1219,14 @@ export async function run(
         }
 
         log(`holding ${deferrable}`, 'own', hold.why);
-        deferring = { move: deferrable, waited: deferring?.waited ?? 0, frame: frames, at: clock.now(), held: true };
+        deferring = {
+          move: deferrable,
+          waited: deferring?.waited ?? 0,
+          frame: frames,
+          at: clock.now(),
+          held: true,
+          weigh,
+        };
       } else if (current?.held && hold && !hold.held) {
         log(`no longer holding ${current.move}`, 'own', hold.why);
         current.held = false;
