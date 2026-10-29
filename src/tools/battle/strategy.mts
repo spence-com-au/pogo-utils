@@ -162,9 +162,9 @@ function chargedMoves(data: GameData, card: Card): Set<string> {
 }
 
 /**
- * The charged moves a benched card is judged by: its own two where read, Frustration or Return among them if it has
- * one, and otherwise every one it can hold bar those two, unless read, whose 130 power for Return would tie every species
- * with a shadow form, few of ours being purified.
+ * The charged moves a benched card is judged by: its own two where both were read, Frustration or Return among them if
+ * it has one; otherwise every one its species can hold and the one read, bar Frustration and Return unless read, whose
+ * 130 power for Return would tie every species with a shadow form, few of ours being purified.
  */
 const judgedBy = (data: GameData, card: Card): string[] =>
   [...(ownMoves(card) ?? chargedMoves(data, card))].filter(
@@ -294,8 +294,8 @@ function hardest(data: GameData, card: Card, opponent: Shown): { hardest: number
  * equals the first card. Undefined where ours is not threatened, as by `shouldShield`'s rule, or where either species
  * is not known: a switch spends the switch timer, so it is made only where it is clearly better.
  *
- * Super effective out of the moves `judgedBy` gives it, as `nextOut` judges: its own where its panel was read, and
- * otherwise every one its species can hold.
+ * Super effective out of the moves `judgedBy` gives it, as `nextOut` judges: its own two where both were read, and
+ * otherwise every one its species can hold bar Frustration and Return, unless one of those was read.
  */
 export function counterOf(
   data: GameData,

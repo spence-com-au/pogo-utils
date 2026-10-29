@@ -422,11 +422,11 @@ lands, judged as [finishing](#which-charged-move-to-throw) is, which comes befor
 its lands. It's logged as `its banked Fly finishes Buzzwole`. Otherwise it prefers one that none of the opponent's
 allowed moves can hit super effectively. Among those, or among all of them if none is safe, it picks the one whose
 hardest move hits the opponent hardest, and between equals, the first card ([`strategy.mts`](strategy.mts)'s `nextOut`).
-Its hardest move is of its two charged moves where its card was read, and otherwise of every one its species can learn
-bar Frustration and Return. The reason is logged, such as `the only one safe from Glaceon's moves`. A card whose species
-wasn't read is never safe; where both its charged moves were read it hits for what they land without STAB, and short of
-both it goes in only when its banked energy finishes the opponent, when nothing named is left, or when it is first and
-nothing named is safe or hits at all.
+Its hardest move is of its two charged moves where both were read, and otherwise of every one its species can learn bar
+Frustration and Return, unless one of those was read. The reason is logged, such as
+`the only one safe from Glaceon's moves`. A card whose species wasn't read is never safe; where both its charged moves
+were read it hits for what they land without STAB, and short of both it goes in only when its banked energy finishes the
+opponent, when nothing named is left, or when it is first and nothing named is safe or hits at all.
 
 ### When the opponent switches
 
@@ -434,10 +434,10 @@ An opponent that switches out (rather than faints) has spent its switch timer, s
 straight away. If the newcomer's allowed moves can hit ours super effectively, it switches to a benched Pokémon that
 counters it outright: safe from every one of those moves, and holding a charged move that is super effective against
 every typing the newcomer's forms have ([`strategy.mts`](strategy.mts)'s `counterOf`). Of several, the one that hits
-hardest; with none, it stays in. Like `nextOut`, it judges a benched Pokémon by its two charged moves where its card was
-read, and otherwise by every move its species can learn. Unread species never switch, and nor does one with a lit move
-that would [finish](#which-charged-move-to-throw) the newcomer, since the bench is tapped ahead of a lit move, nor one
-[doomed](#banking-energy) with a move lit to throw into a shield.
+hardest; with none, it stays in. Like `nextOut`, it judges a benched Pokémon by its two charged moves where both were
+read, and otherwise by every move its species can learn bar Frustration and Return, unless one of those was read. Unread
+species never switch, and nor does one with a lit move that would [finish](#which-charged-move-to-throw) the newcomer,
+since the bench is tapped ahead of a lit move, nor one [doomed](#banking-energy) with a move lit to throw into a shield.
 
 The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
 once, with nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the
