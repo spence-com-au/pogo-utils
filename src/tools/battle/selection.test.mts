@@ -208,6 +208,27 @@ test('keeps a silhouette nothing ruled out where the panel names nobody', async 
   expect(panel).toEqual({ species: 'Palkia', fast: 'Dragon Breath', charged: ['Spacial Rend', 'Aqua Tail'] });
 });
 
+// Palkia read by its silhouette, and the results of the search by its dex number read without CANCEL, so unrecognised,
+// before its CP alone finds it, and its panel read with Water missed, naming nobody: a screen not recognised showed
+// nothing of Palkia either way, so the silhouette's species stands.
+test('rules nothing out by a screen unrecognised after the search', async () => {
+  const unrecognised = { ...fixture('menu-pixel8-selection-searched') };
+  const screens = [
+    fixture('menu-pixel8-selection'),
+    unrecognised,
+    fixture('menu-pixel8-search-palkia'),
+    fixture('menu-pixel8-party-master'),
+  ];
+  const { hands, searches } = phone(screens, fixture('menu-pixel8-held-palkia'));
+  const panel = misreading((lines) => lines.map((line) => ({ ...line, text: line.text.replace('Water', '') })));
+  const read = async (image: Image) =>
+    image === unrecognised ? (await ocr(image)).filter((line) => !/CANCEL/i.test(line.text)) : panel(image);
+  const result = await readCard(hands, asleep, [0.185, 0.6], { species: 'Palkia', cp: 4673 }, DATA, read);
+
+  expect(searches).toEqual(['484&cp4673', 'cp4673']);
+  expect(result.panel).toEqual({ species: 'Palkia', fast: 'Dragon Breath', charged: ['Spacial Rend', 'Aqua Tail'] });
+});
+
 // The search by Metagross's dex number shows no pink cell, ruling Metagross out, and its CP alone finds the card. A row
 // garbled past matching among every move, `oO Meteor Mas`, would be Meteor Mash among Metagross's moves, but is not
 // read among them: with Earthquake unread and Shadow Claw alone left, nothing names the card.

@@ -288,7 +288,7 @@ export async function readCard(
     lines = await read(results);
     cell = isSelection(lines) ? pinkCell(results) : undefined;
     took ||= searched(lines);
-    refuted ||= !cell && searched(lines) && dex !== undefined && term === query(dex, cp);
+    refuted ||= isSelection(lines) && !cell && searched(lines) && dex !== undefined && term === query(dex, cp);
 
     if (cell || !searched(lines)) {
       found = cell && searched(lines) ? term : undefined;
