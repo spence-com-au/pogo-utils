@@ -39,7 +39,8 @@ export async function lend(
   start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
   reconnect: (serial: string) => Promise<Phone> = reopen,
 ): Promise<Run> {
-  const phone = store.phone;
+  // Out of the store before anything is awaited, so that a second `lend` meanwhile finds none to lend.
+  const phone = store.release();
 
   if (!phone) {
     throw new Error('no phone is connected');

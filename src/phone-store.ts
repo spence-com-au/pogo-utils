@@ -45,6 +45,21 @@ export class PhoneStore {
     await was?.close().catch(() => undefined);
   }
 
+  /**
+   * The phone held, taken out at once rather than once its connection has ended, for whoever is to close it and use it
+   * elsewhere: until then it would still be handed to a tab, or lent twice.
+   */
+  release(): Phone | null {
+    const was = this.phone;
+
+    if (was) {
+      this.phone = null;
+      this.#emit();
+    }
+
+    return was;
+  }
+
   subscribe(listener: () => void) {
     this.#listeners.add(listener);
 
