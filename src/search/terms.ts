@@ -69,6 +69,14 @@ export interface Range {
    * `terms.test.js` holds whichever ranges have them to that.
    */
   levels?: readonly string[];
+
+  /**
+   * Whether only some species hold a value at all, so that a span over the whole range still asks for those. The
+   * community phrase list gives "Dynamax returns only dynamax species", `maxmove1-` as what "finds everything useable
+   * in Max Battles" and `mega` — "a shortcut of `mega0-`" — as the way to find a Mega Evolution. Every other range is
+   * one every Pokémon has a value in, so there a span from the floor to the ceiling cannot change what a query matches.
+   */
+  sparse?: boolean;
 }
 
 /**
@@ -475,12 +483,12 @@ const RANGE_TABLE = [
   { id: 'ivdefense', prefix: '', suffix: 'defense', label: 'Defence IV', max: 4 },
   { id: 'ivhp', prefix: '', suffix: 'hp', label: 'HP IV', max: 4 },
   { id: 'buddylevel', prefix: 'buddy', label: 'Buddy level', max: 5, levels: BUDDY_LEVELS },
-  { id: 'megalevel', prefix: 'mega', label: 'Mega level', max: 3 },
-  { id: 'dynamaxmoves', prefix: 'dynamax', label: 'Dynamax moves', min: 1, max: 3 },
-  { id: 'gigantamaxmoves', prefix: 'gigantamax', label: 'Gigantamax moves', min: 1, max: 3 },
-  { id: 'maxmove', prefix: 'maxmove', label: 'Max Attack level', min: 1, max: 3 },
-  { id: 'maxguard', prefix: 'maxguard', label: 'Max Guard level', min: 1, max: 3 },
-  { id: 'maxspirit', prefix: 'maxspirit', label: 'Max Spirit level', min: 1, max: 3 },
+  { id: 'megalevel', prefix: 'mega', label: 'Mega level', max: 3, sparse: true },
+  { id: 'dynamaxmoves', prefix: 'dynamax', label: 'Dynamax moves', min: 1, max: 3, sparse: true },
+  { id: 'gigantamaxmoves', prefix: 'gigantamax', label: 'Gigantamax moves', min: 1, max: 3, sparse: true },
+  { id: 'maxmove', prefix: 'maxmove', label: 'Max Attack level', min: 1, max: 3, sparse: true },
+  { id: 'maxguard', prefix: 'maxguard', label: 'Max Guard level', min: 1, max: 3, sparse: true },
+  { id: 'maxspirit', prefix: 'maxspirit', label: 'Max Spirit level', min: 1, max: 3, sparse: true },
   { id: 'count', prefix: 'count', label: 'Copies you have', min: 1, max: 99999 },
   { id: 'countcandy', prefix: 'countcandy', label: 'Candy', max: 99999 },
   { id: 'countcandyxl', prefix: 'countcandyxl', label: 'Candy XL', max: 99999 },

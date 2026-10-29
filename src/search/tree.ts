@@ -161,6 +161,31 @@ function text(leaf: Leaf): string | null {
   return low === high ? spanned(range, `${low}`) : spanned(range, `${low}-${high}`);
 }
 
+/**
+ * Whether a span pill takes in every value its range holds, and so cannot change what a query matches — `cp0-`,
+ * `cp-5000` and `buddy0-5` alike. Read off the range's own bounds rather than any one spelling, so it reaches a span
+ * however it was arrived at: typed into the boxes, pasted, shared or picked. An open end reaches past its bound, and
+ * two ends filled the wrong way round are the span `text` swaps them into.
+ *
+ * A `sparse` range is never whole, a span over all of it being the search for the species that hold one. Neither is a
+ * span with no bounds, which writes nothing.
+ *
+ * The negation is not read: `!cp0-` is whole as much as `cp0-` is, and what each costs is for the caller to say.
+ */
+export function whole(leaf: Leaf): boolean {
+  const range = leaf.kind === 'range' ? RANGES_BY_ID.get(leaf.id) : undefined;
+
+  if (leaf.kind !== 'range' || !range || range.sparse || (leaf.from == null && leaf.to == null)) {
+    return false;
+  }
+
+  const { from, to } = leaf;
+  const low = from == null ? -Infinity : Math.min(from, to ?? from);
+  const high = to == null ? Infinity : Math.max(to, from ?? to);
+
+  return low <= (range.min ?? 0) && high >= range.max;
+}
+
 /** What a pill calls itself on screen, which is the chip's label for a term and the text itself for the other two. */
 export function leafLabel(leaf: Leaf): string {
   if (leaf.kind === 'term') {
