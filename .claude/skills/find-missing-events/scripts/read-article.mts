@@ -9,7 +9,16 @@
  */
 
 import { parseArgs } from 'node:util';
-import { articleHtml, articleText, fail, fetchText, jsonLd, latestDateNamed, NEWS_URL } from './newsroom.mts';
+import {
+  articleHtml,
+  articleText,
+  fail,
+  fetchText,
+  jsonLd,
+  latestDateNamed,
+  NEWS_URL,
+  siteLocales,
+} from './newsroom.mts';
 
 const USAGE = 'usage: node .claude/skills/find-missing-events/scripts/read-article.mts <slug or pokemongo.com URL>';
 
@@ -43,7 +52,7 @@ console.log(`headline:      ${data.headline}`);
 console.log(`link:          ${url}`);
 console.log(`image:         ${data.image ?? ''}`);
 console.log(`datePublished: ${data.datePublished ?? ''}  (the announcement, not the event)`);
-console.log(
-  `runs until:    ${latestDateNamed(body) ?? 'none'}  (furthest date the prose names; read it, do not trust it)`,
-);
+const runsUntil = latestDateNamed(body, await siteLocales()) ?? 'none';
+
+console.log(`runs until:    ${runsUntil}  (furthest date the prose names; read it, do not trust it)`);
 console.log(`\n--- body ---\n\n${body}`);

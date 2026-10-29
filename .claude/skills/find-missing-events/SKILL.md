@@ -32,12 +32,13 @@ the net past regional events fills the report with noise the maintainer has to r
 node .claude/skills/find-missing-events/scripts/compare-sources.mts
 ```
 
-Run it from the checkout root; it takes about half a minute. It walks the **whole** news archive — 223 articles back to
-mid-2025 when this was written, not just the front page — reads the in-person index and the feed, and reports what no
-source accounts for as two lists: events that look missing, and articles that look like they change an event we already
-carry. Each row carries the closest names the sources hold, scored.
+Run it from the checkout root; it takes about half a minute. It walks the **whole** news archive in **every language the
+site publishes** — 408 articles across sixteen editions when this was written, not just the English front page — reads
+the in-person index and the feed, and reports what no source accounts for as two lists: events that look missing, and
+articles that look like they change an event we already carry. Each row carries the closest names the sources hold,
+scored.
 
-Two things about that walk are worth knowing, because both have already cost a run its answer.
+Three things about that walk are worth knowing, because each has already cost a run its answer.
 
 - **The archive paginates on `?nr=<offset>`, and the plausible-looking `?no=<offset>` is silently ignored**, answering
   with the newest thirty however large you make it. A walk using `no` looks like it paginated and in fact reads page one
@@ -46,6 +47,12 @@ Two things about that walk are worth knowing, because both have already cost a r
   long ones — an airline partnership, a national-trust season, a nine-stop tour, a six-month mall tour — and those are
   announced months ahead, so they are off the front page while still running. Four such events were live and invisible
   to a front-page audit. If you find yourself reading only the latest thirty articles, you are auditing the wrong set.
+- **Reaching past English is the other half of it.** Each edition lists announcements the English one never does,
+  because an event for one country is often announced only in that country's language: Día de Muertos in Mexico was in
+  Spanish alone, and the Japanese edition alone held some fifty articles the English one did not. A row the English
+  edition does not list is marked with the editions that do, like `dia-de-muertos-2026 [es-MX]`, and its date is read in
+  that language — month names from Node's ICU, numeric dates such as `2026年10月27日` by pattern — so the date filter
+  works the same on it as on any other.
 
 Trust the matched half and spend your attention on what is left. Slug equality is reliable because Leek Duck derives its
 slugs from these same announcements.
@@ -55,7 +62,7 @@ slugs from these same announcements.
 The report has two lists, and they are there for opposite reasons.
 
 **"Announced, unaccounted for, and not yet over"** is the discovery list. Everything an article's own prose dates into
-the future and no source names. That date filter is what makes a 223-article archive readable — an announcement worth
+the future and no source names. That date filter is what makes a 400-article archive readable — an announcement worth
 acting on has to say so itself, since a long-running event must state how long it runs while a Community Day can only
 name its one weekend. The article's words decide, not `datePublished`, which dates the press release and is routinely
 months out in either direction.
@@ -97,10 +104,15 @@ Neither list is one-article-one-event, so resolve both by reading rather than by
 node .claude/skills/find-missing-events/scripts/read-article.mts <slug>
 ```
 
+For a row marked with editions, pass the article's URL in the first of them instead,
+`https://pokemongo.com/es-MX/news/dia-de-muertos-2026`, and use that URL as the entry's `link`: the English path does
+answer for it, but in the article's own language, behind an English page around it.
+
 This prints the article's `headline`, `link` and `image` — the last taken from its structured data, which is where
 existing entries' image URLs come from character for character, so never retype one — then the date the script read, and
 then the prose. It exits with an error on a slug that does not exist, which is worth trusting: `/en/news/<slug>` returns
-a real 404, unlike the rest of the site, where an unknown path serves the app shell with status 200.
+a real 404 (so does any `/<locale>/news/<slug>`), unlike the rest of the site, where an unknown path serves the app
+shell with status 200.
 
 **Read the prose for the dates rather than taking the `runs until:` line.** That line is the crude furthest-date-named
 signal the triage filter runs on — good enough to decide whether an article is worth your time, and not good enough to

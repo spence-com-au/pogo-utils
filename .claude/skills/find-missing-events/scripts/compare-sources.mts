@@ -3,9 +3,11 @@
  * nothing here accounts for and has not yet finished.
  *
  * Two announcement surfaces are read. The news archive is paginated by `?nr=<offset>`, thirty articles a page, and
- * walking it to exhaustion reaches every article back to mid-2025 in nine fetches. The in-person index carries one
- * schema.org `Event` per listing with its dates stated outright, and is scoped to exactly the kind of event this skill
- * hunts.
+ * walking it to exhaustion reaches every article back to mid-2025 in nine fetches. It is walked in every language the
+ * site publishes in, because each edition lists announcements the English one never does — a regional event is often
+ * written only for its own country, as Día de Muertos in Mexico was in Spanish alone, and the Japanese edition alone
+ * carried some fifty such articles. The in-person index carries one schema.org `Event` per listing with its dates
+ * stated outright, and is scoped to exactly the kind of event this skill hunts.
  *
  * Reaching the whole archive rather than the front page is the difference between finding a long-running event and
  * missing it, because the long ones are announced months ahead and are off the front page while still running: an
@@ -47,6 +49,8 @@ import {
   jsonLd,
   latestDateNamed,
   NEWS_URL,
+  newsUrl,
+  siteLocales,
   slugOf,
 } from './newsroom.mts';
 
@@ -73,6 +77,9 @@ interface Article {
   slug: string;
   headline: string;
   published: string;
+
+  // The editions that list it, English first where it is one: the first is where it is read from.
+  locales: string[];
 }
 
 interface Listing {
@@ -133,7 +140,7 @@ function containment(name: string, headline: string) {
  * because neither carries the other's key. A count mismatch means the page's shape has moved, so it fails here rather
  * than silently pairing a headline with somebody else's date.
  */
-function parseNewsPage(html: string, url: string): Article[] {
+function parseNewsPage(html: string, url: string, locale: string): Article[] {
   const lists = jsonLd(html, 'ItemList');
 
   if (lists.length !== 1) {
@@ -153,22 +160,23 @@ function parseNewsPage(html: string, url: string): Article[] {
       slug: slugOf(item.url),
       headline: item.name,
       published: new Date(stamps[i] ?? NaN).toISOString().slice(0, 10),
+      locales: [locale],
     }));
 }
 
 /**
- * The whole news archive, newest first.
+ * One edition's whole news archive, newest first.
  *
  * Stops when a page contributes nothing new rather than on a page count or an empty page, because the last page
  * overlaps the one before it — the final fetch returned nineteen already-seen articles, not zero.
  */
-async function walkNews() {
+async function walkEdition(locale: string) {
   const articles: Article[] = [];
   const seen = new Set<string>();
 
   for (let page = 0; page < MAX_PAGES; page++) {
-    const url = `${NEWS_URL}?nr=${page * PAGE_SIZE}`;
-    const fresh = parseNewsPage(await fetchText(url), url).filter((article) => !seen.has(article.slug));
+    const url = `${newsUrl(locale)}?nr=${page * PAGE_SIZE}`;
+    const fresh = parseNewsPage(await fetchText(url), url, locale).filter((article) => !seen.has(article.slug));
 
     // An empty first page passes both of `parseNewsPage`'s shape checks, and would otherwise read as an archive with
     // nothing in it to miss.
@@ -187,7 +195,33 @@ async function walkNews() {
     articles.push(...fresh);
   }
 
-  fail(`${NEWS_URL}: still finding new articles after ${MAX_PAGES} pages — the stop condition has stopped working`);
+  fail(
+    `${newsUrl(locale)}: still finding new articles after ${MAX_PAGES} pages — the stop condition has stopped working`,
+  );
+}
+
+/**
+ * Every edition's archive as one, newest first, an article listed in several editions counted once.
+ *
+ * Keyed on the slug, which every edition shares for the same announcement. The English headline is kept where there is
+ * one, since it is what the candidates are scored against; an article no English edition lists keeps the headline of
+ * the first edition that does, and is read from there.
+ */
+async function walkNews(locales: string[]) {
+  const editions = await Promise.all(['en', ...locales.filter((locale) => locale !== 'en')].map(walkEdition));
+  const articles = new Map<string, Article>();
+
+  for (const article of editions.flat()) {
+    const known = articles.get(article.slug);
+
+    if (known) {
+      known.locales.push(...article.locales);
+    } else {
+      articles.set(article.slug, article);
+    }
+  }
+
+  return [...articles.values()].toSorted((a, b) => compare(b.published, a.published));
 }
 
 /**
@@ -237,11 +271,14 @@ function candidatesFor(headline: string, candidates: Candidate[]) {
 }
 
 /** The furthest-future date an unmatched article's prose names, or `undefined` if it names none. */
-async function runsUntil(slug: string) {
-  const html = await articleHtml(slug);
+async function runsUntil({ slug, locales: [locale = 'en'] }: Article, locales: string[]) {
+  const html = await articleHtml(slug, locale);
 
-  return html === undefined ? undefined : latestDateNamed(articleText(html, `${NEWS_URL}/${slug}`));
+  return html === undefined ? undefined : latestDateNamed(articleText(html, `${newsUrl(locale)}/${slug}`), locales);
 }
+
+/** Where an article is listed, for one that the English edition does not list; nothing for one that it does. */
+const editionsOf = ({ locales }: Article) => (locales.includes('en') ? '' : ` [${locales.join(', ')}]`);
 
 /** `fn` over every item, at most `limit` at a time, in the items' order. */
 async function mapPooled<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>) {
@@ -270,7 +307,8 @@ if (!existsSync(LOCAL_EVENTS)) {
 const today = new Date().toISOString().slice(0, 10);
 const local: FeedEvent[] = JSON.parse(readFileSync(LOCAL_EVENTS, 'utf8'));
 const feed: FeedEvent[] = JSON.parse(await fetchText(UPSTREAM_URL));
-const news = await walkNews();
+const locales = await siteLocales();
+const news = await walkNews(locales);
 const inPerson = parseInPerson(await fetchText(IN_PERSON_URL));
 
 // An article is accounted for when its slug is one a source already names. Local entries are keyed both ways because an
@@ -287,7 +325,7 @@ const candidates: Candidate[] = [
 ];
 
 const unmatched = news.filter((article) => !known.has(article.slug));
-const dates = await mapPooled(unmatched, CONCURRENCY, (article) => runsUntil(article.slug));
+const dates = await mapPooled(unmatched, CONCURRENCY, (article) => runsUntil(article, locales));
 const until = new Map(unmatched.map((article, i) => [article.slug, dates[i]]));
 const runsTo = (article: Article) => until.get(article.slug);
 
@@ -307,7 +345,9 @@ const updates = undated
   .filter(({ found }) => found.length > 0);
 
 print(
-  `${news.length} articles archived at ${NEWS_URL} (${news.at(-1)?.published} to ${news[0]?.published}), ` +
+  `${news.length} articles archived across ${locales.length} editions of ${NEWS_URL} ` +
+    `(${news.at(-1)?.published} to ${news[0]?.published}), ${news.filter((article) => editionsOf(article)).length} ` +
+    `of them missing from the English one; ` +
     `${inPerson.length} on the in-person index; ${feed.length} feed events, ${local.length} in ${LOCAL_EVENTS}`,
 );
 print(
@@ -319,7 +359,8 @@ print(`## Announced, unaccounted for, and not yet over (${live.length}) — deci
 
 for (const article of live.toSorted((a, b) => compare(runsTo(b) ?? '', runsTo(a) ?? ''))) {
   print(
-    `  ${article.slug}  (published ${article.published}, prose runs to ${runsTo(article)})\n    ${article.headline}`,
+    `  ${article.slug}${editionsOf(article)}  (published ${article.published}, prose runs to ${runsTo(article)})\n` +
+      `    ${article.headline}`,
   );
 
   for (const { score, source, eventID, name } of candidatesFor(article.headline, candidates)) {
@@ -332,7 +373,9 @@ for (const article of live.toSorted((a, b) => compare(runsTo(b) ?? '', runsTo(a)
 print(`## Undated, but naming something we hold (${updates.length}) — has it been changed?\n`);
 
 for (const { article, found } of updates.toSorted((a, b) => compare(b.article.published, a.article.published))) {
-  print(`  ${article.slug}  (published ${article.published}, names no date)\n    ${article.headline}`);
+  print(
+    `  ${article.slug}${editionsOf(article)}  (published ${article.published}, names no date)\n    ${article.headline}`,
+  );
 
   for (const { score, source, eventID, name } of found) {
     print(`    !  ${score.toFixed(2)} ${source}: ${eventID} | ${name}`);
