@@ -392,8 +392,8 @@ export async function run(
 
       if (panel) {
         const { species: named, ...moves } = panel;
-        read[slot] = { ...card, species: named ?? species, moves };
-        log(`${named ?? species ?? '?'} CP ${cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
+        read[slot] = { ...card, species: named, moves };
+        log(`${named ?? '?'} CP ${cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
       } else {
         log(`card ${slot + 1} unread: ${why ?? '?'}`);
       }

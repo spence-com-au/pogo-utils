@@ -501,6 +501,25 @@ test('reads each card’s moves off the selection screen before using the party,
   ]);
 });
 
+// Palkia's card, its silhouette read as Mamoswine, found by its CP alone, and its panel with Water painted out: no
+// form that is Dragon alone holds Spacial Rend, so the panel names nobody, and Mamoswine, which the search by its dex
+// number ruled out, is not put back.
+test('names nobody a card its CP alone found where its panel names nobody', async () => {
+  const scenes = masterParty();
+  const unnamed = painted(fixture('menu-pixel8-held-palkia'), [255, 255, 255], [0.085, 0.38, 0.235, 0.45]);
+  const { phone, clock } = scripted(
+    { ...scenes, found0: { ...scenes.found0, hold: { at: SELECTION.first, shows: unnamed } } },
+    'party',
+  );
+  const report = recorder();
+
+  await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock, report);
+
+  expect(report.events.filter((line) => /^run: .* CP 4673/.test(line))).toEqual([
+    'run: ? CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
+  ]);
+});
+
 /**
  * Xerneas's CP unread the first time round, so its card is passed over untried, and read the second time, its CP read:
  * Palkia, read, and Metagross, tried and not read, are not tried again.

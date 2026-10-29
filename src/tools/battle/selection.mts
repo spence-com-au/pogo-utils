@@ -137,7 +137,10 @@ function panelBand(image: Image): { top: number; height: number } | undefined {
   return best && best.height >= tall(PANEL_TALL, image) * image.height ? best : undefined;
 }
 
-/** A card's Pokémon as its panel shows it: the species its types and moves name, where they name one, and its moves. */
+/**
+ * A card's Pokémon as its panel shows it: the species its search proved or its types and moves name, where they name
+ * one, and its moves.
+ */
 export interface Panel extends Moves {
   species: string | null;
 }
@@ -149,13 +152,16 @@ const same = (a: readonly string[], b: ReadonlySet<string>) => a.length === b.si
  * and the species whose forms of the panel's types hold them. `species` is the card's as its silhouette was read, which
  * the moves are matched among first; null, every move is. Undefined where no panel is drawn, or its types or moves went
  * unread. A Pokémon whose moves two species of its types can hold is named by neither, and one whose moves no form of
- * its types holds, by none.
+ * its types holds, by none. Where `proven`, a search by its dex number having found it, the Pokémon is `species`, and
+ * its moves are matched among that species' own whatever types were read: a type OCR missed leaves the moves read to
+ * fit another, a Metagross whose Steel went unread holding Shadow Claw and Psychic as Mew does.
  */
 export async function readPanel(
   image: Image,
   data: GameData,
   species: string | null,
   read: (image: Image) => Promise<Line[]> = ocr,
+  proven = false,
 ): Promise<Panel | undefined> {
   const band = panelBand(image);
 
@@ -195,12 +201,13 @@ export async function readPanel(
     return read.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
-  let moves = await readMoves(rows, data, of(species), panel);
-  let named = speciesOf(moves);
+  const own = proven ? pool(data.forms.filter((form) => form.species === species)) : of(species);
+  let moves = await readMoves(rows, data, own, panel);
+  let named = proven ? species : speciesOf(moves);
 
   // Matched among another species' moves, or every move there is where the card's species was not read: read again
   // among the moves of the species they name, which affords slack the whole list cannot, for a row the first pass lost.
-  if (named !== null && named !== species && (moves.fast === null || moves.charged.length < 2)) {
+  if (!proven && named !== null && named !== species && (moves.fast === null || moves.charged.length < 2)) {
     moves = await readMoves(rows, data, of(named), panel);
     named = speciesOf(moves);
   }
@@ -230,14 +237,14 @@ const CLEARED_MS = 1_000;
 
 /**
  * Reads the party card at `card` by its panel: tap it, search for it, hold the pink cell, then clear the search and
- * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp` and its panel's
- * moves matched among first. A silhouette misread names a species the search finds nothing of, so a search by both that
- * shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went unread, and whether the party
- * screen is showing again for certain. A tap meant for the party screen that lands on the selection screen swaps a
- * Pokémon in, so the screen is read after the card's tap, after each search and after CANCEL; the taps between those
- * reads, on the search field, its ⊗ and CANCEL, land above or below the grid, where no tap swaps anything. A selection
- * screen not showing after the card's tap is looked for once more, a phone at work being slower to draw it, and may
- * yet be on its way after that, so the party screen still showing then is not taken for certain.
+ * CANCEL. `species` is the card's as its silhouette was read, which it is searched for by with `cp`, and which a search
+ * by both finding it proves, as its panel's species. A silhouette misread names a species the search finds nothing of,
+ * so a search by both that shows no pink cell is followed by one by the CP alone. Answers the panel, or why it went
+ * unread, and whether the party screen is showing again for certain. A tap meant for the party screen that lands on the
+ * selection screen swaps a Pokémon in, so the screen is read after the card's tap, after each search and after CANCEL;
+ * the taps between those reads, on the search field, its ⊗ and CANCEL, land above or below the grid, where no tap swaps
+ * anything. A selection screen not showing after the card's tap is looked for once more, a phone at work being slower
+ * to draw it, and may yet be on its way after that, so the party screen still showing then is not taken for certain.
  */
 export async function readCard(
   hands: Hands,
@@ -283,10 +290,8 @@ export async function readCard(
     }
   }
 
-  // A cell its dex number found is the species searched for, whoever the panel names: a type OCR missed leaves its
-  // moves to fit another, a Metagross whose Steel went unread holding Shadow Claw and Psychic as Mew does.
-  const held = cell && (await readPanel(await hands.hold(cell), data, species, read));
-  const panel = held && dex !== undefined && found === query(dex, cp) ? { ...held, species } : held;
+  const proven = dex !== undefined && found === query(dex, cp);
+  const panel = cell && (await readPanel(await hands.hold(cell), data, species, read, proven));
   const took = searched(lines);
 
   // Only where the search took: with none in force there is no ⊗, and the field's end opens the keyboard over CANCEL.
