@@ -1058,7 +1058,9 @@ test.each([
     'late',
     [
       HOLDING,
-      "own: no longer holding Shadow Sneak: held 6.3s, past the 6.3s Giratina's energy takes at the soonest to fill from 50",
+      expect.stringMatching(
+        /^own: no longer holding Shadow Sneak: 6\.(2[5-9]|30)s of the fight since the hold began, Giratina's energy filling from 50 in 6\.25s at the soonest$/,
+      ),
       'own: threw Shadow Sneak',
     ],
   ],

@@ -496,10 +496,11 @@ export async function run(
   let unlit: number | undefined;
   let relit: number | undefined;
 
-  // The move chosen that lowers our defense, held until the opponent's charged move has landed: for how long, which a
-  // release and a second hold before it is tapped both keep, counted only across the fight's own frames, back to back,
-  // where alone our fast moves gain energy; the frame and the time last counted; and whether it is held now. Ended by a
-  // tap, or by ours leaving the field.
+  // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
+  // began, which a release and a second hold before it is thrown both keep, counted only across the fight's own frames,
+  // back to back, where alone our fast moves gain energy; the frame and the time last counted; and whether it is held
+  // now. Ended by a throw of ours playing, ours leaving the field, the battle ending or, failing that, the next one
+  // starting; a tap that is dropped leaves it running.
   let deferring: { move: string; waited: number; frame: number; at: number; held: boolean } | undefined;
 
   // Ends a hold with the move it held for, told where it was held.
@@ -1068,6 +1069,7 @@ export async function run(
         const [user, target] = afterThrow(data.combat[pending.move ?? ''], stages.own, stages.their);
         stages = { own: user, their: target };
         thrown = pending.move;
+        deferring = undefined;
         log(`threw ${pending.move ?? 'a charged move'}`, 'own', pending.why);
         pending = undefined;
       } else if (relit !== undefined && clock.now() - relit >= RELIT_MS) {
@@ -1381,7 +1383,6 @@ export async function run(
 
           drop(`${move ?? 'another'} tapped instead`);
           sparing = undefined;
-          deferring = undefined;
           pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
