@@ -1197,7 +1197,7 @@ export async function run(
               theirName(),
               ourShields,
               verdict,
-              health.own,
+              shielding,
               affordable,
               deferring?.waited ?? 0,
             );

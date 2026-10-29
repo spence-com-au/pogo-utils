@@ -354,7 +354,7 @@ export function wouldFaint(
  * What the HP left is divided by for the least a charged move must take of it for its shield to be taken whatever the
  * hit would leave: at least 1/1.4 of it, as PvPoke's `wouldShield` has it.
  */
-export const HARD = 1.4;
+const HARD = 1.4;
 
 /** Whether to take a shield against the opponent's charged move, and why. */
 export interface Shielding {
