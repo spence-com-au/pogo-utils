@@ -43,12 +43,13 @@
  */
 
 import { formIcons, silhouettesFor, typeIcons, type Download } from '../src/tools/battle/assets.mts';
-import { LEADERS, LEAGUES, type Mode } from '../src/tools/battle/menus.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
+import { readOptions } from '../src/tools/battle/options.mts';
 import { type Icon } from '../src/tools/battle/party.mts';
 import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { phoneOf } from '../src/tools/battle/phone.mts';
+import { ending } from '../src/tools/battle/reporter.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
@@ -145,45 +146,20 @@ async function silhouettes(data: GameData): Promise<Icon[]> {
   return [...read.values()];
 }
 
-function oneOf<T extends string>(name: string, value: string | undefined, allowed: readonly T[]): T {
-  const found = allowed.find((option) => option === value);
-
-  return found ?? fail(`--${name} takes one of ${allowed.join(', ')}`);
-}
-
 if (command === 'run') {
   if (rest.length > 0) {
     fail('run takes no arguments beyond its flags');
   }
 
-  const mode: Mode =
-    oneOf('mode', options.mode, ['training', 'gbl']) === 'training'
-      ? {
-          mode: 'training',
-          leader: oneOf('leader', options.leader, LEADERS),
-          league: oneOf('league', options.league, LEAGUES),
-        }
-      : {
-          mode: 'gbl',
-          league: options.league?.trim() || fail('--mode gbl takes --league, as `ultra` or `fantasy cup`'),
-          ...(options.party !== undefined && {
-            party: options.party.trim() || fail('--party takes the name of a party saved for the league'),
-          }),
-        };
+  let asked: ReturnType<typeof readOptions>;
 
-  if (mode.mode === 'gbl' && options.leader !== undefined) {
-    fail('--leader is for training; GO Battle League has no leader');
+  try {
+    asked = readOptions(options);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
   }
 
-  if (mode.mode === 'training' && options.party !== undefined) {
-    fail('--party is for GO Battle League; Training battles with the recommended party');
-  }
-
-  const count = options.count === undefined ? Infinity : Number(options.count);
-
-  if (count !== Infinity && (!Number.isInteger(count) || count < 1)) {
-    fail('--count takes a whole number of battles, 1 or more');
-  }
+  const { mode, count } = asked;
 
   // Taps and swipes go through one held shell, six swipes a second being too many to start a process for each; the
   // settings put back on every way out go a process each, so that a shell gone with the connection still tries.
@@ -411,30 +387,17 @@ if (command === 'run') {
 
     const phone = phoneOf(recording, device, touch);
 
+    // Started once the phone has a frame to draw, so the panel's first draw already has the phone beside it.
     await recording.first();
 
-    // Told once the phone has a frame to draw, so the panel's first draw already has the phone beside it.
-    if (meta) {
-      report?.event(
-        `opponents' moves as PvPoke ranks ${meta.cup} at ${meta.cap ?? 'any'} CP: ${meta.movesets.size} species`,
-      );
-    }
-
-    const { battles, won, lost } = await run(
+    const tally = await run(
       phone,
       { mode, data, icons, typeIcons: types, meta, count, ...(keep && { keep }) },
       clock,
       report,
     ).finally(() => panel?.done());
-    const unread = battles - won - lost;
-    const outcomes = [`${won} won`, `${lost} lost`, ...(unread > 0 ? [`${unread} unread`] : [])];
-    const tally = `${outcomes.slice(0, -1).join(', ')} and ${outcomes.at(-1)}`;
 
-    console.log(`${battles} battle${battles === 1 ? '' : 's'} finished: ${tally}`);
-
-    if (battles < count) {
-      console.log('GO Battle League has no battle to offer until its reward is collected');
-    }
+    ending(tally, count).forEach((line) => console.log(line));
   } catch (error) {
     // The terminal back first, from a run that failed before it began as from one that failed in it: the reason written
     // into the screen taken over would go with it.

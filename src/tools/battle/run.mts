@@ -60,7 +60,7 @@ import { iconColour, readTypes } from './typing.mts';
 import { Energy, holding, Hits, spare, untilTheirsLands, type Hold, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
 import { type Phone } from './phone.mts';
-import { type Fight, type Reporter } from './report.mts';
+import { type Fight, type Reporter } from './reporter.mts';
 
 export interface Clock {
   now(): number;
@@ -312,6 +312,11 @@ export async function run(
   report: Reporter = { event: () => {}, status: () => {} },
 ): Promise<Tally> {
   const log = (line: string, side?: 'own' | 'opponent', why?: string) => report.event(line, side, why);
+
+  if (meta) {
+    log(`opponents' moves as PvPoke ranks ${meta.cup} at ${meta.cap ?? 'any'} CP: ${meta.movesets.size} species`);
+  }
+
   const coloursBy = (colour: (icon: Image) => Colour) =>
     Object.fromEntries(Object.entries(typeIcons).map(([type, icon]) => [type, colour(icon)]));
   const bubbleColours = coloursBy(typeColour);
