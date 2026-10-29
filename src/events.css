@@ -66,9 +66,21 @@ body[data-page='events'] {
     display: none !important;
   }
 
+  /**
+   * The count is a toggle too, so it takes the pill below in the accent it was already written in, and fills once it
+   * has narrowed the page.
+   */
+
   .newly .new-count {
+    border-color: var(--accent);
     color: var(--accent);
+    font-size: inherit;
     font-weight: 600;
+  }
+
+  .newly .new-count[aria-pressed='true'] {
+    background: var(--accent);
+    color: var(--panel);
   }
 
   /**
