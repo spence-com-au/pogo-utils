@@ -76,7 +76,7 @@ function monthNames(locales: string[]) {
 // bare 25xx is as likely an amount of Stardust.
 const YEAR = '(20\\d{2}|25\\d{2})(?!\\d)';
 const DAY = '(?<!\\d)(3[01]|[12]\\d|0?[1-9])(?!\\d)';
-const DASH = '[~～‐-―-]';
+const DASH = '[~～〜‐-―-]';
 
 // What follows a number that makes it a clock time rather than a day: `18:00`, `10.00`, `10h`, `10 Uhr`. A day-first
 // date is routinely followed by its start time, and neither reading of it may take the hour as a day.
@@ -94,7 +94,7 @@ const RANGE_GAP = 60;
  * a same-month range read to its last day so that the year is still reached. Day first, as nearly everyone else does:
  * `27 de octubre de 2026`, `27. Oktober 2026`, `27 października 2026 roku`, `1er novembre`. Either may give a month and
  * year alone, with the `de` Spanish and Portuguese put between them: `hasta marzo de 2027`. And numeric, as Japanese,
- * Korean and Chinese do: `2026年10月27日`, `2026년 10월 27일`, `11月1日`. A bare year is reported too, with no month, so
+ * Korean and Chinese do: `2026年10月27日`, `2026년 10월 27일`, `11月1日`, `10月24日（土）〜25日（日）`. A bare year is reported too, with no month, so
  * that a yearless date beside it can take its year.
  */
 function* datesIn(text: string, months: Map<string, number>) {
@@ -102,19 +102,23 @@ function* datesIn(text: string, months: Map<string, number>) {
     .toSorted((a, b) => b.length - a.length)
     .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|')})(?![\\p{L}\\p{M}])`;
-  const monthFirst = `${month}\\s*(?:${DAY}${NOT_TIME}(?:\\s*${DASH}\\s*(\\d{1,2})(?!\\d))?)?(?:,?\\s*(?:del?\\s+)?${YEAR})?`;
+  const monthFirst = `${month}\\s*(?:${DAY}${NOT_TIME}(?:\\s*${DASH}\\s*${DAY}${NOT_TIME})?)?(?:,?\\s*(?:del?\\s+)?${YEAR})?`;
 
   // A month name with a day straight after it is month first, so a number before it is not its day: `Tier 1 October 3,
   // 2026` is October 3, not October 1. A time straight after it is not a day, so `31 de octubre 18:00` stays day first.
   const dayFirst = `${DAY}(?:\\.|er|ᵉʳ|º|ª|°|\\.º)?\\s*(?:de\\s+)?${month}(?!\\s*\\d{1,2}${NOT_TIME})(?:\\s+del?)?(?:,?\\s*${YEAR})?`;
-  const numeric = `(?:(20\\d{2})\\s*[年년]\\s*)?${DAY}\\s*[月월](?:\\s*(\\d{1,2})\\s*[日일])?`;
+
+  // Numeric dates read a same-month range to its last day too, past the weekday each end usually carries:
+  // `10月24日（土）〜25日（日）` is the 25th.
+  const weekday = `(?:\\s*[（(][^）)]{1,4}[）)])?`;
+  const numeric = `(?:(20\\d{2})\\s*[年년]\\s*)?${DAY}\\s*[月월](?:\\s*${DAY}\\s*[日일]${weekday}(?:\\s*${DASH}\\s*${DAY}\\s*[日일]${weekday})?)?`;
   const bareYear = `(?<!\\d)(20\\d{2})(?!\\d)`;
   const pattern = new RegExp(`${monthFirst}|${dayFirst}|${numeric}|${bareYear}`, 'giu');
   const number = (digits?: string) => (digits === undefined ? undefined : Number(digits));
   const era = (year?: number) => (year !== undefined && year >= 2500 ? year - 543 : year);
 
   for (const groups of text.normalize('NFC').matchAll(pattern)) {
-    const [whole, m1, d1, e1, y1, d2, m2, y2, y3, m3, d3, y4] = groups;
+    const [whole, m1, d1, e1, y1, d2, m2, y2, y3, m3, d3, e3, y4] = groups;
     const at = { start: groups.index, end: groups.index + whole.length };
 
     if (m1 !== undefined) {
@@ -122,7 +126,7 @@ function* datesIn(text: string, months: Map<string, number>) {
     } else if (m2 !== undefined) {
       yield [era(number(y2)), months.get(m2.toLowerCase()), number(d2), at] as const;
     } else if (m3 !== undefined) {
-      yield [number(y3), number(m3), number(d3), at] as const;
+      yield [number(y3), number(m3), number(e3 ?? d3), at] as const;
     } else {
       yield [number(y4), undefined, undefined, at] as const;
     }
