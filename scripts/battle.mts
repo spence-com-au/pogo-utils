@@ -50,7 +50,8 @@ import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { Lost, run, type Clock, type Phone } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
-import { Screen, screenrecord } from '../src/tools/battle/stream.mts';
+import { Screen } from '../src/tools/battle/screen.mts';
+import { feed, screenrecord } from '../src/tools/battle/stream.mts';
 import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
@@ -429,8 +430,8 @@ if (command === 'run') {
     const recording = new Screen(() => {
       const recorded = screenrecord(options.serial, size);
 
-      return kept ? kept.watch(recorded) : recorded;
-    }, size);
+      return feed(kept ? kept.watch(recorded) : recorded, size);
+    });
     screen = recording;
     const touch = await touchscreen(held);
 
