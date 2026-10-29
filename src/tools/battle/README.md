@@ -274,17 +274,17 @@ its defense, logged as `threw Fly: Brave Bird lowers our defense; Fly is worth 7
 **Taking their hit first.** With none of our shields left, a move picked that always lowers our defense waits, once lit,
 while the opponent's [counted energy](#the-opponents-energy) affords a charged move we would survive: thrown first, it
 would have that move land on the lowered defense. This is PvPoke's battle AI's deferral (`ActionLogic.js`), as
-[`energy.mts`](energy.mts)'s `untilTheirsLands`, with our fainting judged by nine tenths of the HP left, as
-[below](#when-to-shield), but not PvPoke's 1/1.4 or its cycle of fast moves. No prompt shows a throw with no shield to
-take, and its banner is read only after, if at all, so what says the hit landed is the count, which the throw's
-countdown lowers by the cheapest move it could be and its banner, once read, by the move's own cost; affording nothing,
-or not counted at all, it lets the move go. PvPoke waits no longer than until our energy is full, which the bot can't
-see, so it waits no longer than the soonest it could fill from the move's cost, at the fastest gain of any fast move our
-species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian Moltres's Brave Bird by Wing Attack. Only
-the fight's own time counts, not the opponent's throw playing out, in which our energy stands still. A finish and a
-throw for fear of fainting, both below, go at once. Logged as
-`holding Close Combat: Metagross can afford Meteor Mash; …`, and as it ends,
-`no longer holding Close Combat: 7 energy affords none of Metagross's charged moves`.
+[`energy.mts`](energy.mts)'s `untilTheirsLands`, and only while no charged move the opponent has would take 1/1.4 of the
+HP left, as [below](#when-to-shield), a hit that would faint us being a fear that throws at once. No prompt shows a
+throw with no shield to take, and its banner is read only after, if at all, so what says the hit landed is the count,
+which the throw's countdown lowers by the cheapest move it could be and its banner, once read, by the move's own cost;
+affording nothing, or not counted at all, it lets the move go. PvPoke waits no longer than until our energy is full,
+which the bot can't see, so it waits no longer than the soonest it could fill from the move's cost, at the fastest gain
+of any fast move our species has: 6.3s for Xerneas's Close Combat by Geomancy, 5.6s for Galarian Moltres's Brave Bird by
+Wing Attack. Only the fight's own time counts, not the opponent's throw playing out, in which our energy stands still. A
+finish and a throw for fear of fainting, both below, go at once. Logged as
+`holding Close Combat: Garchomp can afford Earth Power; …`, and as it ends,
+`no longer holding Close Combat: 7 energy affords none of Garchomp's charged moves`.
 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth

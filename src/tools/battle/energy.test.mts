@@ -405,34 +405,43 @@ test('weighs only its two moves once both have been seen', () => {
 });
 
 /**
- * Xerneas against Metagross, both read at their CPs from battle 4 of the Pixel 8 Pro's Master League set, 2026-10-29,
- * the verdicts `wouldFaint`'s for them: Meteor Mash, at 50 energy counted, would take 78% of a full bar, and at 7,
- * nothing is afforded. A hit that would faint us, charged or fast, is the caller's fear to let the throw go on.
+ * Xerneas against Garchomp, both at the CPs read in battle 2 of the Pixel 8 Pro's Master League set, 2026-10-29, where
+ * Xerneas threw Close Combat with no shield left; the verdict `wouldFaint`'s for them at 50 energy counted. Earth
+ * Power, the hardest that affords, would take 41% of a full bar, and Earthquake, the hardest Garchomp has, 54%: held at
+ * full HP, and let go at the 55% Xerneas had, where Earthquake would take 1/1.4 of what is left. At 7 energy nothing is
+ * afforded.
  */
 test('with no shield left, a move lowering our defense waits for a charged move we would survive to land', () => {
   const xerneas = { species: 'Xerneas', types: ['Fairy'] };
+  const worst = { name: 'Earthquake', share: 0.543 };
   const survived = {
     faints: false,
-    why: 'Meteor Mash would take ~78%, with 100% left, the hardest 50 energy affords',
-    hardest: 'Meteor Mash',
-    afforded: 'Meteor Mash',
+    why: 'Earth Power would take ~41%, with 100% left, the hardest 50 energy affords',
+    hardest: 'Earth Power',
+    afforded: 'Earth Power',
+    share: 0.411,
+    worst,
   };
-  const landed = { faints: false, why: 'Flash Cannon would take ~85%, with 100% left', hardest: 'Flash Cannon' };
+  const landed = { faints: false, why: 'Earthquake would take ~54%, with 100% left', hardest: 'Earthquake', worst };
   const unread = { faints: true, why: 'their species unread' };
-  const holds = (move: string, shields: number, verdict: Verdict, energy = 50, waited = 0) =>
-    untilTheirsLands(DATA, move, xerneas, 'Metagross', shields, verdict, energy, waited);
+  const holds = (move: string, shields: number, verdict: Verdict, hp = 1, energy = 50, waited = 0) =>
+    untilTheirsLands(DATA, move, xerneas, 'Garchomp', shields, verdict, hp, energy, waited);
 
   expect(holds('Close Combat', 0, survived)).toEqual({
     held: true,
-    why: `Metagross can afford Meteor Mash; ${survived.why}`,
+    why: `Garchomp can afford Earth Power; ${survived.why}`,
   });
-  expect(holds('Close Combat', 0, landed, 7), 'the count lowered by its throw, affording nothing').toEqual({
+  expect(holds('Close Combat', 0, survived, 0.55), 'Earthquake taking 1/1.4 of what is left').toEqual({
     held: false,
-    why: "7 energy affords none of Metagross's charged moves",
+    why: 'Earthquake would take ~54%, at least 1/1.4 of the 55% left',
   });
-  expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Metagross', 0, landed, undefined, 0)).toEqual({
+  expect(holds('Close Combat', 0, landed, 1, 7), 'the count lowered by its throw, affording nothing').toEqual({
     held: false,
-    why: "Metagross's energy not counted",
+    why: "7 energy affords none of Garchomp's charged moves",
+  });
+  expect(untilTheirsLands(DATA, 'Close Combat', xerneas, 'Garchomp', 0, landed, 1, undefined, 0)).toEqual({
+    held: false,
+    why: "Garchomp's energy not counted",
   });
   expect(holds('Close Combat', 1, survived), 'a shield left to take it').toBe(undefined);
   expect(holds('Moonblast', 0, survived), 'a move leaving our defense alone').toBe(undefined);
@@ -442,8 +451,8 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   });
 
   // Geomancy, 13 energy for 3 turns, fills 100 from Close Combat's 45 in 6346ms.
-  expect(holds('Close Combat', 0, survived, 50, 6300)?.held).toBe(true);
-  expect(holds('Close Combat', 0, survived, 50, 6400)).toEqual({
+  expect(holds('Close Combat', 0, survived, 1, 50, 6300)?.held).toBe(true);
+  expect(holds('Close Combat', 0, survived, 1, 50, 6400)).toEqual({
     held: false,
     why: "6.40s of the fight since the hold began, Xerneas's energy filling from 45 in 6.35s at the soonest",
   });
@@ -451,12 +460,12 @@ test('with no shield left, a move lowering our defense waits for a charged move 
   // Galarian Moltres's Wing Attack, 8 for 2 turns, fills from Brave Bird's 55 in 5625ms.
   const moltres = { species: 'Moltres', types: ['Dark', 'Flying'] };
 
-  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5600)?.held).toBe(true);
-  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Metagross', 0, survived, 50, 5700)?.why).toBe(
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Garchomp', 0, survived, 1, 50, 5600)?.held).toBe(true);
+  expect(untilTheirsLands(DATA, 'Brave Bird', moltres, 'Garchomp', 0, survived, 1, 50, 5700)?.why).toBe(
     "5.70s of the fight since the hold began, Moltres's energy filling from 55 in 5.63s at the soonest",
   );
   expect(
-    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Metagross', 0, survived, 50, 0),
+    untilTheirsLands(DATA, 'Close Combat', { species: null }, 'Garchomp', 0, survived, 1, 50, 0),
     'none of our fast moves known, so no time to hold for',
   ).toEqual({ held: false, why: 'our fast moves not known' });
 });

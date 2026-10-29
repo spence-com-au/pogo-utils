@@ -23,7 +23,7 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
-import { buildsOf, capped, hit, MOVES_HELD, NO_STAGES, type Side, type Stages, type Verdict } from './damage.mts';
+import { buildsOf, capped, HARD, hit, MOVES_HELD, NO_STAGES, type Side, type Stages, type Verdict } from './damage.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, lowersDefense, type Shown } from './strategy.mts';
 
@@ -605,19 +605,24 @@ export interface Hold {
  * defense, thrown with none of our `shields` left while the opponent can afford a charged move, has that move land on
  * the lowered defense; held, the hit lands on our defense as it stands, and the move goes after. PvPoke's battle AI
  * defers such a move (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines 977–983) while the opponent
- * can afford its best charged move and it is one we would survive.
+ * can afford its best charged move and we would not shield it, which with none of our shields left `wouldShield`
+ * answers yes to where the hit would faint us or where any charged move the opponent has would take 1/1.4 of the HP
+ * left (line 1221).
  *
  * Held only while `verdict`, `wouldFaint`'s on `affordable`, the counted energy and a fast move's more for a hit the
- * count missed, names the hardest move that energy affords; whether that would faint us is the caller's to weigh,
- * below. With no shield of ours left the throw puts up no prompt, and its banner is read only after it has played, if
- * at all; what says it landed is the count, which `Energy.threw` lowers by the opponent's cheapest allowed charged move
- * once its countdown has shown, and `Energy.named` settles at the move's own cost once its banner is read. Affording
- * none of the opponent's moves, the count lets the throw go, as it lets go one never held, and so does no count at all;
- * still affording one, a second throw may be still to come, and the hold goes on, until the banner settles the count or
- * the time below runs out. A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the
- * throw go on that fear, as `beforeFainting` throws on it, whatever this answers, so a hold it keeps is of a hit we
- * would survive. Anything unread lets the throw go too, as `verdict.why` names it, and so do our fast moves not known,
- * which leave no time to hold for.
+ * count missed, names the hardest move that energy affords, and while `verdict.worst`, the hardest of every charged
+ * move the opponent is allowed for, would take less than 1/`HARD` of `hp`, the HP we have left, as `wouldShield` here
+ * weighs a shield: PvPoke's test, on the moves it has rather than those it can afford. Whether the hit would faint us
+ * is the caller's to weigh, below. With no shield of ours left the throw puts up no prompt, and its banner is read only
+ * after it has played, if at all; what says it landed is the count, which `Energy.threw` lowers by the opponent's
+ * cheapest allowed charged move once its countdown has shown, and `Energy.named` settles at the move's own cost once
+ * its banner is read. Affording none of the opponent's moves, the count lets the throw go, as it lets go one never
+ * held, and so does no count at all; still affording one, a second throw may be still to come, and the hold goes on,
+ * until the banner, correcting the count to the move's own cost, leaves it affording none, or the time below runs out.
+ * A hit that would faint us, charged or fast, leaves no defense to save: the caller lets the throw go on that fear, as
+ * `beforeFainting` throws on it, whatever this answers, so a hold it keeps is of a hit we would survive. Anything
+ * unread lets the throw go too, as `verdict.why` names it, and so do our fast moves not known, which leave no time to
+ * hold for.
  *
  * And only until `waited` reaches `filling`'s time. PvPoke stops waiting at 100 energy of ours, past which our fast
  * moves gain nothing; the bot cannot see ours, so it stops at the soonest it could be full, against an opponent holding
@@ -626,12 +631,11 @@ export interface Hold {
  * released meanwhile, our energy growing either way. It is the soonest from `cost`, where a move lit before the hold
  * began, as one `spare` kept for the next, already has more and fills sooner than this allows.
  *
- * Otherwise unlike PvPoke's: its test is the opponent's best move, and our shielding it, which with no shield to take
- * PvPoke's `wouldShield` answers yes for any of its charged moves taking 1/1.4 of the HP left (line 1221); ours is the
- * hardest the count affords, not fainting us by `wouldFaint`'s `FAINTS`, the 1/1.4 being `wouldShield`'s to weigh for a
- * shield we hold rather than for this. Nor does it throw at once where our cheapest move raises our own stats, as
- * PvPoke's does: the Xerneas and Galarian Moltres played hold no such move beside Close Combat and Brave Bird. A
- * finish, `finisher`'s, is the caller's to throw at once, as PvPoke's comes ahead of its deferral.
+ * Otherwise unlike PvPoke's: it asks whether the opponent can afford its best move, where this asks whether it can
+ * afford any, a cheaper one landing on the lowered defense as surely; and it judges a faint by its own model, where
+ * this goes by `wouldFaint`'s `FAINTS`, as a shield is judged. Nor does it throw at once where our cheapest move raises
+ * our own stats, as PvPoke's does: the Xerneas and Galarian Moltres played hold no such move beside Close Combat and
+ * Brave Bird. A finish, `finisher`'s, is the caller's to throw at once, as PvPoke's comes ahead of its deferral.
  *
  * Undefined where `move` does not always lower our defense, or where a shield of ours is left to take the hit.
  */
@@ -642,6 +646,7 @@ export function untilTheirsLands(
   opponent: string,
   shields: number,
   verdict: Verdict,
+  hp: number | null,
   affordable: number | undefined,
   waited: number,
 ): Hold | undefined {
@@ -660,6 +665,15 @@ export function untilTheirsLands(
 
   if (verdict.afforded === undefined) {
     return { held: false, why: `${affordable} energy affords none of ${opponent}'s charged moves` };
+  }
+
+  const { worst } = verdict;
+  const percent = (fraction: number) => `${Math.round(fraction * 100)}%`;
+
+  if (hp === null || worst === undefined || worst.share * HARD >= hp) {
+    const left = hp === null ? 'our HP unread' : `at least 1/${HARD} of the ${percent(hp)} left`;
+
+    return { held: false, why: worst ? `${worst.name} would take ~${percent(worst.share)}, ${left}` : left };
   }
 
   const cost = costOf(data, move);
