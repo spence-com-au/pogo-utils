@@ -61,8 +61,15 @@ test.each([
   expect(near(menu, 0.55, y)).toBe(true);
 });
 
-// The recording's button and the full-size screenshot's differ by 28 in red, which one colour to within 20 missed.
-test.each(['menu-party', 'menu-party-full'])('taps USE THIS PARTY on %s without reading the screen', async (name) => {
+// The recording's button and the full-size screenshot's differ by 28 in red, which one colour to within 20 missed. The
+// Pixel 8 Pro's are the party's card drawn darker after the card read's search in storage, a screenshot and a frame,
+// with the button lower down its taller screen, pinned as it is to the panel that stretches with it.
+test.each([
+  ['menu-party', 0.87],
+  ['menu-party-full', 0.87],
+  ['menu-pixel8-party-dimmed', 0.872],
+  ['menu-pixel8-party-dimmed-frame', 0.872],
+])('taps USE THIS PARTY on %s without reading the screen', async (name, y) => {
   const read = vi.fn();
   const menu = await readMenu(
     fixture(name),
@@ -70,7 +77,7 @@ test.each(['menu-party', 'menu-party-full'])('taps USE THIS PARTY on %s without 
     read,
   );
 
-  expect(menu).toEqual({ screen: 'party', tap: [0.5, expect.closeTo(0.87, 3)] });
+  expect(menu).toEqual({ screen: 'party', tap: [0.5, expect.closeTo(y, 3)] });
   expect(read).not.toHaveBeenCalled();
 });
 
