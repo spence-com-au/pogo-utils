@@ -28,6 +28,21 @@ export const GAME_MASTER = 'src/tools/inventory/fixtures/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
+ * What the demo phone in `src/tools/inventory/demo.mts` shows: detail screens from the reader's corpus, one per
+ * screenshot in turn, and storage before and after a search. The corpus's own captures rather than copies of them, so
+ * covering a trainer name on one covers it on the site too.
+ */
+export const DEMO_DETAILS = [
+  'pikachu-ash-hat',
+  'charizard-gigantamax',
+  'eevee-background',
+  'ho-oh',
+  'deoxys-attack',
+].map((name) => `src/tools/inventory/fixtures/${name}.png`);
+export const DEMO_STORAGE = 'src/tools/inventory/fixtures/storage/grid.png';
+export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png';
+
+/**
  * Where the battle's Worker is published, which `scripts/bundle.mts` builds it to and a page starts it from: no markup
  * names it, so the markup cannot be where the bundler learns of it as it learns of a page's module.
  */

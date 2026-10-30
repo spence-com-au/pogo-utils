@@ -9,7 +9,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import type { Phone as Connection } from '../inventory/webusb.js';
-import { PhoneStore } from '../phone-store.js';
+import { DEMO_SERIAL, PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { type Status } from '../tools/battle/reporter.mts';
 import { type GameData } from '../tools/inventory/game-master.mts';
@@ -279,6 +279,21 @@ test('leaves a phone connected during the run held, not reopening the lent one',
 
   expect(store.phone).toBe(other.connection);
   expect(reconnect).not.toHaveBeenCalled();
+});
+
+test('takes the lent phone back over the demo phone, which the menu offers while none is held', async () => {
+  const log: string[] = [];
+  const there = fakeConnection('pixel', H264, log);
+  const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));
+  const run = await lend(store, PLAY, told().report, start, reconnect);
+  const demo = fakeConnection(DEMO_SERIAL, H264, log);
+
+  await store.hold(demo.connection);
+  run.stop();
+  await run.ended;
+
+  expect(store.phone).toBe(back.connection);
+  await expect(demo.connection.disconnected).resolves.toBeUndefined();
 });
 
 test('lets the lent phone go again where another is connected while it is being reopened', async () => {

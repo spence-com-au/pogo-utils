@@ -253,10 +253,15 @@
   cursor: pointer;
 }
 
-.settings-actions button:hover,
+.settings-actions button:hover:not(:disabled),
 .settings-actions button:focus-visible {
   border-color: var(--track);
   color: var(--track);
+}
+
+.settings-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .settings-status {

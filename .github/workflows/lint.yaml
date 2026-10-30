@@ -37,4 +37,8 @@ jobs:
       - uses: 'pnpm/setup@v3.1.2'
         with:
           cache: true
+
+      # `lint:types` is `pnpm build`, which publishes the demo phone's screens out of LFS, as `pages.yaml` does.
+      - if: "matrix.check == 'types'"
+        run: 'git lfs pull --include="$(node scripts/published.mts)"'
       - run: 'pnpm lint:${{ matrix.check }}'

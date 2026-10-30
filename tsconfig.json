@@ -105,6 +105,7 @@
     "src/tools/inventory/artwork.mts",
     "src/tools/inventory/badges.mts",
     "src/tools/inventory/config.mts",
+    "src/tools/inventory/demo.mts",
     "src/tools/inventory/detail.mts",
     "src/tools/inventory/game-master.mts",
     "src/tools/inventory/held-shell.mts",

@@ -10,6 +10,7 @@
 import {
   copyInto,
   expandEntry,
+  lfsPointers,
   localTarget,
   manifestLinks,
   markupRefs,
@@ -169,6 +170,17 @@ test('a file of a kind the site does not serve is refused', () => {
       .map((path) => path.slice(dist.length + 1))
       .sort(),
   ).toEqual(['src/main.js.map', 'tsconfig.tsbuildinfo']);
+});
+
+test('a Git LFS pointer is found wherever it was copied, and a file that only mentions one is not', () => {
+  const pointer = 'version https://git-lfs.github.com/spec/v1\noid sha256:00\nsize 1\n';
+  const dist = tree({
+    'index.html': '<p>version https://git-lfs.github.com/spec/v1</p>',
+    'src/fixtures/a.png': pointer,
+    'b.png': '\x89PNG',
+  });
+
+  expect(lfsPointers(dist).map((path) => path.slice(dist.length + 1))).toEqual(['src/fixtures/a.png']);
 });
 
 test('a *.ext entry takes the matching files of one directory, not of the ones beneath it', () => {
