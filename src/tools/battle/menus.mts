@@ -84,13 +84,21 @@ const USE_PARTY_ANCHOR = 0.9;
 const isGreen = ([r, g, b]: readonly [number, number, number]) =>
   g >= 195 && g - r >= 25 && g - b >= 35 && r >= 90 && b >= 130 && b <= 175;
 
-/** Whether the button is under `[x, y]`, sampled there and a little left of it, clear of the label. */
-function green(image: Image, [x, y]: Point): boolean {
-  return [x - 0.08, x].some((sx) => isGreen(rgb(image, sx * image.width, y * image.height)));
+/**
+ * Whether the button is under `[x, y]`, sampled there and a little left of it, clear of the label, as it would be drawn
+ * at full brightness where it is drawn at `shade` of it.
+ */
+function green(image: Image, [x, y]: Point, shade = 1): boolean {
+  return [x - 0.08, x].some((sx) =>
+    isGreen(
+      rgb(image, sx * image.width, y * image.height).map((channel) => channel / shade) as [number, number, number],
+    ),
+  );
 }
 
 /**
- * Whether the row a button is on runs across a white card either side of it, at x 0.1 and 0.9. The colour alone does
+ * How bright the white card the row a button is on runs across either side of it is, at x 0.1 and 0.9, as a fraction
+ * of white, or `undefined` where the row runs across no such card. The colour alone does
  * not tell the two screens' buttons from others of the same green: the Battle tab draws GO Battle League's BATTLE in
  * it, inside a white card, and the map's grass passes it. So USE THIS PARTY is the one on a white panel, and BATTLE
  * under the leader's speech the one over the artwork — where GO Battle League's, at whatever height the tab is scrolled
@@ -99,13 +107,18 @@ function green(image: Image, [x, y]: Point): boolean {
  * Measured either side, on each fixture's button row: 248–249/252–254/237–240 on `menu-party` and `menu-party-full`,
  * from 4/6/6 to 92/73/57 on `menu-intro` and `menu-intro-spark`, 255/255/255 on `menu-unknown-battle-league`, and
  * 142/199/173 and 228/238/234 on `menu-unknown-map`.
+ *
+ * The party's card is drawn darker once the card read has searched storage and come back, and stays so until the screen
+ * is left, its button with it: 218–219/221–223/210–214 and a button of 76/176/126 to 92/183/126 on a Pixel 8 Pro's
+ * screenshot and frame, `menu-pixel8-party-dimmed` and `-frame`. So the card is held to a light grey rather than white,
+ * and says how much darker its button is drawn.
  */
-function panel(image: Image, y: number): boolean {
-  return [0.1, 0.9].every((x) => {
-    const [r, g, b] = rgb(image, x * image.width, y * image.height);
+function panel(image: Image, y: number): number | undefined {
+  const sides = [0.1, 0.9].map((x) => rgb(image, x * image.width, y * image.height));
 
-    return Math.min(r, g, b) >= 230 && Math.max(r, g, b) - Math.min(r, g, b) <= 16;
-  });
+  return sides.every((side) => Math.min(...side) >= 200 && Math.max(...side) - Math.min(...side) <= 16)
+    ? Math.min(...sides.map((side) => Math.max(...side))) / 255
+    : undefined;
 }
 
 /**
@@ -419,8 +432,9 @@ function gblLeagues(lines: readonly Line[], image: Image): { title: string; tap:
  */
 export function onParty(image: Image): boolean {
   const party = place(USE_PARTY, USE_PARTY_ANCHOR, image);
+  const shade = panel(image, party[1]);
 
-  return green(image, party) && panel(image, party[1]) && !teal(image);
+  return shade !== undefined && green(image, party, shade) && !teal(image);
 }
 
 /**
@@ -445,7 +459,7 @@ export async function readMenu(
   const foot = place(FOOT, BOTTOM, image);
   const training = mode.mode === 'training';
 
-  if (training && green(image, fight) && teal(image) && !panel(image, fight[1])) {
+  if (training && green(image, fight) && teal(image) && panel(image, fight[1]) === undefined) {
     return { screen: 'intro', tap: fight };
   }
 
