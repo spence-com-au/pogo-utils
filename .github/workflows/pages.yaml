@@ -22,6 +22,10 @@ jobs:
       - uses: 'pnpm/setup@v3.1.2'
         with:
           cache: true
+
+      # The demo phone's screens are in LFS, which the checkout leaves as pointers. Only what the site publishes is
+      # pulled, rather than every capture the tests read, and `assemble` fails the build over a pointer this missed.
+      - run: 'git lfs pull --include="$(node scripts/published.mts)"'
       - run: 'pnpm build'
 
       - uses: 'actions/upload-pages-artifact@v5.0.0'

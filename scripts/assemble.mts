@@ -11,6 +11,7 @@
 import {
   copyInto,
   expandEntry,
+  lfsPointers,
   orphanedStylesheets,
   PUBLISHED,
   scanReferences,
@@ -36,6 +37,12 @@ const unexpected = unservedFiles(DIST);
 
 if (unexpected.length > 0) {
   throw new Error(`In the artifact and not served:\n  ${unexpected.join('\n  ')}`);
+}
+
+const pointers = lfsPointers(DIST);
+
+if (pointers.length > 0) {
+  throw new Error(`In the artifact as Git LFS pointers, not pulled:\n  ${pointers.join('\n  ')}`);
 }
 
 const { pages, manifests, checked, named, missing } = scanReferences(DIST);

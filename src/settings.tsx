@@ -12,7 +12,7 @@ import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBacku
 import { putBack } from './battle/awake.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
-import { phoneStore, usePhone } from './phone-store.js';
+import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
 
 /**
@@ -48,6 +48,7 @@ export function Settings() {
   const picker = useRef<HTMLInputElement>(null);
 
   const phone = usePhone();
+  const demo = phone?.serial === DEMO_SERIAL;
 
   /** What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held. */
   const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
@@ -85,6 +86,26 @@ export function Settings() {
       setPhoneStatus(`Could not connect: ${said(e)}`);
     } finally {
       setConnecting(false);
+    }
+  }
+
+  /**
+   * Hold the demo phone, or put it away. Only ever in place of no phone, never of a real one, which may be partway
+   * through something: the buttons below see to that, Connect waiting on the demo and the demo on a phone let go.
+   */
+  async function toggleDemo() {
+    setPhoneStatus(null);
+
+    try {
+      if (phone?.serial === DEMO_SERIAL) {
+        await phone.close();
+      } else {
+        const { demoPhone } = await import('./inventory/demo.js');
+
+        await phoneStore.hold(demoPhone());
+      }
+    } catch (e) {
+      setPhoneStatus(`Could not start the demo: ${said(e)}`);
     }
   }
 
@@ -219,18 +240,36 @@ export function Settings() {
             to type into its storage. Close any <code>adb</code> server first: a phone held by one cannot be claimed
             here. Where the connection will not come up, <a href="https://webadb.com/">WebADB</a> is a shell over the
             same WebUSB to find out why. The phone stays connected from tab to tab until it is unplugged or the site is
-            closed.
+            closed. With no phone to hand, the demo phone shows what the tabs do with recorded screens.
           </p>
 
           <div class="settings-actions">
-            <button type="button" disabled={connecting} onClick={() => void connectPhone()}>
-              {phone ? 'Connect another phone' : 'Connect a phone'}
+            <button
+              type="button"
+              disabled={connecting || demo}
+              title={demo ? 'Put the demo phone away first' : undefined}
+              onClick={() => void connectPhone()}
+            >
+              {phone && !demo ? 'Connect another phone' : 'Connect a phone'}
+            </button>
+            <button
+              type="button"
+              disabled={connecting || (phone !== null && !demo)}
+              title={phone && !demo ? 'Only with no phone connected' : undefined}
+              onClick={() => void toggleDemo()}
+            >
+              {demo ? 'Put the demo phone away' : 'Use a demo phone'}
             </button>
           </div>
 
           {/* Present from the first render, for the reason the backup's status above is. */}
           <p class="settings-status" aria-live="polite">
-            {phoneStatus ?? (phone ? `Connected to ${phone.name}.` : null)}
+            {phoneStatus ??
+              (demo
+                ? 'Using the demo phone: the tabs read recorded screens, not your account.'
+                : phone
+                  ? `Connected to ${phone.name}.`
+                  : null)}
           </p>
         </section>
       </div>

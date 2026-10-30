@@ -14,6 +14,12 @@ import { useEffect, useState } from 'preact/hooks';
 
 import type { Phone } from './inventory/webusb.js';
 
+/**
+ * What the demo phone in `inventory/demo.ts` is found by, which no USB serial is. Here rather than there so the Battle
+ * page can refuse it without fetching the readers that module brings.
+ */
+export const DEMO_SERIAL = 'demo';
+
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
 export class PhoneStore {
   /** The phone held, or null before one is connected, once it is unplugged and while it is lent to a battle. */

@@ -13,7 +13,7 @@ import { type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { useSession, session, type Told } from '../battle/session.js';
-import { phoneStore, usePhone } from '../phone-store.js';
+import { DEMO_SERIAL, phoneStore, usePhone } from '../phone-store.js';
 import { LEADERS, LEAGUES } from '../tools/battle/menus.mts';
 import { OptionError, readOptions, type Asked } from '../tools/battle/options.mts';
 import { energyOf, PARTY, summary, type Fight, type Side } from '../tools/battle/reporter.mts';
@@ -277,9 +277,11 @@ export default function BattlePage() {
         ? phase.stopping
           ? 'Stopping, and putting the phone back as it was…'
           : 'Running. Leave the phone be until it stops.'
-        : phone
-          ? `Ready to play on ${phone.name}.`
-          : 'No phone connected: connect one from Settings (⚙️ in the top bar).';
+        : phone?.serial === DEMO_SERIAL
+          ? 'The demo phone plays no battles yet: connect a phone from Settings (⚙️ in the top bar).'
+          : phone
+            ? `Ready to play on ${phone.name}.`
+            : 'No phone connected: connect one from Settings (⚙️ in the top bar).';
 
   return (
     <>
@@ -368,7 +370,7 @@ export default function BattlePage() {
           </div>
 
           <div class="actions">
-            <button class="run" type="submit" disabled={busy || phone === null}>
+            <button class="run" type="submit" disabled={busy || phone === null || phone.serial === DEMO_SERIAL}>
               Start
             </button>
             <button

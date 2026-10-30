@@ -5,10 +5,10 @@
  * artifact of its own.
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from '../scripts/served-types.mts';
 
 /**
@@ -27,6 +27,12 @@ export const PUBLISHED = [
   // here, rather than a second copy that could drift from the one the tests pin — or the 23 MB upstream the vend exists
   // to avoid fetching.
   GAME_MASTER,
+
+  // What the demo phone shows, out of the corpus for the same reason. These are in Git LFS, which a checkout leaves as
+  // pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to.
+  ...DEMO_DETAILS,
+  DEMO_STORAGE,
+  DEMO_SEARCHED,
 ];
 
 /**
@@ -98,6 +104,25 @@ export function unservedFiles(dist: string, served: readonly string[] = Object.k
   return readdirSync(dist, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && !served.includes(extname(entry.name)))
     .map((entry) => join(entry.parentPath, entry.name));
+}
+
+/**
+ * The first line of a Git LFS pointer, which is what a checkout that did not pull LFS holds where a file should be.
+ * Every pointer is a few lines of text, so nothing longer than `POINTER_MAX` is read to ask.
+ */
+const POINTER = 'version https://git-lfs.github.com/spec/v1\n';
+const POINTER_MAX = 1024;
+
+/**
+ * Every file in `dist` that is a Git LFS pointer rather than the file it stands for. Copied in, one would be served
+ * under its own name and type and fail only where it was read — an image that does not decode — so a build over one
+ * fails here instead.
+ */
+export function lfsPointers(dist: string): string[] {
+  return readdirSync(dist, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name))
+    .filter((path) => statSync(path).size <= POINTER_MAX && readFileSync(path, 'utf8').startsWith(POINTER));
 }
 
 /**
