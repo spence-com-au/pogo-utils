@@ -103,7 +103,11 @@ export function Settings() {
       } else {
         const { demoPhone } = await import('./inventory/demo.js');
 
-        await phoneStore.hold(demoPhone());
+        // Asked again once the module is in, which a first use waits on: a phone picked in the chooser meanwhile, or
+        // taken back by a battle that ended, is real, and `hold` would close it.
+        if (phoneStore.phone === null) {
+          await phoneStore.hold(demoPhone());
+        }
       }
     } catch (e) {
       setPhoneStatus(`Could not start the demo: ${said(e)}`);
