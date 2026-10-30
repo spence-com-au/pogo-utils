@@ -43,6 +43,18 @@ export const DEMO_STORAGE = 'src/tools/inventory/fixtures/storage/grid.png';
 export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png';
 
 /**
+ * What the demo phone in `src/battle/demo.ts` plays: a Training battle the loop played against `leader` in `league` on
+ * a Pixel 8 Pro, kept by `--keep-video` and re-encoded at a constant `fps`, which the Battle tab holds a run on the demo
+ * phone to.
+ */
+export const DEMO_BATTLE = {
+  clip: 'src/tools/battle/fixtures/demo-training.h264',
+  fps: 30,
+  leader: 'spark',
+  league: 'great',
+} as const;
+
+/**
  * Where the battle's Worker is published, which `scripts/bundle.mts` builds it to and a page starts it from: no markup
  * names it, so the markup cannot be where the bundler learns of it as it learns of a page's module.
  */

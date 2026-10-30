@@ -13,6 +13,7 @@ import { type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { useSession, session, type Told } from '../battle/session.js';
+import { DEMO_BATTLE } from '../generated.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from '../phone-store.js';
 import { LEADERS, LEAGUES } from '../tools/battle/menus.mts';
 import { OptionError, readOptions, type Asked } from '../tools/battle/options.mts';
@@ -252,6 +253,13 @@ export default function BattlePage() {
   });
   const [refused, setRefused] = useState<string | null>(null);
 
+  // The demo phone plays the one battle it recorded, whatever is asked of it, so the form says which and is held there.
+  const demo = phone?.serial === DEMO_SERIAL;
+  const shown: Fields = demo
+    ? { ...fields, mode: 'training', leader: DEMO_BATTLE.leader, league: DEMO_BATTLE.league }
+    : fields;
+  const recorded = demo ? 'The demo phone plays the battle it recorded' : undefined;
+
   const busy = phase.kind === 'connecting' || phase.kind === 'running';
   const field = (name: keyof Fields) => (event: Event) =>
     setFields({ ...fields, [name]: (event.currentTarget as HTMLInputElement | HTMLSelectElement).value });
@@ -259,7 +267,7 @@ export default function BattlePage() {
   function start(event: Event) {
     event.preventDefault();
 
-    const options = optionsOf(fields);
+    const options = optionsOf(shown);
 
     if ('refused' in options) {
       setRefused(options.refused);
@@ -277,8 +285,8 @@ export default function BattlePage() {
         ? phase.stopping
           ? 'Stopping, and putting the phone back as it was…'
           : 'Running. Leave the phone be until it stops.'
-        : phone?.serial === DEMO_SERIAL
-          ? 'The demo phone plays no battles yet: connect a phone from Settings (⚙️ in the top bar).'
+        : demo
+          ? 'Ready to play on the demo phone: a recorded Training battle, which plays the same whatever is tapped.'
           : phone
             ? `Ready to play on ${phone.name}.`
             : 'No phone connected: connect one from Settings (⚙️ in the top bar).';
@@ -299,17 +307,17 @@ export default function BattlePage() {
           <div class="fields">
             <label>
               Mode
-              <select value={fields.mode} disabled={busy} onChange={field('mode')}>
+              <select value={shown.mode} disabled={busy || demo} title={recorded} onChange={field('mode')}>
                 <option value="training">Team Leader training</option>
                 <option value="gbl">GO Battle League</option>
               </select>
             </label>
 
-            {fields.mode === 'training' ? (
+            {shown.mode === 'training' ? (
               <>
                 <label>
                   Leader
-                  <select value={fields.leader} disabled={busy} onChange={field('leader')}>
+                  <select value={shown.leader} disabled={busy || demo} title={recorded} onChange={field('leader')}>
                     {LEADERS.map((leader) => (
                       <option key={leader} value={leader}>
                         {leader[0]?.toUpperCase() + leader.slice(1)}
@@ -319,7 +327,7 @@ export default function BattlePage() {
                 </label>
                 <label>
                   League
-                  <select value={fields.league} disabled={busy} onChange={field('league')}>
+                  <select value={shown.league} disabled={busy || demo} title={recorded} onChange={field('league')}>
                     {LEAGUES.map((league) => (
                       <option key={league} value={league}>
                         {league[0]?.toUpperCase() + league.slice(1)} League
@@ -370,7 +378,7 @@ export default function BattlePage() {
           </div>
 
           <div class="actions">
-            <button class="run" type="submit" disabled={busy || phone === null || phone.serial === DEMO_SERIAL}>
+            <button class="run" type="submit" disabled={busy || phone === null}>
               Start
             </button>
             <button

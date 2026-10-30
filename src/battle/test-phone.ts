@@ -6,6 +6,7 @@
 
 import type { Phone as Connection, Process } from '../inventory/webusb.js';
 import { encodePng } from '../tools/inventory/png.mts';
+import { answeringShell, settingsShell, stream } from './demo.js';
 
 /**
  * A `VideoDecoder` that puts out one frame for each picture it is handed, the frame's first byte its count, and keeps
@@ -77,27 +78,6 @@ export class FakeChunk {
   }
 }
 
-/** A stream that sends what `send` is handed, until `end`, and nothing after: a process gone answers nothing. */
-function stream() {
-  let controller!: ReadableStreamDefaultController<Uint8Array>;
-  let ended = false;
-  const readable = new ReadableStream<Uint8Array>({ start: (started) => void (controller = started) });
-
-  return {
-    readable,
-    send: (bytes: Uint8Array) => ended || controller.enqueue(bytes),
-    end: () => {
-      if (!ended) {
-        ended = true;
-        controller.close();
-      }
-    },
-  };
-}
-
-/** `dumpsys input` listing the touchscreen as one, which is all `touchscreen` reads of it. */
-const LISTED = '  Device 5: pogo-utils touch\n    Sources: 0x00001002\n';
-
 /**
  * A phone reached as over WebUSB, named `name`: its screen the shape of a Pixel 4 XL's, its `screenrecord` sending
  * `h264` and then nothing until killed, and its held `sh` answering each command as a phone's shell would — `dumpsys
@@ -110,6 +90,7 @@ export function fakeConnection(name: string, h264: Uint8Array, log: string[] = [
   const commands: string[] = [];
   const ran: string[] = [];
   const settings = new Map([['stay_on_while_plugged_in', '0']]);
+  const answer = settingsShell(settings);
   const writes: string[] = [];
   const spawned: string[] = [];
   const killed: string[] = [];
@@ -123,33 +104,16 @@ export function fakeConnection(name: string, h264: Uint8Array, log: string[] = [
   });
 
   const shell = (): Process => {
-    const out = stream();
-    const decoder = new TextDecoder();
-    let pending = '';
-
-    // A command, then the marker `holdShell` has the shell echo with its status, answered once both have come.
-    const stdin = new WritableStream<Uint8Array>({
-      write(chunk) {
-        const text = decoder.decode(chunk);
-        writes.push(text);
-        pending += text;
-
-        for (let match; (match = /([^\n]*)\ns=\$\?; echo "\n(\S+) \$s"\n/.exec(pending));) {
-          const [whole, command = '', marker = ''] = match;
-          pending = pending.slice(match.index + whole.length);
-          commands.push(command);
-          out.send(new TextEncoder().encode(`${command === 'dumpsys input' ? LISTED : ''}\n${marker} 0\n`));
-        }
-      },
+    const process = answeringShell({
+      write: (text) => writes.push(text),
+      command: (command) => commands.push(command),
     });
 
     return {
-      stdin,
-      stdout: out.readable,
-      stderr: stream().readable,
+      ...process,
       kill: () => {
         killed.push('sh');
-        out.end();
+        process.kill();
       },
     };
   };
@@ -177,16 +141,9 @@ export function fakeConnection(name: string, h264: Uint8Array, log: string[] = [
     transport: {
       state: () => Promise.resolve('device'),
       shell: (command) => {
-        const [verb, action, , key = '', value = ''] = command;
         ran.push(command.join(' '));
 
-        if (verb === 'settings' && action === 'put') {
-          settings.set(key, value);
-        }
-
-        return Promise.resolve(
-          new TextEncoder().encode(verb === 'settings' && action === 'get' ? `${settings.get(key) ?? 'null'}\n` : ''),
-        );
+        return answer(command);
       },
       screencap: () => Promise.resolve(encodePng({ width: 144, height: 304, data: new Uint8Array(144 * 304 * 4) })),
     },

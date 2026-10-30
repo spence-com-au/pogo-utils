@@ -20,7 +20,7 @@ export function demoPhone(): Phone {
     name: 'Demo phone',
     serial: DEMO_SERIAL,
     transport: demoTransport(async (path) => new Uint8Array(await (await fetchOk(path)).arrayBuffer())),
-    spawn: () => Promise.reject(new Error('the demo phone plays no battles')),
+    spawn: () => Promise.reject(new Error('the demo phone plays its battle in the battle Worker alone')),
     close: () => {
       hangUp();
 

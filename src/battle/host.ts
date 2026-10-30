@@ -22,13 +22,13 @@ export interface Port {
 
 /**
  * Answers the page over `port`, reaching the phone through `reconnect` once the page has let it go and reading the
- * menus with the OCR `engine` makes, its files found against the page's URL. Stopped by the page, by the phone being
+ * menus with the OCR `engine` makes, each handed the page's URL to find their files against. Stopped by the page, by the phone being
  * unplugged, by the run failing or by its finishing, it puts back the setting that kept the phone awake and lets the
  * phone's USB device go before saying it has stopped, the page taking the device back on hearing it, and says so once.
  */
 export function host(
   port: Port,
-  reconnect: (serial: string) => Promise<Connection>,
+  reconnect: (serial: string, base: string) => Promise<Connection>,
   engine: (base: string) => Engine & { terminate(): Promise<void> },
 ): void {
   let starting: Promise<void> | undefined;
@@ -90,7 +90,7 @@ export function host(
     })());
 
   const start = async (serial: string, { battle, base }: Play) => {
-    connection = await reconnect(serial);
+    connection = await reconnect(serial, base);
 
     // Closed unasked as well as unplugged, by the phone dropping USB debugging, and so a failure either way. Closed by
     // `stop`, it is heard once the stop is under way, which keeps its own reason.
