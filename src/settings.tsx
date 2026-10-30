@@ -90,8 +90,9 @@ export function Settings() {
   }
 
   /**
-   * Hold the demo phone, or put it away. Only ever in place of no phone, never of a real one, which may be partway
-   * through something: the buttons below see to that, Connect waiting on the demo and the demo on a phone let go.
+   * Hold the demo phone, or put it away. Never in place of a real one, which may be partway through something: the
+   * buttons below see to the one held, Connect waiting on the demo and the demo on a phone let go, and `lend` to one
+   * lent to a battle, which nothing is held in place of, by taking it back over the demo once the battle ends.
    */
   async function toggleDemo() {
     setPhoneStatus(null);

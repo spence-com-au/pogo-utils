@@ -9,7 +9,7 @@
 import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
 import type { Phone } from '../inventory/webusb.js';
-import { type PhoneStore } from '../phone-store.js';
+import { DEMO_SERIAL, type PhoneStore } from '../phone-store.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { type Tally } from '../tools/battle/run.mts';
 import { type Image } from '../tools/inventory/png.mts';
@@ -65,20 +65,23 @@ export async function lend(
   /**
    * The phone held by the page again, unless the settings menu connected another meanwhile: that one is the user's
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
-   * being. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news,
+   * being. The demo phone is no other, the menu offering it while this one is lent only because nothing is held then,
+   * so it is put away for this one rather than left in its place with nothing to play on. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news,
    * and is no failure at all where a phone was connected meanwhile, which may be why it failed.
    *
    * Taken back, it is connected again as far as `awake.ts` is concerned: a setting the Worker could not put back, its
    * shell gone with the run, is put back now, and where that fails too it is told and kept for the connect after.
    */
+  const another = () => store.phone !== null && store.phone.serial !== DEMO_SERIAL;
+
   const takeBack = async (error?: string) => {
-    if (store.phone !== null) {
+    if (another()) {
       return;
     }
 
     await reconnect(serial)
       .then(async (back) => {
-        if (store.phone !== null) {
+        if (another()) {
           return back.close();
         }
 
@@ -88,7 +91,7 @@ export async function lend(
         );
       })
       .catch((failure: unknown) => {
-        if (store.phone !== null) {
+        if (another()) {
           return;
         }
 
