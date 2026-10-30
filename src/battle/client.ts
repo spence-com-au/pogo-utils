@@ -66,8 +66,9 @@ export async function lend(
    * The phone held by the page again, unless the settings menu connected another meanwhile: that one is the user's
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
    * being. The demo phone is no other, the menu offering it while this one is lent only because nothing is held then,
-   * so it is put away for this one rather than left in its place with nothing to play on. Failing to come back is told after `error`, the run's own failure, where there is one, that being the news,
-   * and is no failure at all where a phone was connected meanwhile, which may be why it failed.
+   * so it is put away for this one rather than left in its place with nothing to play on. Failing to come back is told
+   * after `error`, the run's own failure, where there is one, that being the news, and is no failure at all where a
+   * phone was connected meanwhile, which may be why it failed.
    *
    * Taken back, it is connected again as far as `awake.ts` is concerned: a setting the Worker could not put back, its
    * shell gone with the run, is put back now, and where that fails too it is told and kept for the connect after.

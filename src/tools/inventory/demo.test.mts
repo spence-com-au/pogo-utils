@@ -34,7 +34,7 @@ const same = (a: Image, b: Image) =>
 
 afterAll(useTestEngine());
 
-test('each screenshot is the next detail screen in turn, one screen rather than the stitch, and round again', async () => {
+test('each screenshot is the next detail screen, one screen rather than the stitch, and round again', async () => {
   const device = new Device(demoTransport(read));
   const shown: Image[] = [];
 
@@ -47,7 +47,7 @@ test('each screenshot is the next detail screen in turn, one screen rather than 
   );
 });
 
-test('a search walks from a detail screen to storage, answers the count it shows, and leaves a detail screen', async () => {
+test('a search walks from a detail screen to storage, answers its count, and leaves a detail screen', async () => {
   const device = new Device(demoTransport(read));
   const said: string[] = [];
   const { search, matches } = storage(device, CONFIG, DATA, await device.screenshot(), (message) => said.push(message));
