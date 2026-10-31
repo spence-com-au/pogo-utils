@@ -242,17 +242,6 @@
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
-    "eventID": "mega-charizard-x-mega-charizard-y-in-mega-raids-october-2026",
-    "name": "Mega Charizard X and Mega Charizard Y in Mega Raids",
-    "eventType": "raid-battles",
-    "heading": "Raid Battles",
-    "link": "https://leekduck.com/events/mega-charizard-x-mega-charizard-y-in-mega-raids-october-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/mega-default.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "mega-metagross-in-mega-raids-november-2026",
     "name": "Mega Metagross in Mega Raids",
     "eventType": "raid-battles",
@@ -338,17 +327,6 @@
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-21-november-communityday2026/pawniard-november-cd-2026.jpg",
     "start": "2026-11-21T14:00:00.000",
     "end": "2026-11-21T17:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "palkia-in-5-star-raid-battles-october-2026",
-    "name": "Palkia in 5-star Raid Battles",
-    "eventType": "raid-battles",
-    "heading": "Raid Battles",
-    "link": "https://leekduck.com/events/palkia-in-5-star-raid-battles-october-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/palkiaraid.jpg",
-    "start": null,
-    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -440,17 +418,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "pokemonspotlighthour2026-10-29",
-    "name": "Gastly Spotlight Hour",
-    "eventType": "pokemon-spotlight-hour",
-    "heading": "Pokémon Spotlight Hour",
-    "link": "https://leekduck.com/events/pokemonspotlighthour2026-10-29/",
-    "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": "2026-10-29T18:00:00.000",
-    "end": "2026-10-29T19:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "pokemonspotlighthour2026-11-05",
     "name": "Teddiursa wearing a witch hat Spotlight Hour",
     "eventType": "pokemon-spotlight-hour",
@@ -482,17 +449,6 @@
     "start": "2026-11-26T18:00:00.000",
     "end": "2026-11-26T19:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
-  },
-  {
-    "eventID": "raidhour20261028",
-    "name": "Giratina (Origin Forme) Raid Hour",
-    "eventType": "raid-hour",
-    "heading": "Raid Hour",
-    "link": "https://leekduck.com/events/raidhour20261028/",
-    "image": "https://cdn.leekduck.com/assets/img/events/raidhour.jpg",
-    "start": "2026-10-28T18:00:00.000",
-    "end": "2026-10-28T19:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
   },
   {
     "eventID": "raidhour20261104",
