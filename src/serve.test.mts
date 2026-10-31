@@ -49,6 +49,7 @@ const SERVABLE: Record<string, string> = {
   'manifest.json': '{ "name": "fixture" }',
   'icons/192.png': 'not really a png, and nothing here decodes one',
   'favicon.svg': '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+  'src/tools/battle/fixtures/demo.h264': 'not really H.264 either',
 };
 
 /**

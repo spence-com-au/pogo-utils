@@ -49,9 +49,11 @@ export async function lend(
   start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
 
   // `webusb.ts` fetched only once a run takes the phone back: it brings Tango, which a page that merely imports this
-  // need not load.
+  // need not load. The demo phone comes back as the settings menu holds it, its battle being the Worker's alone.
   reconnect: (serial: string) => Promise<Phone> = async (serial) =>
-    (await import('../inventory/webusb.js')).reconnect(serial),
+    serial === DEMO_SERIAL
+      ? (await import('../inventory/demo.js')).demoPhone()
+      : (await import('../inventory/webusb.js')).reconnect(serial),
 ): Promise<Run> {
   // Out of the store before anything is awaited, so that a second `lend` meanwhile finds none to lend.
   const phone = store.release();

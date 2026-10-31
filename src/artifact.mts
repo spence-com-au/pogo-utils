@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from '../scripts/served-types.mts';
 
 /**
@@ -33,6 +33,7 @@ export const PUBLISHED = [
   ...DEMO_DETAILS,
   DEMO_STORAGE,
   DEMO_SEARCHED,
+  DEMO_BATTLE.clip,
 ];
 
 /**

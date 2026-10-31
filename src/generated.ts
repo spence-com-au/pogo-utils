@@ -43,6 +43,20 @@ export const DEMO_STORAGE = 'src/tools/inventory/fixtures/storage/grid.png';
 export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png';
 
 /**
+ * What the demo phone in `src/battle/demo.ts` plays: a Training battle the loop won against `leader` in `league` on a
+ * Pixel 8 Pro, which the Battle tab holds a run on the demo phone to. Kept by `pnpm battle run --keep-video` from the
+ * leader's speech, and re-encoded by `ffmpeg` at a constant `fps` with no B-frames, a key picture every two seconds and
+ * `repeat-headers=1`: cut before the Battle tab and its QR code fade in, its result held five seconds as the game holds
+ * it until tapped, and the trainer name on the VS screen filled solid.
+ */
+export const DEMO_BATTLE = {
+  clip: 'src/tools/battle/fixtures/demo-training.h264',
+  fps: 30,
+  leader: 'spark',
+  league: 'great',
+} as const;
+
+/**
  * Where the battle's Worker is published, which `scripts/bundle.mts` builds it to and a page starts it from: no markup
  * names it, so the markup cannot be where the bundler learns of it as it learns of a page's module.
  */

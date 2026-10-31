@@ -7,9 +7,10 @@
 
 import { said } from '../errors.js';
 import type { Phone as Connection } from '../inventory/webusb.js';
+import { type Size } from '../tools/battle/layout.mts';
 import { phoneOf, type Phone } from '../tools/battle/phone.mts';
 import { streamSize } from '../tools/battle/record-command.mts';
-import { Screen } from '../tools/battle/screen.mts';
+import { Screen, type Feed } from '../tools/battle/screen.mts';
 import { Device } from '../tools/inventory/adb.mts';
 import { holdShell, type HeldShell } from '../tools/inventory/held-shell.mts';
 import { touchscreen } from '../tools/inventory/touchscreen.mts';
@@ -64,9 +65,12 @@ export async function heldShell(
  * `failed` settles with why the phone stopped answering, where it did before `close`: its screen's recording failing or
  * its shell ending. The loop would hear of either from its next frame or touch, but a Worker that is asked for nothing
  * meanwhile would hold the phone until it was.
+ *
+ * Its screen is watched through `watch`: WebCodecs' `feed`, or in a test one decoding with `ffmpeg`, Node having none.
  */
 export async function battlePhone(
   connection: Pick<Connection, 'transport' | 'spawn'>,
+  watch: (connection: Pick<Connection, 'spawn'>, size: Size) => Feed = feed,
 ): Promise<Phone & { close(): void; failed: Promise<Error> }> {
   // Shell commands through the shell held open, as `pnpm battle` sends them, and the screenshot a process of its own.
   const held = await heldShell(connection);
@@ -90,7 +94,7 @@ export async function battlePhone(
   try {
     // A screenshot for the screen's size, which the stream takes its shape from.
     const size = streamSize(await device.screenshot());
-    const shown = new Screen(() => feed(connection, size));
+    const shown = new Screen(() => watch(connection, size));
     screen = shown;
     const touch = await touchscreen(transport);
     await shown.first();
