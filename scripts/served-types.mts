@@ -22,6 +22,7 @@
 export const SERVED_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.gpx': 'application/gpx+xml',
+  '.h264': 'video/h264',
   '.html': 'text/html; charset=utf-8',
   '.ics': 'text/calendar',
   '.js': 'application/javascript; charset=utf-8',
