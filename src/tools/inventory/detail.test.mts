@@ -130,7 +130,7 @@ test('a CP line keeps its `/` for the readings to resolve', () => {
   expect(cpOn('cpe/38°', LONGEST)).toBe('/38');
   expect(cpOn('cp///', LONGEST)).toBe('///');
   expect(cpOn('cpe4/0', LONGEST), 'a number a `/` splits in two is no longer a label line').toBe('4/0');
-  expect(cpOn('ce1/772', LONGEST), 'the `/` is counted against the cap').toBe('1/772');
+  expect(cpOn('ce1/772', LONGEST), 'the `/` is no longer kept, or is counted against the cap').toBe('1/772');
 });
 
 /**
