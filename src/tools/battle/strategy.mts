@@ -15,6 +15,7 @@
  */
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
+import { MOVES_HELD } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
@@ -435,6 +436,101 @@ export function stripperOf(
 }
 
 /**
+ * The charged moves the opponent may hold, as `resisterOf` fears them: both the banner has named, once it has named
+ * two; otherwise any it has named and those of its forms' pools that its players run, by PvPoke's moveset for its
+ * species. Never every move its forms can hold, as `chargedOf` falls back on, a switch for a move nobody runs costing
+ * the switch timer for nothing; so nothing at all where the banner has named nothing and PvPoke does not rank it, as in
+ * Training.
+ */
+function heldBy(data: GameData, opponent: Shown, seen: ReadonlySet<string>, meta?: Meta | null): string[] {
+  if (seen.size >= MOVES_HELD) {
+    return [...seen];
+  }
+
+  const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
+  const pool = formsOf(data, opponent).flatMap((form) => form.moves.filter((move) => !move.fast));
+  const run = moveset ? pool.map(({ name }) => name).filter((name) => moveset.chargedMoves.includes(name)) : [];
+
+  return [...new Set([...seen, ...run])];
+}
+
+/** A switch of our lead ahead of a charged move it fears, which is `move`, costing `cost` energy. */
+export interface Resister extends Switch {
+  move: string;
+  cost: number;
+}
+
+/**
+ * Which slot to switch our lead to, of the bench, before the opponent's lead throws a charged move that hits ours super
+ * effectively, against whichever typing ours could have that takes it worst: one that resists every such move, less
+ * than neutral against each typing its forms have, and that no other move the opponent may hold hits super effectively.
+ * The throw lands on it instead, the energy spent on a resisted hit, and ours keeps its HP and whatever it has lit on
+ * the bench. The hardest-hitting of those, as `refugeOf` ranks them, and between equals the first card. With it, the
+ * cheapest of the moves feared, which sets when to switch: the caller's to say, by the opponent's energy as `Energy`
+ * counts it, and only while both leads are out, the count starting then from a known zero and our switch timer free.
+ *
+ * The moves feared and allowed for are `heldBy`'s. Undefined where none is feared, where no benched card resists them
+ * all, or where our species or the opponent's is not known; a benched card whose species is not known, or names no
+ * form, is never sent, its types unknown.
+ */
+export function resisterOf(
+  data: GameData,
+  party: readonly Card[],
+  out: number,
+  own: Shown,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  seen: ReadonlySet<string> = new Set(),
+  meta?: Meta | null,
+): Resister | undefined {
+  if (own.species === null || opponent.species === null) {
+    return undefined;
+  }
+
+  const ours = typesOf(data, own);
+  const moves = heldBy(data, opponent, seen, meta).flatMap((name) => {
+    const move = data.combat[name];
+
+    return move && move.energy < 0 ? [{ name, ...move }] : [];
+  });
+  const feared = moves.filter((move) => ours.some((types) => effectiveness(data, move.type, types) > 1));
+  const [cheapest] = [...feared].sort((a, b) => b.energy - a.energy);
+
+  if (!cheapest) {
+    return undefined;
+  }
+
+  const [best] = party
+    .flatMap((card, slot) => {
+      const { species } = card;
+
+      if (species === null || slot === out || fainted.has(slot)) {
+        return [];
+      }
+
+      const typings = typesOf(data, { species });
+      const resists =
+        typings.length > 0 &&
+        feared.every((move) => typings.every((types) => effectiveness(data, move.type, types) < 1));
+      const hit = moves.some((move) => typings.some((types) => effectiveness(data, move.type, types) > 1));
+
+      return resists && !hit ? [{ slot, species, ...hardest(data, card, opponent) }] : [];
+    })
+    .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
+
+  const others = feared.filter((move) => move !== cheapest).map((move) => ` and ${move.name}`);
+
+  return (
+    best && {
+      slot: best.slot,
+      move: cheapest.name,
+      cost: -cheapest.energy,
+      why: `${best.species} resists it${others.join('')}, and nothing of ${opponent.species}'s is super effective`,
+    }
+  );
+}
+
+/**
  * Whether to take a shield offered against `opponent` while `own` is out: unless both species are known and none of
  * the opponent's charged moves would be super effective against any typing ours could have. Every move its forms are
  * allowed for by `chargedOf`, since which two this one has is never shown: legacy and elite ones among them, or in a
@@ -484,13 +580,16 @@ const SPARES_DEFENSE = { energy: 10, perEnergy: 0.7 } as const;
 
 /**
  * The button to throw, by its x, and whether it is thrown as a bait. `why` says why not, where a bait was asked for and
- * the bait was not thrown, its saving being too small for it, or where the move worth the most per energy was passed
- * over for lowering our defense.
+ * the bait was not thrown, its saving being too small for it or the bait held in a mirror, or where the move worth the
+ * most per energy was passed over for lowering our defense; and why a bait held in a mirror goes once it does.
  */
 export interface Pick {
   x: number;
   bait: boolean;
   why?: string;
+
+  /** The bait held, by its x, in a mirror, until the move at `x` that it stands in for has lit beside it. */
+  held?: number;
 }
 
 /** A button's move as `bestButton` weighs it: what it costs, as a positive energy, and what it is worth. */
@@ -569,13 +668,27 @@ function spared(data: GameData, weighed: readonly Weighed[], best: Weighed): Wei
  * the most per energy would otherwise be thrown into; but only where it costs more than `BAIT_SAVES` less than that
  * one, which is thrown instead as if there were no shields to bait. Worth as `worth` prices it on our `lastHit` or
  * otherwise.
+ *
+ * In a `mirror`, the opponent the species ours is, the bait is held until the move it stands in for has lit too, among
+ * the `lit` buttons, and goes then: held for by that move's button, as the move worth the most is held for, the bait's
+ * lit alone being left lit. The opponent's fast moves being ours, it counts our energy as surely as we can, and a bait
+ * thrown before the bigger move could be lit is plainly a bait, let through unshielded; thrown once both are lit, the
+ * two look the same, and it has to shield or risk the bigger hit. PvPoke's battle AI holds every bait so
+ * (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines 869–886), which leaves our energy the same at
+ * every point, energy gained less energy spent whenever the bait goes: what it changes is what the opponent can tell,
+ * which only a mirror's can tell for sure.
  */
 export function bestButton(
   data: GameData,
   moves: ReadonlyMap<number, string>,
   own: readonly Typing[],
   opponent: readonly Typing[],
-  { bait = false, lastHit = false } = {},
+  {
+    bait = false,
+    lastHit = false,
+    mirror,
+    lit = [],
+  }: { bait?: boolean; lastHit?: boolean; mirror?: string; lit?: readonly number[] } = {},
 ): Pick | undefined {
   const [left, centre, right] = BUTTON_XS;
   const buttons = moves.has(left) || moves.has(right) ? [left, right] : [centre];
@@ -618,9 +731,22 @@ export function bestButton(
   const saves = best.cost - cheapest.cost;
   const unbaited = `not baiting: ${cheapest.move} costs only ${saves} less than ${best.move}`;
 
-  return saves > BAIT_SAVES
-    ? { x: cheapest.x, bait }
-    : { x: best.x, bait: false, why: spares ? `${spares}; ${unbaited}` : unbaited };
+  if (saves <= BAIT_SAVES) {
+    return { x: best.x, bait: false, why: spares ? `${spares}; ${unbaited}` : unbaited };
+  }
+
+  if (mirror === undefined) {
+    return { x: cheapest.x, bait };
+  }
+
+  return lit.includes(best.x)
+    ? { x: cheapest.x, bait, why: `bait, ${best.move} lit beside it` }
+    : {
+        x: best.x,
+        bait: false,
+        held: cheapest.x,
+        why: `${/^[AEIOU]/.test(mirror) ? 'an' : 'a'} ${mirror} mirror counts our energy`,
+      };
 }
 
 /**

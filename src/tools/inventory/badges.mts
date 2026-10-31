@@ -109,8 +109,8 @@ const coloured = (r: number, g: number, b: number) => chroma(r, g, b) >= SIZE_CH
  * **Read with no whitelist.** Held to `XSL`, `smoliv.png`'s pill reads `XS` off an `XXS` badge the game's own `xxs`
  * search confirms; open it reads `XXS,` and `fold` drops the comma. An alphabet earns its place where a stray glyph
  * could split a number in two — why `wholeCp` and the overlay keep theirs — and a badge is two or three of one letter
- * with no number to split; the chips below read open as well. Over the corpus, four of the 44 rows wear a badge and
- * open is right on all four where the whitelist is right on three, the other 40 answering null under both.
+ * with no number to split; the chips below read open as well. Over the corpus, four of the 43 rows wear a badge and
+ * open is right on all four where the whitelist is right on three, the other 39 answering null under both.
  *
  * **The pill's shape counts the letters, and the text only names the last.** A run of one letter is exactly what OCR
  * merges: the WebAssembly Tesseract the Inventory page reads with answers `XS` off `smoliv.png`'s pill even open, where

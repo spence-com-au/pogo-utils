@@ -18,6 +18,7 @@ import {
   damage,
   nextOut,
   refugeOf,
+  resisterOf,
   shouldShield,
   type Shown,
   stripperOf,
@@ -374,6 +375,67 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
   ).toEqual({ x: 0.69, bait: true });
 });
 
+/**
+ * A Garchomp mirror, Sand Tomb, 45 energy, baiting for Outrage, 60 and 3.52 per energy into a Dragon to Sand Tomb's
+ * 1.83: held by Outrage's button until it lights beside Sand Tomb's, and thrown then.
+ */
+test.each<[string, string, readonly number[], { bait?: boolean; mirror?: string }, object]>([
+  [
+    'in a mirror, a bait lit alone is held for the move it stands in for',
+    'Sand Tomb',
+    [0.31],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, held: 0.31, why: 'a Garchomp mirror counts our energy' },
+  ],
+  [
+    'in a mirror, the move a bait stands in for is held for with nothing lit',
+    'Sand Tomb',
+    [],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, held: 0.31, why: 'a Garchomp mirror counts our energy' },
+  ],
+  [
+    'in a mirror, a bait goes once the move it stands in for lights beside it',
+    'Sand Tomb',
+    [0.31, 0.69],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.31, bait: true, why: 'bait, Outrage lit beside it' },
+  ],
+  ['out of a mirror, a bait lit alone goes at once', 'Sand Tomb', [0.31], { bait: true }, { x: 0.31, bait: true }],
+  [
+    'in a mirror where `BAIT_SAVES` rules out baiting, Earth Power saving 10, the move worth the most goes',
+    'Earth Power',
+    [0.31],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, why: 'not baiting: Earth Power costs only 10 less than Outrage' },
+  ],
+  [
+    'in a mirror with no shield left to bait, the move worth the most per energy goes',
+    'Sand Tomb',
+    [0.31],
+    { mirror: 'Garchomp' },
+    { x: 0.69, bait: false },
+  ],
+])('%s', (_, cheap, lit, options, pick) => {
+  const garchomp = typesOf(DATA, { species: 'Garchomp' });
+  const moves = new Map([
+    [0.31, cheap],
+    [0.69, 'Outrage'],
+  ]);
+
+  expect(bestButton(DATA, moves, garchomp, garchomp, { ...options, lit })).toEqual(pick);
+});
+
+test('a mirror of a species beginning with a vowel is told as an', () => {
+  expect(
+    bestButton(DATA, KYOGRE, typesOf(DATA, { species: 'Entei' }), typesOf(DATA, { species: 'Entei' }), {
+      bait: true,
+      mirror: 'Entei',
+      lit: [0.69],
+    }),
+  ).toEqual({ x: 0.31, bait: false, held: 0.69, why: 'an Entei mirror counts our energy' });
+});
+
 test.each<[(string | null)[], number[], string, number | undefined, string]>([
   [['Latias', 'Mamoswine', 'Giratina'], [0], 'Glaceon', 1, 'none safe from Glaceon; Mamoswine hits hardest'],
   [['Tyranitar', 'Giratina', 'Kyogre'], [0], 'Salamence', 2, 'Kyogre the one Salamence cannot hit hard'],
@@ -555,6 +617,98 @@ test('a shield drawer says why it was switched to', () => {
   expect(stripperOf(DATA, cards(['Tyranitar', 'Kyogre']), 0, new Set(), banked, { species: 'Salamence' })?.why).toBe(
     "Kyogre has Surf and Blizzard banked to draw Salamence's shield",
   );
+});
+
+/** A meta in which Charizard is run with Blast Burn and Dragon Claw. */
+const CHARIZARD_RUN = metaOf('Charizard', ['Blast Burn', 'Dragon Claw']);
+
+/**
+ * Our lead Venusaur against Charizard, whose Blast Burn hits it super effectively: switched, ahead of the throw, to a
+ * benched card resisting Blast Burn that Dragon Claw does not hit super effectively either. The banner's two moves
+ * stand for PvPoke's, and in Training, PvPoke's meta not loaded, only a move the banner named is feared.
+ */
+test.each<[(string | null)[], number[], string | null, string[], Meta | null, number | undefined, string]>([
+  [['Venusaur', 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, 1, 'Azumarill resists Blast Burn'],
+  [['Venusaur', 'Dragonite'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Dragon Claw hits Dragonite'],
+  [['Venusaur', 'Mewtwo'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Mewtwo takes Blast Burn neutral'],
+  [
+    ['Venusaur', 'Dragonite'],
+    [],
+    'Charizard',
+    ['Blast Burn', 'Overheat'],
+    CHARIZARD_RUN,
+    1,
+    'the banner named two moves, neither of them Dragon Claw',
+  ],
+  [['Venusaur', 'Azumarill', 'Tyranitar'], [], 'Charizard', [], CHARIZARD_RUN, 2, 'Stone Edge hits hardest'],
+  [['Venusaur', 'Azumarill', 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, 1, 'the first of equals'],
+  [['Venusaur', 'Azumarill'], [1], 'Charizard', [], CHARIZARD_RUN, undefined, 'the resister fainted'],
+  [['Azumarill', 'Venusaur'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Azumarill is not hit super effectively'],
+  [['Venusaur', 'Azumarill'], [], 'Charizard', [], null, undefined, 'nothing feared in Training before a banner'],
+  [['Venusaur', 'Azumarill'], [], 'Charizard', ['Blast Burn'], null, 1, 'the banner named Blast Burn'],
+  [[null, 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'ours not read'],
+  [['Venusaur', 'Azumarill'], [], null, [], CHARIZARD_RUN, undefined, 'theirs not read'],
+  [['Venusaur', null], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'an unread card is not known to resist'],
+  [['Venusaur', 'Missingno'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'nor is a card naming no form'],
+])(
+  'our lead %o, less %o, against %s with %o named, switches ahead of the throw to slot %s: %s',
+  (party, fainted, opponent, seen, meta, slot) => {
+    expect(
+      resisterOf(
+        DATA,
+        cards(party),
+        0,
+        { species: party[0] ?? null },
+        new Set(fainted),
+        { species: opponent },
+        new Set(seen),
+        meta,
+      )?.slot,
+    ).toBe(slot);
+  },
+);
+
+/**
+ * The move a resister is switched to ahead of, and its cost, which the caller times the switch by: of two feared, the
+ * cheaper. Articuno is hit super effectively by Moltres's Overheat and Ancient Power both, and Swampert resists both.
+ */
+test('a resister says which move it is switched to ahead of, and why', () => {
+  const lead = (species: string) => ({ species });
+
+  expect(
+    resisterOf(
+      DATA,
+      cards(['Venusaur', 'Azumarill']),
+      0,
+      lead('Venusaur'),
+      new Set(),
+      lead('Charizard'),
+      new Set(),
+      CHARIZARD_RUN,
+    ),
+  ).toEqual({
+    slot: 1,
+    move: 'Blast Burn',
+    cost: 50,
+    why: "Azumarill resists it, and nothing of Charizard's is super effective",
+  });
+  expect(
+    resisterOf(
+      DATA,
+      cards(['Articuno', 'Swampert']),
+      0,
+      lead('Articuno'),
+      new Set(),
+      lead('Moltres'),
+      new Set(),
+      metaOf('Moltres', ['Overheat', 'Ancient Power']),
+    ),
+  ).toEqual({
+    slot: 1,
+    move: 'Ancient Power',
+    cost: 45,
+    why: "Swampert resists it and Overheat, and nothing of Moltres's is super effective",
+  });
 });
 
 test('no button is best while one of a pair has no move read under it', () => {

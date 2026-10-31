@@ -108,6 +108,16 @@ interface Template {
         targetDefenseStatStageChange?: number;
       };
     };
+    pokemonExtendedSettings?: {
+      sizeSettings: {
+        xxsLowerBound: number;
+        xsLowerBound: number;
+        mLowerBound: number;
+        mUpperBound: number;
+        xlUpperBound: number;
+        xxlUpperBound: number;
+      };
+    };
     typeEffective?: { attackType: string; attackScalar: number[] };
     playerLevel?: { cpMultiplier: number[] };
   };
@@ -304,6 +314,25 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  // A form's size bands are in a template of their own, named for the form's with `EXTENDED_` in front: every one of
+  // them but Minior's eight Meteor forms has one.
+  const heights = new Map<string, Form['heights']>();
+
+  for (const { templateId, data } of templates) {
+    const size = data.pokemonExtendedSettings?.sizeSettings;
+
+    if (size) {
+      heights.set(templateId.replace(/^EXTENDED_/, ''), [
+        size.xxsLowerBound,
+        size.xsLowerBound,
+        size.mLowerBound,
+        size.mUpperBound,
+        size.xlUpperBound,
+        size.xxlUpperBound,
+      ]);
+    }
+  }
+
   const forms: Form[] = [];
   const bare = new Map<number, Form>();
 
@@ -337,6 +366,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       attack: baseAttack,
       defense: baseDefense,
       stamina: baseStamina,
+      heights: heights.get(templateId) ?? null,
 
       // A handful of pool entries are bare numbers where every move template is named, so some do not resolve; the
       // reader falls back on the whole list when nothing in the pool fits, which is also what covers a move the game

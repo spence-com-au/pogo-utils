@@ -44,11 +44,27 @@ export const SCREEN_BAND: Band = { from: 0.34, to: 0.89 };
 const MIN_OVERLAP = 0.25;
 
 /**
- * How much of the band one step of a scroll capture should move, which has to stay inside what `offsetBetween` will
- * look for. Half, against the three-quarters `MIN_OVERLAP` leaves, so the step can overshoot by half again before a
- * pair is refused: a drag is not exact, and a fast one flings past where the finger stopped.
+ * How much of the band one step of a scroll capture should move, and the scan's one swipe to the moves, which has to
+ * stay inside what `offsetBetween` will look for. Half, against the three-quarters `MIN_OVERLAP` leaves, so the step
+ * can overshoot by half again before a pair is refused: a drag is not exact, and a fast one flings past where the
+ * finger stopped.
  */
 export const SCROLL_STEP = 0.5;
+
+/**
+ * Where one step's drag starts and ends on a screen this size, in pixels: `SCROLL_STEP` of the band, centred on it,
+ * down the middle of the screen. Derived from the band rather than configured beside it, because what it has to stay
+ * within is `offsetBetween`'s reach over that same band, and a drag set as a fraction of the whole screen is a fraction
+ * of a different length on every phone.
+ */
+export function scrollStep(band: Band, width: number, height: number): [[number, number], [number, number]] {
+  const y = (through: number) => height * (band.from + (band.to - band.from) * through);
+
+  return [
+    [width / 2, y(0.5 + SCROLL_STEP / 2)],
+    [width / 2, y(0.5 - SCROLL_STEP / 2)],
+  ];
+}
 
 /**
  * How much better than the field the best shift has to score. The same shape as the artwork match's margin and for the

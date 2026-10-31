@@ -41,6 +41,7 @@ import {
   counterOf,
   nextOut,
   refugeOf,
+  resisterOf,
   stripperOf,
   typesOf,
   type Pick,
@@ -485,6 +486,10 @@ export async function run(
       }
     | undefined;
 
+  // Whether the opponent's lead is still the one out, neither fainted nor switched away: with ours still out too, by no
+  // faint or switch of ours, its energy is counted from the known zero a battle starts at and our switch timer is free.
+  let theirLead = true;
+
   // The energy each of ours left the field with by a switch, as the charged moves lit as it went, and the Pokémon as it
   // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
   // slot sent in to draw a shield with its own, which is not switched away again to draw another. And how soon another
@@ -534,6 +539,9 @@ export async function run(
   let sparing: string | null | undefined;
   let prompted = 0;
   let unprompted = 0;
+
+  // The hold of a bait in a mirror as last told: told once, as the bait lights alone, until a throw ends it.
+  let mirrored: string | undefined;
 
   // Our own energy, counted per party slot off the fight's time at the fast move its card was read with.
   let ourEnergy = new OurEnergy(data, []);
@@ -826,6 +834,7 @@ export async function run(
         answer = false;
         switchedIn = false;
         stayedFor = null;
+        theirLead = true;
         counter = undefined;
         landing = -Infinity;
         dropped = false;
@@ -842,6 +851,7 @@ export async function run(
         energy = new Energy(data, meta);
         hits = new Hits();
         sparing = undefined;
+        mirrored = undefined;
         ourEnergy = new OurEnergy(
           data,
           party.map((card) => card.moves?.fast),
@@ -971,6 +981,7 @@ export async function run(
             stages = { ...stages, their: NO_STAGES };
             answer = !gone;
             switchedIn = !gone;
+            theirLead = false;
             counter = undefined;
             landing = at + FLY_IN_MS;
             dropped = false;
@@ -1168,9 +1179,10 @@ export async function run(
       const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined;
       const ownTypes = typesOf(data, us);
       const theirTypes = typesOf(data, them);
-      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
+      const mirror = own !== null && own === seen.opponent ? own : undefined;
+      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit, mirror, lit });
 
       // A lit button proves at least its move's cost, which a count run short is raised to.
       if (slot !== undefined && ours) {
@@ -1348,6 +1360,16 @@ export async function run(
       // as thrown.
       const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
 
+      // A bait held in a mirror for the move it stands in for, told as its button lights alone.
+      const bait = throwing === pick ? pick?.held : undefined;
+      const baiting =
+        bait !== undefined && lit.includes(bait) ? `holding ${seen.moves.get(bait)} for ${chosen} to light` : undefined;
+
+      if (baiting !== undefined && baiting !== mirrored) {
+        log(baiting, 'own', pick?.why);
+        mirrored = baiting;
+      }
+
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
       }
@@ -1519,6 +1541,42 @@ export async function run(
         counter = benched(chosen && { ...chosen, why: `${chosen.why}; ${held ?? 'ours'} ${kept.why}` }, true);
       }
 
+      // While both leads are out, ours switches to a benched Pokémon resisting the charged move of the opponent's that
+      // hits it super effectively, one fast move before the count affords it: that fast move lands on the newcomer, and
+      // so does the throw. Fired with shields or without, the switch costing the switch timer rather than a shield, and
+      // whether or not ours is doomed, the hit it would faint to going to the newcomer instead. Not where a lit move
+      // would finish the opponent, which goes instead, nor where one is to be thrown now, which goes first, the fight
+      // standing still through a throw so that the opponent gains nothing meanwhile; a lit move held for another is
+      // banked by the switch, as the refuge banks one. Once made, the newcomer stays in: this switch is the leads'
+      // alone, and the refuge and the shield drawer wait out `TIMER_MS` from it, as from any switch of ours.
+      const throwingNow = spared === undefined && !hold?.held && lit.some((x) => best === undefined || x === best);
+
+      if (
+        !counter &&
+        !switching &&
+        !finish &&
+        !pending &&
+        !throwingNow &&
+        fighting &&
+        theirLead &&
+        fainted.size === 0 &&
+        swappedAt === -Infinity &&
+        slot !== undefined &&
+        estimate &&
+        affordable !== undefined &&
+        clock.now() >= calmAt
+      ) {
+        const chosen = resisterOf(data, party, slot, us, fainted, them, theirMoves.get(seen.opponent ?? ''), meta);
+        const due = chosen && affordable >= chosen.cost;
+
+        counter = due
+          ? benched(
+              { ...chosen, why: `${chosen.move} affordable after one more ${estimate.fast}; ${chosen.why}` },
+              false,
+            )
+          : undefined;
+      }
+
       // A switch decided on while the opponent's newcomer flies in is tapped once it has, nothing thrown meanwhile: the
       // energy lit is the switch's to bank. Given up where a lit move comes to finish the newcomer, or ours comes to be
       // doomed, meanwhile, which none of the switches is decided on; doomed, it is told as staying in.
@@ -1557,6 +1615,7 @@ export async function run(
 
           drop(`${move ?? 'another'} tapped instead`);
           sparing = undefined;
+          mirrored = undefined;
           pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.

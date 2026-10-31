@@ -1494,6 +1494,96 @@ test.each([
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
 });
 
+/** The game master with Entei able to hold Kyogre's Hydro Pump and Avalanche. */
+const ENTEI_HYDRO_PUMP: GameData = {
+  ...DATA,
+  forms: DATA.forms.map((form) =>
+    form.species === 'Entei'
+      ? { ...form, moves: [...form.moves, { name: 'Hydro Pump', fast: false }, { name: 'Avalanche', fast: false }] }
+      : form,
+  ),
+};
+
+/**
+ * Kyogre against Entei in Ultra League, played as an Entei mirror: Giratina's icon stands for Entei on the party
+ * screen, which is then Latias, Mamoswine and Entei, and Entei can hold Hydro Pump and Avalanche in `ENTEI_HYDRO_PUMP`,
+ * so that the card the moves under the buttons fit, the HUD naming ours by a nickname, is an Entei. Avalanche, 45
+ * energy, is the bait for Hydro Pump, 75 and 2.77 per energy into Entei to Avalanche's 1.25. What the run taps and
+ * tells, through `scenes` after the party screen, for `count` battles.
+ */
+async function mirror(scenes: Record<string, Scene>, count = 1): Promise<{ taps: string[]; said: string[] }> {
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Giratina' ? 'Entei' : icon.species }));
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), minigame: minigameNoneFainted(), ...scenes }, 'party');
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: ENTEI_HYDRO_PUMP,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count,
+    },
+    clock,
+    report,
+  );
+
+  return { taps: taps.filter((scene) => scene in scenes), said: holds(report.events) };
+}
+
+/**
+ * With Entei's shields up, Avalanche lit alone for 3s is held, nothing tapped, and goes once Hydro Pump lights beside
+ * it, twice over, the second hold told afresh; `baits with the cheaper move while the opponent has shields` throws it at
+ * once out of a mirror.
+ */
+test('in a mirror, holds a bait lit alone until the move it stands in for lights beside it', async () => {
+  const { taps, said } = await mirror({
+    'fight': { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'both' } },
+    'both': { frame: fixture('charged-two-both'), tap: { at: [0.69, 0.889], to: 'minigame' } },
+    'minigame': { ...minigameNoneFainted(), swipes: { count: 40, to: 'again' } },
+    'again': { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'both again' } },
+    'both again': { frame: fixture('charged-two-both'), tap: { at: [0.69, 0.889], to: 'last' } },
+    'last': minigameNoneFainted(),
+  });
+  const round = [
+    'own: holding Avalanche for Hydro Pump to light: an Entei mirror counts our energy',
+    'own: threw Avalanche: bait, Hydro Pump lit beside it',
+  ];
+
+  expect(taps).toEqual(['both', 'both again']);
+  expect(said).toEqual([...round, ...round]);
+});
+
+/** A hold under way as a battle ends is told afresh in the next. */
+test('in a mirror, tells a bait held again in the next battle', async () => {
+  const { said } = await mirror({ fight: { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'won' } } }, 2);
+  const held = 'own: holding Avalanche for Hydro Pump to light: an Entei mirror counts our energy';
+
+  expect(said).toEqual([held, held]);
+});
+
+/**
+ * The same with our bar, its fill painted over past the HP wanted, seen to lose 12 points to one of Entei's fast moves
+ * once the battle's first read has named it, from 25% to 13%, within one more, and Avalanche's button painted unlit
+ * for 200ms after: lit then, it goes at once, never told as held.
+ */
+test('in a mirror, a bait lit alone goes at once on a faint feared', async () => {
+  const ours = (px: number) =>
+    painted(fixture('charged-two-right'), [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [208 / 360, 635 / 360, 292 / 360, 676 / 360]);
+  const { taps, said } = await mirror({
+    fight: { frame: unlit(ours(25)), lasts: { ms: 400, to: 'hit' } },
+    hit: { frame: unlit(ours(13)), lasts: { ms: 200, to: 'lit' } },
+    lit: { frame: ours(13), tap: { at: [0.69, 0.889], to: 'minigame' } },
+  });
+
+  expect(taps).toEqual(['lit']);
+  expect(said).toEqual([
+    'own: threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump',
+  ]);
+});
+
 /** The game master with Geomancy gaining 4 energy rather than 13, which leaves Moonblast two of them past Close Combat. */
 const SLOW_GEOMANCY: GameData = {
   ...DATA,
@@ -2002,6 +2092,211 @@ test.each([
     expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
   },
 );
+
+/** A meta in which Mamoswine is run with Powder Snow, Avalanche and Bulldoze: its Avalanche hits Giratina 1.6×. */
+const MAMOSWINE_AVALANCHE: Meta = {
+  cup: 'all',
+  cap: 2500,
+  movesets: new Map([
+    ['Mamoswine', { fast: 'Powder Snow', fastMoves: ['Powder Snow'], chargedMoves: ['Avalanche', 'Bulldoze'] }],
+  ]),
+};
+
+const GLACEON =
+  "own: switching to Glaceon against Mamoswine: Avalanche affordable after one more Powder Snow; Glaceon resists it, and nothing of Mamoswine's is super effective";
+
+/** What is told of our throws and switches. */
+const moved = (events: readonly string[]) => events.filter((line) => /^own: (threw|switching)/.test(line));
+
+/**
+ * Giratina leads against Mamoswine, whose Avalanche, as `MAMOSWINE_AVALANCHE` has it run, hits it super effectively,
+ * through the hits of `sneaking`: four Powder Snow, 32 energy and one more for the count, leave Avalanche's 45 out of
+ * reach, and the fifth brings it within one more. Glaceon resists Avalanche, and Bulldoze is neutral on it: switched to
+ * on `hit5`, and not on `hit4`. Mamoswine's icon stands for Glaceon on the party screen, so that it is Latias, Glaceon
+ * and Giratina, Glaceon the bench's second card.
+ *
+ * On `hit5`, our two shields painted held, it switches all the same. With Shadow Sneak lit on it and Mamoswine's
+ * shields painted spent, the finish is thrown instead, and nothing switched, the battle won. With Shadow Sneak lit and
+ * the shields up, Shadow Sneak goes first, and the switch once the fight is `back`, the count unchanged across the
+ * throw.
+ */
+test.each([
+  ['unlit', (scenes: Record<string, Scene>) => scenes.hit5?.frame, ['hit5'], [GLACEON]],
+  [
+    'unlit, our shields held',
+    (scenes: Record<string, Scene>) => painted(scenes.hit5?.frame ?? fixture('other-white'), [224, 161, 238], ...HELD),
+    ['hit5'],
+    [GLACEON],
+  ],
+  [
+    'lit to finish',
+    (scenes: Record<string, Scene>) =>
+      painted(scenes.lit?.frame ?? fixture('other-white'), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]),
+    ['hit5'],
+    ['own: threw Shadow Sneak: would finish Mamoswine at 4%'],
+  ],
+  ['lit', (scenes: Record<string, Scene>) => scenes.lit?.frame, ['hit5', 'back'], ['own: threw Shadow Sneak', GLACEON]],
+])(
+  'switches the lead to a resister one fast move before the opponent affords a super-effective move: %s',
+  async (_, frameOf, tapped, said) => {
+    const { scenes } = sneaking([96, 92, 88, 84, 80, 76], { lasts: { ms: 6000, to: 'won' } });
+    const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Mamoswine' ? 'Glaceon' : icon.species }));
+    const frame = frameOf(scenes) ?? fixture('other-white');
+    const bench = place(BENCH[1] ?? [0, 0], BENCH_ANCHOR, frame);
+    const { phone, clock, taps } = scripted(
+      {
+        ...scenes,
+        hit5: {
+          frame,
+          tap: [
+            { at: bench, to: 'won' },
+            { at: [0.499, 0.889], to: 'minigame' },
+          ],
+          lasts: { ms: 6000, to: 'won' },
+        },
+        minigame: { ...minigameNoneFainted(), swipes: { count: 40, to: tapped.includes('back') ? 'playing' : 'won' } },
+        playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+        back: { frame: scenes.hit5?.frame ?? frame, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+      },
+      'party',
+    );
+    const report = recorder();
+
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        meta: MAMOSWINE_AVALANCHE,
+        icons,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    );
+
+    expect(taps.filter((scene) => /^(fight|hit|back)/.test(scene))).toEqual(tapped);
+    expect(moved(report.events)).toEqual(said);
+  },
+);
+
+/** The game master with Entei able to hold Leaf Blade, 35 energy, which hits Kyogre 1.6×. */
+const ENTEI_LEAF_BLADE: GameData = {
+  ...DATA,
+  forms: DATA.forms.map((form) =>
+    form.species === 'Entei' ? { ...form, moves: [...form.moves, { name: 'Leaf Blade', fast: false }] } : form,
+  ),
+};
+
+/**
+ * Kyogre leads against Entei, its shields painted spent, with Avalanche lit and Hydro Pump held for, as `bestButton`
+ * holds for it with no shield to bait. Entei is run with Fire Spin, Overheat and Leaf Blade, which hits Kyogre super
+ * effectively. Our bar, its fill painted over past the HP wanted, loses 2 points to each of three Fire Spin, two
+ * leaving Leaf Blade's 35 out of reach of one more and the third bringing it within it: Latias, which resists Leaf
+ * Blade and Overheat, is switched to on `hit3`, banking Avalanche. Giratina's icon stands for Kyogre on the party
+ * screen, so that it is Latias, Mamoswine and Kyogre, Latias the bench's top card; Mamoswine takes Leaf Blade super
+ * effectively.
+ */
+test('switches the lead to a resister, banking a lit move held for another', async () => {
+  const spent = painted(fixture('charged-two-right'), [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
+  const ours = (px: number) => painted(spent, [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Giratina' ? 'Kyogre' : icon.species }));
+  const bench = place(BENCH[0] ?? [0, 0], BENCH_ANCHOR, spent);
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: ours(67), lasts: { ms: 400, to: 'hit1' } },
+      hit1: { frame: ours(65), lasts: { ms: 200, to: 'hit2' } },
+      hit2: { frame: ours(63), lasts: { ms: 200, to: 'hit3' } },
+      hit3: { frame: ours(61), tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: ENTEI_LEAF_BLADE,
+      meta: {
+        cup: 'all',
+        cap: null,
+        movesets: new Map([
+          ['Entei', { fast: 'Fire Spin', fastMoves: ['Fire Spin'], chargedMoves: ['Overheat', 'Leaf Blade'] }],
+        ]),
+      },
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps.filter((scene) => /^(fight|hit)/.test(scene))).toEqual(['hit3']);
+  expect(moved(report.events)).toEqual([
+    "own: switching to Latias against Entei, banking Avalanche: Leaf Blade affordable after one more Fire Spin; Latias resists it, and nothing of Entei's is super effective",
+  ]);
+});
+
+/** Where the opponent's panel is on the Pixel 4 XL's frames, its name, CP, shields and Poké Balls, as a box. */
+const THEIR_PANEL = [0.58, 0.13, 1, 0.225];
+
+/**
+ * The same five hits, with either side's lead gone before them, which leaves no switch: the opponent's, by Mamoswine's
+ * panel pasted over with Glaceon's from `battle-latias` for its first 2s, all three of its Poké Balls red, so that
+ * Mamoswine, two of them grey, is read as sent in after Glaceon fainted; or ours, by our grey Poké Ball left grey, the
+ * faint counted off it, and the party Giratina, Glaceon and Giratina, the second of whom is out. The hits wait 2.5s, so
+ * that Mamoswine has flown in by the last, `FLY_IN_MS` after it is named, a switch decided on before then being given
+ * up for Giratina doomed. Shadow Sneak, lit once the hits are over, is tapped and goes nowhere, the scene having no
+ * minigame to go to.
+ */
+test.each([
+  ['theirs', { Mamoswine: 'Glaceon' }, (image: Image) => image, true, 'opponent: Glaceon fainted; sent in Mamoswine'],
+  [
+    'ours',
+    { Mamoswine: 'Glaceon', Latias: 'Giratina' },
+    (image: Image) => pasted(image, fixture('charged-shadow-sneak'), FIRST_BALL),
+    false,
+    'own: Giratina fainted: one fewer of our Poké Balls',
+  ],
+])('switches no lead to a resister once %s has left the field', async (_, stand, paint, before, said) => {
+  const { scenes } = sneaking([96, 92, 88, 84, 80, 76], { lasts: { ms: 6000, to: 'won' } }, paint);
+  const standing: Record<string, string> = stand;
+  const icons = ICONS.map((icon) => ({ ...icon, species: standing[icon.species] ?? icon.species }));
+  const fight = scenes.fight?.frame ?? fixture('other-white');
+  const { phone, clock, taps } = scripted(
+    {
+      ...scenes,
+      fight: { frame: fight, lasts: { ms: 2500, to: 'hit1' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: before ? 'glaceon' : 'fight' } },
+      glaceon: { frame: pasted(fight, fixture('battle-latias'), THEIR_PANEL), lasts: { ms: 2000, to: 'coming' } },
+      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 1500, to: 'fight' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      meta: MAMOSWINE_AVALANCHE,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events).toContain(said);
+  expect(taps.filter((scene) => /^(fight|hit)/.test(scene))).toEqual([]);
+  expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual([]);
+});
 
 /**
  * Latias leads, from the party screen, and faints to Glaceon; the switch prompt's first card sends in Mamoswine, the

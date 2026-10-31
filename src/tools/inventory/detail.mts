@@ -24,9 +24,10 @@ export interface Detail {
   cp: number | null;
 
   /**
-   * What the CP region reads where no line carrying the label was recognised at all. Not to be trusted, so never `cp`:
-   * it is for narrowing a choice of forms, and only where the arithmetic reproduces one exactly. `cpsIn` is where the
-   * figures for it live.
+   * The CPs the screen might be showing, where it showed none for certain: every reading of a label line whose `/`
+   * nothing settled, or what the CP region reads where no line carrying the label was recognised at all. Not to be
+   * trusted, so never `cp`: it is for narrowing a choice of forms, and only where the arithmetic reproduces one
+   * exactly. `readingsOf` and `cpsIn` are where the figures for each live.
    */
   cps: number[];
 
@@ -66,32 +67,69 @@ export async function readLines(image: Image): Promise<Line[]> {
  * cost a capture its whole form — as `ce`: `deoxys-attack.png` reads `ce1441`, digits perfectly right and the `P`
  * taken for an `e`. Both halves of the label are a glyph OCR gets wrong, so both are a pair rather than a letter.
  *
- * It admits 24 captures, 21 reading the CP exactly off the line; `wholeCp` recovers the other three. The two go
- * together: the label says which line, the band says the whole number.
+ * It admits 35 captures, 24 reading the CP exactly off the line; `wholeCp` recovers seven more and four are left to
+ * the arithmetic. The two go together: the label says which line, the band says the whole number.
  *
  * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the Inventory page reads with answers
- * `cP48 7` off `unown-b.png`, where the CLI's `cP48/7` leaves `wholeCp` to find the 487. Read as `48` alone, the band
- * round it offers `4837` and the rescue takes it.
+ * `cP48 7` off `unown-b.png`, where the CLI's `cP48/` leaves `wholeCp` to find the 487.
+ *
+ * And it may carry a `/`, which is how the CLI reads the large font's thin 7 more often than not: `cp/56` for a 756,
+ * `cp///` for a 777, `cpe4/0` for a 470, and 12 of those 35 label lines carry one. Not always a 7, though — the same
+ * CLI reads `cP48/7` off `unown-b.png`'s 487 on a second line, the slash a stroke of nothing. So the `/` is kept,
+ * matched against `foldCp` rather than `fold`, and `readingsOf` is what says what it might have been.
  */
-export const CP_LABEL = /\b[cg][pe]\s?[a-z]?\s?(\d{2,5}(?: \d{1,3})?)\b/;
+export const CP_LABEL = /\b[cg][pe]\s?[a-z]?\s?([\d/]{2,5}(?: \d{1,3})?)(?![\w/])/;
+
+/** `fold`, but keeping the `/` that `CP_LABEL` reads the thin 7 as, where `fold` would make a space of it. */
+const foldCp = (text: string) => text.split('/').map(fold).join('/');
+
+/**
+ * The line carrying the CP's label, which is what decides whether the CP is read off a line or swept for. Exported so
+ * `screens.test.mts` can say which of the two a capture's candidates came from without a second copy of the rule.
+ */
+export const cpLabelOf = (lines: readonly Line[], image: Image): Line | undefined =>
+  lines.find((l) => l.top < image.height / 4 && CP_LABEL.test(foldCp(l.text)));
 
 /**
  * The CP a line carrying `CP_LABEL` states, as its digits alone. The two halves of a number with a space in it are
  * joined only where the whole is no longer than `longest`, the most digits any CP runs to, so a second number OCR set
  * beside the CP is left off it rather than read into a CP no Pokémon has. Null where what is left is still longer than
  * that, spaced or not: `joined` can hang a stray digit off the artwork onto a whole `cp1441`, and a `14417` is no CP.
+ *
+ * Any `/` is left in the answer, and not counted against `longest`, for `readingsOf` to resolve.
  */
 export function cpOn(text: string, longest: number): string | null {
-  const read = CP_LABEL.exec(fold(text))?.[1];
+  const read = CP_LABEL.exec(foldCp(text))?.[1];
 
   if (read === undefined) {
     return null;
   }
 
+  const digits = (cp: string) => cp.replaceAll('/', '').length;
   const joined = read.replace(' ', '');
-  const cp = joined.length <= longest ? joined : (read.split(' ')[0] ?? '');
+  const cp = digits(joined) <= longest ? joined : (read.split(' ')[0] ?? '');
 
-  return cp.length <= longest ? cp : null;
+  return digits(cp) <= longest ? cp : null;
+}
+
+/**
+ * Every number a CP read could be, with each `/` in it taken as the 7 it usually is and as the stray stroke it
+ * sometimes is, the 7 first. Only what a CP can be is kept — two digits at the least and `longest` at the most — so a
+ * read with no `/` is the one reading, and so is one whose other readings are no CP at all: `burmy-trash.png`'s `cpe4/`
+ * is 47 because 4 is too short, and `deoxys-normal.png`'s `ce1/772` is 1772 because 17772 is too long.
+ *
+ * Several readings are a choice OCR cannot make. `maschiff-female.png`'s `cp/56` is 756 on its screen and the band
+ * round it reads `56` under every treatment, the 7 lost the way the line lost it; `unown-b.png`'s `cP48/7` is 487, the
+ * slash the stray. Nothing on the screen says which a third read will be, so where `wholeCp` does not settle it
+ * `parseDetail` offers every reading as a candidate and leaves the choice to the arithmetic. That is four captures of
+ * the corpus, three of them offering the CP their screen prints beside a stray and `castform-snowy.png`'s `ce/4 : 7`
+ * offering only 747 and 47 for 746. The one place those figures live; `screens.test.mts` pins them capture by capture.
+ */
+export function readingsOf(read: string, longest: number): string[] {
+  const [first = '', ...rest] = read.split('/');
+  const all = rest.reduce((heads, part) => heads.flatMap((head) => [`${head}7${part}`, head + part]), [first]);
+
+  return [...new Set(all)].filter((cp) => cp.length >= 2 && cp.length <= longest);
 }
 
 /**
@@ -131,10 +169,12 @@ export function joined(line: Line, lines: readonly Line[]): Line {
 }
 
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
-  const labelled = lines.find((l) => l.top < image.height / 4 && CP_LABEL.test(fold(l.text)));
+  const longest = cpDigits(data);
+  const labelled = cpLabelOf(lines, image);
   const cpLine = labelled && joined(labelled, lines);
-  const read = cpLine ? cpOn(cpLine.text, cpDigits(data)) : null;
-  const whole = cpLine && read !== null ? wholeCp(image, cpLine, read, cpDigits(data)) : null;
+  const read = cpLine ? cpOn(cpLine.text, longest) : null;
+  const readings = read === null ? [] : readingsOf(read, longest);
+  const whole = cpLine && read !== null ? wholeCp(image, cpLine, read, longest) : null;
 
   // `97 / 97 HP` or `HP 97/97`; the second number is the maximum, which is the one CP and level determine.
   const hpPattern = /(?:hp\s*)?(\d{1,4})\s*\/\s*(\d{1,4})(?:\s*hp)?/i;
@@ -148,7 +188,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const nameLine = hpLine
     ? lines
         .filter((l) => l.top + l.height <= hpLine.top + 4 && l !== labelled && /\p{L}{3}|\p{N}{2}/u.test(l.text))
-        .filter((l) => !CP_LABEL.test(fold(l.text)))
+        .filter((l) => !CP_LABEL.test(foldCp(l.text)))
         .at(-1)
     : undefined;
   const name = nameLine ? sanitise(nameLine.text) : null;
@@ -193,7 +233,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, cps, types, tags, evolveCandy] = await Promise.all([
+  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, evolveCandy] = await Promise.all([
     whole,
     rescued,
     weight,
@@ -205,9 +245,13 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     row ? evolveCandyOn(image, row) : null,
   ]);
 
+  // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
+  // the arithmetic as candidates, the way the sweep's numbers are, rather than guessed at.
+  const settled = cpWhole ?? (readings.length === 1 ? readings[0] : undefined);
+
   return {
-    cp: read === null ? null : Number(cpWhole ?? read),
-    cps,
+    cp: settled === undefined ? null : Number(settled),
+    cps: cpLine ? (settled === undefined ? readings.map(Number) : []) : swept,
     name: nameRescued ?? name,
     hp,
     weight: weightRead,
@@ -227,9 +271,9 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
  * reads nothing the pattern accepts.
  *
  * Unanchored and so unreliable, which is why these are candidates rather than an answer: a candidate is kept only
- * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 20 captures that reach it,
- * 15 carry the CP their screen prints — two of them beside a stray — one carries only a wrong `169` for 1679, and four
- * read nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
+ * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 13 captures that reach it,
+ * 11 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and one
+ * reads nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
  * capture, so they fail there rather than going stale.
  */
 async function cpsIn(image: Image): Promise<number[]> {
@@ -251,17 +295,20 @@ async function cpsIn(image: Image): Promise<number[]> {
 
 /**
  * The CP again, out of a band round the line the whole-screen pass found, where that pass lost a digit or two off one
- * end. White over the artwork is the hardest text on the screen. All 24 captures with a label line reach this and three
- * are changed by it: `38` for 738, `48` for 487 and `48` for 486 are all recovered. The 746, 1569 and 1705 once named
- * here are still what their rows state, with no label line left on the stitch for this to anchor on.
+ * end or drew a 7 as a `/`. White over the artwork is the hardest text on the screen. All 35 captures with a label line
+ * reach this and seven are changed by it: `/38` for 738, `48/` for 487 and `48` for 486, and `1/05`, `9/9`, `5/1` and
+ * `4/2` for the 1705, 979, 571 and 472 on their screens. The 1569 once named here is still what its row states, with
+ * no label line left on the stitch for this to anchor on, and the 746 is left to the arithmetic, no band reading the
+ * 7 its `ce/4 : 7` drew as a `/`.
  *
- * A line already as long as a CP goes cannot be extended by anything, so no band of it is read at all: `rescue` wants a
- * number longer than the line's and no longer than `longest`, which is unsatisfiable once the two are equal. That is
- * eight of the 24 and 48 passes — the corpus costs 90 where three treatments unguarded cost 138 and two cost 94.
+ * A line no band can change is not read round at all: one already as long as a CP goes, `rescue` wanting a number
+ * longer than the line's and no longer than `longest`, and one with a `/` whose readings are already one, or hold no
+ * reading with every `/` a 7 for a band to agree with. That is ten of the 35 and 132 passes for the corpus. Over the
+ * 23 label lines it read before the `/` was kept, it cost 84 where three treatments unguarded cost 132 and two cost 90.
  *
  * The treatments at a pad go together rather than in turn, being three pure functions of the one band, and what is
  * taken is still the first accepted in array order. What that gives up is stopping early within a pad, which costs
- * three passes over the corpus — 90 against 87 — and what it buys is the latency of a screen read on its own, as
+ * three passes over those 23 — 84 against 81 — and what it buys is the latency of a screen read on its own, as
  * `scripts/inventory.mts` reads one. Best of three on 22 cores: `pikachu.png` runs all six passes and accepts none,
  * reading in 246ms against 515ms, where `unown-b.png` accepts on the first treatment and pays 133ms against 114ms. The
  * core count is part of those figures rather than context for them — a pad dispatches three reads where it dispatched
@@ -272,7 +319,10 @@ async function cpsIn(image: Image): Promise<number[]> {
  * same contention `vitest.config.mjs` raises its timeout for and `ocr.mts` pins `OMP_THREAD_LIMIT=1` against.
  */
 async function wholeCp(image: Image, line: Line, read: string, longest: number): Promise<string | null> {
-  if (read.length >= longest) {
+  const readings = readingsOf(read, longest);
+  const open = read.includes('/') ? readings.length > 1 && readings.includes(sevens(read)) : read.length < longest;
+
+  if (!open) {
     return null;
   }
 
@@ -307,18 +357,26 @@ async function wholeCp(image: Image, line: Line, read: string, longest: number):
  * opinion: it says the band found more of the same number, so a band that misreads outright is turned down for
  * disagreeing. Bounded by a CP's own length, so a `15` is not rescued into a five-digit `15691`.
  *
+ * A line with a `/` in it has already said where its digit went, so only the band reading a 7 at every `/` is more of
+ * the same number: `growlithe-nickname.png`'s `cpe/38°` is rescued by a band's `738`, and `cp/56` is not by the `56`
+ * every band reads off its 756. Any other reading of a `/` — `cP48/7`'s band reading the `487` it is — is left as one
+ * of the candidates `parseDetail` offers, where accepting it here would also accept a band that lost the thin 7 the
+ * way the line did.
+ *
  * Exported because nothing else states what it takes: `screens.test.mts` asserts the CP each capture ends with, which
  * this rule arrives at from any of several band readings. `detail.test.mts` pins the rule itself.
  */
 export function rescue(text: string, read: string, longest: number): string | null {
-  for (const digits of text.match(/\d+/g) ?? []) {
-    if (digits.length > read.length && digits.length <= longest && (digits.startsWith(read) || digits.endsWith(read))) {
-      return digits;
-    }
-  }
+  const more = (digits: string) =>
+    read.includes('/')
+      ? digits === sevens(read)
+      : digits.length > read.length && (digits.startsWith(read) || digits.endsWith(read));
 
-  return null;
+  return text.match(/\d+/g)?.find((digits) => digits.length <= longest && more(digits)) ?? null;
 }
+
+/** A CP read with every `/` in it taken as the 7 it usually is. */
+const sevens = (read: string) => read.replaceAll('/', '7');
 
 /** Only what a weight or a height is written with; the `g` of `kg` is dropped often enough not to be relied on. */
 const MEASURE_ALPHABET = '0123456789.,kgm ';
@@ -669,14 +727,14 @@ const cpDigits = (data: GameData) => {
 const CP_SWEEP = { x: 0.3, y: 0.055, width: 0.4, height: 0.035 };
 
 /**
- * How far round the line the CP band reaches, in that line's own heights, in the order to try. 0.35 is what all three
- * rescues read at. 0.6 earns nothing measurable: it used to accept once, on the one CP the corpus read wrongly —
- * `unown-question.png`'s `4864` against the 486 on its screen — and that capture now accepts at 0.35 instead.
+ * How far round the line the CP band reaches, in that line's own heights, in the order to try. 0.35 is what six of the
+ * seven rescues read at, and 0.6 earns the seventh: `meowth-galar.png`'s `cpe5/1` band reads `51` under every treatment
+ * at 0.35 and `571` plain at 0.6, which without it would be left to the arithmetic as 571 or 51. By the floor standard
+ * `overlay.mts` sets that is one capture legible at 0.6 and illegible at 0.35, and so the pad's whole case.
  *
  * It was added for `articuno-kanto.png`, which needed it for a digit lost off the back, against `deoxys-defense.png`
- * reading `1569` at 0.35 and losing it at 0.6. Neither capture reaches `wholeCp` any more, no label line being found on
- * either, so that evidence is spent rather than standing, and by the floor standard `overlay.mts` sets this does not
- * earn its place: nothing is legible at 0.6 and illegible at 0.35. Dropping it is a change of its own.
+ * reading `1569` at 0.35 and losing it at 0.6. Neither is that evidence any more: `articuno-kanto.png`'s `cpe1/05` is
+ * rescued at 0.35 now its `/` is kept, and no label line is found on `deoxys-defense.png` at all.
  */
 const CP_PADS = [0.35, 0.6];
 
@@ -704,15 +762,17 @@ const CP_ACROSS = 0.5;
  * there is `identify` refusing a candidate the arithmetic cannot reproduce.
  *
  * Brightness is here for `growlithe-nickname.png`, which neither of the others reaches: at pad 0.35 its band reads `38`
- * plain and near-white and `738` brightened. Going last decides nothing the corpus can show, but not because a second
- * is never read — every treatment is read at every pad entered. What the order picks between is acceptances, and the
- * one pad where two of them accept is `unown-b.png`'s 0.35, where plain and near-white both rescue `487`. Nor is going
+ * plain and near-white and `738` brightened. `castform-sunny.png` is the same at 0.35, `99` against a brightened
+ * `CP979`, though plain would find its `979` at 0.6. Going last decides nothing the corpus can show, but not because a
+ * second is never read — every treatment is read at every pad entered. What the order picks between is acceptances,
+ * and where two of them accept at one pad they accept the same number: plain and near-white at `unown-b.png`'s and
+ * `articuno-kanto.png`'s 0.35, and all three at `vulpix.png`'s. Nor is going
  * last protection for a line already read right: a pass reading that number back is the same length, so the rule turns
- * it down and the loop carries on. It costs 30 of the corpus's 90 passes, and what bounds its noise is the four-digit
+ * it down and the loop carries on. It costs 44 of the corpus's 132 passes, and what bounds its noise is the four-digit
  * cap, which `wholeCp` now applies before any band is read rather than after three.
  *
  * What `cpsIn` has neither of is the guard that skips a band and the acceptance that ends a pad. Reading all three is
- * what both do; `cpsIn` does it on every capture it sweeps, 60 passes over the 20 where reading the band plain cost 20.
+ * what both do; `cpsIn` does it on every capture it sweeps, 39 passes over the 13 where reading the band plain cost 13.
  */
 const CP_TREATMENTS = [
   (band: Image) => band,

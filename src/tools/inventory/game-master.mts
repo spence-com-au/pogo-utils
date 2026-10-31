@@ -12,6 +12,7 @@
  * `download.mts` for `pnpm inventory` and the vended `fixtures/game-master.json` for the corpus and the Inventory page.
  */
 
+import { type Size } from './badges.mts';
 import { fold } from './ocr.mts';
 
 export interface Form {
@@ -22,6 +23,12 @@ export interface Form {
   attack: number;
   defense: number;
   stamina: number;
+
+  /**
+   * Where the game draws the line between one size band and the next, in metres: the six `sizeSettings` bounds from
+   * XXS's floor to XXL's ceiling, which `fitsHeight` reads. Null for the forms the game master gives none.
+   */
+  heights: readonly [number, number, number, number, number, number] | null;
 
   /** `Alola`, `Paldea Aqua`, or null for the ordinary form, as the overlay spells it. */
   form: string | null;
@@ -145,6 +152,33 @@ export function hpOf(form: Form, iv: IVs, multiplier: number): number {
  */
 export function levelsOf(data: GameData, form: Form, iv: IVs, hp: number): number[] {
   return data.cpm.filter(([, m]) => hpOf(form, iv, m) === hp).map(([level]) => level);
+}
+
+/** The bands `Form.heights` bounds, smallest first, with no badge for the middle one. */
+const BANDS = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
+
+/**
+ * How far the printed height can be from the one the game banded, which prints to the centimetre and rounds rather than
+ * truncating: `smoliv.png` reads 0.15m under an XXS badge, Smoliv's XXS band being 0.147 to 0.15, which truncated
+ * would print as 0.14.
+ */
+const PRINTED = 0.005;
+
+/**
+ * Whether a form can be this tall and wear this badge, `null` being no badge and so the middle band. A band is
+ * `heights[i]` to `heights[i + 1]`: Pikachu's 0.196, 0.2, 0.3, 0.5, 0.6 and 0.7 are 0.49, 0.5, 0.75, 1.25, 1.5 and
+ * 1.75 times its 0.4m. Every row in `screens.test.mts` sits in the band its badge names, which a test there holds, and
+ * each of the five badged ones in no other but `smoliv.png`, on the edge of XXS and XS. An edge is taken as belonging to
+ * both bands it divides, which side the game puts it on being unmeasured.
+ *
+ * True for a form the game master gives no bands, which no height can rule out.
+ */
+export function fitsHeight(form: Form, height: number, size: Size | null): boolean {
+  const band = BANDS.indexOf(size);
+  const low = form.heights?.[band];
+  const high = form.heights?.[band + 1];
+
+  return low === undefined || high === undefined || (height >= low - PRINTED && height <= high + PRINTED);
 }
 
 /**

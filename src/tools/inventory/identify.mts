@@ -1,15 +1,15 @@
 /**
  * The end of the pipeline, which reads no screen at all: which species and form a reading is, and at what level. The
- * name narrows the candidates when it is a species' name, the types narrow them further, PGSharp's bracketed suffix and
- * then the artwork separate what the numbers cannot, and a fold keeps one form where a costume repeats it. What none of
- * them settles is answered as the shortest name of the forms left, with the rest beside it: `unseparated` is the half
- * of the answer that says the screen never stated which.
+ * name narrows the candidates when it is a species' name, the types narrow them further, the height, PGSharp's
+ * bracketed suffix and then the artwork separate what the numbers cannot, and a fold keeps one form where a costume
+ * repeats it. What none of them settles is answered as the shortest name of the forms left, with the rest beside it:
+ * `unseparated` is the half of the answer that says the screen never stated which.
  *
  * Here rather than in `detail.mts` because it consumes a reading instead of producing one — it is the only module that
  * asks the readers to agree with each other rather than each being separately right.
  */
 
-import { closest, cpOf, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
+import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
 import { fold } from './ocr.mts';
 import { nearest, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
@@ -145,19 +145,20 @@ export function identify(
   // narrowing did; where it was not, every level the HP admits is asked instead.
   //
   // `detail.cps` is on the same footing as the single read, which is what reaches the captures whose label went
-  // unrecognised. Requiring the arithmetic to reproduce one exactly is what makes a wrong one inert, and `cpsIn` is
-  // where what it offers is measured.
+  // unrecognised and those whose label line read a `/` nothing settled — `cp/56` offering 756 and 56 alike. Requiring
+  // the arithmetic to reproduce one exactly is what makes a wrong one inert, and `cpsIn` and `readingsOf` are where
+  // what each offers is measured.
   //
   // Nothing reports it when that fails, the disagreement below being gated on `detail.cp` — null on exactly the
-  // captures the sweep reads — so a sweep number that does reproduce a candidate answers a form or a level silently.
-  // What that takes is 73 CP on this corpus: `castform-rainy.png` read as `905` answers **Quaxwell**, no alternatives
-  // and no notes. Three of the 20 swept captures have such a number within 190 and the other 17 have none, which
+  // captures left to candidates — so a candidate that does reproduce a form answers a form or a level silently. What
+  // that takes is 73 CP on this corpus: `castform-rainy.png` read as `905` answers **Quaxwell**, no alternatives and no
+  // notes. Two of the 17 captures left to candidates have such a number within 190 and the other 15 have none, which
   // `screens.test.mts` pins by forging one.
   //
   // The floor is a property of the candidate list rather than of the arithmetic, and the two differ by more than an
   // order of magnitude. `castform-rainy.png` is the floor because its nickname leaves no species established, so the
   // list is every form that fits; where a species *is* recognised the list is that species' forms and the nearest
-  // sibling is far — 161 on `deoxys-normal.png`, 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an
+  // sibling is far — 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an
   // Espeon reaching 1585 at the level its HP admits, but line 101 is reached only on an empty list and Deoxys' forms
   // fill it, so that number comes back as one Deoxys with the three the CP did not settle beside it.
   const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
@@ -192,6 +193,22 @@ export function identify(
 
   if (candy !== null && candidates.some((f) => f.evolveCandy.includes(candy))) {
     candidates = candidates.filter((f) => f.evolveCandy.length === 0 || f.evolveCandy.includes(candy));
+  }
+
+  // The height against the band its badge names, which is what separates forms the game master draws at different
+  // sizes where every number above leaves them together: Pumpkaboo's and Gourgeist's four, a level 1 Large and Super at
+  // 2/0/6 both showing 14 HP and CP 14. Their bands only touch — a Large is 0.5m to 0.6m, a Super 0.6m to 0.8m — so
+  // `pumpkaboo-large.png`'s 0.57m under an XL badge is a Large.
+  //
+  // A narrowing only where it leaves something, for the reason the CP is one: a height misread, or a badge missed and so
+  // taken for the middle band, must not empty a list the numbers had narrowed correctly.
+  if (detail.height !== null) {
+    const height = detail.height;
+    const fitting = candidates.filter((f) => fitsHeight(f, height, detail.size));
+
+    if (fitting.length > 0) {
+      candidates = fitting;
+    }
   }
 
   // PGSharp's own label, the only thing that can separate Unown's 28 letters, which share one set of base stats, one
