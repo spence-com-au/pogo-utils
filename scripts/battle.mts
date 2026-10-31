@@ -7,9 +7,9 @@
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
  *   pnpm battle run --leader blanche|candela|spark --league great|ultra|master [--count N] [--serial SERIAL]
- *                   [--keep-frames DIR] [--keep-video FILE] [--no-graphics] [--verbose]
+ *                   [--keep-frames DIR] [--keep-video FILE] [--screen-off] [--no-graphics] [--verbose]
  *   pnpm battle run --mode gbl --league LEAGUE [--party NAME] [--count N] [--serial SERIAL] [--keep-frames DIR]
- *                   [--keep-video FILE] [--no-graphics] [--verbose]
+ *                   [--keep-video FILE] [--screen-off] [--no-graphics] [--verbose]
  *                       play Team Leader or GO Battle League battles one after another, from the map or anywhere
  *                       between the result of one battle and the start of the next, until `N` have finished or
  *                       Ctrl-C; stops where nothing on screen has been recognised for 20s. GO Battle League stops at
@@ -26,6 +26,9 @@
  *                       `LEAGUE` is how the title of one league on now starts, as `ultra` or `fantasy cup`, and
  *                       `NAME` a party saved for it, which is battled with rather than whichever the screen opens
  *                       on; one not saved stops the run.
+ *                       `--screen-off` turns the phone's panel off for the run, to spare it the battle's still HUD,
+ *                       and back on as it ends. The game goes on as if it were lit, since Android is not told, but a
+ *                       run killed outright leaves it dark until the phone's power button is pressed twice.
  *                       On a terminal, which it takes over until it stops, a table shows the battle, ours at the
  *                       left and the opponent's at the right, and what each side does under it, with how the run
  *                       stands above it and the menus it taps through below, and the phone's screen down the left
@@ -52,6 +55,7 @@ import { phoneOf } from '../src/tools/battle/phone.mts';
 import { ending } from '../src/tools/battle/reporter.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
+import { screenPower } from '../src/tools/battle/screen-power.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
 import { feed, screenrecord } from '../src/tools/battle/stream.mts';
 import { Video } from '../src/tools/battle/video.mts';
@@ -80,6 +84,7 @@ const { values: options, positionals } = parseArgs({
     'count': { type: 'string' },
     'keep-frames': { type: 'string' },
     'keep-video': { type: 'string' },
+    'screen-off': { type: 'boolean', default: false },
     'no-graphics': { type: 'boolean', default: false },
     'verbose': { type: 'boolean', default: false },
     'seconds': { type: 'string', default: '30' },
@@ -99,7 +104,19 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 
 /** Which flags each command acts on, for the reason `inventory.mts` gives beside its own. */
 const HONOURED: Record<string, readonly string[]> = {
-  run: ['mode', 'leader', 'league', 'party', 'count', 'serial', 'keep-frames', 'keep-video', 'no-graphics', 'verbose'],
+  run: [
+    'mode',
+    'leader',
+    'league',
+    'party',
+    'count',
+    'serial',
+    'keep-frames',
+    'keep-video',
+    'screen-off',
+    'no-graphics',
+    'verbose',
+  ],
   record: ['seconds', 'serial'],
 };
 
@@ -202,16 +219,34 @@ if (command === 'run') {
   );
   const before = /^\d+$/.test(awake.trim()) ? awake.trim() : '0';
 
+  // With `--screen-off`, the dex that turns the panel off, read before the phone is changed so a checkout without it
+  // fails first. `dark` from just before the panel is turned off, so a failure partway still turns it back on.
+  const dex = options['screen-off']
+    ? readFileSync(new URL('../src/tools/battle/screen-power/ScreenPower.dex', import.meta.url))
+    : undefined;
+  let dark = false;
+
   // A phone gone, unplugged mid-battle, cannot be put back: said in a line rather than thrown over the error that
-  // stopped the run.
-  const restore = () =>
-    transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
+  // stopped the run. The panel is lit again while the phone is still held awake, so it comes back on as Android has
+  // it rather than beneath a phone gone to sleep.
+  const restore = async () => {
+    if (dex && dark) {
+      await screenPower(transport, dex, 'on').catch((error: unknown) =>
+        console.error(
+          `the phone's screen not turned back on, which pressing its power button twice does: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+    }
+
+    await transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
       () => undefined,
       (error: unknown) =>
         console.error(
           `stay_on_while_plugged_in not put back to ${before}: ${error instanceof Error ? error.message : String(error)}`,
         ),
     );
+  };
+
   let screen: Screen | undefined;
 
   // A terminal is drawn the panel whether or not `--verbose` asks; anything else is written lines, and only if it does.
@@ -387,6 +422,11 @@ if (command === 'run') {
 
   try {
     await transport.shell(['svc', 'power', 'stayon', 'usb']);
+
+    if (dex) {
+      dark = true;
+      await screenPower(transport, dex, 'off');
+    }
 
     // A screenshot for the screen's size, which the stream takes its shape from.
     const size = streamSize(await device.screenshot());

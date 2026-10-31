@@ -27,6 +27,7 @@ jobs:
       matrix:
         check:
           - 'css'
+          - 'dex'
           - 'html'
           - 'js'
           - 'prettier'
@@ -37,6 +38,13 @@ jobs:
       - uses: 'pnpm/setup@v3.1.2'
         with:
           cache: true
+
+      # The JDK `ScreenPower.dex` is committed from, since another release's `javac` may write other bytes.
+      - if: "matrix.check == 'dex'"
+        uses: 'actions/setup-java@v6.1.0'
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
       # `lint:types` is `pnpm build`, which publishes the demo phone's screens out of LFS, as `pages.yaml` does.
       - if: "matrix.check == 'types'"

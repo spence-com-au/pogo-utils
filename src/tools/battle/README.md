@@ -60,6 +60,18 @@ flowchart LR
   clock is the log's. Each picture is one synchronous write of whole packets, with the tables ahead of each key picture,
   so a run stopped by Ctrl-C, which writes what is waiting, leaves a file that plays to where it stopped. The cutting is
   [`pictures.mts`](pictures.mts), which a browser can run too.
+- **[`screen-power.mts`](screen-power.mts)** darkens the phone's panel for `--screen-off`, to spare an OLED the battle's
+  still HUD. Android's own ways, the power button or a screen timeout, put the phone to sleep, and a screen gone dark
+  that way reads as nothing recognised and ends the run. This turns the panel off beneath Android instead, as scrcpy's
+  `--turn-screen-off` does: [`ScreenPower.java`](screen-power/ScreenPower.java) calls `SurfaceControl`'s hidden
+  `setDisplayPowerMode`, which the shell user may and an app may not, run by `app_process` from a dex written to the
+  phone through the shell. Android still has the display on, so the game draws, `screenrecord` records it and touches
+  land: under scrcpy, a Master League set on a Pixel 4 XL with Android 13 went 4–1 with its panel dark. The mode
+  outlasts the process, so it is run once as the run starts and once as it ends, before the phone is let sleep again.
+  Android 14 moved the calls it needs into the system server's `DisplayControl`, which it loads as scrcpy does, untried
+  as yet on a phone that new. The dex is committed, so neither a battle nor the site's build needs a JDK;
+  [`scripts/build-dex.mts`](../../../scripts/build-dex.mts) builds it with `javac` and a pinned D8, and `pnpm lint:dex`
+  fails where the two differ.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
