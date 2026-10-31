@@ -10,7 +10,17 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { closest, cpOf, distance, hpOf, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
+import {
+  closest,
+  cpOf,
+  distance,
+  fitsHeight,
+  hpOf,
+  levelsOf,
+  multiplierOf,
+  type Form,
+  type GameData,
+} from './game-master.mts';
 
 const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
 
@@ -157,6 +167,41 @@ test('an HP derives to the number under the name, and is a function of stamina a
     hpOf(thundurus, iv(15, 0, 10), multiplier),
     'the attack and defense IVs reached the HP, which they must not',
   ).toBe(118);
+});
+
+/**
+ * The size bands, each one `heights[i]` to `heights[i + 1]` metres. Pikachu's are 0.49, 0.5, 0.75, 1.25, 1.5 and 1.75
+ * times its 0.4m, so a 0.55m Pikachu wears an XL badge and a 0.4m one wears none.
+ */
+test('a height fits the band its badge names and no other', () => {
+  const pikachu = form('Pikachu');
+
+  expect(pikachu.heights).toStrictEqual([0.196, 0.2, 0.3, 0.5, 0.6, 0.7]);
+  expect([fitsHeight(pikachu, 0.55, 'XL'), fitsHeight(pikachu, 0.55, null)]).toStrictEqual([true, false]);
+  expect([fitsHeight(pikachu, 0.4, null), fitsHeight(pikachu, 0.4, 'XL')]).toStrictEqual([true, false]);
+  expect([fitsHeight(pikachu, 0.25, 'XS'), fitsHeight(pikachu, 0.65, 'XXL')]).toStrictEqual([true, true]);
+  expect([fitsHeight(pikachu, 0.25, 'XXS'), fitsHeight(pikachu, 0.65, 'XL')]).toStrictEqual([false, false]);
+});
+
+/**
+ * The height the game prints is rounded to the centimetre, so a band reaches half a centimetre past either edge the
+ * game master gives it: `smoliv.png` prints 0.15m under an XXS badge, which Smoliv's 0.147 to 0.15 holds only once the
+ * rounding is allowed for, where 0.16m is a centimetre past it.
+ */
+test('a printed height is allowed the half centimetre it was rounded by', () => {
+  const smoliv = form('Smoliv');
+
+  expect(smoliv.heights?.slice(0, 2)).toStrictEqual([0.147, 0.15]);
+  expect(fitsHeight(smoliv, 0.15, 'XXS')).toBe(true);
+  expect(fitsHeight(smoliv, 0.16, 'XXS')).toBe(false);
+});
+
+/** A form the game master gives no bands, as it gives Minior's Meteor forms none, is one no height rules out. */
+test('a form with no bands fits every height', () => {
+  const meteor = form('Minior', 'Meteor');
+
+  expect(meteor.heights).toBe(null);
+  expect(fitsHeight(meteor, 100, 'XXS')).toBe(true);
 });
 
 /**

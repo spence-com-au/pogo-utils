@@ -1,15 +1,15 @@
 /**
  * The end of the pipeline, which reads no screen at all: which species and form a reading is, and at what level. The
- * name narrows the candidates when it is a species' name, the types narrow them further, PGSharp's bracketed suffix and
- * then the artwork separate what the numbers cannot, and a fold keeps one form where a costume repeats it. What none of
- * them settles is answered as the shortest name of the forms left, with the rest beside it: `unseparated` is the half
- * of the answer that says the screen never stated which.
+ * name narrows the candidates when it is a species' name, the types narrow them further, the height, PGSharp's
+ * bracketed suffix and then the artwork separate what the numbers cannot, and a fold keeps one form where a costume
+ * repeats it. What none of them settles is answered as the shortest name of the forms left, with the rest beside it:
+ * `unseparated` is the half of the answer that says the screen never stated which.
  *
  * Here rather than in `detail.mts` because it consumes a reading instead of producing one — it is the only module that
  * asks the readers to agree with each other rather than each being separately right.
  */
 
-import { closest, cpOf, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
+import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
 import { fold } from './ocr.mts';
 import { nearest, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
@@ -179,6 +179,22 @@ export function identify(
 
     if (showingIt.length > 0) {
       candidates = showingIt;
+    }
+  }
+
+  // The height against the band its badge names, which is what separates forms the game master draws at different
+  // sizes where every number above leaves them together: Pumpkaboo's and Gourgeist's four, a level 1 Large and Super at
+  // 2/0/6 both showing 14 HP and CP 14. Their bands only touch — a Large is 0.5m to 0.6m, a Super 0.6m to 0.8m — so
+  // `pumpkaboo-large.png`'s 0.57m under an XL badge is a Large.
+  //
+  // A narrowing only where it leaves something, for the reason the CP is one: a height misread, or a badge missed and so
+  // taken for the middle band, must not empty a list the numbers had narrowed correctly.
+  if (detail.height !== null) {
+    const height = detail.height;
+    const fitting = candidates.filter((f) => fitsHeight(f, height, detail.size));
+
+    if (fitting.length > 0) {
+      candidates = fitting;
     }
   }
 

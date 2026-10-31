@@ -15,8 +15,7 @@ export interface Config {
     /** From one Pokémon to the next. */
     next: [Point, Point];
 
-    /** Down the detail screen to the moves, and back up. */
-    scrollDown: [Point, Point];
+    /** Back up the detail screen from the moves, the way down being `scrollStep`'s, which the band sets. */
     scrollUp: [Point, Point];
   };
 
@@ -78,10 +77,6 @@ export const DEFAULTS: Config = {
     next: [
       [0.85, 0.3],
       [0.15, 0.3],
-    ],
-    scrollDown: [
-      [0.5, 0.78],
-      [0.5, 0.28],
     ],
     scrollUp: [
       [0.5, 0.35],
