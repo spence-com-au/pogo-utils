@@ -7,12 +7,13 @@
  * its inputs: that one is a claim about the rule's whole domain rather than about a capture.
  *
  * What this still cannot pin is *which* treatment earned a rescue. The readings are quoted, so a change that had a
- * cheaper pass start reading `738` would leave this file and all 43 rows green with the third treatment dead. Only a
+ * cheaper pass start reading `738` would leave this file and all 44 rows green with the third treatment dead. Only a
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
-import { cpOn, joined, rescue } from './detail.mts';
+import { cpOn, figureIn, joined, pills, rescue } from './detail.mts';
 import { type Line } from './ocr.mts';
+import { type Image } from './png.mts';
 import { expect, test } from 'vitest';
 
 /** How many digits the longest CP any form can show runs to, which is what `cpDigits` answers off the vended master. */
@@ -106,4 +107,96 @@ test('a CP longer than any form can show is refused', () => {
   expect(cpOn('cp14417', LONGEST), 'an unspaced CP past the cap was taken').toBeNull();
   expect(cpOn('cp14417 2', LONGEST), 'the first half of a spaced CP past the cap was taken').toBeNull();
   expect(cpOn('cp1441', LONGEST), 'a CP at the cap is no longer read').toBe('1441');
+});
+
+type Rgb = [number, number, number];
+
+/** A white card with every rectangle painted on it, each `[left, top, width, height, colour]`. */
+function card(width: number, height: number, ...rects: [number, number, number, number, Rgb][]): Image {
+  const data = new Uint8Array(width * height * 4).fill(255);
+
+  for (const [left, top, w, h, [r, g, b]] of rects) {
+    for (let y = top; y < top + h; y++) {
+      for (let x = left; x < left + w; x++) {
+        data.set([r, g, b, 255], (y * width + x) * 4);
+      }
+    }
+  }
+
+  return { width, height, data };
+}
+
+const GREEN: Rgb = [180, 219, 164];
+const PANEL: Rgb = [236, 242, 228];
+const INK: Rgb = [75, 105, 110];
+
+/**
+ * A button row as a 1008-wide phone draws it, measured off `burmy-plant.png`: the pill from 70 to 474 and 88 tall, the
+ * panel on to 939, and in it a candy 41 wide ending 12 short of a figure of two digits 21 wide with a 3 between them.
+ * What the panel holds is `glyphs`, each `[left, width, colour]` and 48 tall.
+ */
+const row = (...glyphs: [number, number, Rgb][]) =>
+  card(
+    1008,
+    300,
+    [70, 100, 404, 88, GREEN],
+    [474, 100, 465, 88, PANEL],
+    ...glyphs.map(([left, w, colour]): [number, number, number, number, Rgb] => [left, 120, w, 48, colour]),
+  );
+
+const PILL = { top: 100, height: 88 };
+const CANDY: [number, number, Rgb] = [699, 41, [200, 80, 80]];
+const FIFTY: [number, number, Rgb][] = [
+  [752, 21, INK],
+  [776, 21, INK],
+];
+
+/** Two pills below where the search starts, one above it, and between them a move's type icon 49 tall. */
+test('the pills are the runs of a pill’s height down the column, below where the search starts', () => {
+  const image = card(
+    1008,
+    600,
+    [70, 50, 404, 88, GREEN],
+    [70, 200, 404, 88, GREEN],
+    [70, 350, 404, 49, GREEN],
+    [70, 450, 404, 88, GREEN],
+  );
+
+  expect(pills(image, 100), 'a run other than a pill was taken, or a pill was missed').toStrictEqual([
+    { top: 200, height: 88 },
+    { top: 450, height: 88 },
+  ]);
+});
+
+test('the figure is the narrow glyphs after the candy, whatever colour they are drawn in', () => {
+  expect(figureIn(row(CANDY, ...FIFTY), PILL)).toStrictEqual({ left: 752, right: 797 });
+
+  const red = FIFTY.map(([left, w]): [number, number, Rgb] => [left, w, [230, 80, 80]]);
+
+  expect(figureIn(row(CANDY, ...red), PILL), 'red digits, a candy short of the cost, no longer read').toStrictEqual({
+    left: 752,
+    right: 797,
+  });
+});
+
+/** The menu button over the lowest rows is wider than any digit, so the figure is found left of it and not in it. */
+test('a wide glyph right of the figure is passed over', () => {
+  expect(figureIn(row(CANDY, ...FIFTY, [860, 73, [69, 137, 151]]), PILL)).toStrictEqual({ left: 752, right: 797 });
+});
+
+/** A pale candy is ink only in its stripes, glyphs as narrow as a digit, so the gap before the figure has to end it. */
+test('a narrow glyph a gap away from the figure is no part of it, and one nearer is', () => {
+  expect(figureIn(row([720, 20, INK], ...FIFTY), PILL), 'a glyph 12 short was taken').toStrictEqual({
+    left: 752,
+    right: 797,
+  });
+  expect(figureIn(row([738, 10, INK], ...FIFTY), PILL), 'a glyph 4 short was left off').toStrictEqual({
+    left: 738,
+    right: 797,
+  });
+});
+
+test('a row with no narrow glyph has no figure', () => {
+  expect(figureIn(row(CANDY), PILL)).toBeNull();
+  expect(figureIn(row(), PILL)).toBeNull();
 });

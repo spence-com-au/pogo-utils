@@ -181,6 +181,19 @@ export function identify(
     }
   }
 
+  // The candy the `EVOLVE` row asks for, all that separates Sinistea's Phony form at 50 from its Antique at 400, and
+  // Poltchageist's Counterfeit from its Artisan likewise: every number above is the same between each pair.
+  //
+  // Evidence only where it matches a branch some candidate has. What the row prints can part from the game master — a
+  // trade that makes the evolution free, an event that halves its cost — so a figure no candidate costs is taken as
+  // unread rather than as ruling every candidate out. A form with no branch at all is kept, its row being something
+  // the game master does not state: costumed Pikachu have none of their own and `pikachu-ash-hat.png` still asks 50.
+  const candy = detail.evolveCandy;
+
+  if (candy !== null && candidates.some((f) => f.evolveCandy.includes(candy))) {
+    candidates = candidates.filter((f) => f.evolveCandy.length === 0 || f.evolveCandy.includes(candy));
+  }
+
   // PGSharp's own label, the only thing that can separate Unown's 28 letters, which share one set of base stats, one
   // type and one move pool. Ahead of the fold below, which otherwise collapses them to one, and only where it matches
   // something — a suffix read off the artwork must not empty a list the numbers had narrowed correctly.

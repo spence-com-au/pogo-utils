@@ -24,6 +24,7 @@ function detail(fields: Partial<Detail> = {}): Detail {
     favourite: false,
     size: null,
     tags: [],
+    evolveCandy: null,
     ...fields,
   };
 }
