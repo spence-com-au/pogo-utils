@@ -20,7 +20,7 @@ import { closest, type Form, type GameData, type IVs } from './game-master.mts';
 import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { HEIGHT, parseDetail, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT, parseDetail, readLines } from './detail.mts';
 import { clearable, identify, label } from './identify.mts';
 import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
@@ -215,11 +215,11 @@ interface Fixture {
  * eight at once, falsifiably — re-run it and the first match is in the set the row claims. Negation is the half only a
  * search can give, since nothing on the screen says a Pokémon is **not** lucky.
  *
- * The other 39 rows have no search behind them. They arrived named for what they are, and the name is a claim the
+ * The other 42 rows have no search behind them. They arrived named for what they are, and the name is a claim the
  * rendered screen has to bear out — weaker provenance, and sufficient for what those rows are for.
  *
  * `xurkitree.png`'s search is the weak one of the four: `alola` pins its region and nothing else, so its `size` and
- * flags rest on the same eye as the 39 and it is one of those rows in everything but provenance.
+ * flags rest on the same eye as the 42 and it is one of those rows in everything but provenance.
  *
  * | file             | search                                                                               |
  * |------------------|--------------------------------------------------------------------------------------|
@@ -540,6 +540,30 @@ const FIXTURES: readonly Fixture[] = [
     weight: 246.49,
   },
   {
+    cp: 756,
+    file: 'maschiff-female.png',
+    form: null,
+    gender: 'female',
+    height: 0.62,
+    hp: 98,
+    overlay: { iv: { attack: 12, defense: 10, stamina: 10 }, level: 20 },
+    species: 'Maschiff',
+    types: ['Dark'],
+    weight: 26.48,
+  },
+  {
+    cp: 777,
+    file: 'maschiff-male.png',
+    form: null,
+    gender: 'male',
+    height: 0.53,
+    hp: 99,
+    overlay: { iv: { attack: 13, defense: 14, stamina: 11 }, level: 20 },
+    species: 'Maschiff',
+    types: ['Dark'],
+    weight: 15.95,
+  },
+  {
     cp: 1679,
     favourite: true,
     file: 'meloetta-aria.png',
@@ -772,6 +796,18 @@ const FIXTURES: readonly Fixture[] = [
     weight: 3.86,
   },
   {
+    cp: 472,
+    file: 'vulpix.png',
+    form: null,
+    gender: 'male',
+    height: 0.48,
+    hp: 75,
+    overlay: { iv: { attack: 10, defense: 14, stamina: 11 }, level: 20 },
+    species: 'Vulpix',
+    types: ['Fire'],
+    weight: 6.49,
+  },
+  {
     cp: 2197,
     file: 'xurkitree.png',
     form: null,
@@ -930,7 +966,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 43 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 46 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1102,9 +1138,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 46.
+ * covers everything else in this file — one capture rather than 49.
  *
- * They need it because a body that waits on all 46 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 49 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1293,15 +1329,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 43,
+  rows: 46,
   negatives: 3,
-  answeredAsThemselves: 42,
-  oneLevel: 43,
-  crossCheckAgrees: 43,
+  answeredAsThemselves: 45,
+  oneLevel: 46,
+  crossCheckAgrees: 46,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 35,
+  noDefects: 38,
   unseparated: 8,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1342,9 +1378,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 43 any more, where eight raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 46 any more, where eight raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 43 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 46 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The eight it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1426,8 +1462,9 @@ test('the vended game master is the shape the readers are asserted against', () 
  * Asserted as the whole map rather than as a count, so a reader losing one capture and gaining another cannot come out
  * even, and the misreads are then **derived** from it rather than transcribed a second time: a row already states what
  * the screen shows, so the disagreement is a filter and not a list to keep in step. A misread here is a digit or two
- * lost or gained off one end of the number, and none is left: the last was `unown-question.png` reading `4864` for
- * 486, a band too narrow to hold its last digit whole, which `CP_ACROSS` in `detail.mts` now holds.
+ * lost or gained off one end of the number, or a 7 lost where the line drew it as a `/`, and none is left: the last
+ * was `unown-question.png` reading `4864` for 486, a band too narrow to hold its last digit whole, which `CP_ACROSS` in
+ * `detail.mts` now holds. `maschiff-female.png` would be the second, `cp/56` taken as 56, but for `readingsOf`.
  */
 test(
   'which captures the CP is read off, and that it reads none of them wrongly',
@@ -1444,17 +1481,22 @@ test(
 
     expect(Object.fromEntries(states), 'which captures state a CP, or what they state, has changed').toStrictEqual({
       'articuno-galar.png': 1966,
+      'articuno-kanto.png': 1705,
       'basculin-blue.png': 253,
       'burmy-plant.png': 206,
       'burmy-sandy.png': 196,
+      'burmy-trash.png': 47,
+      'castform-sunny.png': 979,
       'charizard-gigantamax.png': 1605,
       'cherrim-overcast.png': 1025,
       'deoxys-attack.png': 1441,
+      'deoxys-normal.png': 1772,
       'deoxys-speed.png': 2009,
       'dialga-altered.png': 2848,
       'dialga-origin.png': 2845,
       'growlithe-nickname.png': 738,
       'meowth-alola.png': 431,
+      'meowth-galar.png': 571,
       'pikachu-ash-hat.png': 489,
       'pikachu-willows-assistant.png': 385,
       'pikachu-witch-hat.png': 625,
@@ -1465,6 +1507,7 @@ test(
       'unown-b.png': 487,
       'unown-exclamation.png': 517,
       'unown-question.png': 486,
+      'vulpix.png': 472,
       'xurkitree.png': 2197,
     });
 
@@ -1479,68 +1522,84 @@ test(
 );
 
 /**
- * The other half of that: which captures the CP region is *swept* for, and every number a sweep offers. The two maps
+ * The other half of that: which captures the CP is left to candidates on, and every candidate offered. The two maps
  * partition the corpus, `cps` being read on exactly the captures `cp` is null on, and only this one says what the
  * generosity costs — one capture pinned a `cps` before this, so a band that started offering five numbers where it
  * offered one changed nothing a test could see.
  *
- * The whole map, empties included, the four that read nothing being as much a measurement as the fifteen that read
- * right. The strays are **derived** from it for the reason the misreads above are, and what one costs is nothing only
- * while the arithmetic cannot reproduce it — `identify` says where that floor is, and this is what would move it.
+ * The candidates come from one of two places, which the figures below keep apart: every reading of a label line whose
+ * `/` nothing settled, or the region swept where no label line was found at all. The whole map, empties included, the
+ * one that reads nothing being as much a measurement as the ones that read right. The strays are **derived** from it
+ * for the reason the misreads above are, and what one costs is nothing only while the arithmetic cannot reproduce it —
+ * `identify` says where that floor is, and this is what would move it.
  */
 test(
-  'which captures the CP region is swept for, and what each sweep offers',
+  'which captures the CP is left to candidates on, and what each offers',
   async () => {
-    const swept = new Map<string, readonly number[]>();
+    const offered = new Map<string, readonly number[]>();
+    const labelled = new Set<string>();
 
     for (const fixture of FIXTURES) {
-      const { detail } = await readingOf(fixture.file);
+      const { detail, image, lines } = await readingOf(fixture.file);
 
       if (detail.cp === null) {
-        swept.set(fixture.file, detail.cps);
+        offered.set(fixture.file, detail.cps);
+
+        if (cpLabelOf(lines, image)) {
+          labelled.add(fixture.file);
+        }
       }
     }
 
-    expect(Object.fromEntries(swept), 'which captures are swept, or what a sweep offers, has changed').toStrictEqual({
+    expect(
+      Object.fromEntries(offered),
+      'which captures are left to candidates, or what they offer, has changed',
+    ).toStrictEqual({
       'applin.png': [286],
-      'articuno-kanto.png': [1705],
-      'burmy-trash.png': [],
       'castform-normal.png': [],
       'castform-rainy.png': [832],
-      'castform-snowy.png': [],
-      'castform-sunny.png': [979],
+      'castform-snowy.png': [747, 47],
       'chansey-dynamax.png': [693],
       'cherrim-sunny.png': [1658],
       'deoxys-defense.png': [1569],
-      'deoxys-normal.png': [1772, 172],
       'eevee-background.png': [451],
       'ho-oh.png': [2738, 238],
+      'maschiff-female.png': [756, 56],
+      'maschiff-male.png': [777, 77],
       'meloetta-aria.png': [169],
-      'meowth-galar.png': [571],
       'meowth-kanto.png': [423],
-      'pikachu-santa-hat.png': [],
+      'pikachu-santa-hat.png': [577, 57],
       'snorlax-purified.png': [2304],
       'spinda-04.png': [511],
       'unown-m.png': [839],
     });
 
-    // And the figures `cpsIn`'s docblock quotes, derived from the map rather than transcribed under it, so a sweep that
-    // changed what it offered cannot leave that prose standing. `stray` is every number offered that the capture's own
-    // row does not state.
-    const offered = [...swept].map(([file, cps]) => ({ cps, cp: FIXTURES.find((f) => f.file === file)?.cp }));
+    // And the figures `readingsOf`'s and `cpsIn`'s docblocks quote, derived from the map rather than transcribed under
+    // it, so a reader that changed what it offered cannot leave that prose standing. `stray` is every number offered
+    // that the capture's own row does not state.
+    const figures = (files: readonly string[]) => {
+      const rows = files.map((file) => ({
+        cps: offered.get(file) ?? [],
+        cp: FIXTURES.find((f) => f.file === file)?.cp,
+      }));
+
+      return {
+        captures: rows.length,
+        carryTheirOwn: rows.filter(({ cps, cp }) => cp !== undefined && cps.includes(cp)).length,
+        silent: rows.filter(({ cps }) => cps.length === 0).length,
+        stray: rows.flatMap(({ cps, cp }) => cps.filter((n) => n !== cp)).toSorted((a, b) => a - b),
+      };
+    };
 
     expect(
-      {
-        swept: offered.length,
-        carryTheirOwn: offered.filter(({ cps, cp }) => cp !== undefined && cps.includes(cp)).length,
-        silent: offered.filter(({ cps }) => cps.length === 0).length,
-        stray: [...swept]
-          .map(([file, cps]) => cps.filter((n) => n !== FIXTURES.find((f) => f.file === file)?.cp))
-          .flat()
-          .toSorted((a, b) => a - b),
-      },
+      figures([...offered.keys()].filter((file) => labelled.has(file))),
+      "`readingsOf`'s docblock quotes these figures; update both or neither",
+    ).toStrictEqual({ captures: 4, carryTheirOwn: 3, silent: 0, stray: [47, 56, 57, 77, 747] });
+
+    expect(
+      figures([...offered.keys()].filter((file) => !labelled.has(file))),
       "`cpsIn`'s docblock quotes these figures; update both or neither",
-    ).toStrictEqual({ swept: 20, carryTheirOwn: 15, silent: 4, stray: [169, 172, 238] });
+    ).toStrictEqual({ captures: 13, carryTheirOwn: 11, silent: 1, stray: [169, 238] });
   },
   WHOLE_CORPUS_TIMEOUT,
 );
@@ -1561,7 +1620,7 @@ test(
  * two and the loop measured nothing where it reports no floor; uncounted, all 380 of each reach the comparison.
  *
  * Nothing nearer than an arithmetic reach of `CP_SWEEP`'s own band is interesting, so the search stops at 190, which
- * is where the last of the three sits. Measuring it is what makes the comment's claim falsifiable rather than a
+ * is where the last of the two sits. Measuring it is what makes the comment's claim falsifiable rather than a
  * reassurance, and what would catch a later change widening the generosity.
  */
 test(
@@ -1599,7 +1658,6 @@ test(
       "`identify`'s comment on `printed` quotes this floor; update both or neither",
     ).toStrictEqual({
       'castform-rainy.png': '73 away, answered as Quaxwell at 18',
-      'deoxys-normal.png': '161 away, answered as Deoxys (Speed) at 20',
       'deoxys-defense.png': '190 away, answered as Deoxys (Attack) at 25',
     });
   },
@@ -1663,7 +1721,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(43);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(46);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2155,7 +2213,7 @@ test(
  *
  * Two cases carry it. `overworld.png` is the map, with no tab and no moves, so a reader that invented one fails here —
  * the half a corpus of valid screens cannot state. And the two Squirtle captures end halfway through Water Pulse, so a
- * charged move cut off is answered as absent rather than guessed. The captions matter too: three captures draw
+ * charged move cut off is answered as absent rather than guessed. The captions matter too: four captures draw
  * `WEATHER BONUS` under a move and carry Weather Ball in their pool, so a reader taking the caption for a move would
  * answer one that is not there.
  *
@@ -2199,6 +2257,8 @@ test(
       'eevee-background.png': { fast: 'Tackle', charged: ['Swift'] },
       'growlithe-nickname.png': { fast: 'Ember', charged: ['Flamethrower'] },
       'ho-oh.png': { fast: 'Extrasensory', charged: ['Brave Bird'] },
+      'maschiff-female.png': { fast: 'Bite', charged: ['Psychic Fangs'] },
+      'maschiff-male.png': { fast: 'Snarl', charged: ['Psychic Fangs'] },
       'meloetta-aria.png': { fast: 'Quick Attack', charged: ['Thunderbolt'] },
       'meowth-alola.png': { fast: 'Scratch', charged: ['Foul Play'] },
       'meowth-galar.png': { fast: 'Metal Sound', charged: ['Trailblaze'] },
@@ -2220,6 +2280,7 @@ test(
       'unown-exclamation.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-m.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-question.png': { fast: 'Hidden Power', charged: ['Struggle'] },
+      'vulpix.png': { fast: 'Ember', charged: ['Flamethrower'] },
       'xurkitree.png': { fast: 'Thunder Shock', charged: ['Power Whip'] },
     });
 
@@ -2307,7 +2368,7 @@ test('the corpus reaches both sides of every attribute', () => {
   }
 
   // `shadow` is the fifth of those and cannot be asserted that way: no capture is shadow, so the column is false on all
-  // 43. Stated here as the gap it is rather than quietly dropping `shadow` from the list above and leaving a reader to
+  // 46. Stated here as the gap it is rather than quietly dropping `shadow` from the list above and leaving a reader to
   // find the hole.
   expect(
     FIXTURES.filter((f) => f.shadow).map((f) => f.file),
@@ -2375,7 +2436,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 43.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 46.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(
