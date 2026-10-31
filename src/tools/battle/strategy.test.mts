@@ -18,6 +18,7 @@ import {
   damage,
   nextOut,
   refugeOf,
+  resisterOf,
   shouldShield,
   type Shown,
   stripperOf,
@@ -555,6 +556,98 @@ test('a shield drawer says why it was switched to', () => {
   expect(stripperOf(DATA, cards(['Tyranitar', 'Kyogre']), 0, new Set(), banked, { species: 'Salamence' })?.why).toBe(
     "Kyogre has Surf and Blizzard banked to draw Salamence's shield",
   );
+});
+
+/** A meta in which Charizard is run with Blast Burn and Dragon Claw. */
+const CHARIZARD_RUN = metaOf('Charizard', ['Blast Burn', 'Dragon Claw']);
+
+/**
+ * Our lead Venusaur against Charizard, whose Blast Burn hits it super effectively: switched, ahead of the throw, to a
+ * benched card resisting Blast Burn that Dragon Claw does not hit super effectively either. The banner's two moves
+ * stand for PvPoke's, and in Training, PvPoke's meta not loaded, only a move the banner named is feared.
+ */
+test.each<[(string | null)[], number[], string | null, string[], Meta | null, number | undefined, string]>([
+  [['Venusaur', 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, 1, 'Azumarill resists Blast Burn'],
+  [['Venusaur', 'Dragonite'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Dragon Claw hits Dragonite'],
+  [['Venusaur', 'Mewtwo'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Mewtwo takes Blast Burn neutral'],
+  [
+    ['Venusaur', 'Dragonite'],
+    [],
+    'Charizard',
+    ['Blast Burn', 'Overheat'],
+    CHARIZARD_RUN,
+    1,
+    'the banner named two moves, neither of them Dragon Claw',
+  ],
+  [['Venusaur', 'Azumarill', 'Tyranitar'], [], 'Charizard', [], CHARIZARD_RUN, 2, 'Stone Edge hits hardest'],
+  [['Venusaur', 'Azumarill', 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, 1, 'the first of equals'],
+  [['Venusaur', 'Azumarill'], [1], 'Charizard', [], CHARIZARD_RUN, undefined, 'the resister fainted'],
+  [['Azumarill', 'Venusaur'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'Azumarill is not hit super effectively'],
+  [['Venusaur', 'Azumarill'], [], 'Charizard', [], null, undefined, 'nothing feared in Training before a banner'],
+  [['Venusaur', 'Azumarill'], [], 'Charizard', ['Blast Burn'], null, 1, 'the banner named Blast Burn'],
+  [[null, 'Azumarill'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'ours not read'],
+  [['Venusaur', 'Azumarill'], [], null, [], CHARIZARD_RUN, undefined, 'theirs not read'],
+  [['Venusaur', null], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'an unread card is not known to resist'],
+  [['Venusaur', 'Missingno'], [], 'Charizard', [], CHARIZARD_RUN, undefined, 'nor is a card naming no form'],
+])(
+  'our lead %o, less %o, against %s with %o named, switches ahead of the throw to slot %s: %s',
+  (party, fainted, opponent, seen, meta, slot) => {
+    expect(
+      resisterOf(
+        DATA,
+        cards(party),
+        0,
+        { species: party[0] ?? null },
+        new Set(fainted),
+        { species: opponent },
+        new Set(seen),
+        meta,
+      )?.slot,
+    ).toBe(slot);
+  },
+);
+
+/**
+ * The move a resister is switched to ahead of, and its cost, which the caller times the switch by: of two feared, the
+ * cheaper. Articuno is hit super effectively by Moltres's Overheat and Ancient Power both, and Swampert resists both.
+ */
+test('a resister says which move it is switched to ahead of, and why', () => {
+  const lead = (species: string) => ({ species });
+
+  expect(
+    resisterOf(
+      DATA,
+      cards(['Venusaur', 'Azumarill']),
+      0,
+      lead('Venusaur'),
+      new Set(),
+      lead('Charizard'),
+      new Set(),
+      CHARIZARD_RUN,
+    ),
+  ).toEqual({
+    slot: 1,
+    move: 'Blast Burn',
+    cost: 50,
+    why: "Azumarill resists it, and nothing of Charizard's is super effective",
+  });
+  expect(
+    resisterOf(
+      DATA,
+      cards(['Articuno', 'Swampert']),
+      0,
+      lead('Articuno'),
+      new Set(),
+      lead('Moltres'),
+      new Set(),
+      metaOf('Moltres', ['Overheat', 'Ancient Power']),
+    ),
+  ).toEqual({
+    slot: 1,
+    move: 'Ancient Power',
+    cost: 45,
+    why: "Swampert resists it and Overheat, and nothing of Moltres's is super effective",
+  });
 });
 
 test('no button is best while one of a pair has no move read under it', () => {

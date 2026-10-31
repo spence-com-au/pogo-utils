@@ -15,6 +15,7 @@
  */
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
+import { MOVES_HELD } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
@@ -430,6 +431,101 @@ export function stripperOf(
     best && {
       slot: best.slot,
       why: `${party[best.slot]?.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
+    }
+  );
+}
+
+/**
+ * The charged moves the opponent may hold, as `resisterOf` fears them: both the banner has named, once it has named
+ * two; otherwise any it has named and those of its forms' pools that its players run, by PvPoke's moveset for its
+ * species. Never every move its forms can hold, as `chargedOf` falls back on, a switch for a move nobody runs costing
+ * the switch timer for nothing; so nothing at all where the banner has named nothing and PvPoke does not rank it, as in
+ * Training.
+ */
+function heldBy(data: GameData, opponent: Shown, seen: ReadonlySet<string>, meta?: Meta | null): string[] {
+  if (seen.size >= MOVES_HELD) {
+    return [...seen];
+  }
+
+  const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
+  const pool = formsOf(data, opponent).flatMap((form) => form.moves.filter((move) => !move.fast));
+  const run = moveset ? pool.map(({ name }) => name).filter((name) => moveset.chargedMoves.includes(name)) : [];
+
+  return [...new Set([...seen, ...run])];
+}
+
+/** A switch of our lead ahead of a charged move it fears, which is `move`, costing `cost` energy. */
+export interface Resister extends Switch {
+  move: string;
+  cost: number;
+}
+
+/**
+ * Which slot to switch our lead to, of the bench, before the opponent's lead throws a charged move that hits ours super
+ * effectively, against whichever typing ours could have that takes it worst: one that resists every such move, less
+ * than neutral against each typing its forms have, and that no other move the opponent may hold hits super effectively.
+ * The throw lands on it instead, the energy spent on a resisted hit, and ours keeps its HP and whatever it has lit on
+ * the bench. The hardest-hitting of those, as `refugeOf` ranks them, and between equals the first card. With it, the
+ * cheapest of the moves feared, which sets when to switch: the caller's to say, by the opponent's energy as `Energy`
+ * counts it, and only while both leads are out, the count starting then from a known zero and our switch timer free.
+ *
+ * The moves feared and allowed for are `heldBy`'s. Undefined where none is feared, where no benched card resists them
+ * all, or where our species or the opponent's is not known; a benched card whose species is not known, or names no
+ * form, is never sent, its types unknown.
+ */
+export function resisterOf(
+  data: GameData,
+  party: readonly Card[],
+  out: number,
+  own: Shown,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  seen: ReadonlySet<string> = new Set(),
+  meta?: Meta | null,
+): Resister | undefined {
+  if (own.species === null || opponent.species === null) {
+    return undefined;
+  }
+
+  const ours = typesOf(data, own);
+  const moves = heldBy(data, opponent, seen, meta).flatMap((name) => {
+    const move = data.combat[name];
+
+    return move && move.energy < 0 ? [{ name, ...move }] : [];
+  });
+  const feared = moves.filter((move) => ours.some((types) => effectiveness(data, move.type, types) > 1));
+  const [cheapest] = [...feared].sort((a, b) => b.energy - a.energy);
+
+  if (!cheapest) {
+    return undefined;
+  }
+
+  const [best] = party
+    .flatMap((card, slot) => {
+      const { species } = card;
+
+      if (species === null || slot === out || fainted.has(slot)) {
+        return [];
+      }
+
+      const typings = typesOf(data, { species });
+      const resists =
+        typings.length > 0 &&
+        feared.every((move) => typings.every((types) => effectiveness(data, move.type, types) < 1));
+      const hit = moves.some((move) => typings.some((types) => effectiveness(data, move.type, types) > 1));
+
+      return resists && !hit ? [{ slot, species, ...hardest(data, card, opponent) }] : [];
+    })
+    .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
+
+  const others = feared.filter((move) => move !== cheapest).map((move) => ` and ${move.name}`);
+
+  return (
+    best && {
+      slot: best.slot,
+      move: cheapest.name,
+      cost: -cheapest.energy,
+      why: `${best.species} resists it${others.join('')}, and nothing of ${opponent.species}'s is super effective`,
     }
   );
 }

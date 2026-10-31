@@ -570,6 +570,38 @@ Neither switch is tried within 45s of a switch of ours, our switch timer running
 gives the bank back. Refused by the timer, or dropped a second time, neither is tried again for 10s; dropped the first
 time, it's tried again at once.
 
+### Switching the lead
+
+While both leads are out, neither side having fainted or switched, the opponent's energy is
+[counted](#the-opponents-energy) from a known zero and our switch timer is free. If a charged move the opponent's lead
+may hold hits ours super effectively, against whichever typing ours could have that takes it worst, ours switches one
+fast move before the opponent can afford it, to a benched Pokémon that resists it ([`strategy.mts`](strategy.mts)'s
+`resisterOf`). That last fast move lands on the newcomer, and so does the throw, its energy spent on a resisted hit
+rather than a super-effective one: the game's AI, and players who throw as soon as they can, throw into it.
+
+- **The feared move.** One the banner has named, or else one of PvPoke's moveset for the species; once the banner has
+  named two, those two alone. Not every move the species can learn, which would switch on moves nobody runs, so in
+  Training nothing is feared until a banner names it.
+- **When.** Once the energy counted, plus what one more of the opponent's fast moves gains, covers the feared move's
+  cost. Of a cheaper and a dearer feared move, the cheaper sets the time.
+- **Who.** A benched Pokémon that resists every feared move, less than neutral against every typing of its forms, and
+  that no other move the opponent may hold hits super effectively. Of several, the one that hits the opponent hardest,
+  as `refugeOf` ranks them, and between equals the first card. With none, or a species unread on either side, it stays
+  in.
+- **Shields.** It switches whether or not we have shields left, the switch costing the switch timer rather than a
+  shield.
+- **What comes first.** A lit move that would [finish](#which-charged-move-to-throw) the opponent is thrown instead. A
+  lit move the strategy would throw now goes first, and the switch follows: the fight stands still through a throw, so
+  the opponent gains nothing meanwhile. A lit move held for a bigger one is banked by the switch, as
+  [escaping](#banking-energy) banks one. Unlike the other switches, it isn't given up for ours being doomed: the move to
+  throw goes first all the same, and the hit ours would faint to lands on the newcomer.
+
+Logged as
+`switching to Azumarill against Charizard: Blast Burn affordable after one more Fire Spin; Azumarill resists it, and nothing of Charizard's is super effective`,
+with `, banking Hydro Pump` after the opponent's name where a move is lit. The newcomer stays in, and the rules above
+play the matchup that follows, the refuge and the shield drawer waiting out our switch timer. The opponent's lead has
+its own switch timer free, so it can answer with a switch of its own; that risk is accepted.
+
 ### Knowing who is out
 
 - **Ours:** a nicknamed Pokémon's species comes from the party screen: the lead, then whichever card was sent in, named
