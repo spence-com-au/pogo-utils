@@ -16,7 +16,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
-import { closest, type Form, type GameData, type IVs } from './game-master.mts';
+import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
 import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
@@ -215,11 +215,11 @@ interface Fixture {
  * eight at once, falsifiably — re-run it and the first match is in the set the row claims. Negation is the half only a
  * search can give, since nothing on the screen says a Pokémon is **not** lucky.
  *
- * The other 39 rows have no search behind them. They arrived named for what they are, and the name is a claim the
+ * The other 40 rows have no search behind them. They arrived named for what they are, and the name is a claim the
  * rendered screen has to bear out — weaker provenance, and sufficient for what those rows are for.
  *
  * `xurkitree.png`'s search is the weak one of the four: `alola` pins its region and nothing else, so its `size` and
- * flags rest on the same eye as the 39 and it is one of those rows in everything but provenance.
+ * flags rest on the same eye as the 40 and it is one of those rows in everything but provenance.
  *
  * | file             | search                                                                               |
  * |------------------|--------------------------------------------------------------------------------------|
@@ -659,6 +659,20 @@ const FIXTURES: readonly Fixture[] = [
     weight: 5.61,
   },
   {
+    cp: 14,
+    file: 'pumpkaboo-large.png',
+    form: 'Large',
+    gender: 'male',
+    height: 0.57,
+    hp: 14,
+    overlay: { iv: { attack: 2, defense: 0, stamina: 6 }, level: 1 },
+    shiny: true,
+    size: 'XL',
+    species: 'Pumpkaboo',
+    types: ['Ghost', 'Grass'],
+    weight: 11.07,
+  },
+  {
     cp: 813,
     file: 'rotom-wash.png',
     form: 'Wash',
@@ -930,7 +944,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 43 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 44 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1102,9 +1116,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 46.
+ * covers everything else in this file — one capture rather than 47.
  *
- * They need it because a body that waits on all 46 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 47 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1293,15 +1307,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 43,
+  rows: 44,
   negatives: 3,
-  answeredAsThemselves: 42,
-  oneLevel: 43,
-  crossCheckAgrees: 43,
+  answeredAsThemselves: 43,
+  oneLevel: 44,
+  crossCheckAgrees: 44,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 35,
+  noDefects: 36,
   unseparated: 8,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1342,9 +1356,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 43 any more, where eight raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 44 any more, where eight raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 43 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 44 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The eight it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1459,6 +1473,7 @@ test(
       'pikachu-willows-assistant.png': 385,
       'pikachu-witch-hat.png': 625,
       'pikachu.png': 69,
+      'pumpkaboo-large.png': 14,
       'rotom-wash.png': 813,
       'smoliv.png': 340,
       'spoink.png': 998,
@@ -1663,7 +1678,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(43);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(44);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -1848,9 +1863,11 @@ test('a search across every species names one form per set of numbers', async ()
   const { detail, overlay } = await readingOf('growlithe-nickname.png');
   assert.ok(overlay, 'the fixture has lost its overlay');
 
+  // Without Growlithe's 0.91m, which no Unown's middle band holds: the forged reading is of nothing in particular, and a
+  // height would narrow the search to whatever species is that tall.
   const searched = identify(
     DATA,
-    { ...detail, types: ['Psychic'], hp: 55, cp: null, cps: [] },
+    { ...detail, types: ['Psychic'], hp: 55, cp: null, cps: [], height: null },
     { ...overlay, iv: { attack: 10, defense: 10, stamina: 10 }, levels: [10] },
   );
 
@@ -1901,6 +1918,37 @@ test(
   },
   WHOLE_CORPUS_TIMEOUT,
 );
+
+/**
+ * What `sizeSettings` means, measured where `fitsHeight` takes it on trust: every row's height is in the band its
+ * badge names, or the middle one where it wears none, and the badged rows are in no band but their own. The second
+ * half is what makes the first worth stating — 39 heights in a middle band as wide as Pikachu's 0.3m to 0.5m would fit
+ * plenty of wrong readings of the six numbers, where five badged rows each alone in a narrow band fit few.
+ *
+ * `smoliv.png` is the exception the rounding makes: 0.15m is where Smoliv's XXS band ends and its XS band begins.
+ */
+test("every row's height is in the band its size badge names", () => {
+  const SIZES = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
+  const misfits: string[] = [];
+  const straddling: string[] = [];
+
+  for (const fixture of FIXTURES) {
+    const truth = fixture.form ? `${fixture.species} (${fixture.form})` : fixture.species;
+    const form = DATA.forms.find((f) => label(f) === truth);
+    assert.ok(form, `${truth} is not in the vended game master`);
+
+    const fitting = SIZES.filter((size) => fitsHeight(form, fixture.height, size));
+
+    if (!fitting.includes(fixture.size ?? null)) {
+      misfits.push(`${fixture.file} is ${fixture.height}m, which ${truth} wears as ${fitting.join(' or ')}`);
+    } else if (fixture.size && fitting.length > 1) {
+      straddling.push(fixture.file);
+    }
+  }
+
+  expect(misfits).toStrictEqual([]);
+  expect(straddling, 'a badged height fits a band besides its own').toStrictEqual(['smoliv.png']);
+});
 
 /**
  * One stray coloured pixel in the size badge's band, which no capture happens to carry and any could: the band is
@@ -2211,6 +2259,7 @@ test(
       'pikachu-willows-assistant.png': { fast: 'Quick Attack', charged: ['Thunderbolt'] },
       'pikachu-witch-hat.png': { fast: 'Quick Attack', charged: ['Discharge'] },
       'pikachu.png': { fast: 'Thunder Shock', charged: ['Thunderbolt'] },
+      'pumpkaboo-large.png': { fast: 'Astonish', charged: ['Grass Knot'] },
       'rotom-wash.png': { fast: 'Thunder Shock', charged: ['Hydro Pump'] },
       'smoliv.png': { fast: 'Tackle', charged: ['Energy Ball'] },
       'snorlax-purified.png': { fast: 'Lick', charged: ['Return'] },
@@ -2307,7 +2356,7 @@ test('the corpus reaches both sides of every attribute', () => {
   }
 
   // `shadow` is the fifth of those and cannot be asserted that way: no capture is shadow, so the column is false on all
-  // 43. Stated here as the gap it is rather than quietly dropping `shadow` from the list above and leaving a reader to
+  // 44. Stated here as the gap it is rather than quietly dropping `shadow` from the list above and leaving a reader to
   // find the hole.
   expect(
     FIXTURES.filter((f) => f.shadow).map((f) => f.file),
@@ -2375,7 +2424,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 43.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 44.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(
