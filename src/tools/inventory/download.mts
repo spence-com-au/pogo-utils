@@ -75,6 +75,9 @@ interface Template {
       nonTmCinematicMoves?: string[];
       shadow?: { shadowChargeMove?: string; purifiedChargeMove?: string };
 
+      /** Each evolution, with the candy it costs; a mega evolution is a branch too, costing energy and no candy. */
+      evolutionBranch?: { candyCost?: number }[];
+
       /**
        * The form's name, or its number where it is too new for the names the dump was made with: `3362` for Zubat's
        * Halloween 2026 costume, the week it arrived.
@@ -351,6 +354,9 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       ]
         .map((id) => byId.get(id))
         .filter((m) => m !== undefined),
+      evolveCandy: [
+        ...new Set((settings.evolutionBranch ?? []).flatMap((b) => (b.candyCost === undefined ? [] : [b.candyCost]))),
+      ],
     };
 
     // A species with forms is listed once bare and once per form, the bare entry repeating the `_NORMAL` one. Keep it

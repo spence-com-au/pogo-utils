@@ -13,6 +13,7 @@ const APPLIN: Form = {
   stamina: 120,
   icon: null,
   moves: [],
+  evolveCandy: [200],
 };
 
 /** `applin.png` as the readers make it: `CP` unlabelled, so the 286 the screen shows is only in `cps`. */
