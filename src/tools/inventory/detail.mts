@@ -9,7 +9,7 @@
 
 import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
-import { brighten, crop, isolate, scale, type Image } from './png.mts';
+import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
 import { genderOf, isFavourite, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE } from './overlay.mts';
 export interface Detail {
@@ -45,6 +45,13 @@ export interface Detail {
    * where no chip is drawn, and where the HP or the measurement row the chips sit between was not read.
    */
   tags: string[];
+
+  /**
+   * The candy the `EVOLVE` row asks for, which is the game master's `candyCost` for one of the form's branches unless a
+   * trade or an event has changed it — the only thing on the screen separating Sinistea's Phony form from its Antique.
+   * Null where the screen draws no such row, as for a Pokémon that does not evolve, and where its figure was not read.
+   */
+  evolveCandy: number | null;
 }
 
 /** Everything OCR read off an image: the whole of it, then the top fifth again inverted, where the CP is white. */
@@ -60,14 +67,14 @@ export async function readLines(image: Image): Promise<Line[]> {
  * cost a capture its whole form — as `ce`: `deoxys-attack.png` reads `ce1441`, digits perfectly right and the `P`
  * taken for an `e`. Both halves of the label are a glyph OCR gets wrong, so both are a pair rather than a letter.
  *
- * It admits 33 captures, 22 reading the CP exactly off the line; `wholeCp` recovers seven more and four are left to
+ * It admits 35 captures, 24 reading the CP exactly off the line; `wholeCp` recovers seven more and four are left to
  * the arithmetic. The two go together: the label says which line, the band says the whole number.
  *
  * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the Inventory page reads with answers
  * `cP48 7` off `unown-b.png`, where the CLI's `cP48/` leaves `wholeCp` to find the 487.
  *
  * And it may carry a `/`, which is how the CLI reads the large font's thin 7 more often than not: `cp/56` for a 756,
- * `cp///` for a 777, `cpe4/0` for a 470, and 12 of those 33 label lines carry one. Not always a 7, though — the same
+ * `cp///` for a 777, `cpe4/0` for a 470, and 12 of those 35 label lines carry one. Not always a 7, though — the same
  * CLI reads `cP48/7` off `unown-b.png`'s 487 on a second line, the slash a stroke of nothing. So the `/` is kept,
  * matched against `foldCp` rather than `fold`, and `readingsOf` is what says what it might have been.
  */
@@ -226,7 +233,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags] = await Promise.all([
+  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, evolveCandy] = await Promise.all([
     whole,
     rescued,
     weight,
@@ -235,6 +242,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     cpLine ? [] : cpsIn(image),
     typesOf(lines, data, image),
     hpLine && row ? tagsOn(image, hpLine, row) : [],
+    row ? evolveCandyOn(image, row) : null,
   ]);
 
   // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
@@ -253,6 +261,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     favourite: isFavourite(image),
     size: sized?.size ?? null,
     tags,
+    evolveCandy,
   };
 }
 
@@ -286,7 +295,7 @@ async function cpsIn(image: Image): Promise<number[]> {
 
 /**
  * The CP again, out of a band round the line the whole-screen pass found, where that pass lost a digit or two off one
- * end or drew a 7 as a `/`. White over the artwork is the hardest text on the screen. All 33 captures with a label line
+ * end or drew a 7 as a `/`. White over the artwork is the hardest text on the screen. All 35 captures with a label line
  * reach this and seven are changed by it: `/38` for 738, `48/` for 487 and `48` for 486, and `1/05`, `9/9`, `5/1` and
  * `4/2` for the 1705, 979, 571 and 472 on their screens. The 1569 once named here is still what its row states, with
  * no label line left on the stitch for this to anchor on, and the 746 is left to the arithmetic, no band reading the
@@ -294,7 +303,7 @@ async function cpsIn(image: Image): Promise<number[]> {
  *
  * A line no band can change is not read round at all: one already as long as a CP goes, `rescue` wanting a number
  * longer than the line's and no longer than `longest`, and one with a `/` whose readings are already one, or hold no
- * reading with every `/` a 7 for a band to agree with. That is ten of the 33 and 120 passes for the corpus. Over the
+ * reading with every `/` a 7 for a band to agree with. That is ten of the 35 and 132 passes for the corpus. Over the
  * 23 label lines it read before the `/` was kept, it cost 84 where three treatments unguarded cost 132 and two cost 90.
  *
  * The treatments at a pad go together rather than in turn, being three pure functions of the one band, and what is
@@ -519,6 +528,186 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
   return line ? found(line.text) : [];
 }
 
+/**
+ * The candy the `EVOLVE` row asks for, off the rows of buttons under the measurement row. The whole-screen pass is no
+ * use for finding it: white capitals on a green pill, it reads `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan
+ * kept, and the figure beside it as `S50` or `225`, the candy icon taken for a digit. So the rows are found by their
+ * pills, each pill's label is read on its own, and the figure is cut out of the row by its columns of ink before it is
+ * read — the rightmost number in the row, which is the candy whether an item, a trade or a time of day is asked for
+ * beside it.
+ *
+ * Every button row is a pill, `POWER UP` and `NEW ATTACK` as much as `EVOLVE`, which is why the label is read: the row
+ * moves with what the panel holds above it, a mega energy count pushing it 185 pixels down on a Pixel 4 XL, and with
+ * whether a `POWER UP` comes first at all. The first `EVOLVE` row whose figure reads is the answer, a species with a
+ * branch per item drawing one row per branch.
+ */
+export async function evolveCandyOn(image: Image, row: Line): Promise<number | null> {
+  const found = pills(image, row.top + row.height);
+  const labels = await Promise.all(
+    found.map((pill) => {
+      const label = crop(image, image.width * PILL.left, pill.top, image.width * PILL.width, pill.height);
+
+      return ocrLine(scale(isolate(label, LABEL_WHITE.luminance, LABEL_WHITE.chroma), 2), LABEL_ALPHABET);
+    }),
+  );
+
+  for (const [i, pill] of found.entries()) {
+    const span = closest(labels[i] ?? '', ['EVOLVE'], (s) => s) === null ? null : figureIn(image, pill);
+
+    if (span === null) {
+      continue;
+    }
+
+    // Cropped to the middle of the pill the ink was measured in, and no further either side than a gap could be: a
+    // wider band takes in an edge of the candy icon, which reads as a leading digit, and a taller one the floating
+    // menu button's rim where the row sits low enough to reach it — `30` for a `50` with the rim in the corner.
+    const margin = pill.height * FIGURE_GAP;
+    const band = crop(
+      image,
+      span.left - margin,
+      pill.top + pill.height * INK_BAND.from,
+      span.right - span.left + margin * 2,
+      pill.height * (INK_BAND.to - INK_BAND.from),
+    );
+    const digits = ((await ocrLine(scale(band, 2), '0123456789,')) ?? '').replaceAll(',', '');
+
+    if (/^\d+$/.test(digits)) {
+      return Number(digits);
+    }
+  }
+
+  return null;
+}
+
+/** A button row's pill, in the screen's rows. */
+export interface Pill {
+  top: number;
+  height: number;
+}
+
+/**
+ * Every button pill below `from`, found down a column through the pills' rounded left ends: the card behind them is
+ * white and every pill is not, green as `EVOLVE` is, pink where an item or a time of day is wanted and grey where the
+ * candy is short. Kept by height, measured in the screen's width as the layout is: 0.086 to 0.088 of it on a 1008 phone
+ * and a 1440 one alike, and 0.080 where the screen's foot cuts one off, where the nearest other run down the column is
+ * a move's type icon at 0.049 and a stray on `charizard-gigantamax.png` at 0.067. A run let through costs one read of
+ * a label that is not `EVOLVE`, nothing more.
+ */
+export function pills(image: Image, from: number): Pill[] {
+  const x = image.width * PILL.column;
+  const found: Pill[] = [];
+  let top: number | null = null;
+
+  for (let y = Math.max(0, Math.round(from)); y <= image.height; y++) {
+    const inked = y < image.height && luminance(...rgb(image, x, y)) < CARD_LUMINANCE;
+
+    if (inked && top === null) {
+      top = y;
+    } else if (!inked && top !== null) {
+      const height = y - top;
+
+      if (height >= image.width * PILL.shortest && height <= image.width * PILL.tallest) {
+        found.push({ top, height });
+      }
+
+      top = null;
+    }
+  }
+
+  return found;
+}
+
+/**
+ * Where the row's rightmost number lies across the screen, or null where nothing in the row reads as a number. Each
+ * column of the panel is ink or not by whether any pixel in the middle of the row parts from the panel's own colour
+ * — sampled from the row, so a pink or a grey panel and red digits read as readily as the ordinary ones — and runs of
+ * ink columns are glyphs.
+ *
+ * A digit is narrow, at most 0.24 of the pill's height on either phone, where every icon beside it is not: a candy is
+ * 0.44 to 0.48, the menu button over the lowest rows 0.83. So the number is the rightmost run of narrow glyphs, stopped
+ * at a wide one and at a gap of `FIGURE_GAP` or more — the gaps inside a figure, its comma's included, are 0.05 of the
+ * height at most, and the one between a candy icon and its figure 0.12 at least. The gap is for a pale candy, whose
+ * stripes alone are ink: the white one on a Pixel 4 XL breaks into glyphs of which the widest is 0.32, near enough to a
+ * digit not to rely on width alone.
+ */
+export function figureIn(image: Image, pill: Pill): { left: number; right: number } | null {
+  const from = Math.round(image.width * PANEL.from);
+  const to = Math.round(image.width * PANEL.to);
+  const panel = rgb(image, from, pill.top + pill.height / 2);
+  const top = Math.round(pill.top + pill.height * INK_BAND.from);
+  const bottom = Math.round(pill.top + pill.height * INK_BAND.to);
+  const glyphs: { left: number; right: number }[] = [];
+
+  for (let x = from; x <= to; x++) {
+    let inked = false;
+
+    for (let y = top; y < bottom && !inked; y++) {
+      inked = rgb(image, x, y).some((c, i) => Math.abs(c - (panel[i] ?? 0)) > INK_CONTRAST);
+    }
+
+    const last = glyphs.at(-1);
+
+    if (inked && last?.right === x) {
+      last.right = x + 1;
+    } else if (inked) {
+      glyphs.push({ left: x, right: x + 1 });
+    }
+  }
+
+  const narrow = (g: { left: number; right: number }) => g.right - g.left <= pill.height * DIGIT_WIDTH;
+  const end = glyphs.findLastIndex(narrow);
+  const last = glyphs[end];
+
+  if (last === undefined) {
+    return null;
+  }
+
+  let left = last.left;
+
+  for (const glyph of glyphs.slice(0, end).reverse()) {
+    if (!narrow(glyph) || left - glyph.right >= pill.height * FIGURE_GAP) {
+      break;
+    }
+
+    left = glyph.left;
+  }
+
+  return { left, right: last.right };
+}
+
+/**
+ * Where the pills sit across the screen, in its width: the column they are found down, just inside the rounded end at
+ * 0.069; where the label is read, the whole pill to its end at 0.470; and the heights a pill runs to, round the 0.080
+ * to 0.088 `pills` measures.
+ */
+const PILL = { column: 0.09, left: 0.07, width: 0.4, shortest: 0.07, tallest: 0.1 };
+
+/**
+ * What the card behind the pills is brighter than: it is 255, a green pill 201 to 203, a grey 215, and a pink 214 where
+ * a time of day is wanted and 154 where `applin.png` wants an apple.
+ */
+const CARD_LUMINANCE = 235;
+
+/** The panel beside a pill, from just past the pill's end at 0.470 to just short of the panel's own at 0.930. */
+const PANEL = { from: 0.49, to: 0.92 };
+
+/** The rows of a pill a figure's ink is looked for in, being the middle of it: the digits are centred. */
+const INK_BAND = { from: 0.2, to: 0.8 };
+
+/** How far a channel has to part from the panel's colour for the pixel to be ink. */
+const INK_CONTRAST = 60;
+
+/** The widest a digit is, in its pill's height. */
+const DIGIT_WIDTH = 0.3;
+
+/** The narrowest gap that ends a figure, in its pill's height, between the 0.05 inside one and an icon's 0.12. */
+const FIGURE_GAP = 0.08;
+
+/** The label's white, kept apart from the pill it is drawn on, the brightest of which is the grey at 215. */
+const LABEL_WHITE = { luminance: 240, chroma: 30 };
+
+const LABEL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+
 const CP_ALPHABET = 'CP0123456789 ';
 
 /** How many digits the highest CP any form can show runs to: perfect IVs at the highest level there is. */
@@ -579,7 +768,7 @@ const CP_ACROSS = 0.5;
  * and where two of them accept at one pad they accept the same number: plain and near-white at `unown-b.png`'s and
  * `articuno-kanto.png`'s 0.35, and all three at `vulpix.png`'s. Nor is going
  * last protection for a line already read right: a pass reading that number back is the same length, so the rule turns
- * it down and the loop carries on. It costs 40 of the corpus's 120 passes, and what bounds its noise is the four-digit
+ * it down and the loop carries on. It costs 44 of the corpus's 132 passes, and what bounds its noise is the four-digit
  * cap, which `wholeCp` now applies before any band is read rather than after three.
  *
  * What `cpsIn` has neither of is the guard that skips a band and the acceptance that ends a pad. Reading all three is

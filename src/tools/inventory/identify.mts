@@ -182,6 +182,19 @@ export function identify(
     }
   }
 
+  // The candy the `EVOLVE` row asks for, all that separates Sinistea's Phony form at 50 from its Antique at 400, and
+  // Poltchageist's Counterfeit from its Artisan likewise: every number above is the same between each pair.
+  //
+  // Evidence only where it matches a branch some candidate has. What the row prints can part from the game master — a
+  // trade that makes the evolution free, an event that halves its cost — so a figure no candidate costs is taken as
+  // unread rather than as ruling every candidate out. A form with no branch at all is kept, its row being something
+  // the game master does not state: costumed Pikachu have none of their own and `pikachu-ash-hat.png` still asks 50.
+  const candy = detail.evolveCandy;
+
+  if (candy !== null && candidates.some((f) => f.evolveCandy.includes(candy))) {
+    candidates = candidates.filter((f) => f.evolveCandy.length === 0 || f.evolveCandy.includes(candy));
+  }
+
   // The height against the band its badge names, which is what separates forms the game master draws at different
   // sizes where every number above leaves them together: Pumpkaboo's and Gourgeist's four, a level 1 Large and Super at
   // 2/0/6 both showing 14 HP and CP 14. Their bands only touch — a Large is 0.5m to 0.6m, a Super 0.6m to 0.8m — so

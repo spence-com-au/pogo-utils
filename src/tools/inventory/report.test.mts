@@ -14,6 +14,7 @@ const APPLIN: Form = {
   heights: null,
   icon: null,
   moves: [],
+  evolveCandy: [200],
 };
 
 /** `applin.png` as the readers make it: `CP` unlabelled, so the 286 the screen shows is only in `cps`. */
@@ -32,6 +33,7 @@ const READING: Reading = {
     favourite: false,
     size: 'XL',
     tags: [],
+    evolveCandy: null,
   },
   moves: { fast: 'Astonish', charged: ['Struggle'] },
   box: null,

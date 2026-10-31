@@ -51,6 +51,14 @@ export interface Form {
    * choosing among three and among hundreds.
    */
   moves: readonly Move[];
+
+  /**
+   * The candy each of this form's evolutions costs, which the detail screen's `EVOLVE` row prints and which is all that
+   * separates Sinistea's Phony form, at 50, from its Antique one, at 400. Empty where the game master records none — a
+   * statement about the game master rather than the screen: a costumed Pikachu has no branch of its own and its screen
+   * still offers to evolve it for 50.
+   */
+  evolveCandy: readonly number[];
 }
 
 export interface Move {
