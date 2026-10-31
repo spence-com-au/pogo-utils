@@ -375,6 +375,67 @@ test('a bait saving no more than `BAIT_SAVES` is not thrown, the move worth the 
   ).toEqual({ x: 0.69, bait: true });
 });
 
+/**
+ * A Garchomp mirror, Sand Tomb, 45 energy, baiting for Outrage, 60 and 3.52 per energy into a Dragon to Sand Tomb's
+ * 1.83: held by Outrage's button until it lights beside Sand Tomb's, and thrown then.
+ */
+test.each<[string, string, readonly number[], { bait?: boolean; mirror?: string }, object]>([
+  [
+    'in a mirror, a bait lit alone is held for the move it stands in for',
+    'Sand Tomb',
+    [0.31],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, held: 0.31, why: 'a Garchomp mirror counts our energy' },
+  ],
+  [
+    'in a mirror, the move a bait stands in for is held for with nothing lit',
+    'Sand Tomb',
+    [],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, held: 0.31, why: 'a Garchomp mirror counts our energy' },
+  ],
+  [
+    'in a mirror, a bait goes once the move it stands in for lights beside it',
+    'Sand Tomb',
+    [0.31, 0.69],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.31, bait: true, why: 'bait, Outrage lit beside it' },
+  ],
+  ['out of a mirror, a bait lit alone goes at once', 'Sand Tomb', [0.31], { bait: true }, { x: 0.31, bait: true }],
+  [
+    'in a mirror where `BAIT_SAVES` rules out baiting, Earth Power saving 10, the move worth the most goes',
+    'Earth Power',
+    [0.31],
+    { bait: true, mirror: 'Garchomp' },
+    { x: 0.69, bait: false, why: 'not baiting: Earth Power costs only 10 less than Outrage' },
+  ],
+  [
+    'in a mirror with no shield left to bait, the move worth the most per energy goes',
+    'Sand Tomb',
+    [0.31],
+    { mirror: 'Garchomp' },
+    { x: 0.69, bait: false },
+  ],
+])('%s', (_, cheap, lit, options, pick) => {
+  const garchomp = typesOf(DATA, { species: 'Garchomp' });
+  const moves = new Map([
+    [0.31, cheap],
+    [0.69, 'Outrage'],
+  ]);
+
+  expect(bestButton(DATA, moves, garchomp, garchomp, { ...options, lit })).toEqual(pick);
+});
+
+test('a mirror of a species beginning with a vowel is told as an', () => {
+  expect(
+    bestButton(DATA, KYOGRE, typesOf(DATA, { species: 'Entei' }), typesOf(DATA, { species: 'Entei' }), {
+      bait: true,
+      mirror: 'Entei',
+      lit: [0.69],
+    }),
+  ).toEqual({ x: 0.31, bait: false, held: 0.69, why: 'an Entei mirror counts our energy' });
+});
+
 test.each<[(string | null)[], number[], string, number | undefined, string]>([
   [['Latias', 'Mamoswine', 'Giratina'], [0], 'Glaceon', 1, 'none safe from Glaceon; Mamoswine hits hardest'],
   [['Tyranitar', 'Giratina', 'Kyogre'], [0], 'Salamence', 2, 'Kyogre the one Salamence cannot hit hard'],

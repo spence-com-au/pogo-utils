@@ -1494,6 +1494,96 @@ test.each([
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
 });
 
+/** The game master with Entei able to hold Kyogre's Hydro Pump and Avalanche. */
+const ENTEI_HYDRO_PUMP: GameData = {
+  ...DATA,
+  forms: DATA.forms.map((form) =>
+    form.species === 'Entei'
+      ? { ...form, moves: [...form.moves, { name: 'Hydro Pump', fast: false }, { name: 'Avalanche', fast: false }] }
+      : form,
+  ),
+};
+
+/**
+ * Kyogre against Entei in Ultra League, played as an Entei mirror: Giratina's icon stands for Entei on the party
+ * screen, which is then Latias, Mamoswine and Entei, and Entei can hold Hydro Pump and Avalanche in `ENTEI_HYDRO_PUMP`,
+ * so that the card the moves under the buttons fit, the HUD naming ours by a nickname, is an Entei. Avalanche, 45
+ * energy, is the bait for Hydro Pump, 75 and 2.77 per energy into Entei to Avalanche's 1.25. What the run taps and
+ * tells, through `scenes` after the party screen, for `count` battles.
+ */
+async function mirror(scenes: Record<string, Scene>, count = 1): Promise<{ taps: string[]; said: string[] }> {
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Giratina' ? 'Entei' : icon.species }));
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), minigame: minigameNoneFainted(), ...scenes }, 'party');
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: ENTEI_HYDRO_PUMP,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count,
+    },
+    clock,
+    report,
+  );
+
+  return { taps: taps.filter((scene) => scene in scenes), said: holds(report.events) };
+}
+
+/**
+ * With Entei's shields up, Avalanche lit alone for 3s is held, nothing tapped, and goes once Hydro Pump lights beside
+ * it, twice over, the second hold told afresh; `baits with the cheaper move while the opponent has shields` throws it at
+ * once out of a mirror.
+ */
+test('in a mirror, holds a bait lit alone until the move it stands in for lights beside it', async () => {
+  const { taps, said } = await mirror({
+    'fight': { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'both' } },
+    'both': { frame: fixture('charged-two-both'), tap: { at: [0.69, 0.889], to: 'minigame' } },
+    'minigame': { ...minigameNoneFainted(), swipes: { count: 40, to: 'again' } },
+    'again': { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'both again' } },
+    'both again': { frame: fixture('charged-two-both'), tap: { at: [0.69, 0.889], to: 'last' } },
+    'last': minigameNoneFainted(),
+  });
+  const round = [
+    'own: holding Avalanche for Hydro Pump to light: an Entei mirror counts our energy',
+    'own: threw Avalanche: bait, Hydro Pump lit beside it',
+  ];
+
+  expect(taps).toEqual(['both', 'both again']);
+  expect(said).toEqual([...round, ...round]);
+});
+
+/** A hold under way as a battle ends is told afresh in the next. */
+test('in a mirror, tells a bait held again in the next battle', async () => {
+  const { said } = await mirror({ fight: { frame: fixture('charged-two-right'), lasts: { ms: 3000, to: 'won' } } }, 2);
+  const held = 'own: holding Avalanche for Hydro Pump to light: an Entei mirror counts our energy';
+
+  expect(said).toEqual([held, held]);
+});
+
+/**
+ * The same with our bar, its fill painted over past the HP wanted, seen to lose 12 points to one of Entei's fast moves
+ * once the battle's first read has named it, from 25% to 13%, within one more, and Avalanche's button painted unlit
+ * for 200ms after: lit then, it goes at once, never told as held.
+ */
+test('in a mirror, a bait lit alone goes at once on a faint feared', async () => {
+  const ours = (px: number) =>
+    painted(fixture('charged-two-right'), [105, 91, 41], [(24 + px) / 360, 330 / 360, 91 / 360, 336 / 360]);
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [208 / 360, 635 / 360, 292 / 360, 676 / 360]);
+  const { taps, said } = await mirror({
+    fight: { frame: unlit(ours(25)), lasts: { ms: 400, to: 'hit' } },
+    hit: { frame: unlit(ours(13)), lasts: { ms: 200, to: 'lit' } },
+    lit: { frame: ours(13), tap: { at: [0.69, 0.889], to: 'minigame' } },
+  });
+
+  expect(taps).toEqual(['lit']);
+  expect(said).toEqual([
+    'own: threw Avalanche: their next fast move would faint us, one taking ~12% with 13% left; not holding for Hydro Pump',
+  ]);
+});
+
 /** The game master with Geomancy gaining 4 energy rather than 13, which leaves Moonblast two of them past Close Combat. */
 const SLOW_GEOMANCY: GameData = {
   ...DATA,
