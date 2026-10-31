@@ -37,8 +37,8 @@ const LISTED = '  Device 5: pogo-utils touch\n    Sources: 0x00001002\n';
 
 /**
  * `sh` as `heldShell` holds it open, answering each command as a phone's shell would — `dumpsys input` with the
- * touchscreen listed, anything else with nothing and a clean exit — and telling `heard` of each write and each command
- * it carried. Killed, it ends.
+ * touchscreen listed, anything else with nothing and a clean exit — and telling `heard` of each write and each
+ * command it carried. Killed, it ends.
  *
  * Each answer comes a turn of the event loop later, as a phone's comes back over USB. Answered at once, a tap would
  * settle on promises alone, and the battle loop, which taps on frame after frame with no sleep between, would never
