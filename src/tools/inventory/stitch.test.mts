@@ -13,7 +13,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { offsetBetween, stitch, SCREEN_BAND, SCROLL_STEP, type Band } from './stitch.mts';
+import { offsetBetween, scrollStep, stitch, SCREEN_BAND, type Band } from './stitch.mts';
 import { crop, decodePng, rgb, screenIn, type Image } from './png.mts';
 
 /**
@@ -359,17 +359,26 @@ test('a real capture slid by a known amount reads back as that amount', () => {
   }
 });
 
+test('a step is half the band, centred on it, down the middle of the screen', () => {
+  expect(scrollStep({ from: 0.25, to: 0.75 }, 100, 1000)).toStrictEqual([
+    [50, 625],
+    [50, 375],
+  ]);
+});
+
 /**
- * How far one step of a scroll capture may move and still be lined up, on a real screen. Half the band is what the
- * capture drags, and it reads back exactly; the scan's single swipe to the moves, half the whole screen, is past what
- * `offsetBetween` looks for at all, which is why a capture does not use it.
+ * How far one step may move and still be lined up, on a real screen. The step reads back exactly, and so does the step
+ * flung on past the finger as far as a Pixel 4 XL flung it at `SCROLL_DRAG_MS`, 1032 pixels for a drag of 836; half
+ * the whole screen, which the scan once dragged to its moves, is past what `offsetBetween` looks for at all.
  */
-test('the step a scroll capture drags is within reach, and the single swipe to the moves is not', () => {
+test('a step is within reach even flung, and a swipe of half the screen is not', () => {
   const screen = capture('pikachu.png');
-  const band = Math.round(screen.height * SCREEN_BAND.to) - Math.round(screen.height * SCREEN_BAND.from);
-  const step = Math.round(band * SCROLL_STEP);
+  const [from, to] = scrollStep(SCREEN_BAND, screen.width, screen.height);
+  const step = Math.round(from[1] - to[1]);
+  const flung = Math.round((step * 1032) / 836);
 
   expect(offsetBetween(screen, slid(screen, step), SCREEN_BAND), 'a step').toBe(step);
+  expect(offsetBetween(screen, slid(screen, flung), SCREEN_BAND), 'a step flung').toBe(flung);
   expect(offsetBetween(screen, slid(screen, Math.round(screen.height / 2)), SCREEN_BAND), 'the swipe').toBe(null);
 });
 
