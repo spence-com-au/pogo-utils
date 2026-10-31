@@ -70,7 +70,7 @@ import {
   type Source,
 } from '../src/tools/inventory/report.mts';
 import { count, csv, keyOf, Marks, parseFlags, walk as stepThrough, type Flag } from '../src/tools/inventory/scan.mts';
-import { offsetBetween, stitch, SCROLL_STEP } from '../src/tools/inventory/stitch.mts';
+import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
 import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -90,9 +90,10 @@ const SETTLE_ATTEMPTS = 4;
 const SCROLL_FRAMES = 12;
 
 /**
- * How long one drag of a scroll capture takes, in milliseconds. Slow, so that the content follows the finger rather
- * than flinging on past where it stopped and out of `offsetBetween`'s reach; a guess rather than a measurement, there
- * being no phone here to time one on.
+ * How long one drag of a scroll takes, in milliseconds. Slow, so that the content follows the finger rather than
+ * flinging on past where it stopped and out of `offsetBetween`'s reach. Measured with a `scrollStep` on a Pixel 4 XL's
+ * 1440x3040, where the step is 836 pixels and the reach 1254: at `input swipe`'s own 300 the panel went on to 1484 and
+ * 1697, at 1000 it moved 966 to 1032, and at 2000 it moved 847, margin this already has bought at a second a Pokémon.
  */
 const SCROLL_DRAG_MS = 1000;
 
@@ -625,21 +626,26 @@ async function scan() {
             notes.push(`the scroll lost its place after frame ${capture.frames.length}`);
           }
         } else {
-          await swipe(config.swipes.scrollDown, config.waits.scroll);
+          // One step of the `--scroll` branch's capture, at its speed, so that the shift lands inside what
+          // `offsetBetween` looks for. Half the screen at `input swipe`'s 300ms moved a Pixel 4 XL's panel as far as
+          // 0.69 of the screen, to its foot or flung past the finger, where the band reaches 0.41: 38 rows of 40 went
+          // unmeasured. The step still brings the moves up from the panel's foot to about two-thirds of the way down.
+          const [from, to] = scrollStep(config.scrollBand, latest.width, latest.height);
+          await device.swipe(from, to, SCROLL_DRAG_MS);
+          await sleep(config.waits.scroll);
           scrolled = await device.screenshot();
           keep(`${name}-moves`, scrolled);
 
           // Measured against the screen before the swipe, on the same footing as the `--scroll` branch above and
-          // `latest` for the same reason. What the drag asked for is no bound on what it got: it asks for half the
-          // screen where a panel frequently has less than that left to give, and the distance that matters is the
-          // shorter of the two.
+          // `latest` for the same reason. What the drag asked for is no bound on what it got: the panel flings a
+          // little past the finger, or has less than the step left to give, and the distance that matters is the one
+          // it actually moved.
           const moved = offsetBetween(latest, scrolled, config.scrollBand);
-          const [grab, drop] = config.swipes.scrollDown;
-          back = moved ?? (grab[1] - drop[1]) * shot.height;
+          back = moved ?? from[1] - to[1];
 
           if (moved === null) {
-            // A shift past three-quarters of the band is more than `offsetBetween` looks for, which a panel longer than
-            // the swipe gives it. Falling back to the drag can overshoot the top, so it is recorded rather than hidden.
+            // A fling past half the step again is more than `offsetBetween` looks for. Falling back to the drag can
+            // overshoot the top where the panel had less than that to give, so it is recorded rather than hidden.
             notes.push('the swipe to the moves could not be measured; the scroll back is what it dragged');
           }
         }
@@ -774,13 +780,12 @@ interface Capture {
 async function scrollFrames(device: Device, taken?: Image): Promise<Capture> {
   const band = config.scrollBand;
   const first = taken ?? (await settled(device));
-  const x = first.width / 2;
-  const y = (through: number) => first.height * (band.from + (band.to - band.from) * through);
+  const [from, to] = scrollStep(band, first.width, first.height);
   const frames = [first];
   const offsets: number[] = [];
 
   while (frames.length < SCROLL_FRAMES) {
-    await device.swipe([x, y(0.5 + SCROLL_STEP / 2)], [x, y(0.5 - SCROLL_STEP / 2)], SCROLL_DRAG_MS);
+    await device.swipe(from, to, SCROLL_DRAG_MS);
     const next = await settled(device);
     const moved = offsetBetween(frames.at(-1) as Image, next, band);
 
