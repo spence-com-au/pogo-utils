@@ -540,6 +540,9 @@ export async function run(
   let prompted = 0;
   let unprompted = 0;
 
+  // The hold of a bait in a mirror as last told: told once, as the bait lights alone, until a throw ends it.
+  let mirrored: string | undefined;
+
   // Our own energy, counted per party slot off the fight's time at the fast move its card was read with.
   let ourEnergy = new OurEnergy(data, []);
 
@@ -848,6 +851,7 @@ export async function run(
         energy = new Energy(data, meta);
         hits = new Hits();
         sparing = undefined;
+        mirrored = undefined;
         ourEnergy = new OurEnergy(
           data,
           party.map((card) => card.moves?.fast),
@@ -1175,9 +1179,10 @@ export async function run(
       const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined;
       const ownTypes = typesOf(data, us);
       const theirTypes = typesOf(data, them);
-      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit });
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
       const lit = ready.map(([x]) => x);
+      const mirror = own !== null && own === seen.opponent ? own : undefined;
+      const pick = bestButton(data, seen.moves, ownTypes, theirTypes, { bait: theirShields > 0, lastHit, mirror, lit });
 
       // A lit button proves at least its move's cost, which a count run short is raised to.
       if (slot !== undefined && ours) {
@@ -1354,6 +1359,16 @@ export async function run(
       // The button to throw, none while a hold is on: `Player` is handed nothing lit to throw then, and nothing is told
       // as thrown.
       const best = spared === undefined && !hold?.held ? throwing?.x : undefined;
+
+      // A bait held in a mirror for the move it stands in for, told as its button lights alone.
+      const bait = throwing === pick ? pick?.held : undefined;
+      const baiting =
+        bait !== undefined && lit.includes(bait) ? `holding ${seen.moves.get(bait)} for ${chosen} to light` : undefined;
+
+      if (baiting !== undefined && baiting !== mirrored) {
+        log(baiting, 'own', pick?.why);
+        mirrored = baiting;
+      }
 
       if (state === 'shield' && !offered?.taken) {
         offered = { why: shielding.why, taken: false };
@@ -1600,6 +1615,7 @@ export async function run(
 
           drop(`${move ?? 'another'} tapped instead`);
           sparing = undefined;
+          mirrored = undefined;
           pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.

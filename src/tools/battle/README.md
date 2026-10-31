@@ -361,7 +361,17 @@ fainting, both below, go at once. Logged as `holding Close Combat: Garchomp can 
 **Baiting.** While the opponent still has shields, it throws its _cheapest_ move, to draw a shield that the move worth
 the most per energy would otherwise be thrown into. A bait costing no more than **10** energy less than the move worth
 the most per energy isn't worth the shield it might not draw, so that move goes instead, logged as
-`threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`.
+`threw Flamethrower: not baiting: Ancient Power costs only 10 less than Flamethrower`. In a mirror, the opponent the
+same species as ours, the bait waits until the move it stands in for has lit too, and goes then: its button lit alone is
+left lit, as for any move held for, though a throw for fear of fainting, below, still throws it at once; a finish waits
+for the shields to be gone, when there is none to bait. The opponent's fast moves being ours, it counts our energy as
+well as we can, and a bait thrown at 45 energy while the bigger move costs 75 can only be the bait, which it lets
+through unshielded; at 75 the two look the same, and it has to shield or risk the bigger hit. PvPoke's battle AI holds
+every bait this way (`ActionLogic.js`), but the bot does so only in a mirror: waiting leaves our energy the same at
+every point, energy gained less energy spent whenever the bait goes, so all it changes is what the opponent can tell,
+and only a mirror's is sure to know our fast move. Logged as
+`holding Avalanche for Hydro Pump to light: an Entei mirror counts our energy`, and as it goes,
+`threw Avalanche: bait, Hydro Pump lit beside it`.
 
 **Holding energy.** Once it has picked a move, it waits for that button to light, even while a weaker move is already
 ready, except when it may not live that long: with no shield to take, and the opponent's counted energy (with the
