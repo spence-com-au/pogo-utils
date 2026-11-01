@@ -17,7 +17,7 @@
     "build:types": "tsc -b tsconfig.json scripts/tsconfig.json",
     "clean": "rm -rf dist .types",
     "inventory": "node scripts/inventory.mts",
-    "lint": "npm-run-all --continue-on-error --parallel --print-label 'lint:!(fix)'",
+    "lint": "npm-run-all --continue-on-error --parallel --print-label 'lint:!(fix|dex)'",
     "lint:css": "stylelint '**/*.css'",
     "lint:css:fix": "stylelint --fix '**/*.css'",
     "lint:dex": "node scripts/build-dex.mts --check",

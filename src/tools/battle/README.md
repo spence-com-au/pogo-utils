@@ -69,9 +69,10 @@ flowchart LR
   land: under scrcpy, a Master League set on a Pixel 4 XL with Android 13 went 4–1 with its panel dark. The mode
   outlasts the process, so it is run once as the run starts and once as it ends, before the phone is let sleep again.
   Android 14 moved the calls it needs into the system server's `DisplayControl`, which it loads as scrcpy does, untried
-  as yet on a phone that new. The dex is committed, so neither a battle nor the site's build needs a JDK;
-  [`scripts/build-dex.mts`](../../../scripts/build-dex.mts) builds it with `javac` and a pinned D8, and `pnpm lint:dex`
-  fails where the two differ.
+  as yet on a phone that new. The dex is committed, so neither a battle, the site's build nor `pnpm lint` needs a JDK;
+  [`scripts/build-dex.mts`](../../../scripts/build-dex.mts) builds it with JDK 21's `javac` and a pinned D8, and
+  `pnpm lint:dex`, left out of `pnpm lint` and run on its own in CI, fails where the two differ, since another JDK's
+  `javac` may write other bytes.
 - **[`layout.mts`](layout.mts)** places a position on a phone of any shape. The game sizes things by the screen's width
   and pins each piece at a fraction of the height, its _anchor_: 0 for the top, 1 for the foot, something in between for
   a piece inside a panel. So a position down the screen is written as its anchor and a number of the screen's widths
