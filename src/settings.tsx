@@ -50,15 +50,13 @@ export function Settings() {
   const phone = usePhone();
   const demo = phone?.serial === DEMO_SERIAL;
 
-  /** What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held. */
-  const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-
   /**
-   * Whether that status is a failed connection, which is the one time it points to WebADB: a shell over the same WebUSB
-   * to find out why, kept out of the note above so that it costs no room until it is needed.
+   * What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held.
+   * `failed` marks a failed connection, the one time it points to WebADB, a shell over the same WebUSB to find out why:
+   * kept on the message rather than beside it, so the link cannot outlive the message it explains.
    */
-  const [connectFailed, setConnectFailed] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<{ message: string; failed?: boolean } | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   useDismiss(open, () => setOpen(false), root);
 
@@ -69,8 +67,7 @@ export function Settings() {
    */
   async function connectPhone() {
     setConnecting(true);
-    setConnectFailed(false);
-    setPhoneStatus('Pick the phone in the browser’s chooser, then allow USB debugging on it…');
+    setPhoneStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
 
     try {
       const { connect } = await import('./inventory/webusb.js');
@@ -78,7 +75,7 @@ export function Settings() {
 
       // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
       if (picked === null) {
-        setPhoneStatus(phoneStore.phone ? null : 'No phone was picked.');
+        setPhoneStatus(phoneStore.phone ? null : { message: 'No phone was picked.' });
         return;
       }
 
@@ -87,13 +84,11 @@ export function Settings() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        setPhoneStatus(`Could not put back the setting a battle kept the phone awake by: ${said(e)}`),
+        setPhoneStatus({ message: `Could not put back the setting a battle kept the phone awake by: ${said(e)}` }),
       );
     } catch (e) {
-      setPhoneStatus(`Could not connect: ${said(e)}`);
-
-      // Not where the browser has no WebUSB at all, which WebADB needs as much as this does.
-      setConnectFailed('usb' in navigator);
+      // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
+      setPhoneStatus({ message: `Could not connect: ${said(e)}`, failed: 'usb' in navigator });
     } finally {
       setConnecting(false);
     }
@@ -106,7 +101,6 @@ export function Settings() {
    */
   async function toggleDemo() {
     setPhoneStatus(null);
-    setConnectFailed(false);
 
     try {
       if (phone?.serial === DEMO_SERIAL) {
@@ -121,7 +115,7 @@ export function Settings() {
         }
       }
     } catch (e) {
-      setPhoneStatus(`Could not start the demo: ${said(e)}`);
+      setPhoneStatus({ message: `Could not start the demo: ${said(e)}` });
     }
   }
 
@@ -279,13 +273,13 @@ export function Settings() {
 
           {/* Present from the first render, for the reason the backup's status above is. */}
           <p class="settings-status" aria-live="polite">
-            {phoneStatus ??
+            {phoneStatus?.message ??
               (demo
                 ? 'Using the demo phone: the tabs read recorded screens, not your account.'
                 : phone
                   ? `Connected to ${phone.name}.`
                   : null)}
-            {connectFailed && phoneStatus !== null && (
+            {phoneStatus?.failed && (
               <>
                 {' '}
                 <a href="https://webadb.com/">WebADB</a> can help find out why.
