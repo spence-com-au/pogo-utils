@@ -71,19 +71,28 @@ test.each([
 });
 
 test('decodes every frame of a stream at the stream size', async () => {
+  const colours = [];
+
+  for await (const frame of decodeFrames(clip('red', 1).stdout, size)) {
+    expect(frame).toMatchObject({ width, height });
+    colours.push(rgb(frame, 10, 10));
+  }
+
+  expect(colours).toHaveLength(30);
+  expect(colours.every(([r, g, b]) => r > 200 && g + b < 40)).toBe(true);
+});
+
+// Its memory is decoded into again, and what kept the frame would otherwise go on reading a later frame's pixels.
+test('empties a frame once the next has come', async () => {
   const frames = [];
 
   for await (const frame of decodeFrames(clip('red', 1).stdout, size)) {
     frames.push(frame);
   }
 
-  expect(frames).toHaveLength(30);
-  expect(frames.every((frame) => frame.width === width && frame.height === height)).toBe(true);
-
-  const [first] = frames;
-  const [r, g, b] = first ? rgb(first, 10, 10) : [0, 0, 0];
-  expect(r).toBeGreaterThan(200);
-  expect(g + b).toBeLessThan(40);
+  const last = frames.pop();
+  expect(frames.every((frame) => frame.data.length === 0)).toBe(true);
+  expect(last?.data).toHaveLength(width * height * 4);
 });
 
 test('decodes each frame once the next has begun', async () => {

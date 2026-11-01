@@ -71,9 +71,12 @@ export async function* decodeFrames(h264: Readable, { width, height }: Size): As
 
   const size = width * height * 4;
 
-  // Each chunk is copied straight into its frame, so a frame costs one allocation and one copy. Memory allocated outside
-  // V8's heap is what brings on its full collections, about one for each 64 MB, so at thirty frames a second every
-  // further megabyte a frame is another full collection every two seconds.
+  // Each chunk is copied straight into its frame, and a frame's memory is decoded into again two frames on. Memory
+  // allocated outside V8's heap is what brings on its full collections, about one for each 64 MB, so a megabyte for
+  // each of thirty frames a second was one a second. A frame is good until the next is yielded, the next decoding
+  // meanwhile into the one before, and is then emptied: its memory taken back by `transfer`, which leaves the frame
+  // zero-length rather than showing a later frame's pixels to anything that kept it — a frame kept is a frame copied.
+  let previous: Uint8Array<ArrayBuffer> | undefined;
   let frame = new Uint8Array(size);
   let filled = 0;
 
@@ -86,9 +89,12 @@ export async function* decodeFrames(h264: Readable, { width, height }: Size): As
         at += taken;
 
         if (filled === size) {
-          yield { width, height, data: frame };
-          frame = new Uint8Array(size);
+          const image = { width, height, data: frame };
+
+          [previous, frame] = [frame, previous ? new Uint8Array(previous.buffer.transfer()) : new Uint8Array(size)];
           filled = 0;
+
+          yield image;
         }
       }
     }
