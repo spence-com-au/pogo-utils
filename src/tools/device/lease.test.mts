@@ -33,6 +33,13 @@ test.each<[string, (string | undefined)[]]>([
   ['pnpm run inventory snap --search pikachu', [undefined]],
   ['node scripts/battle.mts record out.h264', [undefined]],
   ['adb -s A shell true; adb -s B shell true', ['A', 'B']],
+  ['adb shell du -s /sdcard/DCIM', [undefined]],
+  ['adb -H localhost -s A shell ls -s', ['A']],
+  ['adb -s "A" shell true', ['A']],
+  ["ANDROID_SERIAL='B' adb shell true", ['B']],
+  ['size="$(adb -s A shell wm size)"', ['A']],
+  ['git log # then adb -s A shell true', []],
+  ['cat <<EOF | adb -s A shell sh\nadb -s B shell true\nEOF\nadb -s C shell true', ['A', 'C']],
 ])('`%s` reaches %j', (command, serials) => {
   expect(devicesReached(command)).toEqual(serials);
 });
@@ -40,6 +47,10 @@ test.each<[string, (string | undefined)[]]>([
 test.each([
   'rg adb src',
   'git commit -m "Read the adb serial"',
+  'git commit -m "Fix the race; adb -s A shell keeps its lease"',
+  "echo 'a | adb shell'",
+  "git commit -F - <<'EOF'\nLease the phone\n\nadb shell input tap 1 2\nEOF",
+  'gh pr create --body "$(cat <<\'EOF\'\nadb shell input tap 1 2\nEOF\n)"',
   'adb devices -l',
   'adb version',
   'pnpm inventory parse shot.png',
@@ -118,15 +129,18 @@ test('takes a free lease, naming the session and the command', () => {
   });
 });
 
-test('takes no lease for a command that reaches no phone', () => {
-  const leases = () => (existsSync(DIR) ? readdirSync(DIR) : []);
-  const before = leases();
+test.each(['rg adb src', 'adb -s ../escape shell true', 'adb -s .. shell true'])(
+  'takes no lease for `%s`, which reaches no phone',
+  (command) => {
+    const files = () => [...readdirSync(runtime), ...(existsSync(DIR) ? readdirSync(DIR) : [])];
+    const before = files();
 
-  const { stdout } = session(`node "$HOOK" pre < ${input('rg adb src')}; echo $?`);
+    const { stdout } = session(`node "$HOOK" pre < ${input(command)}; echo $?`);
 
-  expect(stdout.trim()).toBe('0');
-  expect(leases()).toEqual(before);
-});
+    expect(stdout.trim()).toBe('0');
+    expect(files()).toEqual(before);
+  },
+);
 
 test("refuses a phone another live session holds, saying whose it is, and keeps that session's lease", async () => {
   const pid = await holder('pnpm battle run --serial A2');
@@ -180,6 +194,7 @@ test('gives an abandoned lease to exactly one of the live sessions racing for it
   );
 
   expect(statuses.sort()).toEqual(['0', '2', '2', '2', '2', '2', '2', '2']);
+  expect(readdirSync(DIR).filter((name) => name.startsWith('A10.'))).toEqual(['A10.json']);
 });
 
 test('renews its own lease, keeping when it was taken', () => {

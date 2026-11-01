@@ -63,18 +63,125 @@ const optionValue = (args: string[], ...names: string[]) => {
   }
 };
 
+/** The options `adb` takes before its subcommand that take a separate value. */
+const ADB_VALUED = ['-s', '-t', '-H', '-P', '-L'];
+
 /**
- * The phones each part of a shell command reaches, by the serial it names or `undefined` where it leaves `adb` to pick.
- * This reads the command a word at a time rather than parsing the shell, so it finds `adb`, `scrcpy`, `pnpm battle
- * run` and the like where each starts a command — after `;`, `&&`, a pipe or `$(`, and past `timeout 30` or an
- * environment assignment — and not where one is merely mentioned, as in `rg adb` or a commit message. A script that
- * runs `adb` itself is out of its sight.
+ * The words of each simple command in a shell command line, with quotes and escapes taken off. This is as much of the
+ * shell as finding where a command starts needs: a separator or a `#` inside quotes is text, a heredoc's body is
+ * nobody's command, and a `$(…)` is a command of its own, in double quotes or not. Expansions are left as written.
+ */
+export function simpleCommands(line: string): string[][] {
+  const commands: string[][] = [];
+  const outer: { words: string[]; word: string | undefined; quote: string }[] = [];
+  const heredocs: { delimiter: string; tabs: boolean }[] = [];
+  let words: string[] = [];
+  let word: string | undefined;
+  let quote = '';
+
+  const endWord = () => {
+    if (word !== undefined) {
+      words.push(word);
+    }
+
+    word = undefined;
+  };
+
+  const endCommand = () => {
+    endWord();
+
+    if (words.length) {
+      commands.push(words);
+    }
+
+    words = [];
+  };
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i] ?? '';
+
+    if (quote === "'") {
+      if (c === "'") {
+        quote = '';
+      } else {
+        word += c;
+      }
+    } else if (c === '\\') {
+      word = (word ?? '') + (line[++i] ?? '');
+    } else if (c === '$' && line[i + 1] === '(') {
+      outer.push({ words, word: (word ?? '') + '$()', quote });
+      words = [];
+      word = undefined;
+      quote = '';
+      i++;
+    } else if (c === ')' && !quote && outer.length) {
+      endCommand();
+      ({ words, word, quote } = outer.pop() ?? { words: [], word: undefined, quote: '' });
+    } else if (quote === '"') {
+      if (c === '"') {
+        quote = '';
+      } else {
+        word += c;
+      }
+    } else if (c === "'" || c === '"') {
+      quote = c;
+      word ??= '';
+    } else if (c === '#' && word === undefined) {
+      while (i + 1 < line.length && line[i + 1] !== '\n') {
+        i++;
+      }
+    } else if (line.startsWith('<<', i) && !line.startsWith('<<<', i)) {
+      const heredoc = /^<<(-?)\s*(['"]?)(\w+)\2/.exec(line.slice(i));
+      endWord();
+
+      if (heredoc) {
+        heredocs.push({ delimiter: heredoc[3] ?? '', tabs: heredoc[1] === '-' });
+        i += heredoc[0].length - 1;
+      } else {
+        i++;
+      }
+    } else if (c === '\n') {
+      endCommand();
+
+      for (const { delimiter, tabs } of heredocs.splice(0)) {
+        while (i < line.length) {
+          const end = line.indexOf('\n', i + 1);
+          const body = line.slice(i + 1, end === -1 ? line.length : end);
+          i = end === -1 ? line.length : end;
+
+          if ((tabs ? body.replace(/^\t+/, '') : body) === delimiter) {
+            break;
+          }
+        }
+      }
+    } else if (/[;&|()`]/.test(c)) {
+      endCommand();
+    } else if (/\s/.test(c)) {
+      endWord();
+    } else {
+      word = (word ?? '') + c;
+    }
+  }
+
+  while (outer.length) {
+    endCommand();
+    ({ words, word } = outer.pop() ?? { words: [], word: undefined });
+  }
+
+  endCommand();
+  return commands;
+}
+
+/**
+ * The phones each simple command in a shell command line reaches, by the serial it names or `undefined` where it
+ * leaves `adb` to pick. It finds `adb`, `scrcpy`, `pnpm battle run` and the like where each starts a command, past
+ * `timeout 30` or an environment assignment, and not where one is merely mentioned, as in `rg adb`, a commit message
+ * or a heredoc. A script that runs `adb` itself is out of its sight.
  */
 export function devicesReached(command: string): (string | undefined)[] {
   const reached: (string | undefined)[] = [];
 
-  for (const part of command.split(/&&|\|\||\$\(|[;|&\n(`]/)) {
-    const words = part.trim().split(/\s+/);
+  for (const words of simpleCommands(command)) {
     let serial: string | undefined;
 
     for (;;) {
@@ -106,13 +213,13 @@ export function devicesReached(command: string): (string | undefined)[] {
     const name = basename(program);
 
     if (name === 'adb') {
-      const subcommand = args.find((arg, i) => !arg.startsWith('-') && !['-s', '-t'].includes(args[i - 1] ?? ''));
+      const at = args.findIndex((arg, i) => !arg.startsWith('-') && !ADB_VALUED.includes(args[i - 1] ?? ''));
 
-      if (subcommand === 'devices' || subcommand === 'version') {
+      if (args[at] === 'devices' || args[at] === 'version') {
         continue;
       }
 
-      reached.push(optionValue(args, '-s') ?? serial);
+      reached.push(optionValue(at === -1 ? args : args.slice(0, at), '-s') ?? serial);
     } else if (name === 'scrcpy') {
       reached.push(optionValue(args, '-s', '--serial') ?? serial);
     } else {
@@ -131,6 +238,13 @@ export function devicesReached(command: string): (string | undefined)[] {
 
   return reached;
 }
+
+/**
+ * Whether `serial` could be a phone's — `99071FFBA00895`, `emulator-5554`, `192.168.1.5:5555` — and so can name its
+ * lease file without reaching outside the directory. A command naming anything else reaches no phone `adb` can find.
+ */
+export const isSerial = (serial: string | undefined): serial is string =>
+  serial !== undefined && /^[\w.:-]+$/.test(serial) && !/^\.+$/.test(serial);
 
 /** The serial `adb` picks when given none: `ANDROID_SERIAL`, or the one phone attached, or none at all. */
 export function defaultSerial(): string | undefined {
@@ -213,23 +327,27 @@ const readLease = (path: string): Lease | undefined => {
 
 const code = (error: unknown) => (error as NodeJS.ErrnoException).code;
 
+/** Blocks for `ms`, which a hook can afford while another session finishes taking over a lease. */
+const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
 /**
  * Takes the lease on `serial` for `mine.pid`, or renews it where that session already holds it, and answers the lease
- * of the live session that holds it instead. The lease is only ever created by `link`, which fails where the file
- * exists, so of the sessions racing for a free lease exactly one gets it. An abandoned lease is moved aside rather than
- * overwritten, which only one session can do, and then raced for like a free one; a live lease moved aside because
- * another session took it in the meantime is put back.
+ * of the live session that holds it instead. Nothing is created but by `link`, which fails where the file exists.
+ * That makes a free lease go to exactly one of the sessions racing for it. It also makes the claim on one abandoned
+ * lease, named by its holder and when they took it, go to exactly one session, and only that session replaces it, once
+ * it has seen the lease is still that one. The claim goes only once the lease has been replaced, so a session that
+ * claims the same lease late finds a live one there instead.
  */
 export function acquire(dir: string, serial: string, mine: Lease, table: Map<number, Process>): Lease | undefined {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const path = leasePath(dir, serial);
   const draft = `${path}.${process.pid}`;
-  const aside = `${draft}.abandoned`;
+  const same = (a: Lease | undefined, b: Lease) => a?.pid === b.pid && a.since === b.since;
 
   try {
     writeFileSync(draft, JSON.stringify(mine));
 
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 100; attempt++) {
       try {
         linkSync(draft, path);
         return undefined;
@@ -255,21 +373,27 @@ export function acquire(dir: string, serial: string, mine: Lease, table: Map<num
         return held;
       }
 
+      const claim = `${path}.${held.pid}.${Date.parse(held.since)}.claim`;
+
       try {
-        renameSync(path, aside);
+        linkSync(draft, claim);
       } catch (error) {
-        if (code(error) !== 'ENOENT') {
+        if (code(error) !== 'EEXIST') {
           throw error;
         }
 
+        pause(10);
         continue;
       }
 
-      if (readLease(aside)?.pid !== held.pid) {
-        linkSync(aside, path);
+      try {
+        if (same(readLease(path), held)) {
+          renameSync(draft, path);
+          return undefined;
+        }
+      } finally {
+        rmSync(claim, { force: true });
       }
-
-      rmSync(aside, { force: true });
     }
 
     throw new Error(`could not take the lease ${path}`);

@@ -17,6 +17,7 @@ import {
   busy,
   defaultSerial,
   devicesReached,
+  isSerial,
   leaseDir,
   processes,
   refusal,
@@ -41,9 +42,7 @@ switch (process.argv[2]) {
       break;
     }
 
-    const serials = new Set(
-      reached.map((serial) => serial ?? defaultSerial()).filter((serial): serial is string => serial !== undefined),
-    );
+    const serials = new Set(reached.map((serial) => serial ?? defaultSerial()).filter(isSerial));
     const table = processes();
     const session = sessionOf(table, process.pid);
 
