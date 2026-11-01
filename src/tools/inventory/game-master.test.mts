@@ -249,6 +249,13 @@ test('an edit distance is over folded text, so case and accents cost nothing', (
   expect(distance('Mr. Mime', 'mrmime')).toBe(0);
 });
 
+test('an edit distance takes an `m` for an `rn` as one edit, either way round', () => {
+  expect(distance('Xemeas', 'Xerneas')).toBe(1);
+  expect(distance('Xerneas', 'Xemeas')).toBe(1);
+  expect(distance('Xemeas', 'Xerneas', true)).toBe(1);
+  expect(distance('Moonblast', 'Moonblast')).toBe(0);
+});
+
 test('an edit distance within a phrase is to its nearest stretch', () => {
   expect(distance('TIVE', 'Super Effective', true)).toBe(0);
   expect(distance('EFFEt', 'Not Very Effective', true)).toBe(1);
