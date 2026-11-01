@@ -322,11 +322,21 @@ export function identify(
     notes.push(`the screen reads CP ${detail.cp}, where this form at this level is ${cp}`);
   }
 
-  // And where no CP read for certain but the screen offered some, none of which is the one worked out. Those are not to
-  // be trusted one at a time, but one of them is usually right — so missing every one says the IVs or the level are
-  // wrong, which nothing else here would notice: a Skarmory showing CP 862 whose IVs read `1/1/1` for `11/10/11`
-  // worked out to 872 and was written without a word.
-  if (cp !== null && detail.cp === null && detail.cps.length > 0 && !detail.cps.includes(cp)) {
+  // And where no CP read for certain but the screen offered some, none of which is the one worked out, from IVs the
+  // overlay's percentage did not vouch for. A Skarmory showing CP 862 whose IVs read `1/1/1` for `11/10/11` worked out
+  // to 872 and was written without a word, and nothing but the CP was left to notice.
+  //
+  // Only where the IVs went unchecked, because the candidates are misread as readily as the IVs: `castform-snowy.png`
+  // offers 747 and 47 for its 746 and `meloetta-aria.png` 169 for its 1679, both with IVs their percentage confirms. A
+  // misread candidate is no closer to the CP than Skarmory's was — 862 against 872 — so nearness cannot tell them apart;
+  // what can is whether anything else on the screen agreed with the IVs.
+  if (
+    cp !== null &&
+    overlay?.checked === false &&
+    detail.cp === null &&
+    detail.cps.length > 0 &&
+    !detail.cps.includes(cp)
+  ) {
     const read = [...new Set(detail.cps)];
 
     notes.push(`the screen reads CP ${read.join(' or ')}, where this form at this level is ${cp}`);

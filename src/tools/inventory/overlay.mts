@@ -22,6 +22,13 @@ export interface Overlay {
   iv: IVs;
 
   /**
+   * Whether the percentage PGSharp prints beside the IVs vouches for them: a pass whose own percentage confirmed its
+   * triple, or a triple `assembled` out of several that one of their percentages confirmed. False where the IVs are a
+   * fallback nothing on the screen checks, which is where `identify` holds a CP worked out from them to account.
+   */
+  checked: boolean;
+
+  /**
    * Every level the digits could be saying, rather than one. The small-caps `L` reads as an `L` on one phone and a `1`
    * on another, and the `IV` label after the level reads as another `1`, so `151` is `L15` plus a stray or a stray
    * plus `51` with nothing in the string saying which. `identify` intersects the shortlist with what the HP admits.
@@ -584,7 +591,8 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
   // Then, where the percentage settles nothing, a reading holding every digit the first pass read and more. Near-white
   // clips thin `1`s, so its triple can be another pass's with digits missing — a Skarmory whose overlay reads
   // `11/10/11` came back `1/1/1` — and a triple that has lost digits cannot be told from a real one by looking at it.
-  const iv = chosen?.iv ?? assembled(possible) ?? fuller(possible) ?? possible[0]?.iv ?? null;
+  const assembly = chosen ? null : assembled(possible);
+  const iv = chosen?.iv ?? assembly ?? fuller(possible) ?? possible[0]?.iv ?? null;
 
   if (iv === null) {
     return null;
@@ -621,6 +629,7 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
     levels: [...new Set(ahead.flatMap(levelsIn))],
 
     iv,
+    checked: chosen !== null || assembly !== null,
     form: numeric !== null && /^\d{2}$/.test(numeric) ? numeric : lettered,
   };
 }
