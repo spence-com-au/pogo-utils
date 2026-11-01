@@ -9,7 +9,6 @@
     "build:bundle": "node scripts/bundle.mts",
     "build:clean": "rm -rf dist",
     "build:data": "node scripts/validate-gpx.mts --write",
-    "build:dex": "node scripts/build-dex.mts",
     "build:icons": "node scripts/build-icons.mts",
     "build:ics": "node scripts/build-ics.mts",
     "build:manifest": "node scripts/build-manifest.mts",
