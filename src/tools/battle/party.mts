@@ -87,10 +87,22 @@ export function silhouetteOfIcon(icon: Image): Silhouette {
   return silhouette;
 }
 
+/**
+ * Where the card's own colour is taken, from its centre in halves of its side: under the middle and in both lower
+ * corners, each channel the middle of the three. Under the middle alone took a shiny Origin Forme Palkia's pale legs,
+ * which reach the card's foot, for the card, and read everything else on it as the Pokémon.
+ */
+const CARD_SAMPLES = [
+  [0, 0.9],
+  [-0.9, 0.9],
+  [0.9, 0.9],
+] as const;
+
 function silhouetteOfCard(image: Image, x: number): Silhouette {
   const unit = image.width;
   const [cx, cy] = [x * unit, down(CARD_Y, CARD_ANCHOR, image) * image.height];
-  const card = rgb(image, cx, cy + HALF * unit * 0.9);
+  const samples = CARD_SAMPLES.map(([dx, dy]) => rgb(image, cx + dx * HALF * unit, cy + dy * HALF * unit));
+  const card = [0, 1, 2].map((k) => samples.map((sample) => sample[k] ?? 0).sort((a, b) => a - b)[1]);
   const silhouette = new Uint8Array(GRID * GRID);
 
   for (let j = 0; j < GRID; j++) {

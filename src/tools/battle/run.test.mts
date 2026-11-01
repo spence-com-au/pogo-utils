@@ -447,10 +447,13 @@ const SELECTION = {
 /** The Master League party screen with the CP over Xerneas's card painted out, in widths. */
 const MASTER_CP_UNREAD = painted(fixture('menu-pixel8-party-master'), [255, 255, 255], [0.66, 1.455, 0.88, 1.52]);
 
+/** The committed icons with Palkia's outlines taken for Mamoswine's, so as to misread Palkia's card. */
+const MISREAD = ICONS.map((icon) => (icon.species === 'Palkia' ? { ...icon, species: 'Mamoswine' } : icon));
+
 /**
- * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. The committed
- * icons read Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by
- * its CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
+ * The party screen of Origin Palkia, Metagross and Xerneas, then Blanche's battle and the way back round. `MISREAD`
+ * reads Palkia's card as Mamoswine, which a search by that and its CP finds nothing pink of, Palkia being found by its
+ * CP alone. Metagross's search finds nothing pink either way. Each search shows what `search` names, and the one
  * cleared or searched over goes back to the unsearched screen. `cancel` is the tap the selection screen answers beside
  * its search field: CANCEL, back to the party screen, unless a test has it answer another. The way back round comes to
  * the party screen again with Xerneas's CP painted out, as OCR misses one now and then.
@@ -510,7 +513,7 @@ test('reads each card’s moves off the selection screen before using the party,
 
   expect(await readCps(MASTER_CP_UNREAD)).toEqual([4673, 3986, null]);
   expect(
-    await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
+    await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
   ).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(
     report.events.filter((line) => line.startsWith('run: party: M') || /^run: .*( CP \d|unread)/.test(line)),
@@ -548,7 +551,7 @@ test('names nobody a card its CP alone found where its panel names nobody', asyn
   );
   const report = recorder();
 
-  await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock, report);
+  await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => /^run: .* CP 4673/.test(line))).toEqual([
     'run: ? CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
@@ -567,7 +570,7 @@ test('tries a card passed over for its CP once its CP is read', async () => {
   const report = recorder();
 
   expect(
-    await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
+    await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
   ).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(report.events.filter((line) => /^run: .*( CP \d|unread)/.test(line))).toEqual([
     'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
@@ -597,11 +600,13 @@ test('reads a card whose selection screen opens late', async () => {
     'party',
   );
 
-  expect(await run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
-    battles: 1,
-    won: 1,
-    lost: 0,
-  });
+  expect(await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual(
+    {
+      battles: 1,
+      won: 1,
+      lost: 0,
+    },
+  );
   expect(holds).toEqual(['found0', 'found2']);
 });
 
@@ -614,7 +619,7 @@ test('taps nothing more where CANCEL leaves the selection screen showing', async
   const { phone, clock } = scripted(masterParty({ at: SELECTION.use, to: 'loading' }), 'party');
 
   await expect(
-    run(phone, { mode: ULTRA, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
+    run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock),
   ).rejects.toBeInstanceOf(Lost);
 });
 
