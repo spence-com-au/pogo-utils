@@ -10,7 +10,7 @@
  */
 
 import { chroma, luminance, rgb, type Image } from '../inventory/png.mts';
-import { BOTTOM, down, TOP } from './layout.mts';
+import { around, BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 
 /**
  * - `battle`: the fight, with no charged move ready, or an animation within it — the charged-move minigame among them.
@@ -378,4 +378,29 @@ export function recognise(image: Image): State {
   }
 
   return readyButtons(image).length > 0 ? 'charged' : 'battle';
+}
+
+/**
+ * What a frame of the battle is told by, for `overlay.mts`: every box above, where it is sampled. Each of them is needed,
+ * the HUD's strips and names together saying it is up, and each button, shield and Poké Ball read on its own; a button
+ * as far out as the ring around its rim that has to stay dark.
+ */
+export function areas(screen: Size): Area[] {
+  const at = (boxes: readonly Box[], anchor: number) => boxes.map((box) => spanning(box, anchor, screen));
+
+  return [
+    { name: "the battle's names and CPs", boxes: at([...HUD, ...HUD_NAMES, HUD_GAP], TOP) },
+    { name: 'the Protect Shield prompt', boxes: at([SHIELD], BOTTOM) },
+    { name: 'the switch prompt', boxes: at([...SWITCH_PANEL, SWITCH_TITLE], BOTTOM) },
+    {
+      name: "the shield prompt's countdown",
+      boxes: [around([COUNTDOWN.x, COUNTDOWN.y], COUNTDOWN.outside, TOP, screen), ...at([COUNTDOWN_NUMERAL], TOP)],
+    },
+    {
+      name: "the charged moves' buttons",
+      boxes: BUTTON_XS.map((x) => around([x, BUTTON.y], BUTTON.radius * 1.35, BOTTOM, screen)),
+    },
+    { name: "each side's shields", boxes: at([...OWN_SHIELDS, ...OPPONENT_SHIELDS], TOP) },
+    { name: "each side's Poké Balls", boxes: at([...BALLS.own, ...BALLS.opponent].map(ball), TOP) },
+  ];
 }

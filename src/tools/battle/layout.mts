@@ -55,6 +55,15 @@ export interface Area {
   need?: number;
 }
 
+/** The box `left` to `right` across `screen` and `top` to `bottom` widths from `anchor` down it, as fractions of it. */
+export function spanning(
+  [left, top, right, bottom]: readonly [number, number, number, number],
+  anchor: number,
+  screen: Size,
+): Box {
+  return [left, down(top, anchor, screen), right, down(bottom, anchor, screen)];
+}
+
 /** The box `half` widths either side of `[x, widths]` down from `anchor`, across and down alike. */
 export function around([x, widths]: readonly [number, number], half: number, anchor: number, screen: Size): Box {
   const y = down(widths, anchor, screen);

@@ -12,7 +12,8 @@
  * through.
  */
 
-import { BOTTOM, place, type Size } from './layout.mts';
+import { around, BOTTOM, place, type Area, type Size } from './layout.mts';
+import { FINGER } from './menus.mts';
 import { type State } from './recognise.mts';
 
 export type Point = readonly [x: number, y: number];
@@ -52,6 +53,21 @@ export const BENCH = [
 
 /** Where the bench is pinned down the screen. */
 export const BENCH_ANCHOR = 0.5;
+
+/**
+ * Where the battle taps, for `overlay.mts`: the Protect Shield, the switch prompt's cards and the bench's, a fingertip
+ * around each. The charged moves' buttons are `recognise.mts`'s, read before they are tapped, and the swipes go around
+ * PGSharp's overlay rather than refuse it.
+ */
+export function areas(screen: Size): Area[] {
+  const tap = (at: Point, anchor: number) => around(at, FINGER, anchor, screen);
+
+  return [
+    { name: 'the Protect Shield', boxes: [tap(TAPS.shield, BOTTOM)] },
+    { name: "the switch prompt's cards", boxes: SWITCH_CARDS.map((card) => tap(card, BOTTOM)) },
+    { name: "the bench's cards", boxes: BENCH.map((card) => tap(card, BENCH_ANCHOR)) },
+  ];
+}
 
 /** What the caller has decided about a frame, which `next` acts on. */
 export interface Choices {

@@ -70,7 +70,7 @@ import {
   type Matchup,
 } from './energy.mts';
 import { type Meta } from './meta.mts';
-import { checkOverlay } from './overlay.mts';
+import { checkOverlay, named, swipeAround, swipesAround, type Panel } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 
@@ -359,8 +359,10 @@ export async function run(
   let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
 
   // PGSharp's overlay as the phone's views show it, waited for before the run taps anything. It is looked for again as
-  // each battle ends, its star being as readily opened or dragged between battles as before them.
+  // each battle ends, its star being as readily opened or dragged between battles as before them. What was found, clear
+  // of what is read, is what the battle's swipes go around.
   let first: string | undefined = await phone.views();
+  let panels: Panel[] = [];
   let frames = 0;
 
   // A frame off the stream is good only until the next comes, its memory then decoded into again, so a frame kept past
@@ -672,7 +674,8 @@ export async function run(
     player ??= new Player(frame);
 
     if (first !== undefined) {
-      log(`PGSharp's overlay: ${checkOverlay(first, frame)}, clear of what is read`);
+      panels = checkOverlay(first, frame);
+      log(`PGSharp's overlay: ${named(panels)}, clear of what is read`);
       first = undefined;
     }
 
@@ -1604,8 +1607,13 @@ export async function run(
 
       const flying = counter !== undefined && clock.now() < landing;
       const card = prompt?.card;
+
+      // The bubbles swiped around PGSharp's overlay, those it covers at both ends left out before one is chosen.
       const bubbles =
-        (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
+        (player.minigame || playing) && bubbleColour
+          ? swipesAround(reads.bubbleSwipes(frame, bubbleColour), panels, frame)
+          : undefined;
+
       const played = player.next(state, clock.now(), {
         ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
@@ -1621,8 +1629,12 @@ export async function run(
       const nobody = state === 'switch' && (left.own === 0 || (party.length > 0 && prompt?.next === undefined));
       const action = nobody ? ({ kind: 'wait' } as const) : played;
 
-      if (action.kind === 'swipe') {
-        await phone.swipe(action.from, action.to, action.ms);
+      // A swipe is begun clear of PGSharp's overlay, which would take one begun on it for its own, and is not made at
+      // all where both its ends are covered: a bubble or a fast move missed rather than the star dragged.
+      const begun = action.kind === 'swipe' ? swipeAround([action.from, action.to], panels, frame) : undefined;
+
+      if (action.kind === 'swipe' && begun) {
+        await phone.swipe(...begun, action.ms);
       } else if (action.kind === 'tap') {
         // A charged move tapped again before its throw has played is that throw retried, told and counted once; another
         // tapped instead is a throw of its own.
@@ -1785,7 +1797,7 @@ export async function run(
         // whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first. Not after
         // the last battle wanted, which leaves only its ✓ to tap and nothing to read.
         if (battles < count) {
-          checkOverlay(await phone.views(), screenshot);
+          panels = checkOverlay(await phone.views(), screenshot);
         }
       }
 

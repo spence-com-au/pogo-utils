@@ -11,7 +11,7 @@
 import { closest, distance, type GameData } from '../inventory/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
 import { crop, scale, type Image } from '../inventory/png.mts';
-import { BOTTOM, down, TOP } from './layout.mts';
+import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 import { BUTTON_XS } from './recognise.mts';
 import { type Typing } from './strategy.mts';
 
@@ -232,4 +232,25 @@ export function merge(seen: Sighting, read: Sighting): Sighting {
     opponentTypes: read.opponentTypes ?? seen.opponentTypes,
     moves: new Map([...kept, ...read.moves]),
   };
+}
+
+/** The bands OCR reads, for `overlay.mts`: each is cropped whole and read as one, so the whole of it is needed. */
+export function areas(screen: Size): Area[] {
+  const across = ({
+    left = 0,
+    right = 1,
+    top,
+    bottom,
+  }: {
+    left?: number;
+    right?: number;
+    top: number;
+    bottom: number;
+  }) => [left, top, right, bottom] as const;
+
+  return [
+    { name: "the battle's names and CPs", boxes: [spanning(across(NAMES), TOP, screen)] },
+    { name: "the charged moves' names", boxes: [spanning(across(LABELS), BOTTOM, screen)] },
+    { name: "the opponent's charged move banner", boxes: [spanning(across(BANNER), BANNER_ANCHOR, screen)] },
+  ];
 }

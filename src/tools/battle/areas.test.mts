@@ -18,7 +18,19 @@ import { afterAll, expect, test } from 'vitest';
 import { type Area } from './layout.mts';
 import { areas as menuAreas, readMenu, readOutcome } from './menus.mts';
 import { areas as partyAreas, readCps, readParty, silhouetteOfIcon } from './party.mts';
+import { areas as healthAreas, readHealth } from './health.mts';
+import { areas as readAreas, readBanner, readBattle } from './read.mts';
+import {
+  areas as recogniseAreas,
+  countdown,
+  opponentShields,
+  ownShields,
+  pokemonLeft,
+  readyButtons,
+  recognise,
+} from './recognise.mts';
 import { areas as selectionAreas, isSelection, pinkCell, readPanel } from './selection.mts';
+import { areas as typingAreas, iconColour, readTypes } from './typing.mts';
 
 afterAll(useWasmEngine());
 
@@ -183,5 +195,52 @@ test.each(fixtures(/^menu-pixel8-(selection-searched|search|held)(?!-palkia-low)
 
     expect(pinkCell(painted)).toEqual(near(pinkCell(image)));
     expect(await readPanel(painted, DATA, null)).toEqual(await readPanel(image, DATA, null));
+  },
+);
+
+/** Every frame of a battle, its prompts and its minigame, and the frames around it that are not one. */
+const BATTLE = /^(battle|charged|shield|switch|other)-/;
+
+/** The game's icon for each type's colour, as `run` reads the HUD's icons by. */
+const TYPE_COLOURS = Object.fromEntries(
+  DATA.types.map((type) => [type, iconColour(fixture(`types/POKEMON_TYPE_${type.toUpperCase()}`))]),
+);
+
+test.each(fixtures(BATTLE))('tells %s apart as it does whole with all but its areas scrambled', (name) => {
+  const image = fixture(name);
+  const painted = masked(image, recogniseAreas(image)).image;
+  const told = (on: Image) => ({
+    state: recognise(on),
+    left: pokemonLeft(on),
+    theirs: opponentShields(on),
+    ours: ownShields(on),
+    ready: readyButtons(on),
+    countdown: countdown(on),
+  });
+
+  expect(told(painted)).toEqual(near(told(image)));
+});
+
+test.each(fixtures(BATTLE))('reads the HP bars on %s as it does whole with all but theirs scrambled', (name) => {
+  const image = fixture(name);
+
+  expect(readHealth(masked(image, healthAreas()).image)).toEqual(near(readHealth(image)));
+});
+
+test.each(fixtures(BATTLE))('reads the types on %s as it does whole with all but theirs scrambled', (name) => {
+  const image = fixture(name);
+
+  expect(readTypes(masked(image, typingAreas(image)).image, TYPE_COLOURS)).toEqual(readTypes(image, TYPE_COLOURS));
+});
+
+test.each(fixtures(/^(battle|charged|shield)-/))(
+  'reads the names, labels and banner on %s as it does whole with all but theirs scrambled',
+  async (name) => {
+    const image = fixture(name);
+    const painted = masked(image, readAreas(image)).image;
+    const seen = await readBattle(image, DATA);
+
+    expect(await readBattle(painted, DATA)).toEqual(seen);
+    expect(await readBanner(painted, DATA, seen)).toEqual(await readBanner(image, DATA, seen));
   },
 );
