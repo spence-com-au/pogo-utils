@@ -21,6 +21,7 @@ import { place } from './layout.mts';
 import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { type Phone } from './phone.mts';
+import { GAME_ALONE } from './overlay.mts';
 import { Lost, LOST_MS, run, type Clock } from './run.mts';
 
 /**
@@ -101,6 +102,9 @@ interface Scene {
 
   /** How long the scene lasts on its own before moving on, in milliseconds. */
   lasts?: { ms: number; to: string };
+
+  /** What `uiautomator dump` writes here: the game alone, unless PGSharp's overlay is drawn over it. */
+  views?: string;
 }
 
 /** How long a hold takes, in milliseconds: longer than any `scripts/battle.mts` makes on the selection screen. */
@@ -228,6 +232,17 @@ function scripted(
       if (target) {
         go(target.to);
       }
+    },
+    views: () => {
+      const { views = GAME_ALONE } = scene();
+
+      // Answered at once, where on a phone it takes some 4s: scenes timed from the run's start would otherwise have moved
+      // on before its first frame, the run waiting on its first dump. Handed back on a turn of the clock all the same,
+      // with nothing else to move it before then.
+      return new Promise((resolve) => {
+        developing.push({ due: time, deliver: () => resolve(views) });
+        idle();
+      });
     },
     hold: async (at) => {
       const { hold, frame, screenshot } = scene();
@@ -650,6 +665,38 @@ test('taps no Poké Ball once a GO Battle League battle has been played', async 
     run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
   ).rejects.toBeInstanceOf(Lost);
   expect(taps.filter((scene) => scene === 'map')).toEqual([]);
+});
+
+/** PGSharp's toolbar open over a Pixel 4 XL, as `uiautomator dump` wrote it. */
+const TOOLBAR = readFileSync(new URL('fixtures/views-pixel4xl-toolbar.xml', import.meta.url), 'utf8');
+
+/** GO Battle League's scenes with PGSharp's toolbar open over those `named`. */
+const toolbarOver = (...named: string[]): Record<string, Scene> =>
+  Object.fromEntries(
+    Object.entries(league()).map(([name, scene]) => [
+      name,
+      named.includes(name) ? { ...scene, views: TOOLBAR } : scene,
+    ]),
+  );
+
+test('refuses to start with PGSharp’s toolbar open over what it reads, tapping nothing', async () => {
+  const { phone, clock, taps } = scripted(toolbarOver('party'), 'party');
+
+  await expect(
+    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
+  ).rejects.toThrow(/^PGSharp's toolbar covers .*: collapse it to its star or hide the overlay\./);
+  expect(taps).toEqual([]);
+});
+
+// The toolbar opened during the first battle, over every screen after it, found as it ends: the run stops before the
+// next.
+test('stops between battles once PGSharp’s toolbar comes to cover what it reads', async () => {
+  const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party');
+
+  await expect(
+    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
+  ).rejects.toThrow(/^PGSharp's toolbar covers /);
+  expect(taps.filter((scene) => scene === 'charged')).toEqual(['charged']);
 });
 
 test('stops at the end of a GO Battle League set, leaving its reward to be collected', async () => {

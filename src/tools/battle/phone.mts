@@ -24,6 +24,9 @@ export interface Phone {
 
   /** `text` typed into whatever has focus, in place of whatever it held, and Enter pressed. */
   search(text: string): Promise<void>;
+
+  /** The views on the screen as `uiautomator dump` writes them, which PGSharp's overlay is found among. */
+  views(): Promise<string>;
 }
 
 /**
@@ -56,5 +59,6 @@ export function phoneOf(screen: Screen, device: Device, touch: Touchscreen): Pho
       }
     },
     search: (text) => replaceSearch(device, text),
+    views: () => device.views(),
   };
 }

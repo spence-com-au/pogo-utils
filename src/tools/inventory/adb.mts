@@ -1,5 +1,5 @@
 /**
- * The phone, driven over ADB. Everything a scan asks of it is eight methods over one `Transport`, which is the only
+ * The phone, driven over ADB. Everything a scan or a battle asks of it is nine methods over one `Transport`, the only
  * part that differs between the CLI and the Inventory page: `adb-cli.mts` runs the `adb` binary, and
  * `src/inventory/webusb.ts` speaks the protocol over WebUSB from the page.
  */
@@ -98,6 +98,17 @@ export class Device {
     const dump = new TextDecoder().decode(await this.#shell('dumpsys', 'window', 'displays'));
 
     return /mCurrentFocus=Window\{\S+ \S+ ([\w.]+)\//.exec(dump)?.[1] ?? null;
+  }
+
+  /**
+   * The views on the screen, as `uiautomator dump` writes them: XML of every view of the window in front, each with its
+   * resource ID and bounds, which is where an app drawing views over a game's own, as PGSharp does, can be found. Some 4s
+   * on a Pixel 4 XL. Written to `/dev/stdout` rather than the `/dev/tty` usually given, through a pipe: a shell held
+   * open without a terminal, as the battle's is, has no tty, and its stdout is the connection, which `/dev/stdout`
+   * cannot open again. Either way the dump said where it went with nothing before it.
+   */
+  async views(): Promise<string> {
+    return new TextDecoder().decode(await this.#shell('uiautomator', 'dump', '/dev/stdout', '|', 'cat'));
   }
 
   #shell(...args: string[]): Promise<Uint8Array> {

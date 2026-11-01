@@ -70,6 +70,7 @@ import {
   type Matchup,
 } from './energy.mts';
 import { type Meta } from './meta.mts';
+import { checkOverlay } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 
@@ -354,6 +355,11 @@ export async function run(
   // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
   // is read for the battle's outcome too.
   let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
+
+  // PGSharp's overlay as the phone's views show it: waited for before the run taps anything, and looked for again as
+  // each battle ends, beside the loop, its star being as readily opened or dragged between battles as before them.
+  let first: string | undefined = await phone.views();
+  let looking: Reading<{ dump: string }> | undefined;
   let frames = 0;
   const kept: Image[] = [];
 
@@ -659,6 +665,21 @@ export async function run(
 
     // Made for the frames' size, which every frame of a run shares, and made again for each battle.
     player ??= new Player(frame);
+
+    const overlay = looking?.done;
+
+    if (first !== undefined) {
+      log(`PGSharp's overlay: ${checkOverlay(first, frame)}, clear of what is read`);
+      first = undefined;
+    } else if (overlay) {
+      looking = undefined;
+
+      if ('error' in overlay) {
+        throw overlay.error;
+      }
+
+      checkOverlay(overlay.dump, frame);
+    }
 
     if (frames++ % 10 === 0 && kept.at(-1) !== frame) {
       kept.push(frame);
@@ -1761,6 +1782,14 @@ export async function run(
         // card would start another. Its result's ✓ is tapped as ever.
         if (battles >= count && menu.screen !== 'result') {
           return { battles, ...outcomes };
+        }
+
+        if (!looking) {
+          looking = {};
+          settle(
+            looking,
+            phone.views().then((dump) => ({ dump })),
+          );
         }
       }
 
