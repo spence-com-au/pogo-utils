@@ -121,6 +121,7 @@ function scripted(
   scenes: Record<string, Scene>,
   start: string,
   ocrMs: (at: number) => number = () => OCR_MS,
+  viewsMs = 0,
 ): {
   phone: Phone;
   clock: Clock;
@@ -236,11 +237,11 @@ function scripted(
     views: () => {
       const { views = GAME_ALONE } = scene();
 
-      // Answered at once, where on a phone it takes some 4s: scenes timed from the run's start would otherwise have moved
-      // on before its first frame, the run waiting on its first dump. Handed back on a turn of the clock all the same,
-      // with nothing else to move it before then.
+      // After `viewsMs`, at once unless a test says otherwise, where on a phone it takes some 4s: scenes timed from the
+      // run's start would otherwise have moved on before its first frame, the run waiting on its first dump. Handed back
+      // on a turn of the clock all the same, with nothing else to move it before then.
       return new Promise((resolve) => {
-        developing.push({ due: time, deliver: () => resolve(views) });
+        developing.push({ due: time + viewsMs, deliver: () => resolve(views) });
         idle();
       });
     },
@@ -688,15 +689,15 @@ test('refuses to start with PGSharp’s toolbar open over what it reads, tapping
   expect(taps).toEqual([]);
 });
 
-// The toolbar opened during the first battle, over every screen after it, found as it ends: the run stops before the
-// next.
+// The toolbar opened during the first battle, over every screen after it, found as it ends: the run stops before it
+// taps anything there, even with the dump taking the 4s it takes on a phone, as long as the taps to the next battle.
 test('stops between battles once PGSharp’s toolbar comes to cover what it reads', async () => {
-  const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party');
+  const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party', undefined, 4000);
 
   await expect(
     run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
   ).rejects.toThrow(/^PGSharp's toolbar covers /);
-  expect(taps.filter((scene) => scene === 'charged')).toEqual(['charged']);
+  expect(taps).toEqual(['party', 'party', 'charged']);
 });
 
 test('stops at the end of a GO Battle League set, leaving its reward to be collected', async () => {

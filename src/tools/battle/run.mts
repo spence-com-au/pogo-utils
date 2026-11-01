@@ -356,10 +356,9 @@ export async function run(
   // is read for the battle's outcome too.
   let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
 
-  // PGSharp's overlay as the phone's views show it: waited for before the run taps anything, and looked for again as
-  // each battle ends, beside the loop, its star being as readily opened or dragged between battles as before them.
+  // PGSharp's overlay as the phone's views show it, waited for before the run taps anything. It is looked for again as
+  // each battle ends, its star being as readily opened or dragged between battles as before them.
   let first: string | undefined = await phone.views();
-  let looking: Reading<{ dump: string }> | undefined;
   let frames = 0;
   const kept: Image[] = [];
 
@@ -666,19 +665,9 @@ export async function run(
     // Made for the frames' size, which every frame of a run shares, and made again for each battle.
     player ??= new Player(frame);
 
-    const overlay = looking?.done;
-
     if (first !== undefined) {
       log(`PGSharp's overlay: ${checkOverlay(first, frame)}, clear of what is read`);
       first = undefined;
-    } else if (overlay) {
-      looking = undefined;
-
-      if ('error' in overlay) {
-        throw overlay.error;
-      }
-
-      checkOverlay(overlay.dump, frame);
     }
 
     if (frames++ % 10 === 0 && kept.at(-1) !== frame) {
@@ -1784,13 +1773,9 @@ export async function run(
           return { battles, ...outcomes };
         }
 
-        if (!looking) {
-          looking = {};
-          settle(
-            looking,
-            phone.views().then((dump) => ({ dump })),
-          );
-        }
+        // Looked for again before anything on the screen after the battle is tapped, the ✓, a card or BATTLE: each would
+        // land on whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first.
+        checkOverlay(await phone.views(), screenshot);
       }
 
       const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
