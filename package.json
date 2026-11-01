@@ -3,6 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "adb": "node scripts/adb.mts",
     "battle": "node scripts/battle.mts",
     "build": "npm-run-all --print-label --serial build:clean build:types build:data build:sprites build:bundle build:ics build:icons build:manifest build:assemble",
     "build:assemble": "node scripts/assemble.mts",

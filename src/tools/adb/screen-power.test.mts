@@ -47,6 +47,9 @@ test.each([['off'], ['on']] as const)('writes the dex whole and runs it %s', asy
   expect(readFileSync(dex)).toStrictEqual(DEX);
 });
 
-test("throws where the phone's app_process fails", async () => {
-  await expect(screenPower(phone('false').transport, DEX, 'on')).rejects.toThrow();
+test("throws where the phone's app_process fails, naming the command but not the dex it carries", async () => {
+  const failed = screenPower(phone('false').transport, DEX, 'on');
+
+  await expect(failed).rejects.toThrow('ScreenPower on');
+  await expect(failed).rejects.not.toThrow(DEX.toString('base64'));
 });

@@ -2,11 +2,11 @@
 /data/silhouettes.json linguist-vendored
 /pnpm-lock.yaml linguist-generated
 /resources/gpx.xsd linguist-vendored
+/src/tools/adb/screen-power/ScreenPower.dex linguist-generated
 /src/tools/battle/fixtures/*.h264 filter=lfs diff=lfs merge=lfs -text
 /src/tools/battle/fixtures/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/battle/fixtures/icons/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/battle/fixtures/types/*.png filter=lfs diff=lfs merge=lfs -text
-/src/tools/battle/screen-power/ScreenPower.dex linguist-generated
 /src/tools/inventory/fixtures/game-master.json linguist-vendored
 /src/tools/inventory/fixtures/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/inventory/fixtures/storage/*.png filter=lfs diff=lfs merge=lfs -text
