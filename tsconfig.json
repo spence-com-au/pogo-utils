@@ -128,7 +128,6 @@
     "src/event-feed.ts",
     "src/generated.ts",
     "src/gpx-dialect.ts",
-    "src/livepokemap/filter-format.ts",
     "src/page-table.ts",
     "src/pgsharp/release.ts",
     "src/pokedex/icons.ts",

@@ -3,8 +3,8 @@
  * up and collapsed to one entry per dex number.
  *
  * The Sets beside this file are checklists of what is still wanted, which is not the same question as what a tool can
- * alert on. Both tools fed from them — the PGSharp backup's nearby feed and the Live PokeMap display filter — want the
- * same narrowing and the same collapse, so it is here rather than in whichever of them was written first.
+ * alert on. The PGSharp backup's nearby feeds are fed from them, and each wants the same narrowing and the same
+ * collapse, so it is here rather than repeated per feed.
  */
 
 import Pokemon from '../pokemon/pokemon.js';
@@ -35,10 +35,10 @@ export const allOf =
  * Every `keep` has to hold for an entry to stay, which is how a filter drops what has no shiny to find. They run before
  * the list collapses, so a species listed twice keeps the form that survives rather than whichever came first.
  *
- * A form carries the dex number of the species it belongs to, that number being all either tool stores, so a list
+ * A form carries the dex number of the species it belongs to, that number being all PGSharp stores, so a list
  * naming several forms names it several times. The names say which forms the list is for; the repeats say nothing, so
  * one entry per number survives: the last form listed, held where the number first appeared. That is `Map` replacing
- * the value of a key it already holds while keeping the key's place. Neither tool can tell, as both store the number
+ * the value of a key it already holds while keeping the key's place. PGSharp cannot tell, as it stores the number
  * alone, but a caller reading the surviving form gets the last one.
  */
 export function species(entries: ReadonlySet<Pokemon>, ...keep: Predicate[]) {
@@ -75,10 +75,10 @@ export const filterRegion =
   (pokemon) =>
     pokemon.isFrom(region);
 
-// What a scanner can ever show: both tools report wild spawns, so a species not in the game yet or one the wild never
-// turns up is a line neither would ever alert on. Every narrowing built on this module starts from these. `readonly`
+// What a scanner can ever show: a feed reports wild spawns, so a species not in the game yet or one the wild never
+// turns up is a line it would never alert on. Every narrowing built on this module starts from these. `readonly`
 // because the callers spread them rather than hold them, so a `push` into either export would be an extra predicate on
-// all six PGSharp feeds and the display filter at once.
+// all six PGSharp feeds at once.
 export const WILD_SPAWN_FILTERS: readonly Predicate[] = [filterReleased, filterWildSpawns];
 
 // The predicates every shiny hunt shares; a region or `filterRegional` is added to these per caller. Shared as a list

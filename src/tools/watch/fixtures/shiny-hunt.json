@@ -1,8 +1,0 @@
-{
-  "_lpm_display_filter": true,
-  "config": {
-    "speciesFilterMode": "allowlist",
-    "speciesFilterList": [1, 19]
-  },
-  "exported_at": "2026-10-11T00:00:00.000Z"
-}

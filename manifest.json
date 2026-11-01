@@ -1,7 +1,7 @@
 {
   "name": "Pokémon GO Utilities",
   "short_name": "PoGo Utils",
-  "description": "Events calendar, GPX route map, search strings, a Pokédex, exports for PGSharp and Live PokeMap, and a reader for a Pokémon's detail screen.",
+  "description": "Events calendar, GPX route map, search strings, a Pokédex, exports for PGSharp, and a reader for a Pokémon's detail screen.",
   "display": "standalone",
   "background_color": "#f7f8fa",
   "theme_color": "#ffffff",

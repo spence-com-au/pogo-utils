@@ -10,9 +10,8 @@ application and reached from a shared top tab bar:
   that box itself on a phone connected from the settings menu.
 - **Pokédex** (`#/pokedex`) — every species and its forms: what is in the game, which have a shiny and which hunts still
   want it.
-- **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, a Live
-  PokeMap display filter built from the shiny hunt list, and links to the
-  [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
+- **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, and links to
+  the [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
 - **Inventory** (`#/inventory`) — one Pokémon's detail screen read end to end, off a phone over WebUSB or from a saved
   screenshot: what [`pnpm inventory parse`](#pokémon-inventory) prints, without installing anything.
 - **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected from the
@@ -434,29 +433,6 @@ Each waypoint also carries the IANA timezone its coordinates fall in (`Europe/Ma
 stand in for it. Routes have no timezone field, matching PGSharp. If that script does not load, the backup is written
 without timezones and the page says how many were left out; PGSharp accepts entries either way.
 
-## Import into Live PokeMap
-
-The second panel on the **Integrations** page writes a [Live PokeMap](https://livepokemap.com) _display filter_: an
-allowlist of every species still wanted for a shiny, as the dex numbers its filter stores. Click **Copy to clipboard**,
-then press **Import** under Live PokeMap's own display filters. A copy rather than a download because its importer takes
-neither a file nor a pasted field — it calls `navigator.clipboard.readText()` and reads whatever is on the clipboard, so
-a downloaded file would only have to be opened and copied out by hand first.
-
-It is the shiny list alone. XXL, XXS and 100% are thresholds rather than lists — `filterXXL`, `filterXXS` and `minIV`
-say them without naming a species, and Live PokeMap surfaces all three unprompted, its `alwaysShowSize` and
-`alwaysShowPerfect` defaulting on. Which species still want a shiny is the one thing it cannot work out for itself, and
-it is the same Set the PGSharp feed is built from, narrowed the same way by
-[`src/filters/narrow.ts`](src/filters/narrow.ts).
-
-**Importing replaces your display filters entirely.** Live PokeMap spreads an imported `config` over its own defaults
-rather than over what you had, so every field the file leaves out — the IV and level bounds among them — goes back to
-its default. The file therefore carries only the two fields this collection has an opinion about, and the panel says so
-above the button.
-
-Not to be confused with Live PokeMap's own **Config** export, the `{"_version": 1, "settings": {…}}` file. That one
-honours a seven-key allowlist of interface preferences and silently drops anything else, so a species list cannot be
-expressed in it at all; the two formats are not interchangeable in either direction.
-
 ## Installing as an app
 
 [`manifest.json`](manifest.json) lets a phone add the site to its home screen and open it without the browser's toolbar,
@@ -675,54 +651,6 @@ the game goes on drawing, `screenrecord` on recording and touches on landing: a 
 4–1 with its panel dark. Android is not told, so the panel stays dark until `screen-on`, or until the phone sleeps and
 is woken, which Pokémon GO's own wake lock puts off for as long as the game is in front.
 [`src/tools/adb/screen-power.mts`](src/tools/adb/screen-power.mts) explains how, and why the dex it runs is committed.
-
-## Live PokeMap watcher
-
-`pnpm watch:livepokemap` keeps a [Live PokeMap](https://livepokemap.com) session open the way a browser tab would and
-pushes a notification to a phone through [ntfy](https://ntfy.sh) for each spawn one of its queries wants. A query is a
-Live PokeMap display filter, one file each: whatever its own **Export** writes, or the shiny hunt the
-[Integrations page](#import-into-live-pokemap) copies, pasted into a file.
-
-```sh
-LPM_USERNAME=… LPM_PASSWORD=… NTFY_TOPIC=… pnpm watch:livepokemap shiny-hunt.json perfect-dratini.json
-```
-
-It runs in the foreground until stopped. Leave `NTFY_TOPIC` unset to run it console only: each match is printed in full
-instead, with a Google Maps link, once per spawn as a notification would be. `NTFY_SERVER` points it at an ntfy server
-other than `ntfy.sh`, and `NTFY_TOKEN` gives it an access token for one that needs it. Subscribe to the same topic in
-the ntfy app on the phone. The topic is as good as a password on the public server, since anyone who knows it can read
-what is sent there, so pick one nobody would guess. It gives each connect two seconds per address family rather than
-Node's 250 ms, which `ntfy.sh` overruns from a slow link, so no `NODE_OPTIONS` is needed for that. None of these values,
-nor the token the login answers, is ever printed; `--verbose` adds each request as it is sent and a line per poll.
-
-Any of these can go in a `.env` at the repository root instead of the command line, one `NAME=value` per line, which git
-ignores. One set on the command line still wins over the file.
-
-Each notification names the species and form, why it matched (shiny, 100%, XXL, XXS), IV, CP and level, where the spawn
-is and when it despawns, and opens that spot in Google Maps when tapped. A spawn notifies once however many queries want
-it and however many polls carry it.
-
-**What the world view can see.** The watcher watches the whole world, as the map does zoomed all the way out. From there
-the server answers two lists: every 100% IV spawn, whatever species the filter names, and the account's own shinies of
-the species it does name. A spawn in the first list is wanted where the filter would draw it on the map, so a shiny hunt
-still notifies every 100% spawn while its `alwaysShowPerfect` is on — the default — as its map would show them. A shiny
-is wanted where the filter's species list admits it. Nothing else reaches the world view: a 98% spawn, an XXL below
-100%, a 0%, a PvP rank, a rare species. A query asking for any of those is told so when the command starts, rather than
-left to wait for something that cannot come.
-
-**What the account can see.** Live PokeMap shows Pokémon with IVs from its Explorer plan up, and your own shinies only
-on Premium. The first poll says whether the account has shiny access; without it, no shiny is ever notified.
-
-**How it behaves.** It asks once per `viewport_refresh_seconds` from `/api/config` (15 today, and never under 5, as the
-page holds it), with one request however many queries, carrying a filter wide enough for all of them. Before the first
-it makes the reads the page makes on load, and it never writes: the page saves your interface preferences on load, and
-doing the same would overwrite your display filters with the watcher's. The login's token lasts a day with no way to
-refresh it, so a refused token is answered by logging in again. A refused or failed request is waited out, doubling from
-30 seconds to 15 minutes, rather than asked again at the poll rate; a login refused outright stops the command.
-
-Automated access is against Live PokeMap's terms, and the account is at risk however closely the watcher keeps to what
-one tab does — Node's requests do not look like Chrome's to Cloudflare, whatever headers they carry. The risk is yours
-to weigh.
 
 ## Prior art
 

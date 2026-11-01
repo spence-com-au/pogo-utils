@@ -1,7 +1,7 @@
 /**
  * The Integrations page. Shares the colour tokens in theme.css, the tab bar in nav.css and the heading block in
- * chrome.css with the other pages; the panels here build a partial PGSData.dat and a Live PokeMap display filter
- * entirely in the browser, from the repository's GPX files and hunt lists, and link the apps they go with.
+ * chrome.css with the other pages; the panels here build a partial PGSData.dat entirely in the browser, from the
+ * repository's GPX files and hunt lists, and link the apps they go with.
  */
 
 /**
