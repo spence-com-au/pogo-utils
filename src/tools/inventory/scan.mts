@@ -109,6 +109,213 @@ function bump(map: Map<string, number>, key: string, by: number) {
   map.set(key, (map.get(key) ?? 0) + by);
 }
 
+/**
+ * The rows of a CSV as `csv` writes them: a field quoted where it holds a comma, a quote or a line break, and a quote
+ * inside one doubled. A line break outside quotes ends a row, and a trailing one does not start another.
+ */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += c;
+    }
+  }
+
+  if (field !== '' || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+/**
+ * What a row already written says of its Pokémon that the screen can be checked against: the HP, weight and height,
+ * and the IVs where they were read. The name is left out for the reason `looseKeyOf` leaves it out, and the IVs are
+ * only compared where both sides have them, an overlay that went unread once being no reason to miss the row.
+ */
+export interface Landmark {
+  hp: number;
+  weight: number | null;
+  height: number | null;
+  iv: string | null;
+}
+
+export function landmarkOf(detail: Detail, overlay: Overlay | null): Landmark | null {
+  if (detail.hp === null) {
+    return null;
+  }
+
+  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : null;
+
+  return { hp: detail.hp, weight: detail.weight, height: detail.height, iv };
+}
+
+export function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
+  return (
+    a !== null &&
+    b !== null &&
+    a.hp === b.hp &&
+    a.weight === b.weight &&
+    a.height === b.height &&
+    (a.iv === null || b.iv === null || a.iv === b.iv)
+  );
+}
+
+/** How many rows already written a landing is checked against, the last of them being the row before it. */
+export const LANDMARKS = 3;
+
+/**
+ * The rows of a scan's CSV that a pass resumed with `--skip` lands just past, oldest first: row `skip` itself and the
+ * ones written before it, up to `most` of them, stopping at a row that skips a number or has no HP to be known by.
+ * Row `skip` is the last one written under that number, a file resumed wrongly before holding it more than once.
+ *
+ * Throws where row `skip` is missing or has no HP, which is a landing nothing could check.
+ */
+export function landmarksBefore(text: string, skip: number, most = LANDMARKS): Landmark[] {
+  const [header = [], ...rows] = parseCsv(text);
+  const columns = ['index', 'hp', 'weight_kg', 'height_m', 'attack_iv', 'defense_iv', 'stamina_iv'];
+
+  if (columns.some((name) => !header.includes(name))) {
+    throw new Error('it is not a CSV this scan wrote, missing a column it is checked by');
+  }
+
+  const field = (row: readonly string[], name: string) => row[header.indexOf(name)] ?? '';
+
+  const number = (row: readonly string[], name: string) => {
+    const text = field(row, name);
+
+    return text === '' ? null : Number(text);
+  };
+
+  const landmark = (row: readonly string[]): Landmark | null => {
+    const read = number(row, 'hp');
+    const iv = ['attack_iv', 'defense_iv', 'stamina_iv'].map((name) => field(row, name));
+
+    return read === null
+      ? null
+      : {
+          hp: read,
+          weight: number(row, 'weight_kg'),
+          height: number(row, 'height_m'),
+          iv: iv.every(Boolean) ? iv.join('/') : null,
+        };
+  };
+
+  const last = rows.findLastIndex((row) => number(row, 'index') === skip);
+
+  if (last === -1) {
+    throw new Error(`it holds no row ${skip} to check the landing against`);
+  }
+
+  const found: Landmark[] = [];
+
+  for (const row of rows.slice(0, last + 1).reverse()) {
+    const mark = landmark(row);
+
+    if (found.length >= most || number(row, 'index') !== skip - found.length || mark === null) {
+      break;
+    }
+
+    found.unshift(mark);
+  }
+
+  if (found.length === 0) {
+    throw new Error(`its row ${skip} has no HP, so nothing on the screen can be checked against it`);
+  }
+
+  return found;
+}
+
+/** How many Pokémon past where a skip should have landed `land` looks for it: a fifth of the skip, and ten at least. */
+export const reachOf = (skip: number) => Math.max(10, Math.ceil(skip / 5));
+
+/**
+ * How many more swipes back than `behind` holds `land` starts from, so that a skip landed past where it should have, or
+ * a swipe back that went nowhere, still starts the search ahead of the rows it is looking for.
+ */
+const MARGIN = 2;
+
+/** Collapses a run of readings that are one Pokémon read again, which is what a swipe that went nowhere leaves. */
+function collapse(marks: readonly (Landmark | null)[]): (Landmark | null)[] {
+  return marks.filter((mark, i) => i === 0 || !sameLandmark(mark, marks[i - 1] ?? null));
+}
+
+/**
+ * Puts a pass resumed with `--skip` on the Pokémon after the rows already written, whatever the swipes that got it
+ * there dropped. A swipe can go nowhere, and a skip made of a hundred of them blind lands short by every one that did,
+ * so the rows written next would be the last ones again under numbers that have moved on.
+ *
+ * So it swipes back past where the rows `behind` should be, reads forward until the last of what it has read is them,
+ * and swipes on past them. Runs of one Pokémon read twice are collapsed on both sides, which is what lets a swipe that
+ * goes nowhere on the way, or a twin among `behind`, leave the match standing. That costs a twin run `behind` ends on:
+ * the match comes on its first, and a swipe dropped while stepping past the rest goes unseen, a swipe dropped and a
+ * twin reading the same. Answers how far off the skip had landed,
+ * short where positive; throws where `behind` does not turn up within `reach` Pokémon of where it should have been.
+ */
+export async function land<R extends { key: string | null }>(
+  { read, next, back }: Steps<R>,
+  behind: readonly Landmark[],
+  mark: (reading: R) => Landmark | null,
+  reach: number,
+): Promise<number> {
+  const wanted = collapse(behind);
+  const start = behind.length + MARGIN;
+  const seen: (Landmark | null)[] = [];
+  const last = behind.at(-1) ?? null;
+  const run = Math.max(behind.length - behind.findLastIndex((m) => !sameLandmark(m, last)) - 1, 1);
+
+  for (let i = 0; i < start; i++) {
+    await back();
+  }
+
+  for (let reads = 0; reads < start + reach; reads++) {
+    if (reads > 0) {
+      await next();
+    }
+
+    seen.push(mark(await read()));
+    const tail = collapse(seen).slice(-wanted.length);
+
+    // The match comes on the first of a run of twins `behind` ends on, collapsed as it is, so the walk is put past the
+    // whole run rather than past its first.
+    if (tail.length === wanted.length && tail.every((m, i) => sameLandmark(m, wanted[i] ?? null))) {
+      for (let i = 0; i < run; i++) {
+        await next();
+      }
+
+      return reads + run - start;
+    }
+  }
+
+  throw new Error(`the rows before it did not turn up within ${reach} Pokémon of where the skip landed`);
+}
+
 /** What `walk` needs of the phone: a read of the Pokémon open, and a swipe to the next one or back to the one before. */
 export interface Steps<R extends { key: string | null }> {
   read: () => Promise<R>;

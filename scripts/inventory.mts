@@ -28,6 +28,11 @@
  *   A flag handed to a command whose line omits it is refused rather than ignored — see `HONOURED`.
  *   `help`, or `--help` beside any command, prints this.
  *
+ * `--skip N` resumes a scan whose `--out` already holds rows 1 to N, and appends to it. It swipes N Pokémon on blind,
+ * then finds row N by its HP, weight, height and IVs and starts just past it, since a swipe can go nowhere and a skip
+ * that trusted every one of them would land short by each it dropped. It refuses an `--out` without a row N to find,
+ * and stops rather than write where it cannot find it.
+ *
  * A scroll capture drags the screen up until it stops moving and stitches the frames into one tall image, which is how
  * a screen longer than the phone is seen whole. The stitch is **not** given to the other readers, and that is a limit
  * rather than an oversight: the star corner, the overlay sweep, the tag band and the artwork are each anchored on a
@@ -69,7 +74,20 @@ import {
   refusals,
   type Source,
 } from '../src/tools/inventory/report.mts';
-import { count, csv, keyOf, Marks, parseFlags, walk as stepThrough, type Flag } from '../src/tools/inventory/scan.mts';
+import {
+  count,
+  csv,
+  keyOf,
+  land,
+  landmarkOf,
+  landmarksBefore,
+  Marks,
+  parseFlags,
+  reachOf,
+  walk as stepThrough,
+  type Flag,
+  type Landmark,
+} from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
 import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -317,6 +335,24 @@ async function scan() {
   // Ahead of the phone, so a typo fails before anything is driven.
   const limit = count('limit', options.limit, Infinity);
   const skip = count('skip', options.skip, 0);
+  const out = options.out;
+
+  // The rows a skip has to land just past, read before the phone is driven, since a skip with nothing to check its
+  // landing against is one that lands short by every swipe it dropped and says nothing: the rows written next repeat
+  // the last ones under numbers that have moved on.
+  let behind: Landmark[] = [];
+
+  if (skip > 0) {
+    try {
+      behind = landmarksBefore(readFileSync(out, 'utf8'), skip);
+    } catch (error) {
+      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : (error as Error).message;
+      throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${out}, but ${why}`, {
+        cause: error,
+      });
+    }
+  }
+
   const device = new Device(adbCli(options.serial));
   await device.check();
   const data = await loadGameData(CACHE, options.refresh);
@@ -529,13 +565,31 @@ async function scan() {
     from = 0,
     first?: Reading,
   ) => {
-    for (let i = 0; i < from; i++) {
-      await swipe(config.swipes.next, config.waits.swipe / 2);
-    }
-
     const [grab, drop] = config.swipes.next;
     const next = () => swipe([grab, drop], config.waits.swipe);
     const back = () => swipe([drop, grab], config.waits.swipe);
+
+    if (from > 0) {
+      // Blind and at half the wait, which is quick and drops swipes: a skip of 136 landed 9 short. `land` is what makes
+      // up for them, finding the rows already written and stepping on past them.
+      for (let i = 0; i < from; i++) {
+        await swipe(config.swipes.next, config.waits.swipe / 2);
+      }
+
+      const reach = reachOf(from);
+      let off: number;
+
+      try {
+        off = await land({ read: readDetail, next, back }, behind, (r) => landmarkOf(r.detail, r.overlay), reach);
+      } catch (error) {
+        throw new Error(`--skip ${from} could not find where to start: ${(error as Error).message}`, { cause: error });
+      }
+
+      if (off > 0) {
+        console.error(`  the skip landed ${off} short of row ${from + 1}, so it stepped on past row ${from}`);
+      }
+    }
+
     await stepThrough({ read: readDetail, next, back }, visit, max, from, from === 0 ? first : undefined);
     await tap(at(config.taps.closeDetail));
   };
@@ -561,9 +615,7 @@ async function scan() {
     marked.set(flag, marks);
   }
 
-  const out = options.out;
-
-  if (skip === 0 || !existsSync(out)) {
+  if (skip === 0) {
     writeFileSync(out, `${COLUMNS.join(',')}\n`);
   }
 
