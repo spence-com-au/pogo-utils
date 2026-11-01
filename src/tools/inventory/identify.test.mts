@@ -222,3 +222,18 @@ test('the candy and the height narrow together, neither acting on a figure no fo
   expect(answered({ ...SINISTEA, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
   expect(answered({ ...SINISTEA, height: 5, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
 });
+
+/**
+ * A CP worked out that none of the screen's candidates is, where no CP read for certain. The candidates are not trusted
+ * one at a time, but missing every one of them says the IVs or the level are wrong: a Skarmory showing CP 862 had its
+ * `11/10/11` read as `1/1/1`, worked out to 872, and was written without a note. Where one of them is the CP worked
+ * out, there is nothing to say.
+ */
+test('a worked-out CP none of the screen’s candidates is gets a note', () => {
+  const unsure = (cps: number[]) =>
+    identify(DATA, { ...pumpkaboo(0.57, 'XL'), cp: null, cps }, PUMPKABOO).notes.filter((n) => n.includes('CP'));
+
+  expect(unsure([140, 99, 140])).toStrictEqual(['the screen reads CP 140 or 99, where this form at this level is 14']);
+  expect(unsure([140, 14])).toStrictEqual([]);
+  expect(unsure([])).toStrictEqual([]);
+});

@@ -166,6 +166,51 @@ export function assembled(readings: readonly { iv: IVs; before: string }[]): IVs
 }
 
 /**
+ * A later reading that holds the first one's digits and more, where the first has lost some: each of its fields reads
+ * the first's field with digits added, and at least one adds something. `1/1/1` against `11/10/11` is the case — each
+ * `1` is in the field beside it — where `10/4/13` against `12/4/3` is not, `10` not being in `12`.
+ *
+ * Asked only where nothing confirmed and nothing assembled, so it never overrides the percentage; it only chooses
+ * between readings the percentage could not separate, in favour of the one OCR lost less of. Losing strokes is the
+ * direction near-white errs in — the chroma ceiling clips the anti-aliased edge of a `1` — and adding them is not.
+ *
+ * The one with the most digits, and nothing where two different readings tie for it, that being a guess between them.
+ */
+export function fuller(readings: readonly { iv: IVs }[]): IVs | null {
+  const [first, ...rest] = readings;
+
+  if (first === undefined) {
+    return null;
+  }
+
+  const fields = (iv: IVs) => [iv.attack, iv.defense, iv.stamina].map(String);
+  const digits = (iv: IVs) => fields(iv).join('').length;
+
+  const holds = (whole: string, part: string) => {
+    let at = 0;
+
+    for (const digit of whole) {
+      if (digit === part[at]) {
+        at++;
+      }
+    }
+
+    return at === part.length;
+  };
+
+  const base = fields(first.iv);
+  const extending = rest
+    .map((reading) => reading.iv)
+    .filter((iv) => digits(iv) > digits(first.iv) && fields(iv).every((field, i) => holds(field, base[i] ?? '')));
+  const most = Math.max(...extending.map(digits));
+  const best = [
+    ...new Map(extending.filter((iv) => digits(iv) === most).map((iv) => [fields(iv).join('/'), iv])).values(),
+  ];
+
+  return best.length === 1 ? (best[0] ?? null) : null;
+}
+
+/**
  * The alphabet the bracketed form is read with, deliberately not the one above widened: the letters a form needs are
  * precisely the glyphs a digit is confused with — `O` for `0`, `S` for `5`, `B` for `8` — so two reads of the same
  * crop cost one more Tesseract call and leave the numbers coming out of the alphabet they were measured against.
@@ -535,7 +580,11 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
   //
   // Behind `chosen` rather than beside it, so a pass that read the whole line and checks out is never second-guessed,
   // and only where exactly one combination checks out, two being a guess between them rather than a reading.
-  const iv = chosen?.iv ?? assembled(possible) ?? possible[0]?.iv ?? null;
+  //
+  // Then, where the percentage settles nothing, a reading holding every digit the first pass read and more. Near-white
+  // clips thin `1`s, so its triple can be another pass's with digits missing — a Skarmory whose overlay reads
+  // `11/10/11` came back `1/1/1` — and a triple that has lost digits cannot be told from a real one by looking at it.
+  const iv = chosen?.iv ?? assembled(possible) ?? fuller(possible) ?? possible[0]?.iv ?? null;
 
   if (iv === null) {
     return null;
