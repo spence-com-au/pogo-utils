@@ -171,28 +171,24 @@ body[data-page='events'] {
   }
 
   /**
-   * The glyph has no ascender above the baseline, so padding that is symmetric centres the line box and leaves the ink
-   * low: measured on the page, the ink starts 10px below the top of the 15px content box and ends 2px above the bottom,
-   * which is 8px of imbalance at any equal padding. Hence the 8px between 3px over and 11px under, which measures 14px
-   * of the border box above the ink and 14px below. It reads lopsided in the declaration for the reason it has to be.
-   *
-   * `font-size` is the 15px the glyph carried before this was a button, which the 13px `.controls button` sets would
-   * otherwise shrink.
+   * The chevron is a block so the button's height is the icon's and the padding's, with no line box around it to
+   * leave space under the ink the way a glyph's descender would.
    */
 
   .controls .disclose {
-    padding: 3px 18px 11px;
+    padding: 6px 18px;
     border-color: var(--border);
     background: transparent;
     color: var(--muted);
-    font-size: 15px;
-    line-height: 1;
+  }
+
+  .controls .disclose svg {
+    display: block;
   }
 
   /**
-   * The same ellipsis in both states, since it has no orientation to turn over the way a chevron would — what says the
-   * row is open is the row being there, and for anyone who cannot see that, `aria-expanded` and the title. So hover and
-   * focus are the only states that move, and they move the border with the text to keep the two reading as one control.
+   * The chevron's direction says which way a click goes, and `aria-expanded` and the title say it for anyone who cannot
+   * see that. Hover and focus move the border with the icon to keep the two reading as one control.
    */
 
   .controls .disclose:hover,

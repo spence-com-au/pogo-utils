@@ -1072,8 +1072,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
         </button>
         {/*
          * `aria-expanded` carries the state and the title says which way a click goes, so the label stays neutral in
-         * both. The ellipsis is a real character rather than CSS content so it survives the stylesheet not loading,
-         * and needs no `aria-hidden`, `aria-label` already replacing the contents in the accessible name.
+         * both. The chevron points the way a click moves the panel — down to open it, up to close it — and is swapped
+         * in the markup rather than turned by a CSS transform so it still points the right way without the stylesheet.
+         * Its size is set in attributes for the same reason.
          */}
         <div class="disclose-row">
           <button
@@ -1085,7 +1086,19 @@ export default function EventsPage({ query: fragment }: { query: string }) {
             title={`${filtersOpen ? 'Hide' : 'Show'} filters`}
             onClick={() => setFiltersOpen(!filtersOpen)}
           >
-            …
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d={filtersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
+            </svg>
           </button>
         </div>
       </section>
