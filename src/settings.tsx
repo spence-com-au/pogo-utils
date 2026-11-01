@@ -54,6 +54,12 @@ export function Settings() {
   const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
 
+  /**
+   * Whether that status is a failed connection, which is the one time it points to WebADB: a shell over the same WebUSB
+   * to find out why, kept out of the note above so that it costs no room until it is needed.
+   */
+  const [connectFailed, setConnectFailed] = useState(false);
+
   useDismiss(open, () => setOpen(false), root);
 
   /**
@@ -63,6 +69,7 @@ export function Settings() {
    */
   async function connectPhone() {
     setConnecting(true);
+    setConnectFailed(false);
     setPhoneStatus('Pick the phone in the browser’s chooser, then allow USB debugging on it…');
 
     try {
@@ -84,6 +91,9 @@ export function Settings() {
       );
     } catch (e) {
       setPhoneStatus(`Could not connect: ${said(e)}`);
+
+      // Not where the browser has no WebUSB at all, which WebADB needs as much as this does.
+      setConnectFailed('usb' in navigator);
     } finally {
       setConnecting(false);
     }
@@ -96,6 +106,7 @@ export function Settings() {
    */
   async function toggleDemo() {
     setPhoneStatus(null);
+    setConnectFailed(false);
 
     try {
       if (phone?.serial === DEMO_SERIAL) {
@@ -274,6 +285,12 @@ export function Settings() {
                 : phone
                   ? `Connected to ${phone.name}.`
                   : null)}
+            {connectFailed && phoneStatus !== null && (
+              <>
+                {' '}
+                <a href="https://webadb.com/">WebADB</a> can help find out why.
+              </>
+            )}
           </p>
         </section>
       </div>
