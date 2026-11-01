@@ -8,6 +8,9 @@
  * hat; Meowth and Nidorina beside Absol, Spinarak and Joltik beside a Stunfisk nicknamed `89% MS/MW/D`, Crocalor and
  * Gastrodon beside Wartortle. Its cards sit 5 px above the fraction of the height they take on a Pixel 4 XL, where all
  * six were declined, Stunfisk's nearest there being Durant.
+ *
+ * And a shiny Origin Forme Palkia, nicknamed `98%`, its pale legs reaching the card's foot: Dubwool and Whirlipede beside
+ * it, Falinks and Avalugg beside Metagross, Wyrdeer and Tapu Bulu beside Xerneas.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -35,6 +38,7 @@ test.each([
   ['menu-party-full', ['Zeraora', 'Latias', 'Gyarados']],
   ['menu-pixel8-party-gengar', ['Gengar', 'Gengar', 'Gengar']],
   ['menu-pixel8-party', ['Absol', 'Stunfisk', 'Wartortle']],
+  ['menu-pixel8-party-master', ['Palkia', 'Metagross', 'Xerneas']],
 ])('%s holds %o', (name, party) => {
   expect(readParty(png(`fixtures/${name}.png`), ICONS)).toEqual(party);
 });
