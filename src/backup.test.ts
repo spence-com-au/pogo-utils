@@ -329,6 +329,20 @@ test('the file is indented JSON a reader can open', () => {
 });
 
 /**
+ * Values are keyed alphabetically whatever order storage lists them in, so two exports of the same preferences are the
+ * same file. Written out of order on purpose, since the fake lists keys in the order they were first set and an order
+ * that happened to be sorted already would pass without the sort.
+ */
+test('values are keyed in alphabetical order, not the order they were stored', () => {
+  storage.setItem('pogo-utils:map:selected', '[]');
+  storage.setItem(KEYS.seen, 'null');
+  storage.setItem(KEYS.dismissed, '[]');
+  storage.setItem('pogo-utils:a-later-page', '1');
+
+  expect(namesIn(writeBackup())).toEqual(['a-later-page', 'events:dismissed', 'events:seen', 'map:selected']);
+});
+
+/**
  * Dated, because a fixed name makes the browser number successive exports and they stop saying which is which — and
  * the rescue copy is named apart, telling the two apart being the whole of its worth to someone recovering.
  */
