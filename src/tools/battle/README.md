@@ -180,9 +180,10 @@ for text and done every few seconds.
     with both ends on it not at all, a bubble missed rather than the star moved.
   - **When it is looked for:** before the run taps anything, and again as each battle ends, before anything after it is
     tapped. An overlay over any area stops the run, naming what covers what and how to clear it:
-    `PGSharp's toolbar covers the selection grid's left column: collapse it to its star or hide the overlay.` The star
-    and the timer can be dragged clear: on a Pixel 4 XL, the star to the left edge between 0.68 and 0.86 of the height,
-    and the timer to the status bar at the very top.
+    `PGSharp's toolbar covers the selection grid's left column: collapse it to its star or hide the overlay.` On a Pixel
+    4 XL the star is clear on the left edge with its top between 0.68 and 0.86 of the height, so lying no lower than
+    about 0.9. The timer has nowhere clear to go, just under the status bar covering our type icons, so it has to be
+    hidden for battles.
 
 ### The run loop
 
