@@ -70,7 +70,7 @@ import {
   type Matchup,
 } from './energy.mts';
 import { type Meta } from './meta.mts';
-import { checkOverlay, named, swipeAround, type Panel } from './overlay.mts';
+import { checkOverlay, named, swipeAround, swipesAround, type Panel } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 
@@ -1607,8 +1607,13 @@ export async function run(
 
       const flying = counter !== undefined && clock.now() < landing;
       const card = prompt?.card;
+
+      // The bubbles swiped around PGSharp's overlay, those it covers at both ends left out before one is chosen.
       const bubbles =
-        (player.minigame || playing) && bubbleColour ? reads.bubbleSwipes(frame, bubbleColour) : undefined;
+        (player.minigame || playing) && bubbleColour
+          ? swipesAround(reads.bubbleSwipes(frame, bubbleColour), panels, frame)
+          : undefined;
+
       const played = player.next(state, clock.now(), {
         ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
         best,
