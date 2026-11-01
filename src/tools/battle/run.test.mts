@@ -326,6 +326,42 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
   expect(taps).toEqual(['training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
 });
 
+/**
+ * PGSharp's star at the left edge near the foot of a Pixel 4 XL, as `uiautomator dump` would write it: clear of
+ * everything read, but over where the minigame's last row is swept from, x 0.05 at y 0.88.
+ */
+const STAR_LOW = GAME_ALONE.replace(
+  '</hierarchy>',
+  '<node index="1" text="" resource-id="me.underw.hp:id/hl_floating_icon" class="android.widget.ImageView" ' +
+    'package="com.nianticlabs.pokemongo" content-desc="" bounds="[0,2614][126,2740]" /></hierarchy>',
+);
+
+// With no type icons the bubbles' colour is unknown, and the minigame is swept row by row, from the star's end too.
+test('swipes around PGSharp’s star, never beginning a swipe on it', async () => {
+  const scenes = Object.fromEntries(
+    Object.entries(battleAndBack()).map(([name, scene]) => [name, { ...scene, views: STAR_LOW }]),
+  );
+  const { phone, clock, strokes } = scripted(scenes, 'training');
+  const star = { left: 0, top: 2614 / 3040, right: 126 / 1440, bottom: 2740 / 3040 };
+  const on = ([x, y]: Point) => x <= star.right + 0.03 && y >= star.top - 0.015 && y <= star.bottom + 0.015;
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: {},
+        count: 1,
+      },
+      clock,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(strokes.filter(({ from }) => on(from))).toEqual([]);
+  expect(strokes.filter(({ to }) => on(to)).length).toBeGreaterThan(0);
+});
+
 // A result left over from a battle before the run, as one stopped mid-fight leaves, is tapped past and not counted.
 test('taps past a result it started on, then plays the battle counted', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'result');

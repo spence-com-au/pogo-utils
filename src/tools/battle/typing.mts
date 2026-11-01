@@ -14,7 +14,7 @@
 
 import { rgb, type Image } from '../inventory/png.mts';
 import { type Colour } from './minigame.mts';
-import { down, TOP } from './layout.mts';
+import { around, down, TOP, type Area, type Size } from './layout.mts';
 
 /**
  * Where each icon's centre sits across the screen: ours at 0.042 and 0.094, a single type at the first; the opponent's
@@ -118,4 +118,14 @@ export function readTypes(
   };
 
   return { own: side(PLACES.own, 0), opponent: side(PLACES.opponent, 1) };
+}
+
+/** Where each side's type icons are read, for `overlay.mts`. */
+export function areas(screen: Size): Area[] {
+  return [
+    {
+      name: "each side's types",
+      boxes: [...PLACES.own, ...PLACES.opponent].map((x) => around([x, ICON.y], ICON.radius, TOP, screen)),
+    },
+  ];
 }

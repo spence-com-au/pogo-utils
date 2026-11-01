@@ -10,10 +10,15 @@
  * window but the game's own surface is taken for the overlay, so a panel PGSharp adds is found as well as these.
  */
 
-import { type Area, type Box, type Size } from './layout.mts';
-import { areas as menuAreas } from './menus.mts';
+import { areas as healthAreas } from './health.mts';
+import { tall, type Area, type Box, type Size } from './layout.mts';
+import { FINGER, areas as menuAreas } from './menus.mts';
 import { areas as partyAreas } from './party.mts';
+import { areas as playAreas, type Point } from './play.mts';
+import { areas as readAreas } from './read.mts';
+import { areas as recogniseAreas } from './recognise.mts';
 import { areas as selectionAreas } from './selection.mts';
+import { areas as typingAreas } from './typing.mts';
 
 /** One view of PGSharp's overlay, named as a refusal names it, and where it is. */
 export interface Panel {
@@ -73,7 +78,10 @@ export function panelsOf(dump: string, screen: Size): Panel[] {
 }
 
 /** Every reader's areas on a screen the shape of `screen`. */
-export const areas = (screen: Size): Area[] => [...menuAreas(screen), ...partyAreas(screen), ...selectionAreas(screen)];
+export const areas = (screen: Size): Area[] =>
+  [menuAreas, partyAreas, selectionAreas, recogniseAreas, healthAreas, readAreas, typingAreas, playAreas].flatMap(
+    (of) => of(screen),
+  );
 
 const overlaps = (a: Box, b: Box) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
 
@@ -115,11 +123,8 @@ export class Covered extends Error {
   }
 }
 
-/**
- * Throws `Covered` where `dump`'s overlay covers any reader's area on a screen the shape of `screen`, and otherwise
- * answers what of PGSharp's it found, `star, timer`, or `none`.
- */
-export function checkOverlay(dump: string, screen: Size): string {
+/** Throws `Covered` where `dump`'s overlay covers any reader's area on a screen the shape of `screen`, and otherwise answers it. */
+export function checkOverlay(dump: string, screen: Size): Panel[] {
   const panels = panelsOf(dump, screen);
   const by = covered(panels, areas(screen));
 
@@ -127,5 +132,26 @@ export function checkOverlay(dump: string, screen: Size): string {
     throw new Covered(by);
   }
 
-  return [...new Set(panels.map(({ name }) => name))].join(', ') || 'none';
+  return panels;
+}
+
+/** What of PGSharp's `panels` are, `star, timer`, or `none`. */
+export const named = (panels: readonly Panel[]) => [...new Set(panels.map(({ name }) => name))].join(', ') || 'none';
+
+/**
+ * A swipe that starts clear of `panels` on `screen`: as it is, turned round where one lies under where it starts and
+ * none under where it ends, or undefined where both are covered. A touch goes to whatever is under where it lands, so a
+ * swipe begun on the star drags the star; one passing over it is the game's throughout. Covered means within a
+ * fingertip of a panel.
+ */
+export function swipeAround(
+  [from, to]: readonly [Point, Point],
+  panels: readonly Panel[],
+  screen: Size,
+): [Point, Point] | undefined {
+  const reach = tall(FINGER, screen);
+  const under = ([x, y]: Point) =>
+    panels.some(({ box }) => overlaps([x - FINGER, y - reach, x + FINGER, y + reach], box));
+
+  return !under(from) ? [from, to] : !under(to) ? [to, from] : undefined;
 }

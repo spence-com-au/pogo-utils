@@ -169,14 +169,20 @@ for text and done every few seconds.
   timer and any other panel spoil whatever they are drawn over: a sample reads PGSharp's pixels, a word goes unread and
   a tap goes to PGSharp. They are views inside the game's own window, so `uiautomator dump` lists each with its bounds.
   - **Where it matters:** each reader exports the areas it samples, reads and taps, as `areas` beside it, with spares
-    where it has them: two of a cell's three tint samples are enough, and two of the main menu's four labels.
+    where it has them: two of a cell's three tint samples are enough, and two of the main menu's four labels. In battle
+    that is the HUD, the type icons, the buttons and their labels, the banner, the prompts, the bench and the HP bars,
+    the bars where they have been drawn during the fight rather than everywhere the camera can swing them.
     [`areas.test.mts`](areas.test.mts) holds each reader to its own: every fixture of its screens must read the same
     with everything outside them shuffled, and a reader of the whole screen's OCR is handed only the lines wholly inside
     them.
-  - **When it is looked for:** before the run taps anything, and again as each battle ends, beside the loop. An overlay
-    over any area stops the run, naming what covers what and how to clear it:
+  - **The swipes go around it** rather than refuse it: the minigame's bubbles are anywhere in the middle of the screen,
+    and a swipe begun on the star would drag it. A swipe that would begin on the overlay is made the other way, and one
+    with both ends on it not at all, a bubble missed rather than the star moved.
+  - **When it is looked for:** before the run taps anything, and again as each battle ends, before anything after it is
+    tapped. An overlay over any area stops the run, naming what covers what and how to clear it:
     `PGSharp's toolbar covers the selection grid's left column: collapse it to its star or hide the overlay.` The star
-    and the timer can be dragged clear, as to the left edge halfway down and beside the clock.
+    and the timer can be dragged clear: on a Pixel 4 XL, the star to the left edge between 0.68 and 0.86 of the height,
+    and the timer to the status bar at the very top.
 
 ### The run loop
 

@@ -10,6 +10,7 @@
  */
 
 import { luminance, rgb, type Image } from '../inventory/png.mts';
+import { type Area } from './layout.mts';
 
 type Fill = 'green' | 'yellow' | 'red';
 
@@ -203,6 +204,23 @@ export function readHealth(image: Image): Health {
 
   return health;
 }
+
+/**
+ * Where the bars have been found during the fight, for `overlay.mts`, as fractions of the screen and a little past them
+ * for the outline the finder looks for around each: ours starting 0.050–0.081 across and lying 0.247–0.647 down, and
+ * the opponent's starting 0.455–0.661 and lying 0.251–0.561, across every committed frame of both phones that drew
+ * them, each `FULL` long. Searched for further afield, as the camera swings through a charged move, but read only in
+ * the fight, which is where an overlay over them would read a bar short.
+ */
+const DRAWN = {
+  own: [0.04, 0.24, 0.081 + FULL + 0.01, 0.665],
+  opponent: [0.445, 0.24, 0.661 + FULL + 0.01, 0.58],
+} as const;
+
+export const areas = (): Area[] => [
+  { name: 'our HP bar', boxes: [DRAWN.own] },
+  { name: "the opponent's HP bar", boxes: [DRAWN.opponent] },
+];
 
 /**
  * How far a bar may move from the HP held before a second reading must agree with it, as a fraction of the bar. A
