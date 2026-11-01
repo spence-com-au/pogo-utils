@@ -359,10 +359,10 @@ test('a real capture slid by a known amount reads back as that amount', () => {
   }
 });
 
-test('a step is half the band, centred on it, down the middle of the screen', () => {
-  expect(scrollStep({ from: 0.25, to: 0.75 }, 100, 1000)).toStrictEqual([
-    [50, 625],
-    [50, 375],
+test("a step is half the band, centred on it, down the panel's empty left margin", () => {
+  expect(scrollStep({ from: 0.25, to: 0.75 }, 1000, 1000)).toStrictEqual([
+    [43, 625],
+    [43, 375],
   ]);
 });
 

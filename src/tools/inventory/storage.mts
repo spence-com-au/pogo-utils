@@ -27,6 +27,19 @@ import { isDetail } from './report.mts';
 export const CLEAR_KEYS = 300;
 
 /**
+ * A button only a dialog over a detail screen carries: `CANCEL` on the power-up sheet, `YES` on the evolve prompt. The
+ * detail screen itself prints neither as a line of its own, nor does storage.
+ */
+const DIALOG_BUTTON = /^(cancel|yes)$/;
+
+/**
+ * Whether a dialog is open over the screen — what a drag the phone dropped as a tap leaves behind, on whatever control
+ * it started over. Asked before every tap the scan makes, since a dialog's own buttons sit where the screen's do: the
+ * close button's tap lands on the power-up sheet's CANCEL, and a menu tap or a later stray could land on its confirm.
+ */
+export const dialogOpen = (lines: readonly Line[]) => findLine(lines, DIALOG_BUTTON) !== undefined;
+
+/**
  * Why `term` cannot be typed into storage's search box, or null where it can: a character `type` would refuse, or more
  * characters than `CLEAR_KEYS` clears, which would leave the next search typed onto the end of this one.
  *
@@ -101,6 +114,38 @@ export function storage(
   };
 
   /**
+   * Closes a dialog with Back, which every one of them takes as its cancel, rather than with a tap on a button that
+   * might be its confirm. Said, since a dialog open means a gesture went astray, and that is worth knowing about.
+   */
+  const dismiss = async () => {
+    say('  a dialog was open; closing it with Back');
+    await device.key(KEY.BACK);
+    await sleep(config.waits.tap);
+  };
+
+  /**
+   * Taps a detail screen's close button, having looked first: a dialog open over it is closed with Back instead, and a
+   * screen that is not a detail screen is left for `toStorage` to find its own way from rather than tapped blind.
+   */
+  const closeDetail = async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const image = await device.screenshot();
+      const lines = await readLines(image);
+
+      if (dialogOpen(lines)) {
+        await dismiss();
+        continue;
+      }
+
+      if (isDetail(await parseDetail(lines, data, image))) {
+        await tap(at(config.taps.closeDetail));
+      }
+
+      return;
+    }
+  };
+
+  /**
    * The first Pokémon's CP label in a grid, which doubles as how a grid is told from the suggestions panel drawn over
    * it: the panel carries no CP anywhere.
    */
@@ -166,6 +211,12 @@ export function storage(
         return lines;
       }
 
+      // Before either tap below, which are both at the foot of the screen where a dialog keeps its buttons.
+      if (dialogOpen(lines)) {
+        await dismiss();
+        continue;
+      }
+
       if (isDetail(await parseDetail(lines, data, image))) {
         await tap(at(config.taps.closeDetail));
         continue;
@@ -225,5 +276,5 @@ export function storage(
     return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
   };
 
-  return { at, tap, swipe, search, tileLabel, matches, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, firstTile };
 }

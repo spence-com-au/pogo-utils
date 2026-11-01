@@ -9,9 +9,9 @@ import { DEFAULTS, type Config } from './config.mts';
 import { type GameData } from './game-master.mts';
 import { useEngine } from './ocr.mts';
 import { encodePng } from './png.mts';
-import { CLEAR_KEYS, storage, unsearchable } from './storage.mts';
+import { CLEAR_KEYS, dialogOpen, storage, unsearchable } from './storage.mts';
 import { readFileSync } from 'node:fs';
-import { expect, test } from 'vitest';
+import { afterEach, expect, test } from 'vitest';
 
 const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
 
@@ -49,6 +49,23 @@ function phone(focus: string) {
 
   return { sent, device: new Device(transport) };
 }
+
+/** The power-up sheet a dropped drag opens over a detail screen, as OCR reads it: its title, and CANCEL at its foot. */
+const DIALOG = [word(1, 'POWER UP: GEODUDE', 10, 60, 80, 10), word(2, 'CANCEL', 40, 185, 20, 8)].join('\n');
+
+/**
+ * OCR answering each screen with the next of `screens`, and the last of them from then on. Two reads to a screen, since
+ * `readLines` reads the whole of it and then its top again.
+ */
+const reads = (...screens: string[]) => {
+  let read = 0;
+  useEngine({ tsv: () => Promise.resolve(screens[Math.min(Math.floor(read++ / 2), screens.length - 1)] as string) });
+};
+
+const tapped = (sent: readonly string[][]) =>
+  sent.filter(([command, action]) => command === 'input' && action === 'tap');
+
+afterEach(() => useEngine({ tsv: () => Promise.resolve(STORAGE) }));
 
 useEngine({ tsv: () => Promise.resolve(STORAGE) });
 
@@ -98,4 +115,43 @@ test('a term longer than the box can be cleared of is refused, and one that fits
   expect(unsearchable('a'.repeat(CLEAR_KEYS + 1))).toBe(
     `is ${CLEAR_KEYS + 1} characters, more than the ${CLEAR_KEYS} the box can be cleared of`,
   );
+});
+
+test("a dialog's buttons are what tells it from the detail screen beneath it", () => {
+  const line = (text: string) => ({ text, left: 0, top: 0, width: 10, height: 10 });
+
+  expect(dialogOpen([line('POWER UP: GEODUDE'), line('CANCEL')])).toBe(true);
+  expect(dialogOpen([line('YES')])).toBe(true);
+  expect(dialogOpen([line('POWER UP'), line('EVOLVE'), line('NEW ATTACK')])).toBe(false);
+});
+
+test('a dialog open over the screen is closed with Back before the walk to storage taps anything', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(DIALOG, STORAGE);
+  const said: string[] = [];
+  const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
+
+  await search('shiny');
+
+  expect(said).toContain('  a dialog was open; closing it with Back');
+  expect(sent.slice(0, 4)).toStrictEqual([
+    ['dumpsys', 'window', 'displays'],
+    ['screencap'],
+    ['input', 'keyevent', String(KEY.BACK)],
+    ['screencap'],
+  ]);
+
+  // The search box's own tap and nothing before it: neither the close button nor the main menu, both at the foot of
+  // the screen where the dialog keeps its buttons.
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '35']]);
+});
+
+test('the close button is not tapped while a dialog is open, nor on a screen that is not a detail screen', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(DIALOG, '');
+  const { closeDetail } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await closeDetail();
+
+  expect(sent).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
 });

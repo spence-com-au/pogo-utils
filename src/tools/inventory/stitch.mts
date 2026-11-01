@@ -52,17 +52,31 @@ const MIN_OVERLAP = 0.25;
 export const SCROLL_STEP = 0.5;
 
 /**
+ * The column every scroll of a detail screen is dragged down, as a fraction of the screen's width: the panel's empty
+ * left margin, which scrolls exactly as its middle does and holds no control at all.
+ *
+ * **A drag the phone drops arrives as a tap where it started.** Down the middle, that is the POWER UP or EVOLVE row on
+ * most screens and on a scrolled panel, and a scan of 130 Pokémon opened the power-up dialog four times — one tap on
+ * its own button from spending stardust, and an evolve prompt has a YES. Measured on the committed captures, at 1008
+ * and 1440 wide alike, the panel's edge is at 0.026 of the width and every button, card and move row starts at 0.07 or
+ * later; this sits between the two, at the 62 of 1440 a Pixel 4 XL was scanned with. Not the right margin, which looks
+ * the same but does not scroll at all.
+ */
+export const SCROLL_STRIP = 0.043;
+
+/**
  * Where one step's drag starts and ends on a screen this size, in pixels: `SCROLL_STEP` of the band, centred on it,
- * down the middle of the screen. Derived from the band rather than configured beside it, because what it has to stay
- * within is `offsetBetween`'s reach over that same band, and a drag set as a fraction of the whole screen is a fraction
- * of a different length on every phone.
+ * down `SCROLL_STRIP`. Derived from the band rather than configured beside it, because what it has to stay within is
+ * `offsetBetween`'s reach over that same band, and a drag set as a fraction of the whole screen is a fraction of a
+ * different length on every phone.
  */
 export function scrollStep(band: Band, width: number, height: number): [[number, number], [number, number]] {
   const y = (through: number) => height * (band.from + (band.to - band.from) * through);
+  const x = width * SCROLL_STRIP;
 
   return [
-    [width / 2, y(0.5 + SCROLL_STEP / 2)],
-    [width / 2, y(0.5 - SCROLL_STEP / 2)],
+    [x, y(0.5 + SCROLL_STEP / 2)],
+    [x, y(0.5 - SCROLL_STEP / 2)],
   ];
 }
 
