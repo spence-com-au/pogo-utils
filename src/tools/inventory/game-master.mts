@@ -185,10 +185,14 @@ export function fitsHeight(form: Form, height: number, size: Size | null): boole
  * Levenshtein distance over folded text, so case, accents and OCR's stray punctuation cost nothing. `within` measures
  * `a` against the nearest stretch of `b` rather than all of it, which costs nothing for what it leaves off either end:
  * `TIVE` is no distance within SUPER EFFECTIVE.
+ *
+ * An `m` for an `rn` is one edit rather than two, the font's `r` and `n` running together: the Pixel 8 Pro's HUD reads
+ * Xerneas as `Xemeas`, which at two edits is too far from any species for its six letters.
  */
 export function distance(a: string, b: string, within = false): number {
   const s = fold(a).replaceAll(' ', '');
   const t = fold(b).replaceAll(' ', '');
+  let before: number[] = [];
   let previous = Array.from({ length: t.length + 1 }, (_, i) => (within ? 0 : i));
 
   for (let i = 1; i <= s.length; i++) {
@@ -196,9 +200,17 @@ export function distance(a: string, b: string, within = false): number {
 
     for (let j = 1; j <= t.length; j++) {
       const cost = s[i - 1] === t[j - 1] ? 0 : 1;
-      current.push(Math.min((previous[j] ?? 0) + 1, (current[j - 1] ?? 0) + 1, (previous[j - 1] ?? 0) + cost));
+      const merged =
+        s[i - 1] === 'm' && t.slice(j - 2, j) === 'rn'
+          ? (previous[j - 2] ?? Infinity) + 1
+          : t[j - 1] === 'm' && s.slice(i - 2, i) === 'rn'
+            ? (before[j - 1] ?? Infinity) + 1
+            : Infinity;
+
+      current.push(Math.min((previous[j] ?? 0) + 1, (current[j - 1] ?? 0) + 1, (previous[j - 1] ?? 0) + cost, merged));
     }
 
+    before = previous;
     previous = current;
   }
 
