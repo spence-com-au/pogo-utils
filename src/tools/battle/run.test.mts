@@ -700,6 +700,18 @@ test('stops between battles once PGSharp’s toolbar comes to cover what it read
   expect(taps).toEqual(['party', 'party', 'charged']);
 });
 
+// After the last battle wanted nothing more is read, so the toolbar opened over the result costs the run nothing.
+test('finishes a run whose PGSharp toolbar opens during its last battle', async () => {
+  const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party', undefined, 4000);
+
+  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
+    battles: 1,
+    won: 0,
+    lost: 1,
+  });
+  expect(taps).toEqual(['party', 'party', 'charged', 'result']);
+});
+
 test('stops at the end of a GO Battle League set, leaving its reward to be collected', async () => {
   const { phone, clock, taps } = scripted(
     {

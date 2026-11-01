@@ -1773,9 +1773,12 @@ export async function run(
           return { battles, ...outcomes };
         }
 
-        // Looked for again before anything on the screen after the battle is tapped, the ✓, a card or BATTLE: each would
-        // land on whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first.
-        checkOverlay(await phone.views(), screenshot);
+        // Looked for again before anything on the screen after the battle is tapped, a card or BATTLE: each would land on
+        // whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first. Not after
+        // the last battle wanted, which leaves only its ✓ to tap and nothing to read.
+        if (battles < count) {
+          checkOverlay(await phone.views(), screenshot);
+        }
       }
 
       const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
