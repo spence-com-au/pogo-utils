@@ -154,7 +154,9 @@ export function Settings() {
       // The skip is not a formality. `settleSeen` writes `seen` as soon as the feed lands, so a loaded page nearly
       // always has something stored — except in the one flow this exists for, a reader who has just cleared their
       // browser and imports before the feed arrives, where a copy of nothing would be the first thing they saw.
-      if (ownedKeys().length > 0) {
+      const rescued = ownedKeys().length > 0;
+
+      if (rescued) {
         downloadText(writeBackup(), rescueName(new Date()));
       }
 
@@ -162,7 +164,11 @@ export function Settings() {
 
       eventStore.restored();
 
-      setStatus(`Restored ${written.length} saved preference${written.length === 1 ? '' : 's'}.`);
+      // The one place the copy is explained, said only when it was taken, so the file in Downloads is not a mystery.
+      setStatus(
+        `Restored ${written.length} saved preference${written.length === 1 ? '' : 's'}.` +
+          (rescued ? ' What it replaced was downloaded first.' : ''),
+      );
     } catch (e) {
       setStatus(`Could not restore that backup: ${said(e)}`);
     }
