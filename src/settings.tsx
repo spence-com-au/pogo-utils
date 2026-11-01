@@ -189,10 +189,7 @@ export function Settings() {
 
         <section class="settings-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="settings-note">
-            Save the preferences this browser has stored as a file, or read one back. An import replaces the preferences
-            the file names, leaves the rest, and first downloads a copy of what it replaces.
-          </p>
+          <p class="settings-note">Save this browser’s preferences as a file, or restore one.</p>
 
           <div class="settings-actions">
             <button type="button" title="Save every preference this browser has stored as a file" onClick={exportPrefs}>
@@ -241,11 +238,7 @@ export function Settings() {
         <section class="settings-section" aria-labelledby="settings-phone">
           <h2 id="settings-phone">Phone</h2>
           <p class="settings-note">
-            Connect an Android phone with USB debugging on, for the Inventory tab to read its screen and the Search tab
-            to type into its storage. Close any <code>adb</code> server first: a phone held by one cannot be claimed
-            here. Where the connection will not come up, <a href="https://webadb.com/">WebADB</a> is a shell over the
-            same WebUSB to find out why. The phone stays connected from tab to tab until it is unplugged or the site is
-            closed. With no phone to hand, the demo phone shows what the tabs do with recorded screens.
+            Connect an Android phone with USB debugging on. Close any <code>adb</code> server first.
           </p>
 
           <div class="settings-actions">
