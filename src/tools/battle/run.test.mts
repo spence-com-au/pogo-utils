@@ -60,6 +60,13 @@ const DATA = JSON.parse(
 const fixture = (name: string) =>
   decodePng(readFileSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url))));
 
+/**
+ * The first of `scenes` showing what a kept frame does. A kept frame is a copy, a stream's frame lasting only until the
+ * next, so it is told by its pixels: a scene showing the same fixture as an earlier one is named as the earlier.
+ */
+const sceneShowing = (scenes: Record<string, Scene>, frame: Image) =>
+  Object.keys(scenes).find((name) => Buffer.from(scenes[name]?.frame.data ?? []).equals(frame.data));
+
 /** A reporter keeping what a run tells it: each event after the side it is of, and the battle as each status had it. */
 function recorder(): Reporter & { events: string[]; fights: Fight[] } {
   const events: string[] = [];
@@ -810,7 +817,6 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
     next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
   };
   const { phone, clock, taps } = scripted(scenes, 'party');
-  const sceneOf = (frame: Image) => Object.keys(scenes).find((name) => scenes[name]?.frame === frame);
   const report = recorder();
   const kept: [string | undefined, number, string][] = [];
 
@@ -823,15 +829,17 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
         icons: ICONS,
         typeIcons: TYPE_ICONS,
         count: 1,
-        keep: (frame, at, event) => kept.push([sceneOf(frame), at, event]),
+        keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]),
       },
       clock,
       report,
     ),
   ).toEqual({ battles: 1, won: 1, lost: 0 });
+
+  // The second is `again`, 600ms on, which shows `fainted`'s prompt.
   expect(kept).toEqual([
     ['fainted', 13850, 'faint-own'],
-    ['again', 14460, 'faint-own'],
+    ['fainted', 14460, 'faint-own'],
   ]);
   expect(taps.filter((scene) => scene === 'fainted' || scene === 'again')).toEqual(['fainted', 'again']);
   expect(report.events.filter((line) => line.includes('sending in'))).toEqual([
@@ -3038,7 +3046,6 @@ test('keeps the frames a second either side of a shield prompt', async () => {
     later: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 2000, to: 'won' } },
   };
   const { phone, clock } = scripted(scenes, 'lead');
-  const sceneOf = (frame: Image) => Object.keys(scenes).find((name) => scenes[name]?.frame === frame);
   const kept: [string | undefined, number, string][] = [];
 
   await run(
@@ -3049,15 +3056,16 @@ test('keeps the frames a second either side of a shield prompt', async () => {
       icons: ICONS,
       typeIcons: TYPE_ICONS,
       count: 1,
-      keep: (frame, at, event) => kept.push([sceneOf(frame), at, event]),
+      keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]),
     },
     clock,
   );
 
+  // The last is `after`, which shows `fight`'s battle.
   expect(kept).toEqual([
     ['fight', 3080, 'shield'],
     ['prompt', 3630, 'shield'],
-    ['after', 4040, 'shield'],
+    ['fight', 4040, 'shield'],
   ]);
 });
 

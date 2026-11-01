@@ -2,7 +2,8 @@
 // than compiled — which is why nothing here emits either.
 {
   "compilerOptions": {
-    "lib": ["ES2023"],
+    // `ArrayBuffer`'s `transfer` from ES2024, which Node has, for the battle stream's frames to be decoded into again.
+    "lib": ["ES2023", "ES2024.ArrayBuffer"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "target": "ES2023",

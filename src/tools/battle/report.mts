@@ -252,9 +252,11 @@ export function live(
 
   // The frame to draw down the left edge and the columns it takes with the gap, or none where there is no frame yet or
   // the table would be narrower than `TABLE_MIN` beside it. The `latest` frame only for a look, and otherwise the one
-  // last drawn while there is one, so that redrawing the rest never draws the phone more often than `PICTURE_MS`.
+  // last drawn while there is one, so that redrawing the rest never draws the phone more often than `PICTURE_MS`. The
+  // latest too for a terminal of another height, which draws the phone again: the one last drawn is a stream's frame,
+  // whose pixels are gone once the next has come.
   const fit = (columns: number, rows: number, latest = false) => {
-    const image = latest || !pictured ? phone?.frame() : pictured.image;
+    const image = latest || rows !== pictured?.rows ? phone?.frame() : pictured.image;
     const beside = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
 
     return image && beside > 0 && columns - beside >= TABLE_MIN ? { image, beside } : undefined;

@@ -253,6 +253,8 @@ export interface Tally {
   lost: number;
 }
 
+const copyOf = (image: Image): Image => ({ ...image, data: image.data.slice() });
+
 /** `ms` milliseconds in seconds to a tenth, `11.2s`. */
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
@@ -360,12 +362,16 @@ export async function run(
   // each battle ends, its star being as readily opened or dragged between battles as before them.
   let first: string | undefined = await phone.views();
   let frames = 0;
+
+  // A frame off the stream is good only until the next comes, its memory then decoded into again, so a frame kept past
+  // its turn of the loop is a copy, told apart from the turn's own frame by the one it was copied from.
   const kept: Image[] = [];
+  let keptFrom: Image | undefined;
 
   // For `keep`: the last `AROUND_MS` of frames, each with when it was first seen, so an event can hand over what led up
   // to it, and the event still handing over what follows it, until when. A frame goes once, to the first event it is
   // near, however many it is near.
-  const recent: { frame: Image; at: number }[] = [];
+  const recent: { frame: Image; from: Image; at: number }[] = [];
   const handed = new WeakSet<Image>();
   let keeping: { event: string; until: number } | undefined;
 
@@ -670,21 +676,23 @@ export async function run(
       first = undefined;
     }
 
-    if (frames++ % 10 === 0 && kept.at(-1) !== frame) {
-      kept.push(frame);
+    if (frames++ % 10 === 0 && keptFrom !== frame) {
+      keptFrom = frame;
+      kept.push(copyOf(frame));
       kept.splice(0, kept.length - KEPT_FRAMES);
     }
 
-    if (keep && recent.at(-1)?.frame !== frame) {
+    if (keep && recent.at(-1)?.from !== frame) {
       const at = clock.now();
-      recent.push({ frame, at });
+      const copy = copyOf(frame);
+      recent.push({ frame: copy, from: frame, at });
 
       while ((recent[0]?.at ?? at) < at - AROUND_MS) {
         recent.shift();
       }
 
       if (keeping && at <= keeping.until) {
-        hand(frame, at, keeping.event);
+        hand(copy, at, keeping.event);
       }
     }
 
