@@ -136,8 +136,15 @@ const FOOT: Point = [0.5, -0.1372];
  */
 const CLEAR_OF_FOOT = 0.0844;
 
+/**
+ * How far above `FOOT` its teal is looked for, in widths, clear of the ✓ or ✗ drawn across its middle. At its middle a
+ * 360-wide screen samples the glyph's edge, which the demo battle's held result drew one way for 2s and then, re-encoded,
+ * the other: 0/88/93, read as no result at all. Here it is teal on every button committed, at 360 to 1440 wide.
+ */
+const TEAL_ABOVE = 0.016;
+
 function teal(image: Image): boolean {
-  const [r, g, b] = rgb(image, FOOT[0] * image.width, down(FOOT[1], BOTTOM, image) * image.height);
+  const [r, g, b] = rgb(image, FOOT[0] * image.width, down(FOOT[1] - TEAL_ABOVE, BOTTOM, image) * image.height);
 
   return r < 100 && Math.abs(g - 132) <= 15 && Math.abs(b - 146) <= 15;
 }
