@@ -95,9 +95,9 @@ const leaseOf = (serial: string) => {
 let inputs = 0;
 
 /** A file holding the hook's JSON, for a Bash command where one is given. */
-const input = (command?: string) => {
+const input = (command?: string, more: object = {}) => {
   const path = join(scratch, `input-${inputs++}.json`);
-  writeFileSync(path, JSON.stringify({ session_id: 's', cwd: '/w', tool_input: command && { command } }));
+  writeFileSync(path, JSON.stringify({ session_id: 's', cwd: '/w', tool_input: command && { command }, ...more }));
   return path;
 };
 
@@ -235,10 +235,33 @@ test("takes the lease on the one phone attached where the command names none, an
   expect(stdout.trim()).toBe('0');
 });
 
-test('lets go at the end of a turn with nothing on the phone', () => {
-  session(`node "$HOOK" pre < ${input('adb -s A6 shell true')}; node "$HOOK" stop < ${input()}`);
+test('lets go at the end of a turn with nothing on the phone, whatever runs elsewhere in the background', () => {
+  const tasks = { background_tasks: [{ type: 'shell', status: 'running', command: 'gh pr checks 1 --watch' }] };
+
+  session(`node "$HOOK" pre < ${input('adb -s A6 shell true')}; node "$HOOK" stop < ${input(undefined, tasks)}`);
 
   expect(leaseOf('A6')).toBeUndefined();
+});
+
+test('keeps the lease through the end of a turn while a background subagent still runs', () => {
+  const tasks = { background_tasks: [{ type: 'subagent', status: 'running', agent_type: 'general-purpose' }] };
+
+  session(`node "$HOOK" pre < ${input('adb -s A11 shell true')}; node "$HOOK" stop < ${input(undefined, tasks)}`);
+
+  expect(leaseOf('A11')).toBeDefined();
+});
+
+test('holds none of the leases a refused command took, but keeps those it already held', async () => {
+  await holder('adb -s B12 shell true');
+
+  const { stdout } = session(
+    `node "$HOOK" pre < ${input('adb -s A12 shell true')}` +
+      `; node "$HOOK" pre < ${input('adb -s A12 shell true; adb -s C12 shell true; adb -s B12 shell true')}; echo $?`,
+  );
+
+  expect(stdout.trim()).toBe('2');
+  expect(leaseOf('A12')).toBeDefined();
+  expect(leaseOf('C12')).toBeUndefined();
 });
 
 test('keeps the lease through the end of a turn while something it started still runs on the phone', () => {

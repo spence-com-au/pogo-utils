@@ -2,7 +2,7 @@
  * A lease on a phone, so that Claude sessions sharing a plugged-in device take turns with it rather than tapping over
  * each other. `scripts/device-lease.mts` runs this from the hooks `.claude/settings.json` declares: a Bash command that
  * reaches a phone takes its lease or is refused while another session holds it, and the lease is let go when its
- * session finishes a turn with nothing still running on the phone, or ends.
+ * session finishes a turn with nothing still running on the phone and no background subagent, or ends.
  *
  * A session is its `claude` process rather than its `session_id`: a subagent's commands come from the same process as
  * its parent's and so share the parent's lease, and a lease whose process has gone is one a crash left behind, which
@@ -343,14 +343,19 @@ const code = (error: unknown) => (error as NodeJS.ErrnoException).code;
 const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
 /**
- * Takes the lease on `serial` for `mine.pid`, or renews it where that session already holds it, and answers the lease
- * of the live session that holds it instead. Nothing is created but by `link`, which fails where the file exists.
+ * Takes the lease on `serial` for `mine.pid`, or renews it where that session already holds it, saying which, and
+ * answers the lease of the live session that holds it instead. Nothing is created but by `link`, which fails where the file exists.
  * That makes a free lease go to exactly one of the sessions racing for it. It also makes the claim on one abandoned
  * lease, named by its holder and when they took it, go to exactly one session, and only that session replaces it, once
  * it has seen the lease is still that one. The claim goes only once the lease has been replaced, so a session that
  * claims the same lease late finds a live one there instead.
  */
-export function acquire(dir: string, serial: string, mine: Lease, table: Map<number, Process>): Lease | undefined {
+export function acquire(
+  dir: string,
+  serial: string,
+  mine: Lease,
+  table: Map<number, Process>,
+): Lease | 'taken' | 'renewed' {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const path = leasePath(dir, serial);
   const draft = `${path}.${process.pid}`;
@@ -362,7 +367,7 @@ export function acquire(dir: string, serial: string, mine: Lease, table: Map<num
     for (let attempt = 0; attempt < 100; attempt++) {
       try {
         linkSync(draft, path);
-        return undefined;
+        return 'taken';
       } catch (error) {
         if (code(error) !== 'EEXIST') {
           throw error;
@@ -378,7 +383,7 @@ export function acquire(dir: string, serial: string, mine: Lease, table: Map<num
       if (held.pid === mine.pid) {
         writeFileSync(draft, JSON.stringify({ ...mine, since: held.since }));
         renameSync(draft, path);
-        return undefined;
+        return 'renewed';
       }
 
       if (isClaude(table, held.pid)) {
@@ -401,7 +406,7 @@ export function acquire(dir: string, serial: string, mine: Lease, table: Map<num
       try {
         if (same(readLease(path), held)) {
           renameSync(draft, path);
-          return undefined;
+          return 'taken';
         }
       } finally {
         rmSync(claim, { force: true });
@@ -414,12 +419,15 @@ export function acquire(dir: string, serial: string, mine: Lease, table: Map<num
   }
 }
 
-/** Lets go of every lease `session` holds. */
-export function release(dir: string, session: number) {
+/**
+ * Lets go of the leases `session` holds, on `serials` or on every phone. Nothing but the session's own commands renews
+ * its lease, and none of those is running when it lets go, so reading the lease and then removing it races nothing.
+ */
+export function release(dir: string, session: number, serials?: Iterable<string>) {
   let names: string[];
 
   try {
-    names = readdirSync(dir);
+    names = serials ? [...serials].map((serial) => `${serial}.json`) : readdirSync(dir);
   } catch {
     return;
   }
@@ -445,7 +453,7 @@ export const refusal = (dir: string, serial: string, held: Lease) =>
   [
     `The phone ${serial} is leased to another Claude session: pid ${held.pid}, session ${held.session},`,
     `working in ${held.cwd}, since ${held.since}, last running \`${held.command}\`.`,
-    `Its lease ends when that session finishes a turn with nothing still running on the phone, or when it exits.`,
+    `Its lease ends when that session finishes a turn with nothing still running on the phone and no background subagent, or when it exits.`,
     `Wait for that in the background with`,
     `\`while [ -e ${leasePath(dir, serial)} ] && kill -0 ${held.pid}; do sleep 10; done\`,`,
     `then try again, or find the session with ListAgents and ask it with SendMessage.`,

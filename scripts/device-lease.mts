@@ -3,9 +3,9 @@
  * hook's JSON on stdin — see `src/tools/device/lease.mts` for the lease itself.
  *
  *   node scripts/device-lease.mts pre     before a Bash command: take the lease on each phone it reaches, or refuse it
- *                                         with exit status 2 and say who holds the phone
+ *                                         with exit status 2, holding none of them, and say who holds the phone
  *   node scripts/device-lease.mts stop    at the end of a turn: let go of this session's leases, unless something it
- *                                         started is still running on a phone
+ *                                         started is still running on a phone or a background subagent still runs
  *   node scripts/device-lease.mts end     as the session ends: let go of its leases
  *
  * Anything that goes wrong here fails open, as a hook error the command runs past rather than a refusal.
@@ -30,6 +30,7 @@ const input = JSON.parse(readFileSync(0, 'utf8')) as {
   session_id: string;
   cwd: string;
   tool_input?: { command?: string };
+  background_tasks?: { type: string; status: string }[];
 };
 const dir = leaseDir();
 
@@ -52,11 +53,18 @@ switch (process.argv[2]) {
 
     const mine = { pid: session, session: input.session_id, cwd: input.cwd, command, since: new Date().toISOString() };
 
-    for (const serial of serials) {
-      const held = acquire(dir, serial, mine, table);
+    const taken: string[] = [];
 
-      if (held) {
-        console.error(refusal(dir, serial, held));
+    for (const serial of serials) {
+      const outcome = acquire(dir, serial, mine, table);
+
+      if (outcome === 'taken') {
+        taken.push(serial);
+      } else if (outcome !== 'renewed') {
+        // A refused command runs on none of its phones, so it holds none of the leases it took on the way: kept, two
+        // sessions that each hold one phone and want the other's would wait on each other for ever.
+        release(dir, session, taken);
+        console.error(refusal(dir, serial, outcome));
         process.exit(2);
       }
     }
@@ -72,7 +80,11 @@ switch (process.argv[2]) {
     const table = processes();
     const session = sessionOf(table, process.pid);
 
-    if (session && !busy(table, session, process.pid)) {
+    // A background subagent shares the session's lease and outlives its turn, and between its commands nothing of it
+    // shows among the processes.
+    const subagents = input.background_tasks?.some((task) => task.type === 'subagent' && task.status === 'running');
+
+    if (session && !subagents && !busy(table, session, process.pid)) {
       release(dir, session);
     }
 
