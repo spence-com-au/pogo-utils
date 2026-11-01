@@ -1707,9 +1707,16 @@ export async function run(
 
           const menu = await readMenu(screenshot, { ...mode, result });
 
-          const ended = menu.screen === 'result' && result;
+          // Any menu after a battle ends it, not only its result: GO Battle League has gone from a faint straight to its
+          // card, with no verdict to read.
+          const ended = result && menu.screen !== 'unknown';
 
-          return { screenshot, menu, ended, outcome: ended ? await readOutcome(screenshot) : undefined };
+          return {
+            screenshot,
+            menu,
+            ended,
+            outcome: ended && menu.screen === 'result' ? await readOutcome(screenshot) : undefined,
+          };
         })(),
       );
     }
@@ -1733,6 +1740,28 @@ export async function run(
       // Greyed out read after read, not once among others.
       if (menu.screen !== 'no-battle') {
         noBattle = 0;
+      }
+
+      // Counted before the screen is acted on: a set's last battle can end on the card with no battle left, where the run
+      // stops. A result left over from before the run, from a battle it never played, is tapped past but not counted.
+      if (done.ended && menu.screen !== 'unknown') {
+        battles++;
+        battling = false;
+        undefer('the battle ended');
+        off = [];
+
+        if (done.outcome) {
+          outcomes[done.outcome]++;
+        }
+
+        const unread = menu.screen === 'result' ? 'its result unread' : 'with no result';
+        log(`battle ${battles} ${done.outcome ?? `finished, ${unread}`}`);
+
+        // The last battle wanted ending with no result leaves the screen it ended on alone: BATTLE on GO Battle League's
+        // card would start another. Its result's ✓ is tapped as ever.
+        if (battles >= count && menu.screen !== 'result') {
+          return { battles, ...outcomes };
+        }
       }
 
       const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
@@ -1813,20 +1842,6 @@ export async function run(
       }
 
       if (menu.screen !== 'unknown') {
-        // A result left over from before the run, from a battle it never played, is tapped past but not counted.
-        if (done.ended) {
-          battles++;
-          battling = false;
-          undefer('the battle ended');
-          off = [];
-
-          if (done.outcome) {
-            outcomes[done.outcome]++;
-          }
-
-          log(`battle ${battles} ${done.outcome ?? 'finished, its result unread'}`);
-        }
-
         await clock.sleep(MENU_SETTLE_MS);
         continue;
       }
