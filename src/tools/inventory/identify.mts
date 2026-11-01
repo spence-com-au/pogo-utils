@@ -102,6 +102,38 @@ export function identify(
 
   const searchable = iv !== null && detail.hp !== null && detail.types.length > 0;
 
+  // The printed CP, and whether a form at a level reproduces it exactly. Used below to narrow the candidates, and here
+  // first to vouch for a species whose types came back short.
+  const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
+
+  const shows = (f: Form, level: number) => {
+    const multiplier = multiplierOf(data, level);
+
+    return iv !== null && multiplier !== null && printed.includes(cpOf(f, iv, multiplier));
+  };
+
+  // A type the row's reader dropped, which is the misread it makes: a Frigibax at 11/5/14 read as `Dragon` alone, its
+  // `ICE` lost, fitting no form of Frigibax by its types and so searched for across every species — where a Shelgon fits
+  // the HP and was answered with a CP the screen does not show. Taken as dropped rather than as a nickname only where
+  // the species' own types contain every one read and the printed CP is exactly what it shows at a level the HP admits,
+  // which a nickname naming some other species would have to match by coincidence.
+  if (candidates.length === 0 && species && iv !== null && detail.hp !== null && detail.types.length > 0) {
+    const hp = detail.hp;
+    const short = data.forms.filter(
+      (f) =>
+        f.species === species &&
+        detail.types.length < f.types.length &&
+        detail.types.every((t) => f.types.includes(t)) &&
+        levelsOf(data, f, iv, hp).some((level) => shows(f, level)),
+    );
+    const [one] = short;
+
+    if (one) {
+      candidates = short;
+      notes.push(`the types read as ${detail.types.join(' / ')}, where ${species} is ${one.types.join(' / ')}`);
+    }
+  }
+
   // The species the candidates are drawn from, until the numbers are searched across every species instead.
   let searched = species;
 
@@ -161,14 +193,6 @@ export function identify(
   // sibling is far — 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an
   // Espeon reaching 1585 at the level its HP admits, but line 101 is reached only on an empty list and Deoxys' forms
   // fill it, so that number comes back as one Deoxys with the three the CP did not settle beside it.
-  const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
-
-  const shows = (f: Form, level: number) => {
-    const multiplier = multiplierOf(data, level);
-
-    return iv !== null && multiplier !== null && printed.includes(cpOf(f, iv, multiplier));
-  };
-
   if (printed.length > 0 && iv !== null && detail.hp !== null) {
     const hp = detail.hp;
     const showing = (f: Form) =>

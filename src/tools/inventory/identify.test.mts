@@ -222,3 +222,54 @@ test('the candy and the height narrow together, neither acting on a figure no fo
   expect(answered({ ...SINISTEA, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
   expect(answered({ ...SINISTEA, height: 5, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
 });
+
+/** Issue #592's screen: a Frigibax at level 20 and 11/5/14, whose `DRAGON / ICE` came back as `Dragon` alone. */
+const FRIGIBAX: Detail = {
+  cp: 656,
+  cps: [],
+  name: 'Frigibax',
+  hp: 105,
+  weight: null,
+  height: null,
+  types: ['Dragon', 'Ice'],
+  gender: 'male',
+  favourite: false,
+  size: null,
+  tags: [],
+  evolveCandy: null,
+};
+
+const FRIGIBAX_OVERLAY: Overlay = { levels: [20], iv: { attack: 11, defense: 5, stamina: 14 }, form: null };
+
+const frigibax = (detail: Detail) => {
+  const identity = identify(DATA, detail, FRIGIBAX_OVERLAY);
+
+  return {
+    form: identity.form && label(identity.form),
+    nickname: identity.nickname,
+    cp: identity.cp,
+    levels: identity.levels,
+    notes: identity.notes,
+  };
+};
+
+test('a type the reader dropped is not taken for a nickname', () => {
+  expect(frigibax(FRIGIBAX)).toStrictEqual({ form: 'Frigibax', nickname: null, cp: 656, levels: [20], notes: [] });
+  expect(frigibax({ ...FRIGIBAX, types: ['Dragon'] })).toStrictEqual({
+    form: 'Frigibax',
+    nickname: null,
+    cp: 656,
+    levels: [20],
+    notes: ['the types read as Dragon, where Frigibax is Dragon / Ice'],
+  });
+});
+
+/**
+ * The CP is what vouches for the species, so without one reproduced the short types are still not the species': the
+ * search crosses every species as it did before, and whatever it answers says it searched.
+ */
+test('a short reading of the types is not trusted where the CP does not agree', () => {
+  const { notes } = frigibax({ ...FRIGIBAX, types: ['Dragon'], cp: 1099 });
+
+  expect(notes).toContain('the numbers do not fit any form of Frigibax; searched every species');
+});
