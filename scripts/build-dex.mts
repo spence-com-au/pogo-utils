@@ -1,9 +1,9 @@
 /**
- * Builds `ScreenPower.dex` out of the Java beside it in `src/tools/battle/screen-power/`, which `pnpm battle run
- * --screen-off` runs on the phone: `javac` from the JDK on the path, then D8, Android's own dex compiler, fetched once
- * from Google's Maven and held to its hash. The dex is committed, so that neither a battle nor the site's build needs a
- * JDK; `--check` builds it again and fails where it differs from what is committed, which is how CI holds the two
- * together.
+ * Builds `ScreenPower.dex` out of the Java beside it in `src/tools/adb/screen-power/`, which `pnpm adb screen-off` and
+ * `screen-on` run on the phone: `javac` from the JDK on the path, then D8, Android's own dex compiler, fetched once
+ * from Google's Maven and held to its hash. The dex is committed, so that neither those commands nor the site's build
+ * needs a JDK; `--check` builds it again and fails where it differs from what is committed, which is how CI holds the
+ * two together.
  *
  * Usage: `node scripts/build-dex.mts [--check]`
  */
@@ -22,8 +22,8 @@ const { values: options } = parseArgs({ options: { check: { type: 'boolean', def
 const D8 = '8.13.25';
 const D8_SHA256 = '0d4f2f68c4fcbc9434eff122f41feb6fb1d98efd2faa530cec1abacab1cea03d';
 
-const source = fileURLToPath(new URL('../src/tools/battle/screen-power/ScreenPower.java', import.meta.url));
-const dex = fileURLToPath(new URL('../src/tools/battle/screen-power/ScreenPower.dex', import.meta.url));
+const source = fileURLToPath(new URL('../src/tools/adb/screen-power/ScreenPower.java', import.meta.url));
+const dex = fileURLToPath(new URL('../src/tools/adb/screen-power/ScreenPower.dex', import.meta.url));
 
 const jar = join(CACHE, 'd8', `r8-${D8}.jar`);
 await cachedAs(

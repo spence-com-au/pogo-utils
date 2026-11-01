@@ -659,6 +659,23 @@ anchor too, measured on both the Pixel 8 Pro's fixtures and the Pixel 4 XL's, wh
 pnpm battle record --seconds 60 battle.h264
 ```
 
+## Phone's screen
+
+`pnpm adb screen-off` turns the phone's panel off, to spare an OLED the still HUD of a long run of battles, and
+`pnpm adb screen-on` turns it back on; `--serial` picks a phone where more than one is plugged in.
+
+```sh
+pnpm adb screen-off
+pnpm battle run --mode gbl --league master
+pnpm adb screen-on
+```
+
+The panel goes dark beneath Android rather than the phone going to sleep, as scrcpy's `--turn-screen-off` darkens it, so
+the game goes on drawing, `screenrecord` on recording and touches on landing: a Master League set on a Pixel 4 XL went
+4–1 with its panel dark. Android is not told, so the panel stays dark until `screen-on`, or until the phone sleeps and
+is woken, which Pokémon GO's own wake lock puts off for as long as the game is in front.
+[`src/tools/adb/screen-power.mts`](src/tools/adb/screen-power.mts) explains how, and why the dex it runs is committed.
+
 ## Live PokeMap watcher
 
 `pnpm watch:livepokemap` keeps a [Live PokeMap](https://livepokemap.com) session open the way a browser tab would and
