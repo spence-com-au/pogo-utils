@@ -12,13 +12,13 @@
  * `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
  */
 export const PAGES = [
-  { name: 'events', label: 'Events', icon: '📅', title: 'Pokémon GO Events' },
-  { name: 'map', label: 'Map', icon: '🗺️', title: 'Pokémon GO Routes' },
-  { name: 'search', label: 'Search', icon: '🔎', title: 'Pokémon GO Search Strings' },
-  { name: 'pokedex', label: 'Pokédex', icon: '📖', title: 'Pokémon GO Pokédex' },
-  { name: 'integrations', label: 'Integrations', icon: '🔌', title: 'Pokémon GO Integrations' },
-  { name: 'inventory', label: 'Inventory', icon: '🎒', title: 'Pokémon GO Inventory' },
-  { name: 'battle', label: 'Battle', icon: '⚔️', title: 'Pokémon GO Battle' },
+  { name: 'events', label: 'Events', icon: '📅', title: 'Events' },
+  { name: 'map', label: 'Map', icon: '🗺️', title: 'Routes' },
+  { name: 'search', label: 'Search', icon: '🔎', title: 'Search Strings' },
+  { name: 'pokedex', label: 'Pokédex', icon: '📖', title: 'Pokédex' },
+  { name: 'integrations', label: 'Integrations', icon: '🔌', title: 'Integrations' },
+  { name: 'inventory', label: 'Inventory', icon: '🎒', title: 'Inventory' },
+  { name: 'battle', label: 'Battle', icon: '⚔️', title: 'Battle' },
 ] as const satisfies readonly { name: string; label: string; icon: string; title: string }[];
 
 export type Page = (typeof PAGES)[number]['name'];
