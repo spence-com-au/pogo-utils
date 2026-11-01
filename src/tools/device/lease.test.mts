@@ -20,6 +20,11 @@ test.each<[string, (string | undefined)[]]>([
   ['adb -s A shell input tap 1 1', ['A']],
   ['adb shell screencap -p > shot.png', [undefined]],
   ['timeout 30 adb -s A exec-out screencap -p', ['A']],
+  ['timeout -s KILL -k 5 30 adb -s A shell true', ['A']],
+  ['nice -n 10 adb -s A shell true', ['A']],
+  ['time -p adb -s A shell true', ['A']],
+  ['env -u ANDROID_SERIAL ANDROID_SERIAL=B adb shell true', ['B']],
+  ['exec -a phone adb -s A shell true', ['A']],
   ['ANDROID_SERIAL=B adb shell true', ['B']],
   ['cd x && ~/platform-tools/adb -s A pull /sdcard/f', ['A']],
   ['echo $(adb -s A shell wm size)', ['A']],
@@ -154,6 +159,29 @@ test('takes over a lease whose session has gone', () => {
   expect(leaseOf('A4')?.pid).toBe(Number(pid));
 });
 
+test('gives an abandoned lease to exactly one of the live sessions racing for it', async () => {
+  session(`node "$HOOK" pre < ${input('adb -s A10 shell true')}`);
+
+  const statuses = await Promise.all(
+    Array.from(
+      { length: 8 },
+      () =>
+        new Promise<string>((resolve) => {
+          const child = spawn(
+            CLAUDE,
+            ['-c', `node "$HOOK" pre < ${input('adb -s A10 shell true')} 2>/dev/null; echo $?; sleep 60 & wait`],
+            { env, detached: true },
+          );
+
+          holders.push(child.pid ?? 0);
+          child.stdout.on('data', (data: Buffer) => resolve(data.toString().trim()));
+        }),
+    ),
+  );
+
+  expect(statuses.sort()).toEqual(['0', '2', '2', '2', '2', '2', '2', '2']);
+});
+
 test('renews its own lease, keeping when it was taken', () => {
   const { stdout } = session(
     `node "$HOOK" pre < ${input('adb -s A5 shell true')}; cat "$XDG_RUNTIME_DIR/pogo-utils-device/A5.json"; echo` +
@@ -190,7 +218,7 @@ test('lets go at the end of a turn with nothing on the phone', () => {
 
 test('keeps the lease through the end of a turn while something it started still runs on the phone', () => {
   const { stdout } = session(
-    `node "$HOOK" pre < ${input('adb -s A7 shell true')}; sh -c 'sleep 30' adb >/dev/null & ` +
+    `node "$HOOK" pre < ${input('adb -s A7 shell true')}; sh -c 'sleep 30; :' adb >/dev/null & ` +
       `node "$HOOK" stop < ${input()}; cat "$XDG_RUNTIME_DIR/pogo-utils-device/A7.json"; pkill -P $!; kill $!`,
   );
 
@@ -207,7 +235,7 @@ test("keeps another session's lease through its own turn's end", async () => {
 
 test('lets go as the session ends, running or not', () => {
   session(
-    `node "$HOOK" pre < ${input('adb -s A9 shell true')}; sh -c 'sleep 30' adb >/dev/null & ` +
+    `node "$HOOK" pre < ${input('adb -s A9 shell true')}; sh -c 'sleep 30; :' adb >/dev/null & ` +
       `node "$HOOK" end < ${input()}; pkill -P $!; kill $!`,
   );
 

@@ -32,6 +32,18 @@ export interface Process {
 /** The subcommands of this repository's tools that drive a phone; the rest read files already saved. */
 const DRIVES: Record<string, string[]> = { battle: ['run', 'record'], inventory: ['scan', 'snap'] };
 
+/**
+ * The commands that run another in front of `adb`, each with its options that take a separate value, as `nice -n 10`.
+ * `timeout` takes its duration after them.
+ */
+const WRAPPERS: Record<string, string[]> = {
+  env: ['-u', '-C', '-S', '--unset', '--chdir', '--split-string'],
+  exec: ['-a'],
+  nice: ['-n', '--adjustment'],
+  time: ['-f', '-o', '--format', '--output'],
+  timeout: ['-s', '-k', '--signal', '--kill-after'],
+};
+
 /** What a process still running on a phone looks like, its own or one a script it runs spawns. */
 const ON_DEVICE = /\b(?:adb|scrcpy)\b|scripts\/(?:battle|inventory)\.mts\b/;
 
@@ -68,19 +80,23 @@ export function devicesReached(command: string): (string | undefined)[] {
     for (;;) {
       const word = words[0] ?? '';
 
+      const valued = WRAPPERS[word];
+
       if (/^\w+=/.test(word)) {
         serial = /^ANDROID_SERIAL=(.+)$/.exec(word)?.[1] ?? serial;
         words.shift();
-      } else if (['env', 'exec', 'nice', 'time'].includes(word)) {
-        words.shift();
-      } else if (word === 'timeout') {
+      } else if (valued) {
         words.shift();
 
         while (words[0]?.startsWith('-')) {
-          words.shift();
+          if (valued.includes(words.shift() ?? '')) {
+            words.shift();
+          }
         }
 
-        words.shift();
+        if (word === 'timeout') {
+          words.shift();
+        }
       } else {
         break;
       }
@@ -195,37 +211,68 @@ const readLease = (path: string): Lease | undefined => {
   }
 };
 
+const code = (error: unknown) => (error as NodeJS.ErrnoException).code;
+
 /**
  * Takes the lease on `serial` for `mine.pid`, or renews it where that session already holds it, and answers the lease
- * of the live session that holds it instead. Creating the file by `link` is what makes taking a free lease atomic; two
- * sessions taking over the same abandoned one at the same moment can still both believe they hold it.
+ * of the live session that holds it instead. The lease is only ever created by `link`, which fails where the file
+ * exists, so of the sessions racing for a free lease exactly one gets it. An abandoned lease is moved aside rather than
+ * overwritten, which only one session can do, and then raced for like a free one; a live lease moved aside because
+ * another session took it in the meantime is put back.
  */
 export function acquire(dir: string, serial: string, mine: Lease, table: Map<number, Process>): Lease | undefined {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const path = leasePath(dir, serial);
   const draft = `${path}.${process.pid}`;
+  const aside = `${draft}.abandoned`;
 
   try {
     writeFileSync(draft, JSON.stringify(mine));
 
-    try {
-      linkSync(draft, path);
-      return undefined;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-        throw error;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        linkSync(draft, path);
+        return undefined;
+      } catch (error) {
+        if (code(error) !== 'EEXIST') {
+          throw error;
+        }
       }
+
+      const held = readLease(path);
+
+      if (!held) {
+        continue;
+      }
+
+      if (held.pid === mine.pid) {
+        writeFileSync(draft, JSON.stringify({ ...mine, since: held.since }));
+        renameSync(draft, path);
+        return undefined;
+      }
+
+      if (isClaude(table, held.pid)) {
+        return held;
+      }
+
+      try {
+        renameSync(path, aside);
+      } catch (error) {
+        if (code(error) !== 'ENOENT') {
+          throw error;
+        }
+
+        continue;
+      }
+
+      if (readLease(aside)?.pid !== held.pid) {
+        linkSync(aside, path);
+      }
+
+      rmSync(aside, { force: true });
     }
 
-    const held = readLease(path);
-
-    if (held && held.pid !== mine.pid && isClaude(table, held.pid)) {
-      return held;
-    }
-
-    writeFileSync(draft, JSON.stringify(held?.pid === mine.pid ? { ...mine, since: held.since } : mine));
-    renameSync(draft, path);
-    return undefined;
+    throw new Error(`could not take the lease ${path}`);
   } finally {
     rmSync(draft, { force: true });
   }
