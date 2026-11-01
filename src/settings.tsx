@@ -50,8 +50,12 @@ export function Settings() {
   const phone = usePhone();
   const demo = phone?.serial === DEMO_SERIAL;
 
-  /** What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held. */
-  const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
+  /**
+   * What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held.
+   * `failed` marks a failed connection, the one time it points to WebADB, a shell over the same WebUSB to find out why:
+   * kept on the message rather than beside it, so the link cannot outlive the message it explains.
+   */
+  const [phoneStatus, setPhoneStatus] = useState<{ message: string; failed?: boolean } | null>(null);
   const [connecting, setConnecting] = useState(false);
 
   useDismiss(open, () => setOpen(false), root);
@@ -63,7 +67,7 @@ export function Settings() {
    */
   async function connectPhone() {
     setConnecting(true);
-    setPhoneStatus('Pick the phone in the browser’s chooser, then allow USB debugging on it…');
+    setPhoneStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
 
     try {
       const { connect } = await import('./inventory/webusb.js');
@@ -71,7 +75,7 @@ export function Settings() {
 
       // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
       if (picked === null) {
-        setPhoneStatus(phoneStore.phone ? null : 'No phone was picked.');
+        setPhoneStatus(phoneStore.phone ? null : { message: 'No phone was picked.' });
         return;
       }
 
@@ -80,10 +84,11 @@ export function Settings() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        setPhoneStatus(`Could not put back the setting a battle kept the phone awake by: ${said(e)}`),
+        setPhoneStatus({ message: `Could not put back the setting a battle kept the phone awake by: ${said(e)}` }),
       );
     } catch (e) {
-      setPhoneStatus(`Could not connect: ${said(e)}`);
+      // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
+      setPhoneStatus({ message: `Could not connect: ${said(e)}`, failed: 'usb' in navigator });
     } finally {
       setConnecting(false);
     }
@@ -110,7 +115,7 @@ export function Settings() {
         }
       }
     } catch (e) {
-      setPhoneStatus(`Could not start the demo: ${said(e)}`);
+      setPhoneStatus({ message: `Could not start the demo: ${said(e)}` });
     }
   }
 
@@ -154,7 +159,9 @@ export function Settings() {
       // The skip is not a formality. `settleSeen` writes `seen` as soon as the feed lands, so a loaded page nearly
       // always has something stored — except in the one flow this exists for, a reader who has just cleared their
       // browser and imports before the feed arrives, where a copy of nothing would be the first thing they saw.
-      if (ownedKeys().length > 0) {
+      const rescued = ownedKeys().length > 0;
+
+      if (rescued) {
         downloadText(writeBackup(), rescueName(new Date()));
       }
 
@@ -162,7 +169,11 @@ export function Settings() {
 
       eventStore.restored();
 
-      setStatus(`Restored ${written.length} saved preference${written.length === 1 ? '' : 's'}.`);
+      // The one place the copy is explained, said only when it was taken, so the file in Downloads is not a mystery.
+      setStatus(
+        `Restored ${written.length} saved preference${written.length === 1 ? '' : 's'}.` +
+          (rescued ? ' What it replaced was downloaded first.' : ''),
+      );
     } catch (e) {
       setStatus(`Could not restore that backup: ${said(e)}`);
     }
@@ -189,10 +200,7 @@ export function Settings() {
 
         <section class="settings-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="settings-note">
-            Save the preferences this browser has stored as a file, or read one back. An import replaces the preferences
-            the file names, leaves the rest, and first downloads a copy of what it replaces.
-          </p>
+          <p class="settings-note">Save this browser’s preferences as a file, or restore one.</p>
 
           <div class="settings-actions">
             <button type="button" title="Save every preference this browser has stored as a file" onClick={exportPrefs}>
@@ -241,11 +249,7 @@ export function Settings() {
         <section class="settings-section" aria-labelledby="settings-phone">
           <h2 id="settings-phone">Phone</h2>
           <p class="settings-note">
-            Connect an Android phone with USB debugging on, for the Inventory tab to read its screen and the Search tab
-            to type into its storage. Close any <code>adb</code> server first: a phone held by one cannot be claimed
-            here. Where the connection will not come up, <a href="https://webadb.com/">WebADB</a> is a shell over the
-            same WebUSB to find out why. The phone stays connected from tab to tab until it is unplugged or the site is
-            closed. With no phone to hand, the demo phone shows what the tabs do with recorded screens.
+            Connect an Android phone with USB debugging on. Close any <code>adb</code> server first.
           </p>
 
           <div class="settings-actions">
@@ -269,12 +273,18 @@ export function Settings() {
 
           {/* Present from the first render, for the reason the backup's status above is. */}
           <p class="settings-status" aria-live="polite">
-            {phoneStatus ??
+            {phoneStatus?.message ??
               (demo
                 ? 'Using the demo phone: the tabs read recorded screens, not your account.'
                 : phone
                   ? `Connected to ${phone.name}.`
                   : null)}
+            {phoneStatus?.failed && (
+              <>
+                {' '}
+                <a href="https://webadb.com/">WebADB</a> can help find out why.
+              </>
+            )}
           </p>
         </section>
       </div>
