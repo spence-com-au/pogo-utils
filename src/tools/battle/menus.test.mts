@@ -387,6 +387,13 @@ test('finds no battle on the GO Battle League card while its reward waits to be 
   expect(await readMenu(fixture('menu-gbl-collect'), { ...GBL, league: 'ultra' })).toEqual({ screen: 'no-battle' });
 });
 
+// A frame of a kept video, as the card slid up after a set's last ✓: a scroll up would have dragged it shut.
+test('waits out the GO Battle League card sliding up at the end of a set rather than scroll it', async () => {
+  expect(await readMenu(fixture('menu-gbl-collect-sliding'), { ...GBL, league: 'master' })).toEqual({
+    screen: 'unknown',
+  });
+});
+
 // The carousel of Ultra League's three saved parties on a Pixel 8 Pro, each read by the title of the one in front.
 test.each([
   ['party-test4', 'test 4'],

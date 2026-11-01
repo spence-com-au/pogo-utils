@@ -366,7 +366,7 @@ const SCROLL_UP: readonly [Point, Point] = [SCROLL[1], SCROLL[0]];
 const NEXT_BATTLE: Point = [0.5, -0.3082];
 
 /**
- * The Battle tab's cards below GO Battle League's, the tab's header having gone unread off one scrolled down to them.
+ * The Battle tab's cards below GO Battle League's, which show the tab scrolled down to them, its header read or not.
  * Nearby Battle's heading reads where Training's does not.
  */
 const LOWER_CARDS = ['nearby battle'];
@@ -543,6 +543,8 @@ export async function readMenu(
     return { screen: 'main', tap: [x, y + tall(LABEL_ABOVE, image)] };
   }
 
+  const scrolledDown = !training && LOWER_CARDS.some((card) => words(card).length > 0);
+
   if ([...words('battle'), ...words('party')].some((line) => centre(line, image)[1] < down(HEADER, TOP, image))) {
     if (training) {
       return { screen: 'battle-tab', swipe: SCROLL };
@@ -556,10 +558,16 @@ export async function readMenu(
     }
 
     // The card with its BATTLE greyed out: a reward to collect, the encounter among them, and no battle until it is.
-    return heading ? { screen: 'no-battle' } : { screen: 'battle-tab', swipe: SCROLL_UP };
+    if (heading) {
+      return { screen: 'no-battle' };
+    }
+
+    // Neither the heading nor a card below it: the card still sliding up at the end of a set, its heading not yet read,
+    // which a scroll down the middle of the screen would drag shut, back to the map. It is read again instead.
+    return scrolledDown ? { screen: 'battle-tab', swipe: SCROLL_UP } : { screen: 'unknown' };
   }
 
-  if (!training && LOWER_CARDS.some((card) => words(card).length > 0)) {
+  if (scrolledDown) {
     return { screen: 'battle-tab', swipe: SCROLL_UP };
   }
 
