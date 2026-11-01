@@ -30,15 +30,35 @@ const word = (line: number, text: string, left: number, top: number, width: numb
 /** The storage grid as OCR reads it: the tab's counter above the search box. */
 const STORAGE = [word(1, '(12)', 70, 10, 20, 8), word(2, 'SEARCH', 40, 30, 20, 10)].join('\n');
 
-/** A phone showing storage, with `focus` in front, that records every command and answers each screenshot alike. */
-function phone(focus: string) {
+/**
+ * A phone showing storage, with `focus` in front as Android user `user`, that records every command and answers each
+ * screenshot alike. `dumpsys package` answers that the package is installed for each of `installs`, in the form a
+ * Pixel 4 XL on Android 13 writes it, with a user it was uninstalled for alongside so that the field is what is read.
+ */
+function phone(focus: string, { user = 0, installs = [0] }: { user?: number; installs?: readonly number[] } = {}) {
   const sent: string[][] = [];
   const transport: Transport = {
     state: () => Promise.resolve('device'),
     shell: (args) => {
       sent.push([...args]);
 
-      return Promise.resolve(new TextEncoder().encode(`mCurrentFocus=Window{81ff99a u0 ${focus}/.Main}`));
+      if (args[0] === 'dumpsys' && args[1] === 'package') {
+        const line = (u: number, installed: boolean) =>
+          `    User ${u}: ceDataInode=8192 installed=${installed} hidden=false suspended=false stopped=false`;
+
+        return Promise.resolve(
+          new TextEncoder().encode(
+            [
+              `Packages:`,
+              `  Package [${args[2]}] (5a1b2c3):`,
+              ...installs.map((u) => line(u, true)),
+              line(11, false),
+            ].join('\n'),
+          ),
+        );
+      }
+
+      return Promise.resolve(new TextEncoder().encode(`mCurrentFocus=Window{81ff99a u${user} ${focus}/.Main}`));
     },
     screencap: () => {
       sent.push(['screencap']);
@@ -70,7 +90,22 @@ test('a search taps the box OCR found, clears it, types the term and answers the
   ]);
 });
 
-test('a game not in front is launched first, and the launch said', async () => {
+/** What `launch` sends to start the game for Android user `user`. */
+const LAUNCH = (user: number) => [
+  'am',
+  'start',
+  '--user',
+  String(user),
+  '-a',
+  'android.intent.action.MAIN',
+  '-c',
+  'android.intent.category.LAUNCHER',
+  '-f',
+  '0x10200000',
+  DEFAULTS.package,
+];
+
+test('a game not in front is launched for the one user it is installed for, and the launch said', async () => {
   const { sent, device } = phone('NotificationShade');
   const said: string[] = [];
   const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
@@ -78,12 +113,76 @@ test('a game not in front is launched first, and the launch said', async () => {
   await search('shiny');
 
   expect(said).toStrictEqual(['Launching Pokémon GO']);
-  expect(sent[1]).toStrictEqual(['monkey', '-p', DEFAULTS.package, '-c', 'android.intent.category.LAUNCHER', '1']);
+  expect(sent.slice(0, 3)).toStrictEqual([
+    ['dumpsys', 'window', 'displays'],
+    ['dumpsys', 'package', DEFAULTS.package],
+    LAUNCH(0),
+  ]);
+});
+
+test('a game installed only in a work profile is launched there', async () => {
+  const { sent, device } = phone('NotificationShade', { installs: [10] });
+  const said: string[] = [];
+  const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
+
+  await search('shiny');
+
+  expect(said).toStrictEqual(['Launching Pokémon GO for Android user 10']);
+  expect(sent[2]).toStrictEqual(LAUNCH(10));
+});
+
+/** #594: `monkey` launched user 0's copy, signed in to another trainer than the work profile's the scan was run for. */
+test('a game installed in two profiles with neither in front is refused rather than guessed at', async () => {
+  const { sent, device } = phone('NotificationShade', { installs: [0, 10] });
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('installed for Android users 0 and 10');
+  expect(sent).toStrictEqual([
+    ['dumpsys', 'window', 'displays'],
+    ['dumpsys', 'package', DEFAULTS.package],
+  ]);
+});
+
+test('a game in front in a work profile is driven there, without asking where it is installed', async () => {
+  const { sent, device } = phone(DEFAULTS.package, { user: 10, installs: [0, 10] });
+  const said: string[] = [];
+  const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
+
+  await search('shiny');
+
+  expect(said).toStrictEqual(['Pokémon GO is already in front']);
+  expect(sent[1]).toStrictEqual(['screencap']);
+});
+
+test("the user named is launched, even over the other profile's copy in front", async () => {
+  const { sent, device } = phone(DEFAULTS.package, { user: 0, installs: [0, 10] });
+  const said: string[] = [];
+  const { search } = storage(device, { ...CONFIG, user: 10 }, DATA, SCREEN, (message) => said.push(message));
+
+  await search('shiny');
+
+  expect(said).toStrictEqual(['Launching Pokémon GO for Android user 10']);
+  expect(sent.slice(0, 2)).toStrictEqual([['dumpsys', 'window', 'displays'], LAUNCH(10)]);
+});
+
+test('a game not installed at all is said to be, rather than launched', async () => {
+  const { device } = phone('NotificationShade', { installs: [] });
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow(`${DEFAULTS.package} is not installed on the phone`);
 });
 
 test('a package that is not an Android package name never reaches the shell', async () => {
   const { sent, device } = phone('NotificationShade');
   const { search } = storage(device, { ...CONFIG, package: 'x; reboot' }, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('only an Android package name');
+  expect(sent).toStrictEqual([['dumpsys', 'window', 'displays']]);
+});
+
+test('nor does it reach the shell through a launch for a user that was named', async () => {
+  const { sent, device } = phone('NotificationShade');
+  const { search } = storage(device, { ...CONFIG, package: 'x; reboot', user: 10 }, DATA, SCREEN, () => {});
 
   await expect(search('shiny')).rejects.toThrow('only an Android package name');
   expect(sent).toStrictEqual([['dumpsys', 'window', 'displays']]);

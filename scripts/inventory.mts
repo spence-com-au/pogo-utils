@@ -15,8 +15,9 @@
  *
  *   pnpm inventory scan [--out inventory.csv] [--limit N] [--skip N] [--flags shiny,lucky,…]
  *                       [--tags 'Trade to 0xNULL,…'] [--no-moves] [--scroll] [--keep-screens DIR]
- *                       [--config FILE] [--serial SERIAL] [--refresh] [--verbose]
- *   pnpm inventory snap [--search TERM] [--verbose] [--refresh] [--config FILE] [--serial SERIAL] [NAME]
+ *                       [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
+ *   pnpm inventory snap [--search TERM] [--verbose] [--refresh] [--config FILE] [--serial SERIAL] [--user N]
+ *                       [NAME]
  *                       save `NAME.png` — the whole screen stitched out of a scroll, or the plain screenshot where
  *                       PGSharp's overlay did not read, which is where nothing is scrolled at all — and print what
  *                       each reader makes of it; fails unless it is a detail screen carrying that overlay, and a
@@ -160,6 +161,7 @@ const { values: options, positionals } = parseArgs({
     'search': { type: 'string' },
     'config': { type: 'string' },
     'serial': { type: 'string' },
+    'user': { type: 'string' },
     'refresh': { type: 'boolean', default: false },
     'verbose': { type: 'boolean', default: false },
     'help': { type: 'boolean', default: false },
@@ -185,8 +187,8 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
  *
  * `--config` is on all three but splits two ways: `scan` and `snap` drive the phone out of it, reading `swipes`,
  * `waits` and `scrollBand`, where `parse` reaches `overlay` alone and only through `report`. The fields are named so
- * the claim can be grepped for, this sentence having been wrong twice already. `--serial` stops at `snap` because
- * `parse` opens no device. `--scroll` is the scan's alone, a `snap` taking a scroll capture every time.
+ * the claim can be grepped for, this sentence having been wrong twice already. `--serial` and `--user` stop at `snap`
+ * because `parse` opens no device. `--scroll` is the scan's alone, a `snap` taking a scroll capture every time.
  */
 const HONOURED: Record<string, readonly string[]> = {
   scan: [
@@ -200,10 +202,11 @@ const HONOURED: Record<string, readonly string[]> = {
     'keep-screens',
     'config',
     'serial',
+    'user',
     'refresh',
     'verbose',
   ],
-  snap: ['search', 'verbose', 'refresh', 'config', 'serial'],
+  snap: ['search', 'verbose', 'refresh', 'config', 'serial', 'user'],
   parse: ['verbose', 'refresh', 'config'],
 };
 
@@ -237,7 +240,11 @@ showProgress(options.verbose);
 useEngine(tesseractCli);
 
 // Read here rather than in `configWith`, `config.mts` being shared with the browser, which has no file to read.
-const config = options.config === undefined ? DEFAULTS : configWith(JSON.parse(readFileSync(options.config, 'utf8')));
+// `--user` goes over the file's `"user"`, as a flag typed for one run should over a file kept for every run.
+const config = {
+  ...(options.config === undefined ? DEFAULTS : configWith(JSON.parse(readFileSync(options.config, 'utf8')))),
+  ...(options.user === undefined ? {} : { user: count('user', options.user, 0) }),
+};
 
 /** The colour each source is printed in, so that a value read off the screen and one worked out never look alike. */
 const SOURCE_STYLE = { 'read': 'cyan', 'worked out': 'magenta' } as const satisfies Record<Source, string>;

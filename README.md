@@ -503,7 +503,9 @@ and `--skip` break a long run into pieces, and `--refresh` downloads the game ma
 using the week-old cache. The icons are found through GitHub's API, which answers an address without a token 60 times an
 hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. Pokémon GO is launched only
 where it is not already the app in front, so a run started over an open storage screen picks up from there rather than
-waiting out a cold start.
+waiting out a cold start. A phone with a work profile can hold a copy of the game in each profile, signed in to
+different trainers, so the launch is for the copy in front, or the only one installed; with a copy in both and neither
+in front the scan stops and asks, and `--user 10` (or `"user": 10` in a `--config` file) names the work profile's.
 
 A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
 into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any
