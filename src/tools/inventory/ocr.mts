@@ -1,6 +1,7 @@
 /**
  * Reads text off a screenshot with Tesseract. Pokémon GO is drawn by Unity, so there is no view hierarchy to ask:
- * `uiautomator dump` sees one opaque surface, and the pixels are all there is.
+ * `uiautomator dump` sees the game as one opaque surface, with only what is drawn over it, as PGSharp's overlay is,
+ * views of their own, and the game's pixels are all there is.
  *
  * Which Tesseract is an `Engine`, installed once with `useEngine` by whatever is running the readers: the CLI in
  * `ocr-cli.mts` for `pnpm inventory`, and the WebAssembly build in `ocr-wasm.mts` for the Inventory page. Neither is

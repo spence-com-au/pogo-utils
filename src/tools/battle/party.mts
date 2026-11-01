@@ -14,7 +14,7 @@
 import { type Moves } from '../inventory/moves.mts';
 import { ocrLine } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
-import { down, place, type Size } from './layout.mts';
+import { around, down, place, tall, type Area, type Size } from './layout.mts';
 
 /**
  * What is known of a party card: its species, null where its silhouette named none and its panel none either, or the
@@ -183,4 +183,19 @@ export async function readCps(image: Image, read = ocrLine): Promise<(number | n
       return cp === undefined ? null : Number(cp);
     }),
   );
+}
+
+const SIDES = ['left', 'middle', 'right'];
+
+/** What the party screen is read off, for `overlay.mts`: each card, its outline and the CP over it, tapped at its middle. */
+export function areas(screen: Size): Area[] {
+  return CARD_XS.map((x, card) => {
+    const cp = down(CARD_Y + CP_ABOVE, CARD_ANCHOR, screen);
+    const reach = tall(CP_REACH, screen);
+
+    return {
+      name: `the party screen's ${SIDES[card] ?? ''} card`,
+      boxes: [around([x, CARD_Y], HALF, CARD_ANCHOR, screen), [x - CP_HALF, cp - reach, x + CP_HALF, cp + reach]],
+    };
+  });
 }

@@ -40,3 +40,25 @@ export function down(widths: number, anchor: number, screen: Size): number {
 export function place([x, widths]: readonly [number, number], anchor: number, screen: Size): [number, number] {
   return [x, down(widths, anchor, screen)];
 }
+
+/** A rectangle on the screen as fractions of it: left, top, right and bottom. */
+export type Box = readonly [number, number, number, number];
+
+/**
+ * What a reader samples, reads with OCR or taps on a screen a run passes through, which an overlay drawn over it would
+ * spoil: named as a refusal names it, `the party grid's left column`. Its `boxes` are where, every one needed unless the
+ * reader has spares, when `need` says how many must be clear for it to work.
+ */
+export interface Area {
+  name: string;
+  boxes: readonly Box[];
+  need?: number;
+}
+
+/** The box `half` widths either side of `[x, widths]` down from `anchor`, across and down alike. */
+export function around([x, widths]: readonly [number, number], half: number, anchor: number, screen: Size): Box {
+  const y = down(widths, anchor, screen);
+  const up = tall(half, screen);
+
+  return [x - half, y - up, x + half, y + up];
+}

@@ -11,6 +11,7 @@
 
 import type { Phone as Connection, Process } from '../inventory/webusb.js';
 import { DEMO_SERIAL } from '../phone-store.js';
+import { GAME_ALONE } from '../tools/battle/overlay.mts';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
 import { encodePng, type Image } from '../tools/inventory/png.mts';
 
@@ -37,8 +38,8 @@ const LISTED = '  Device 5: pogo-utils touch\n    Sources: 0x00001002\n';
 
 /**
  * `sh` as `heldShell` holds it open, answering each command as a phone's shell would — `dumpsys input` with the
- * touchscreen listed, anything else with nothing and a clean exit — and telling `heard` of each write and each
- * command it carried. Killed, it ends.
+ * touchscreen listed, `uiautomator dump` with the game's window and no overlay over it, anything else with nothing and
+ * a clean exit — and telling `heard` of each write and each command it carried. Killed, it ends.
  *
  * Each answer comes a turn of the event loop later, as a phone's comes back over USB. Answered at once, a tap would
  * settle on promises alone, and the battle loop, which taps on frame after frame with no sleep between, would never
@@ -60,7 +61,8 @@ export function answeringShell(heard: { write?(text: string): void; command?(com
         const [whole, command = '', marker = ''] = match;
         pending = pending.slice(match.index + whole.length);
         heard.command?.(command);
-        const answer = new TextEncoder().encode(`${command === 'dumpsys input' ? LISTED : ''}\n${marker} 0\n`);
+        const said = command === 'dumpsys input' ? LISTED : command.startsWith('uiautomator dump') ? GAME_ALONE : '';
+        const answer = new TextEncoder().encode(`${said}\n${marker} 0\n`);
         setTimeout(() => out.send(answer), 0);
       }
     },

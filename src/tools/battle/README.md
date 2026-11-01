@@ -165,6 +165,18 @@ for text and done every few seconds.
   - **Judging it:** a card read with both charged moves is judged by those two. One read alone could be a row OCR
     missed, as much as a second move locked, so that card is judged as one not read is, by every move its species can
     learn bar Frustration and Return, unless one of those was read, and the one read.
+- **[`overlay.mts`](overlay.mts)** keeps PGSharp's overlay out of the way. Its star, the toolbar the star opens, its
+  timer and any other panel spoil whatever they are drawn over: a sample reads PGSharp's pixels, a word goes unread and
+  a tap goes to PGSharp. They are views inside the game's own window, so `uiautomator dump` lists each with its bounds.
+  - **Where it matters:** each reader exports the areas it samples, reads and taps, as `areas` beside it, with spares
+    where it has them: two of a cell's three tint samples are enough, and two of the main menu's four labels.
+    [`areas.test.mts`](areas.test.mts) holds each reader to its own: every fixture of its screens must read the same
+    with everything outside them shuffled, and a reader of the whole screen's OCR is handed only the lines wholly inside
+    them.
+  - **When it is looked for:** before the run taps anything, and again as each battle ends, beside the loop. An overlay
+    over any area stops the run, naming what covers what and how to clear it:
+    `PGSharp's toolbar covers the selection grid's left column: collapse it to its star or hide the overlay.` The star
+    and the timer can be dragged clear, as to the left edge halfway down and beside the clock.
 
 ### The run loop
 

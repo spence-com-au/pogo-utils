@@ -88,6 +88,7 @@
     "src/tools/battle/meta.mts",
     "src/tools/battle/minigame.mts",
     "src/tools/battle/options.mts",
+    "src/tools/battle/overlay.mts",
     "src/tools/battle/party.mts",
     "src/tools/battle/phone.mts",
     "src/tools/battle/pictures.mts",

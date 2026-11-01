@@ -15,7 +15,7 @@
 
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
-import { BOTTOM, down, place, tall, TOP } from './layout.mts';
+import { around, BOTTOM, down, place, tall, TOP, type Area, type Box, type Size } from './layout.mts';
 import { readCps } from './party.mts';
 import { type Point } from './play.mts';
 
@@ -618,4 +618,77 @@ export async function readOutcome(image: Image): Promise<Outcome | undefined> {
   const text = (await ocr(band)).map((line) => fold(line.text)).join(' ');
 
   return /\bwin\b/.test(text) ? 'won' : /\beffort\b/.test(text) ? 'lost' : undefined;
+}
+
+/**
+ * How far either side of a point a sample of it and a tap on it reach, in widths: a pixel and its neighbours, and a
+ * fingertip, which PGSharp's overlay takes for its own wherever the two overlap.
+ */
+export const SAMPLE = 0.01;
+export const FINGER = 0.03;
+
+/**
+ * What the menus read and tap, for `overlay.mts` to check PGSharp's overlay against. The words OCR is asked for are
+ * where they were read off both phones' fixtures: as fractions of the height where a screen draws them at the same
+ * fraction on both, in widths from the foot where it pins them there, and over the whole of their reach where a list or
+ * a tab scrolls them.
+ */
+export function areas(screen: Size): Area[] {
+  const button = (at: Point, anchor: number): Box[] => {
+    const [, y] = place(at, anchor, screen);
+    const reach = tall(SAMPLE, screen);
+
+    return [
+      around(at, FINGER, anchor, screen),
+      around([at[0] - 0.08, at[1]], SAMPLE, anchor, screen),
+      ...[0.1, 0.9].map((x): Box => [x - SAMPLE, y - reach, x + SAMPLE, y + reach]),
+    ];
+  };
+
+  const header = down(HEADER, TOP, screen);
+  const above = (widths: number) => down(widths, BOTTOM, screen);
+
+  return [
+    { name: "the leader's BATTLE", boxes: button(BATTLE, BATTLE_ANCHOR) },
+    { name: 'USE THIS PARTY', boxes: button(USE_PARTY, USE_PARTY_ANCHOR) },
+    { name: 'NEXT BATTLE', boxes: button(NEXT_BATTLE, BOTTOM).slice(0, 2) },
+    { name: 'the round button at the foot', boxes: [around(FOOT, FINGER, BOTTOM, screen)] },
+    { name: "the map's Poké Ball", boxes: [around(BALL, 0.06, BOTTOM, screen)] },
+    {
+      name: "the Battle tab's leaders",
+      boxes: Object.values(LEADER_X).map((x): Box => [x - 0.035, PORTRAIT_SEARCH.from, x + FINGER, PORTRAIT_SEARCH.to]),
+    },
+    {
+      name: "the Battle tab's header",
+      boxes: [
+        [0.2, 0, 0.4, header],
+        [0.62, 0, 0.8, header],
+      ],
+      need: 1,
+    },
+    { name: "GO Battle League's card", boxes: [[GBL_BUTTON_X - FINGER, 0.45, 0.68, 0.95]] },
+    { name: "the Battle tab's lower cards", boxes: [[0.36, 0.15, 0.64, 0.95]] },
+    { name: "the welcome's LET'S GO!", boxes: [[0.2, 0.65, 0.8, 0.95]] },
+    { name: 'the league chooser', boxes: [[0.09, 0.25, 0.92, 0.92]] },
+    { name: 'the matchmaking notice', boxes: [[0.04, 0.415, 0.38, 0.442]] },
+    { name: "the main menu's BATTLE", boxes: [[0.7, above(-1.01), 0.86, above(-0.81)]] },
+    {
+      name: "the main menu's labels",
+      boxes: [
+        [0.12, above(-1.01), 0.33, above(-0.96)],
+        [0.43, above(-0.76), 0.57, above(-0.71)],
+        [0.11, above(-0.52), 0.33, above(-0.47)],
+        [0.7, above(-0.52), 0.85, above(-0.47)],
+      ],
+      need: 2,
+    },
+    {
+      name: "the party's league and title",
+      boxes: [
+        [0.24, 0.37, 0.77, 0.4],
+        [0.29, 0.51, 0.85, 0.65],
+      ],
+    },
+    { name: "the result's verdict", boxes: [[0.2, VERDICT.top, 0.8, VERDICT.bottom]] },
+  ];
 }
