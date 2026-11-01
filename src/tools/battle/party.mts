@@ -12,8 +12,8 @@
  */
 
 import { type Moves } from '../inventory/moves.mts';
-import { ocr, type Line } from '../inventory/ocr.mts';
-import { rgb, type Image } from '../inventory/png.mts';
+import { ocrLine } from '../inventory/ocr.mts';
+import { crop, rgb, type Image } from '../inventory/png.mts';
 import { down, place, type Size } from './layout.mts';
 
 /**
@@ -146,27 +146,29 @@ export const cardAt = (card: number, screen: Size) => place([CARD_XS[card] ?? 0.
 
 /**
  * The CP each card shows above it, `CP 4673`, at -0.130 to -0.135 widths from the cards' centres across eight committed
- * party screens off both phones and over each card's centre. OCR reads the digits whole and the `CP` as it likes —
- * `ce 4673`, `ce4275`, `a 2495` — so a card's CP is the last number on its line; one of the 24 went unread.
+ * party screens off both phones and over each card's centre.
+ *
+ * Each is read off a band of its own as one line, `CP_REACH` above and below and half the way to the next card either
+ * side. Read off the whole of a Pixel 4 XL's 1440-wide screenshot, OCR ran the three into one line over the middle
+ * card, which took the right-hand card's CP and left the other two none. The band's alphabet is the digits and the
+ * letters OCR reads the label as, `ce`, `cp`, `cP` and `cpe`: without a whitelist the thin 7 reads as `/`, and `3/48`
+ * was searched for as 48; with the digits alone the label has nothing to be but a digit, and `7p 4275` read as 74275. A
+ * card's CP is the last number on its band.
  */
 const CP_ABOVE = -0.133;
 const CP_REACH = 0.04;
+const CP_ALPHABET = 'CPcpe0123456789';
+const CP_HALF = (Math.max(...CARD_XS) - Math.min(...CARD_XS)) / (CARD_XS.length - 1) / 2;
 
-export const readCps = async (image: Image, read: (image: Image) => Promise<Line[]> = ocr) =>
-  cpsOf(await read(image), image);
+export async function readCps(image: Image, read = ocrLine): Promise<(number | null)[]> {
+  const row = down(CARD_Y, CARD_ANCHOR, image) * image.height + (CP_ABOVE - CP_REACH) * image.width;
 
-/** The CP each card shows, as `readCps` reads it, out of `lines` already read off the whole of `image`. */
-export function cpsOf(lines: readonly Line[], image: Image): (number | null)[] {
-  const row = down(CARD_Y, CARD_ANCHOR, image) * image.height;
+  return Promise.all(
+    CARD_XS.map(async (x) => {
+      const band = crop(image, (x - CP_HALF) * image.width, row, 2 * CP_HALF * image.width, 2 * CP_REACH * image.width);
+      const cp = /(\d{2,4})\D*$/.exec((await read(band, CP_ALPHABET)) ?? '')?.[1];
 
-  return CARD_XS.map((x) => {
-    const line = lines.find(
-      ({ left, top, width, height }) =>
-        Math.abs((top + height / 2 - row) / image.width - CP_ABOVE) <= CP_REACH &&
-        Math.abs((left + width / 2) / image.width - x) <= HALF,
-    );
-    const cp = /(\d{2,4})\D*$/.exec(line?.text ?? '')?.[1];
-
-    return cp === undefined ? null : Number(cp);
-  });
+      return cp === undefined ? null : Number(cp);
+    }),
+  );
 }

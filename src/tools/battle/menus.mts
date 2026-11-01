@@ -16,7 +16,7 @@
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
 import { BOTTOM, down, place, tall, TOP } from './layout.mts';
-import { cpsOf } from './party.mts';
+import { readCps } from './party.mts';
 import { type Point } from './play.mts';
 
 export const LEADERS = ['blanche', 'candela', 'spark'] as const;
@@ -477,7 +477,7 @@ export async function readMenu(
 
     const title = partyTitle(lines, image);
 
-    return { screen: 'party', tap: party, cap: capOf(lines), cps: cpsOf(lines, image), ...(title && { title }) };
+    return { screen: 'party', tap: party, cap: capOf(lines), cps: await readCps(image), ...(title && { title }) };
   }
 
   if (pokeBall(image)) {
