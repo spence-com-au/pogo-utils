@@ -7,6 +7,12 @@
   branch wants the tip of what has already merged rather than whatever a local `master` happens to be at. Nothing to
   fast-forward, and nothing carried in from a `master` somebody forgot to pull. The cost is that a worktree cannot build
   on an unmerged branch, so stacked work waits for the branch beneath it to land.
+- **Take turns with the phone.** Sessions share whichever Android phone is plugged in, and two driving it at once tap
+  over each other. The hooks in `.claude/settings.json` lease it: a Bash command that reaches a phone through `adb`,
+  `scrcpy` or a tool's device subcommand takes that phone's lease or is refused while another session holds it, and the
+  lease goes when the session ends a turn with nothing still running on the phone. When refused, wait or ask the holder
+  as the refusal says, rather than deleting the lease. A script that runs `adb` itself is out of the hook's sight, so
+  run a plain `adb shell true` first to take the lease.
 - **Open a pull request; `master` is protected.** A direct push is rejected rather than queued, so branch, push the
   branch, and open the PR with `gh pr create`. What the protection requires is deliberately not restated here —
   transcribing it is how this drifted before, down to naming a required check that had since been renamed — so read it
