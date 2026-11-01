@@ -34,8 +34,12 @@ const DIALOG_BUTTON = /^(cancel|yes)$/;
 
 /**
  * Whether a dialog is open over the screen — what a drag the phone dropped as a tap leaves behind, on whatever control
- * it started over. Asked before every tap the scan makes, since a dialog's own buttons sit where the screen's do: the
- * close button's tap lands on the power-up sheet's CANCEL, and a menu tap or a later stray could land on its confirm.
+ * it started over. A dialog's own buttons sit where the screen's do — the close button's tap lands on the power-up
+ * sheet's CANCEL, and the main menu's tap or a later stray could land on its confirm — so it is asked before the taps at
+ * the foot of the screen: `toStorage`'s close and menu taps, and `closeDetail`'s. The scan asks it twice more, on a
+ * detail screen whose HP did not read and on the screenshot its moves are read from, which is where a drag dropped on
+ * the way to the moves is seen. It is not asked before the swipes between Pokémon, which do nothing over a dialog, nor
+ * before the search box's tap or a tile's, which are made on storage, where no detail screen's control can be hit.
  */
 export const dialogOpen = (lines: readonly Line[]) => findLine(lines, DIALOG_BUTTON) !== undefined;
 
