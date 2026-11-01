@@ -90,6 +90,18 @@ test('taps the ✓ on the result once a battle has ended', async () => {
   });
 });
 
+// The demo battle's result, held as the game holds it, where the ✓'s edge crossed the middle of its button once re-encoded.
+test('finds the ✓ on a 360-wide result whose glyph crosses the middle of its button', async () => {
+  const menu = await readMenu(fixture('menu-result-held'), {
+    mode: 'training',
+    leader: 'spark',
+    league: 'great',
+    result: true,
+  });
+
+  expect(menu.screen).toBe('result');
+});
+
 test('taps the ✓ on a result left over from before the run, off its verdict', async () => {
   expect(
     await readMenu(fixture('menu-result'), { mode: 'training', leader: 'blanche', league: 'ultra', result: false }),
