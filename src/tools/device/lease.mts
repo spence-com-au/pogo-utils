@@ -37,12 +37,20 @@ const DRIVES: Record<string, string[]> = { battle: ['run', 'record'], inventory:
  * `timeout` takes its duration after them.
  */
 const WRAPPERS: Record<string, string[]> = {
+  builtin: [],
+  command: [],
   env: ['-u', '-C', '-S', '--unset', '--chdir', '--split-string'],
   exec: ['-a'],
   nice: ['-n', '--adjustment'],
+  nohup: [],
+  sudo: ['-u', '-g', '-C', '-D', '-h', '-p', '-r', '-t', '-U', '--user', '--group'],
   time: ['-f', '-o', '--format', '--output'],
   timeout: ['-s', '-k', '--signal', '--kill-after'],
+  xargs: ['-a', '-d', '-E', '-I', '-L', '-n', '-P', '-s', '--arg-file', '--delimiter', '--max-args', '--max-procs'],
 };
+
+/** The shell's reserved words that can stand in front of a command, as `do` in `for …; do adb …; done`. */
+const KEYWORDS = ['!', '{', 'do', 'elif', 'else', 'if', 'then', 'until', 'while'];
 
 /** What a process still running on a phone looks like, its own or one a script it runs spawns. */
 const ON_DEVICE = /\b(?:adb|scrcpy)\b|scripts\/(?:battle|inventory)\.mts\b/;
@@ -106,6 +114,8 @@ export function simpleCommands(line: string): string[][] {
       } else {
         word += c;
       }
+    } else if (c === '\\' && line[i + 1] === '\n') {
+      i++;
     } else if (c === '\\') {
       word = (word ?? '') + (line[++i] ?? '');
     } else if (c === '$' && line[i + 1] === '(') {
@@ -191,6 +201,8 @@ export function devicesReached(command: string): (string | undefined)[] {
 
       if (/^\w+=/.test(word)) {
         serial = /^ANDROID_SERIAL=(.+)$/.exec(word)?.[1] ?? serial;
+        words.shift();
+      } else if (KEYWORDS.includes(word)) {
         words.shift();
       } else if (valued) {
         words.shift();
