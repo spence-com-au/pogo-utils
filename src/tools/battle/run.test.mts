@@ -665,6 +665,45 @@ test('stops at the end of a GO Battle League set, leaving its reward to be colle
   expect(taps).toEqual(['party', 'party', 'charged', 'result']);
 });
 
+/**
+ * A faint, then black, then GO Battle League's card with no result between, as #563's second battle ended live: each is
+ * counted, its result unread, and the card after the last is left alone rather than its BATTLE tapped for another.
+ */
+test('counts a GO Battle League battle the game ends without a result', async () => {
+  const { phone, clock, taps } = scripted(
+    { ...league(), won: { frame: fixture('other-vs-fade'), lasts: { ms: 3000, to: 'tab' } } },
+    'party',
+  );
+  const report = recorder();
+
+  expect(
+    await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
+  ).toEqual({ battles: 2, won: 0, lost: 0 });
+  expect(taps).toEqual(['party', 'party', 'charged', 'tab', 'welcome', 'league', 'party', 'charged']);
+  expect(report.events.filter((line) => /^run: battle \d (?!started)/.test(line))).toEqual([
+    'run: battle 1 finished, with no result',
+    'run: battle 2 finished, with no result',
+  ]);
+});
+
+// The set's last battle ending without a result, on a card with no battle left: counted before the run stops there.
+test('counts a set’s last battle the game ends without a result', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...league(),
+      won: { frame: fixture('other-vs-fade'), lasts: { ms: 3000, to: 'collect' } },
+      collect: { frame: fixture('menu-gbl-collect') },
+    },
+    'party',
+  );
+
+  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 3 }, clock)).toEqual({
+    battles: 1,
+    won: 0,
+    lost: 0,
+  });
+});
+
 // The Battle tab sliding in, its BATTLE caught not yet green by the first read: the second finds it lit, and plays.
 test('plays on where GO Battle League shows BATTLE greyed for one read only', async () => {
   const { phone, clock, taps } = scripted(
