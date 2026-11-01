@@ -17,8 +17,8 @@ import { closest, type Form, type GameData } from '../inventory/game-master.mts'
 import { readMoves, type Moves } from '../inventory/moves.mts';
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
-import { BOTTOM, down, place, tall, TOP } from './layout.mts';
-import { onParty } from './menus.mts';
+import { around, BOTTOM, down, place, tall, TOP, type Area, type Size } from './layout.mts';
+import { FINGER, onParty, SAMPLE } from './menus.mts';
 import { type Point } from './play.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
@@ -326,4 +326,44 @@ export async function readCard(
         : 'the search did not take';
 
   return panel ? { panel, back } : { why, back };
+}
+
+/**
+ * Where the panel of a Pokémon held in the grid's first row is drawn, in widths down from the top: from above Xerneas's,
+ * the tallest of the four committed held captures, to the row, across the whole width it is cropped to. PGSharp's
+ * timer, where it sits until dragged, near the top left, lies across it: between Xerneas's types and its moves on a
+ * Pixel 8 Pro, and at the height of its types on a Pixel 4 XL.
+ */
+const HELD = { top: 0.2, bottom: GRID_TOP };
+
+const SIDES = ['left', 'middle', 'right'];
+
+/**
+ * What the selection screen is read off and tapped at, for `overlay.mts`. A search puts the card searched for in the
+ * first row, which is where its tint is sampled, at heights two of which are enough, and where it is held: one that did
+ * not take leaves the whole of storage in view, the card anywhere in it, which is not allowed for.
+ */
+export function areas(screen: Size): Area[] {
+  const cells = COLUMNS.flatMap((x, column) => {
+    const name = `the selection grid's ${SIDES[column] ?? ''} column`;
+    const tints = TINT_YS.map((y) => around([x - TINT_X, GRID_TOP + y], SAMPLE, TOP, screen));
+
+    return [
+      { name, boxes: tints, need: 2 },
+      { name, boxes: [around([x, GRID_TOP + CELL / 2], FINGER, TOP, screen)] },
+    ];
+  });
+  return [
+    {
+      name: "the selection screen's search field",
+      boxes: [SEARCH, CLEAR].map((at) => around(at, FINGER, TOP, screen)),
+    },
+    {
+      name: 'CANCEL',
+      boxes: [[0.17, down(CANCEL[1] - 0.05, BOTTOM, screen), 0.39, down(CANCEL[1] + 0.05, BOTTOM, screen)]],
+    },
+    { name: "the selection screen's heading", boxes: [[0.6, down(0.08, TOP, screen), 0.86, down(0.15, TOP, screen)]] },
+    ...cells,
+    { name: "a held Pokémon's panel", boxes: [[0, down(HELD.top, TOP, screen), 1, down(HELD.bottom, TOP, screen)]] },
+  ];
 }

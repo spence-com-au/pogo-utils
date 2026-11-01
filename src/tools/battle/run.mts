@@ -70,6 +70,7 @@ import {
   type Matchup,
 } from './energy.mts';
 import { type Meta } from './meta.mts';
+import { checkOverlay } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 
@@ -356,6 +357,10 @@ export async function run(
   // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
   // is read for the battle's outcome too.
   let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
+
+  // PGSharp's overlay as the phone's views show it, waited for before the run taps anything. It is looked for again as
+  // each battle ends, its star being as readily opened or dragged between battles as before them.
+  let first: string | undefined = await phone.views();
   let frames = 0;
 
   // A frame off the stream is good only until the next comes, its memory then decoded into again, so a frame kept past
@@ -665,6 +670,11 @@ export async function run(
 
     // Made for the frames' size, which every frame of a run shares, and made again for each battle.
     player ??= new Player(frame);
+
+    if (first !== undefined) {
+      log(`PGSharp's overlay: ${checkOverlay(first, frame)}, clear of what is read`);
+      first = undefined;
+    }
 
     if (frames++ % 10 === 0 && keptFrom !== frame) {
       keptFrom = frame;
@@ -1769,6 +1779,13 @@ export async function run(
         // card would start another. Its result's ✓ is tapped as ever.
         if (battles >= count && menu.screen !== 'result') {
           return { battles, ...outcomes };
+        }
+
+        // Looked for again before anything on the screen after the battle is tapped, a card or BATTLE: each would land on
+        // whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first. Not after
+        // the last battle wanted, which leaves only its ✓ to tap and nothing to read.
+        if (battles < count) {
+          checkOverlay(await phone.views(), screenshot);
         }
       }
 
