@@ -79,11 +79,16 @@ export function ownedKeys(): string[] {
  * Storage that will not answer is not caught here. Every reader in `event-prefs.ts` swallows that on purpose, because
  * a filter chip still works for the rest of the session; an export that quietly produced an empty backup would be the
  * same silence where it does real harm.
+ *
+ * Values are keyed in alphabetical order rather than the order storage lists them, which follows when each key was
+ * first written and differs from one browser to the next. Sorted, two exports of the same preferences are the same
+ * file, so a diff between them shows what changed and nothing else, and a reader finds a key where they expect it.
+ * Sorted by code unit rather than through `localeCompare`, so the order is one file's and not one locale's.
  */
 export function writeBackup(): string {
   const values: Record<string, unknown> = {};
 
-  for (const key of ownedKeys()) {
+  for (const key of ownedKeys().sort()) {
     const stored = localStorage.getItem(key);
 
     if (stored === null) {
