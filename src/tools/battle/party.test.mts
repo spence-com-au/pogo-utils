@@ -49,12 +49,16 @@ test('a card no species is clearly nearest is declined rather than guessed', () 
   expect(readParty(png('fixtures/menu-party.png'), others).slice(1)).toEqual([null, null]);
 });
 
-// The cards' CPs off both phones, the third of `menu-party-full` read by OCR as nothing.
+// The cards' CPs off both phones.
 test.each([
   ['menu-pixel8-party-master', [4673, 3986, 4275]],
   ['menu-pixel8-party', [1400, 1499, 1488]],
+  ['menu-pixel8-party-gbl', [2500, 2493, 2492]],
+  ['menu-pixel8-party-gengar', [1209, 1204, 1197]],
   ['menu-gbl-party', [2500, 2495, 2336]],
-  ['menu-party-full', [1435, 1451, null]],
+  ['menu-party', [2458, 2336, 2392]],
+  ['menu-party-full', [1435, 1451, 1444]],
+  ['menu-party-master', [3796, 3748, 3813]],
 ])('%s shows CPs %o', async (name, cps) => {
   expect(await readCps(png(`fixtures/${name}.png`))).toEqual(cps);
 });
