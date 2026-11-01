@@ -1,6 +1,6 @@
 /**
  * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written,
- * whether two passes saw the same Pokémon and where storage ends. Here rather than in `scripts/inventory.mts` so the suite can import them,
+ * whether two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in `scripts/inventory.mts` so the suite can import them,
  * that script parsing `process.argv` and driving a phone at its top level.
  */
 
@@ -107,6 +107,38 @@ export class Marks {
 
 function bump(map: Map<string, number>, key: string, by: number) {
   map.set(key, (map.get(key) ?? 0) + by);
+}
+
+/**
+ * Why a pass that visited `visited` Pokémon stopped short of what the game counted for it, or null where it did not or
+ * the count did not read. `walk` cannot tell a swipe the phone dropped from the end of storage — both leave the same
+ * Pokémon on the screen, and two of a species differ by less of the panel than a still screen does from itself — so
+ * this is what keeps a pass cut short, there or by a `walk` stopping for reasons of its own, from being written as
+ * complete: a full pass of 45 out of 2,708, or a shiny pass of 82 out of 908 that writes `no` against every shiny it
+ * missed.
+ *
+ * `skip` and `limit` are the full pass's `--skip` and `--limit`, which are what it was asked to visit of the count.
+ */
+export function shortfall(
+  pass: string,
+  visited: number,
+  counted: number | null,
+  skip = 0,
+  limit = Infinity,
+): string | null {
+  if (counted === null) {
+    return null;
+  }
+
+  const expected = Math.min(limit, Math.max(counted - skip, 0));
+
+  if (visited >= expected) {
+    return null;
+  }
+
+  const of = skip > 0 ? ` of the ${counted - skip} after --skip ${skip}` : '';
+
+  return `${pass}: the game counts ${counted} Pokémon, but the pass stopped after ${visited}${of}`;
 }
 
 /** What `walk` needs of the phone: a read of the Pokémon open, and a swipe to the next one or back to the one before. */

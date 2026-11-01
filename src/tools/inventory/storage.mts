@@ -182,6 +182,34 @@ export function storage(
   };
 
   /**
+   * How many Pokémon storage holds, off the `12800 / 12825` under the POKÉMON tab of a grid nothing was searched for,
+   * or null where it did not read. A searched grid has the `(N)` `matches` reads in its place.
+   *
+   * The EGGS tab beside it carries a count of the same shape, `12 / 12`, which OCR may hand over first or on the same
+   * line, so the count taken is the one out of the most room: storage holds at least 300 where an incubator-full of
+   * eggs is a dozen.
+   */
+  const stored = (lines: readonly Line[]): number | null => {
+    let best: { held: number; room: number } | null = null;
+
+    for (const line of lines) {
+      if (line.top >= (searchBox?.[1] ?? Infinity)) {
+        continue;
+      }
+
+      for (const [, held, room] of line.text.matchAll(/(\d+)\s*\/\s*(\d+)/g)) {
+        const count = { held: Number(held), room: Number(room) };
+
+        if (count.held <= count.room && count.room > (best?.room ?? -1)) {
+          best = count;
+        }
+      }
+    }
+
+    return best?.held ?? null;
+  };
+
+  /**
    * Launched where it is not already in front, which is the phone's answer to give rather than the user's: a game
    * running and a game showing are different states, and only the second is one `toStorage` can start from. A game in
    * the background still needs the launch to bring it forward — skipping it there taps the launcher instead, three
@@ -280,5 +308,5 @@ export function storage(
     return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
   };
 
-  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile };
 }

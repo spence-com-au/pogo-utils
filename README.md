@@ -501,9 +501,14 @@ back. Size comes from the `XXL` or `XXS` badge on the detail screen, and shiny, 
 searches, one quick pass each before the full pass; `--flags` picks which. Expect several seconds per Pokémon. `--limit`
 and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again rather than
 using the week-old cache. The icons are found through GitHub's API, which answers an address without a token 60 times an
-hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. Pokémon GO is launched only
-where it is not already the app in front, so a run started over an open storage screen picks up from there rather than
-waiting out a cold start.
+hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. The swipe from one Pokémon
+to the next goes through a touchscreen the scan makes on the phone, as `pnpm battle` does, since `input swipe` drops
+about one in ten on some phones and a dropped swipe looks just like the end of storage; where the phone will not make
+one it says so and falls back to `input swipe`. Each pass is held to the count the game shows for it, the `🔍(N)` of a
+search or the `N / M` under POKÉMON, and a pass that stops short of it fails rather than writing a short run as
+complete; a full pass that does says which `--skip` carries on from where it stopped. Pokémon GO is launched only where
+it is not already the app in front, so a run started over an open storage screen picks up from there rather than waiting
+out a cold start.
 
 A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
 into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any

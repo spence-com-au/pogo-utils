@@ -155,3 +155,22 @@ test('the close button is not tapped while a dialog is open, nor on a screen tha
 
   expect(sent).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
 });
+
+test.for([
+  ['the tabs on lines of their own', [word(1, '12800 / 12825', 40, 10, 20, 8), word(2, '12/12', 70, 10, 10, 8)]],
+  ['the eggs read first', [word(1, '12/12', 70, 10, 10, 8), word(2, '12800/12825', 40, 10, 20, 8)]],
+  ['both tabs on one line', [word(1, '12800 / 12825   12/12', 40, 10, 40, 8)]],
+] as const)('an unsearched grid answers how many storage holds, given %s', async ([, counts]) => {
+  const { device } = phone(DEFAULTS.package);
+  reads([...counts, word(3, 'SEARCH', 40, 30, 20, 10), word(4, 'CP415', 10, 50, 20, 8)].join('\n'));
+  const { search, stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  expect(stored(await search(''))).toBe(12800);
+});
+
+test('a grid whose storage count did not read answers null', () => {
+  const { device } = phone(DEFAULTS.package);
+  const { stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  expect(stored([])).toBeNull();
+});

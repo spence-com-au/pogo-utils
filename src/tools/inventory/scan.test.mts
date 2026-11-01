@@ -6,7 +6,7 @@
 
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
-import { count, csv, FLAGS, keyOf, looseKeyOf, Marks, parseFlags, walk } from './scan.mts';
+import { count, csv, FLAGS, keyOf, looseKeyOf, Marks, parseFlags, shortfall, walk } from './scan.mts';
 import { CLEAR_KEYS } from './storage.mts';
 import { expect, test, vi } from 'vitest';
 
@@ -272,4 +272,25 @@ test.for([
   ['another Pokémon', ['x', 'y', 'a', 'a', 'b']],
 ] as const)('a miss just before a run of twins still visits every Pokémon once, given %s', async ([, keys]) => {
   expect((await walked(keys, Infinity, 0, [1])).map(([, at]) => at)).toEqual(keys.map((_, i) => i));
+});
+
+/**
+ * What #581's phone did: one swipe in ten went nowhere, which `walk` takes for the end of storage, and the passes came
+ * out at 82 of 908 shiny and 45 of 2,708 in all with nothing said. Held against the game's own count, they fail.
+ */
+test('a pass that stops short of the count the game shows for it fails, saying how short', () => {
+  expect(shortfall('shiny', 82, 908)).toBe('shiny: the game counts 908 Pokémon, but the pass stopped after 82');
+  expect(shortfall('the full pass', 5, 2708, 40)).toBe(
+    'the full pass: the game counts 2708 Pokémon, but the pass stopped after 5 of the 2668 after --skip 40',
+  );
+});
+
+test.for([
+  ['reached the count', 908, 908, 0, Infinity],
+  ['visited a screen twice past it', 909, 908, 0, Infinity],
+  ['reached its --limit', 10, 2708, 0, 10],
+  ['reached the end after its --skip', 8, 2708, 2700, Infinity],
+  ['a count that did not read', 45, null, 0, Infinity],
+] as const)('a pass that %s does not fail', ([, visited, counted, skip, limit]) => {
+  expect(shortfall('pass', visited, counted, skip, limit)).toBeNull();
 });
