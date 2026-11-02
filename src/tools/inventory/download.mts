@@ -387,6 +387,11 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       evolveCandy: [
         ...new Set((settings.evolutionBranch ?? []).flatMap((b) => (b.candyCost === undefined ? [] : [b.candyCost]))),
       ],
+
+      // No field says a form exists only as a shadow. What says it is the move shadowing one teaches: Frustration on
+      // every form that has a shadow at all but the two Apex forms, whose `shadowChargeMove` is their own Aeroblast+
+      // and Sacred Fire+. `RAIKOU_S` and its kind keep Frustration, and nothing in the data says they are shadows.
+      shadowOnly: (settings.shadow?.shadowChargeMove ?? 'FRUSTRATION') !== 'FRUSTRATION',
     };
 
     // A species with forms is listed once bare and once per form, the bare entry repeating the `_NORMAL` one. Keep it

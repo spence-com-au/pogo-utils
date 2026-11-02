@@ -71,6 +71,9 @@ export interface Identity {
  * give: a nickname printed where the species goes, and the `♀` or `♂` OCR loses. It outranks the name rather than
  * joining it, but the name still decides whether there is a **nickname**, so a Ho-Oh called `96%` keeps it. It says
  * nothing about the form.
+ *
+ * `shadowed` is whether the Pokémon is shadow or purified, which the scan's `shadow` and `purified` passes answer and
+ * nothing here reads off the screen: null where they did not run.
  */
 export function identify(
   data: GameData,
@@ -78,6 +81,7 @@ export function identify(
   overlay: Overlay | null,
   artwork?: Artwork,
   dex: number | null = null,
+  shadowed: boolean | null = null,
 ): Identity {
   const notes: string[] = [];
   const iv = overlay?.iv ?? null;
@@ -208,6 +212,18 @@ export function identify(
 
     if (fitting.length > 0) {
       candidates = fitting;
+    }
+  }
+
+  // Lugia's and Ho-Oh's Apex forms, which share every number with the ordinary form and which the game only ever handed
+  // out as shadows. Left in, they write `Lugia (S)` beside every ordinary Lugia as a form the screen cannot separate,
+  // where the passes already have. A narrowing for the reason the others are: a pass that missed a shadow must not
+  // empty the list.
+  if (shadowed === false) {
+    const possible = candidates.filter((f) => !f.shadowOnly);
+
+    if (possible.length > 0) {
+      candidates = possible;
     }
   }
 

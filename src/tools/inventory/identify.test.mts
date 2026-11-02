@@ -3,10 +3,11 @@
  * the same screen with one field taken away, misread or changed, each the one difference on an otherwise fixed reading.
  * `screens.test.mts` holds the other half — that each field is read off the screen at all.
  *
- * Two readings. `pumpkaboo-large.png`'s is a level 1 Pumpkaboo at 2/0/6, where a Large and a Super both show 14 HP and
- * CP 14 and only the height tells them apart. `sinistea-phony.png`'s is one every form of Sinistea fits equally: Phony
- * and Antique share a dex, a type and all three base stats, and the `EVOLVE` row's candy is the only thing on the
- * screen that parts them.
+ * Three readings. `pumpkaboo-large.png`'s is a level 1 Pumpkaboo at 2/0/6, where a Large and a Super both show 14 HP
+ * and CP 14 and only the height tells them apart. `sinistea-phony.png`'s is one every form of Sinistea fits equally:
+ * Phony and Antique share a dex, a type and all three base stats, and the `EVOLVE` row's candy is the only thing on the
+ * screen that parts them. And an ordinary Lugia's, which only the scan's shadow and purified passes part from its Apex
+ * form.
  */
 
 import { readFileSync } from 'node:fs';
@@ -239,4 +240,59 @@ test('a worked-out CP none of the screen’s candidates is gets a note, where th
   expect(unsure([140, 14])).toStrictEqual([]);
   expect(unsure([])).toStrictEqual([]);
   expect(unsure([140, 99], true)).toStrictEqual([]);
+});
+
+/** `00015-detail.png` from a Pixel 4 XL scan: an ordinary Lugia, which shares every number with its Apex form. */
+const LUGIA: Detail = {
+  cp: 1571,
+  cps: [],
+  name: 'Lugia',
+  hp: 129,
+  weight: 204.75,
+  height: 5.26,
+  types: ['Psychic', 'Flying'],
+  gender: 'genderunknown',
+  favourite: false,
+  size: null,
+  tags: [],
+  evolveCandy: null,
+};
+
+const LUGIA_OVERLAY: Overlay = {
+  levels: [15],
+  iv: { attack: 13, defense: 15, stamina: 15 },
+  checked: true,
+  form: null,
+};
+
+/** The answer, the forms beside it and the notes for that Lugia, as the shadow and purified passes left it. */
+const lugia = (shadowed: boolean | null) => {
+  const identity = identify(DATA, LUGIA, LUGIA_OVERLAY, undefined, null, shadowed);
+
+  return {
+    form: identity.form && label(identity.form),
+    unseparated: identity.unseparated.map(label),
+    notes: identity.notes,
+  };
+};
+
+test('the forms the game hands out only as shadows are the two Apex ones', () => {
+  expect(DATA.forms.filter((f) => f.shadowOnly).map(label)).toStrictEqual(['Lugia (S)', 'Ho-Oh (S)']);
+});
+
+/**
+ * The Apex form is ruled out only where the passes said the Pokémon is neither shadow nor purified. A shadow Lugia, a
+ * purified one or one no pass asked about can still be it, and nothing on the screen says which.
+ */
+test('a Lugia neither shadow nor purified is not its Apex form', () => {
+  expect(lugia(false)).toStrictEqual({ form: 'Lugia', unseparated: [], notes: [] });
+
+  const either = {
+    form: 'Lugia',
+    unseparated: ['Lugia (S)'],
+    notes: ['nothing on the screen separates it from Lugia (S)'],
+  };
+
+  expect(lugia(true)).toStrictEqual(either);
+  expect(lugia(null)).toStrictEqual(either);
 });

@@ -15,6 +15,7 @@ const APPLIN: Form = {
   icon: null,
   moves: [],
   evolveCandy: [200],
+  shadowOnly: false,
 };
 
 /** `applin.png` as the readers make it: `CP` unlabelled, so the 286 the screen shows is only in `cps`. */
