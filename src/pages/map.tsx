@@ -747,7 +747,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
     <div class="app">
       <aside id="sidebar">
         <header>
-          <h1>Pokémon GO Routes</h1>
+          <h1>Routes</h1>
           <div class="sub">{count}</div>
         </header>
 
