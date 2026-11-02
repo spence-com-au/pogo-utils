@@ -280,7 +280,8 @@ export async function walk<R extends { key: string | null }>(
 
     const [head = null] = looks;
 
-    if (head !== null && looks.every((key) => agree(key, head))) {
+    // Pairwise, since `agree` is not transitive: two looks with different IVs each agree with one that missed them.
+    if (head !== null && looks.every((a) => looks.every((b) => agree(a, b)))) {
       log.push({ key: head });
       return head;
     }
