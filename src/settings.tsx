@@ -126,11 +126,11 @@ export function Settings() {
           <span>Settings</span>
         </div>
 
-        <section class="menu-section" aria-labelledby="settings-backup">
+        <section class="settings-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="menu-note">Save this browser’s preferences as a file, or restore one.</p>
+          <p class="settings-note">Save this browser’s preferences as a file, or restore one.</p>
 
-          <div class="menu-actions">
+          <div class="settings-actions">
             <button type="button" title="Save every preference this browser has stored as a file" onClick={exportPrefs}>
               Export
             </button>
@@ -169,7 +169,7 @@ export function Settings() {
            * whose contents changed, and the refusal goes unannounced to the reader who most needs it. Empty rather than
            * `hidden`, and `:empty` is what keeps it from costing a gap.
            */}
-          <p class="menu-status" aria-live="polite">
+          <p class="settings-status" aria-live="polite">
             {status}
           </p>
         </section>

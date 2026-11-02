@@ -68,7 +68,8 @@ export async function lend(
   /**
    * The phone held by the page again, unless the phone button connected another meanwhile: that one is the user's
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
-   * being. The demo phone is no other, the menu offering it while this one is lent only because nothing is held then,
+   * being. The demo phone is no other, the phone button holding it under `?demo`
+   * while this one is lent only because nothing is held then,
    * so it is put away for this one rather than left in its place with nothing to play on. Failing to come back is told
    * after `error`, the run's own failure, where there is one, that being the news, and is no failure at all where a
    * phone was connected meanwhile, which may be why it failed.

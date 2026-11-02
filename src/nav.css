@@ -12,7 +12,8 @@
  * drawn here rather than on the tabs, so they run under all of it.
  *
  * Positioned so the panels its menus open hang from its right edge rather than each from its own control: the bell sits
- * a gear's width in from the edge, and a phone-wide panel anchored to it would run that far off the left of the screen.
+ * two controls' width in from the edge, and a phone-wide panel anchored to it would run that far off the left of the
+ * screen.
  */
 .topbar {
   position: relative;
@@ -271,34 +272,32 @@
 }
 
 /**
- * The settings panel's contents: a section per thing it controls, each a line of explanation, its buttons, and
+ * The settings panel's contents: a titled section per thing it controls, each a line of explanation, its buttons, and
  * the line that reports what the last press did.
  */
-.menu-section {
+.settings-section {
   padding: 10px 12px 12px;
 }
 
-.menu-section h2 {
+.settings-section h2 {
   margin: 0 0 4px;
   font-size: 13px;
 }
 
-.menu-note {
+.settings-note {
   margin: 0 0 10px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.menu-actions {
+.settings-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
 }
 
-.menu-actions button {
+.settings-actions button {
   padding: 6px 14px;
-  white-space: nowrap;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -308,18 +307,18 @@
   cursor: pointer;
 }
 
-.menu-actions button:hover:not(:disabled),
-.menu-actions button:focus-visible {
+.settings-actions button:hover:not(:disabled),
+.settings-actions button:focus-visible {
   border-color: var(--track);
   color: var(--track);
 }
 
-.menu-actions button:disabled {
+.settings-actions button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.menu-status {
+.settings-status {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.5;
@@ -329,7 +328,7 @@
  * Waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line box, so its margin
  * is the whole of what it costs and this takes that away.
  */
-.menu-status:empty {
+.settings-status:empty {
   margin: 0;
 }
 

@@ -17,18 +17,12 @@ import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
-import { fromHash } from './router.js';
 
 /**
- * Whether the address asks for the demo phone. Read from the address's own query, `/?demo#/inventory`, which a tab
- * switch leaves alone, and from the page's query in the fragment too, `#/inventory?demo`, which is the one more likely
- * to be typed — though a page rewriting its own query drops it there. Asked at the press, so either works whenever.
+ * Whether the address asks for the demo phone: `/?demo#/inventory`, in the address's own query rather than the page's
+ * in the fragment, which tab switches and the pages' own `replaceQuery` rewrite out from under it.
  */
-function demoAsked() {
-  return (
-    new URLSearchParams(location.search).has('demo') || new URLSearchParams(fromHash(location.hash).query).has('demo')
-  );
-}
+const demoAsked = () => new URLSearchParams(location.search).has('demo');
 
 export function Phone() {
   const root = useRef<HTMLDivElement>(null);
@@ -44,8 +38,10 @@ export function Phone() {
   const [status, setStatus] = useState<{ message: string; failed?: boolean } | null>(null);
   const [connecting, setConnecting] = useState(false);
 
-  // A note waiting to be read closes as a menu would, except while the chooser it explains is still up.
-  useDismiss(status !== null && !connecting, () => setStatus(null), root);
+  // A note waiting to be read closes as a menu would, the connection going on without it, so it cannot sit under the
+  // notifications or settings panel opened meanwhile. The chooser is the browser's own and modal, so nothing outside
+  // it reaches the page to close the note while it is up.
+  useDismiss(status !== null, () => setStatus(null), root);
 
   /**
    * Offer the browser's chooser and hold whatever is picked. `webusb.ts` is fetched only now: it brings Tango, which
@@ -118,7 +114,9 @@ export function Phone() {
     ? 'Using the demo phone: press to put it away'
     : phone
       ? `Connected to ${phone.name}: press to connect another phone`
-      : 'Connect a phone';
+      : demoAsked()
+        ? 'Use the demo phone'
+        : 'Connect a phone';
 
   return (
     <div class="menu phone" ref={root}>
