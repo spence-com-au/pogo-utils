@@ -1,5 +1,5 @@
 /**
- * The phone, driven over ADB. Everything a scan or a battle asks of it is nine methods over one `Transport`, the only
+ * The phone, driven over ADB. Everything a scan or a battle asks of it is ten methods over one `Transport`, the only
  * part that differs between the CLI and the Inventory page: `adb-cli.mts` runs the `adb` binary, and
  * `src/inventory/webusb.ts` speaks the protocol over WebUSB from the page.
  */
@@ -32,6 +32,21 @@ export const typeable = (text: string) => /^[\w&,!@#*+<>.-]*$/.test(text.replace
  * no quoting, and one that does not — a `--config` file's `"package": "x; reboot"` — never reaches the phone.
  */
 export const launchable = (pkg: string) => /^[A-Za-z]\w*(\.[A-Za-z]\w*)+$/.test(pkg);
+
+/** `pkg` where `launchable` passes it, and a refusal otherwise, before anything reaches the shell. */
+function launching(pkg: string): string {
+  if (!launchable(pkg)) {
+    throw new Error(`refusing to launch ${JSON.stringify(pkg)}: only an Android package name is passed to the shell`);
+  }
+
+  return pkg;
+}
+
+/** The app in front: its package, and the Android user — the profile — whose copy of it that is. */
+export interface Focus {
+  package: string;
+  user: number;
+}
 
 export class Device {
   readonly #transport: Transport;
@@ -74,19 +89,54 @@ export class Device {
     await this.#shell('input', 'keyevent', ...codes.map(String));
   }
 
-  async launch(pkg: string): Promise<void> {
-    if (!launchable(pkg)) {
-      throw new Error(`refusing to launch ${JSON.stringify(pkg)}: only an Android package name is passed to the shell`);
-    }
-
-    await this.#shell('monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
+  /**
+   * Starts `pkg` for Android user `user`, as the launcher would: its launcher activity, a task brought forward where one
+   * is already running. The user is not optional because the phone's default is not a safe one. A work profile is a
+   * user of its own, 10 where there is one, holding its own copy of every app installed there; `monkey`, which this was,
+   * starts user 0's, so a game played in a work profile came back up signed in to whatever trainer the personal
+   * profile's copy holds (#594). `am start` takes the user it is given, and the trailing package is the intent's own
+   * rather than a component, so no activity name has to be known.
+   */
+  async launch(pkg: string, user: number): Promise<void> {
+    await this.#shell(
+      'am',
+      'start',
+      '--user',
+      String(user),
+      '-a',
+      'android.intent.action.MAIN',
+      '-c',
+      'android.intent.category.LAUNCHER',
+      '-f',
+      '0x10200000',
+      launching(pkg),
+    );
   }
 
   /**
-   * The package of the window that has focus, which is how a caller can tell whether the app it wants is in front
-   * without launching it to find out. `dumpsys window displays` is the cheapest place to read it — 23 KB and 33ms
-   * against 72 KB for `dumpsys window` and 76 KB for `dumpsys activity activities`, all three carrying the same single
-   * `mCurrentFocus` line.
+   * The Android users `pkg` is installed for, in the order `dumpsys package` lists them: one per profile holding a copy,
+   * `[0]` on a phone with no work profile and `[0, 10]` on one that has the app in both. Each user is a line of the
+   * package's dump, `User 10: ceDataInode=… installed=true hidden=false …`, and a user the package was uninstalled for
+   * keeps its line with `installed=false`, so that is the field read rather than the line's presence.
+   */
+  async installs(pkg: string): Promise<number[]> {
+    const dump = new TextDecoder().decode(await this.#shell('dumpsys', 'package', launching(pkg)));
+    const users = [...dump.matchAll(/^\s*User (\d+):.*\binstalled=true\b/gm)].map(([, user]) => Number(user));
+
+    // A package's dump lists each user once, but a phone that has the package as an update over a system image lists
+    // the package twice, under `Packages:` and `Hidden system packages:`, users and all.
+    return [...new Set(users)];
+  }
+
+  /**
+   * The package of the window that has focus, and the Android user it runs as, which is how a caller can tell whether
+   * the app it wants is in front without launching it to find out. `dumpsys window displays` is the cheapest place to
+   * read it — 23 KB and 33ms against 72 KB for `dumpsys window` and 76 KB for `dumpsys activity activities`, all three
+   * carrying the same single `mCurrentFocus` line.
+   *
+   * The user is the `u10` in `Window{81ff99a u10 com.example/.MainActivity}`, and is half the answer rather than a
+   * detail: an app in a work profile and the same app in the personal profile have one package name and are different
+   * installs, signed in to different accounts.
    *
    * A system window belongs to no package and so reads as null rather than as a name:
    * `Window{6b23334 u0 NotificationShade}` is what a phone reports once its screen has been off, against
@@ -94,10 +144,11 @@ export class Device {
    * question callers have — and not that the phone is locked, which this cannot answer: the keyguard fields in the same
    * dump read `isKeyguardShowing=false` over exactly that window.
    */
-  async focused(): Promise<string | null> {
+  async focused(): Promise<Focus | null> {
     const dump = new TextDecoder().decode(await this.#shell('dumpsys', 'window', 'displays'));
+    const [, user, pkg] = /mCurrentFocus=Window\{\S+ u(\d+) ([\w.]+)\//.exec(dump) ?? [];
 
-    return /mCurrentFocus=Window\{\S+ \S+ ([\w.]+)\//.exec(dump)?.[1] ?? null;
+    return user === undefined || pkg === undefined ? null : { package: pkg, user: Number(user) };
   }
 
   /**

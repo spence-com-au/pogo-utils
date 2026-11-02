@@ -11,6 +11,13 @@ export type Point = [number, number];
 
 export interface Config {
   package: string;
+
+  /**
+   * The Android user whose copy of the game to drive: 0 for the personal profile, 10 for a work profile where there is
+   * one. Left out, it is the user of the game in front, or the only one it is installed for; a phone with a copy in
+   * each profile and neither in front is refused rather than guessed at, the two being signed in to different trainers.
+   */
+  user?: number;
   swipes: {
     /** From one Pokémon to the next. */
     next: [Point, Point];
@@ -90,17 +97,25 @@ export const DEFAULTS: Config = {
   scrollBand: SCREEN_BAND,
 };
 
+/** Whether `value` names an Android user, which is a whole number: 0, 10, 11 and on. */
+export const isUser = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+
 /**
  * `DEFAULTS` with a JSON file laid over it one level deep, so a file can change one tap and restate nothing else. A
  * package that is not a package name is refused here, before the phone is driven, rather than by `launch` partway in.
  */
-export function configWith(overrides: Partial<Record<keyof Config, object | string>>): Config {
+export function configWith(overrides: Partial<Record<keyof Config, object | string | number>>): Config {
   if (typeof overrides.package === 'string' && !launchable(overrides.package)) {
     throw new Error(`refusing "package" ${JSON.stringify(overrides.package)}: it is not an Android package name`);
   }
 
+  if (overrides.user !== undefined && !isUser(overrides.user)) {
+    throw new Error(`refusing "user" ${JSON.stringify(overrides.user)}: an Android user is a whole number`);
+  }
+
   return {
     package: typeof overrides.package === 'string' ? overrides.package : DEFAULTS.package,
+    user: isUser(overrides.user) ? overrides.user : DEFAULTS.user,
     taps: { ...DEFAULTS.taps, ...(overrides.taps as Partial<Config['taps']>) },
     swipes: { ...DEFAULTS.swipes, ...(overrides.swipes as Partial<Config['swipes']>) },
     waits: { ...DEFAULTS.waits, ...(overrides.waits as Partial<Config['waits']>) },
