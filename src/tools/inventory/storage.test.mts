@@ -8,8 +8,10 @@ import { Device, KEY, type Transport } from './adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { type GameData } from './game-master.mts';
 import { useEngine } from './ocr.mts';
-import { encodePng } from './png.mts';
+import { readLines } from './detail.mts';
+import { decodePng, encodePng } from './png.mts';
 import { CLEAR_KEYS, dialogOpen, storage, unsearchable } from './storage.mts';
+import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 
@@ -272,4 +274,26 @@ test('a grid whose storage count did not read answers null', () => {
   const { stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   expect(stored([])).toBeNull();
+});
+
+/**
+ * Each grid read under real OCR, and the tops of the CP labels in its first row and its second: the first tile's tap
+ * belongs between them. `sparkles.png` is the grid whose first row of labels all misread, the ✦✦ a shiny tile carries
+ * against its `CP` turning them into `on 376`, `£ 546` and `seo`, so that the first to read was a row down and the scan
+ * began from the fourth of six. The other two carry the tabs' counts above the box, which are not labels either.
+ */
+test.for([
+  ['sparkles', 742, 1261],
+  ['grid', 460, 828],
+  ['searched', 516, 880],
+] as const)("the first tile is tapped in the first row of storage/%s.png's grid", async ([name, row, next]) => {
+  const finished = useTestEngine();
+  const image = decodePng(new Uint8Array(readFileSync(new URL(`fixtures/storage/${name}.png`, import.meta.url))));
+  const lines = await readLines(image).finally(finished);
+  const { firstTile } = storage(phone(DEFAULTS.package).device, CONFIG, DATA, image, () => {});
+  const [x, y] = firstTile(lines);
+
+  expect(x).toBe(image.width * DEFAULTS.taps.firstTile[0]);
+  expect(y).toBeGreaterThan(row);
+  expect(y).toBeLessThan(next);
 });

@@ -152,9 +152,28 @@ export function storage(
   /**
    * The first Pokémon's CP label in a grid, which doubles as how a grid is told from the suggestions panel drawn over
    * it: the panel carries no CP anywhere.
+   *
+   * A label is one that reads as `CP_LABEL`, or one that ends in a CP-sized number beside another that does at the
+   * same height, whichever is higher up. The second is for a first row whose `CP`s all misread, which would otherwise
+   * leave the first label that does read a row down, and the walk begun from the fourth Pokémon: the sparkles a shiny
+   * tile carries against its `CP` read as `on 376`, `£ 546` and `seo` across a row of three shiny Magnemite, where the
+   * row beneath read `cP 578` (`storage/sparkles.png`). A number alone is not enough, since a nickname can end in one;
+   * two at one height is a row of labels, and the `96%` under each tile ends in its `%` rather than a digit. Nor a
+   * number after a `/`, which is a count rather than a CP: the tabs' `12800 / 12825` and `12/12` sit at one height too,
+   * and nothing keeps them out where no search has found the box yet.
    */
-  const tileLabel = (lines: readonly Line[]) =>
-    lines.find((l) => l.top > (searchBox?.[1] ?? 0) && fold(l.text).search(CP_LABEL) === 0);
+  const tileLabel = (lines: readonly Line[]) => {
+    const below = lines.filter((l) => l.top > (searchBox?.[1] ?? 0));
+    const numbered = below.filter((l) => /(?<![\d/]\s*)\d{2,5}$/.test(l.text.trim()));
+    const level = (a: Line, b: Line) => Math.abs(a.top - b.top) < Math.min(a.height, b.height) / 2;
+
+    return below
+      .filter(
+        (l) =>
+          fold(l.text).search(CP_LABEL) === 0 || (numbered.includes(l) && numbered.some((n) => n !== l && level(n, l))),
+      )
+      .reduce<Line | undefined>((first, l) => (first && first.top <= l.top ? first : l), undefined);
+  };
 
   /**
    * How many Pokémon a search matched, off the game's own counter beside the magnifier in the POKEMON tab — `(1)`, or
