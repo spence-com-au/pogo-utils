@@ -19,7 +19,7 @@ import { type Overlay } from './overlay.mts';
 /** The game master the readers are asserted against, vended beside the captures. */
 const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
 
-const PUMPKABOO: Overlay = { iv: { attack: 2, defense: 0, stamina: 6 }, levels: [1], form: null };
+const PUMPKABOO: Overlay = { iv: { attack: 2, defense: 0, stamina: 6 }, levels: [1], checked: true, form: null };
 
 const pumpkaboo = (height: number | null, size: Detail['size']): Detail => ({
   cp: 14,
@@ -93,7 +93,7 @@ const SINISTEA: Detail = {
   evolveCandy: 50,
 };
 
-const OVERLAY: Overlay = { levels: [15], iv: { attack: 11, defense: 11, stamina: 12 }, form: null };
+const OVERLAY: Overlay = { levels: [15], iv: { attack: 11, defense: 11, stamina: 12 }, checked: true, form: null };
 
 /** The answer, the forms beside it and the notes, which are the three things the candy can move. */
 const answered = (detail: Detail, overlay: Overlay = OVERLAY) => {
@@ -196,7 +196,7 @@ test('a form with no evolution branch is not ruled out by the candy', () => {
     types: ['Electric'],
     gender: 'male',
   };
-  const overlay = { levels: [3], iv: { attack: 15, defense: 13, stamina: 15 }, form: null };
+  const overlay = { levels: [3], iv: { attack: 15, defense: 13, stamina: 15 }, checked: true, form: null };
 
   expect(answered(pikachu, overlay).unseparated).toStrictEqual(['Pikachu (Copy 2019)']);
 });
@@ -221,4 +221,22 @@ test('the candy and the height narrow together, neither acting on a figure no fo
   });
   expect(answered({ ...SINISTEA, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
   expect(answered({ ...SINISTEA, height: 5, evolveCandy: 400 }).form).toBe('Sinistea (Antique)');
+});
+
+/**
+ * A CP worked out that none of the screen's candidates is, where no CP read for certain and the overlay's percentage
+ * did not vouch for the IVs it came from. A Skarmory showing CP 862 had its `11/10/11` read as `1/1/1`, worked out to
+ * 872, and was written without a note. Where one of the candidates is the CP worked out there is nothing to say, and
+ * where the IVs were checked a missing candidate is a misread one: `castform-snowy.png` offers 747 for its 746.
+ */
+test('a worked-out CP none of the screen’s candidates is gets a note, where the IVs went unchecked', () => {
+  const unsure = (cps: number[], checked = false) =>
+    identify(DATA, { ...pumpkaboo(0.57, 'XL'), cp: null, cps }, { ...PUMPKABOO, checked }).notes.filter((n) =>
+      n.includes('CP'),
+    );
+
+  expect(unsure([140, 99, 140])).toStrictEqual(['the screen reads CP 140 or 99, where this form at this level is 14']);
+  expect(unsure([140, 14])).toStrictEqual([]);
+  expect(unsure([])).toStrictEqual([]);
+  expect(unsure([140, 99], true)).toStrictEqual([]);
 });

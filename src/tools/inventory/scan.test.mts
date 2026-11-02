@@ -32,6 +32,7 @@ function detail(fields: Partial<Detail> = {}): Detail {
 const overlay = (attack: number, defense: number, stamina: number): Overlay => ({
   levels: [20],
   iv: { attack, defense, stamina },
+  checked: true,
   form: null,
 });
 

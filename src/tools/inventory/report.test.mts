@@ -37,7 +37,12 @@ const READING: Reading = {
   },
   moves: { fast: 'Astonish', charged: ['Struggle'] },
   box: null,
-  overlay: { levels: [1, 15, 5, 51, 18, 8, 4], iv: { attack: 10, defense: 14, stamina: 14 }, form: null },
+  overlay: {
+    levels: [1, 15, 5, 51, 18, 8, 4],
+    iv: { attack: 10, defense: 14, stamina: 14 },
+    checked: true,
+    form: null,
+  },
   identity: { form: APPLIN, cp: 286, alternatives: [], unseparated: [], levels: [15], nickname: null, notes: [] },
 };
 

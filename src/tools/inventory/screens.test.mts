@@ -1760,7 +1760,7 @@ test('the overlay fixtures/spinda-04.png does not read would have named one form
   assert.ok(overlay.suffix, 'that capture has lost the bracketed form this is the measurement of');
 
   const { detail } = await readingOf(fixture.file);
-  const stated = { levels: [overlay.level], iv: overlay.iv };
+  const stated = { levels: [overlay.level], iv: overlay.iv, checked: true };
   const blind = identify(DATA, detail, { ...stated, form: null });
   const named = identify(DATA, detail, { ...stated, form: overlay.suffix });
 

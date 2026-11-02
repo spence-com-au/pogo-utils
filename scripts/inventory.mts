@@ -716,7 +716,7 @@ async function scan() {
       const each = (Date.now() - started) / written / 1000;
       const ivText = iv ? `${iv.attack}/${iv.defense}/${iv.stamina}` : '?';
       console.error(
-        `#${index + 1} ${row.species ?? '?'} CP ${detail.cp ?? '?'} ${ivText} L${row.level || '?'}` +
+        `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.level || '?'}` +
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,
       );
     },

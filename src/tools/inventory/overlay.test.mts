@@ -13,7 +13,7 @@
  * differently moves the triple `articuno-galar.png`'s row denies, and `screens.test.mts` fails there.
  */
 
-import { assembled, confirmed } from './overlay.mts';
+import { assembled, confirmed, fuller } from './overlay.mts';
 import { expect, test } from 'vitest';
 
 /**
@@ -156,4 +156,48 @@ test('a triple summing under 5 confirms nothing, its percentage being one digit'
   // The control, or the assertion above would also pass on a `confirmed` that had stopped reading a percentage printed
   // as its own run at all: the same line with two digits of percentage still confirms.
   expect(confirmed('L20 91 ', { attack: 14, defense: 13, stamina: 14 })).toBe(true);
+});
+
+/**
+ * What the fallback prefers where the percentage settles nothing: a later reading holding every digit the first one
+ * read and more, near-white being the pass that clips thin `1`s. A Skarmory whose overlay reads `11/10/11` came back
+ * `1/1/1` off the first pass, and that is a triple nothing about it marks as wrong.
+ */
+test('a reading that lost digits gives way to one holding them', () => {
+  expect(
+    fuller([{ iv: { attack: 1, defense: 1, stamina: 1 } }, { iv: { attack: 11, defense: 10, stamina: 11 } }]),
+  ).toStrictEqual({ attack: 11, defense: 10, stamina: 11 });
+
+  // Partly, too: a pass that recovered one field but not the others still holds the first pass's digits.
+  expect(
+    fuller([{ iv: { attack: 1, defense: 1, stamina: 1 } }, { iv: { attack: 11, defense: 1, stamina: 1 } }]),
+  ).toStrictEqual({ attack: 11, defense: 1, stamina: 1 });
+});
+
+/**
+ * Nothing where no later reading extends the first. `articuno-galar.png`'s `12/4/3` is not `10/4/13` with digits added,
+ * and `dialga-origin.png`'s second pass lost a digit the first kept, so both stand on the fallback as they did.
+ */
+test('a reading that only differs, or lost more, is no fuller', () => {
+  expect(
+    fuller([{ iv: { attack: 10, defense: 4, stamina: 13 } }, { iv: { attack: 12, defense: 4, stamina: 3 } }]),
+  ).toBeNull();
+
+  expect(
+    fuller([{ iv: { attack: 10, defense: 13, stamina: 13 } }, { iv: { attack: 10, defense: 13, stamina: 1 } }]),
+  ).toBeNull();
+
+  expect(fuller([{ iv: { attack: 13, defense: 3, stamina: 1 } }])).toBeNull();
+  expect(fuller([])).toBeNull();
+});
+
+/** Nothing where two different readings extend it as far, that being a guess between them. */
+test('two readings extending it as far are a guess', () => {
+  expect(
+    fuller([
+      { iv: { attack: 1, defense: 1, stamina: 1 } },
+      { iv: { attack: 11, defense: 1, stamina: 1 } },
+      { iv: { attack: 1, defense: 10, stamina: 1 } },
+    ]),
+  ).toBeNull();
 });
