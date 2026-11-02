@@ -880,7 +880,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     /**
      * The rows this render will draw, one per TRACKS entry, each carrying the events that landed on it. A type with no
      * track (GO Battle League, GO Pass) has no row, so it is dropped; an event ending before the window's left edge is
-     * skipped. A track whose type the feed carries no event of is left out when the rows are drawn.
+     * skipped.
      */
     const byType = new Map<string, { type: string; label: string; items: TrackItem[] }>(
       TRACKS.map((track) => [track.type, { ...track, items: [] }]),
@@ -892,19 +892,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     // by the chip's state alone — a track emptied by dismissals or a search term keeps its row.
     const filteredTypes = new Set<string>();
 
-    // Track types the feed carries at least one event of, whatever its filters, dismissals or dates. `TRACKS` names
-    // every type the feed has been known to use, so a type it has stopped carrying would otherwise leave a row that
-    // can never fill and that no chip can switch off, the chips being built from the feed's own types.
-    const presentTypes = new Set<string>();
-
     for (const ev of events) {
       const row = byType.get(ev.eventType);
 
       if (!row) {
         continue;
       }
-
-      presentTypes.add(ev.eventType);
 
       if (hidden.has(ev.eventType)) {
         filteredTypes.add(ev.eventType);
@@ -941,8 +934,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       const items = track.items.filter((item) => item.startMs < rangeEndMs).sort((a, b) => a.startMs - b.startMs);
 
       // A track the filter has switched off drops out entirely. A row is one `eventType`, which is what the chips
-      // switch, so there is no still-visible part of it to keep.
-      if (filteredTypes.has(track.type) || !presentTypes.has(track.type)) {
+      // switch, so there is no still-visible part of it to keep. A track the feed carries no event of drops out too:
+      // `labels` holds every type the feed carries, whatever the filters, so a row exists only where a chip can switch
+      // it off, rather than an empty one for a type `TRACKS` names but the feed has stopped using.
+      if (filteredTypes.has(track.type) || !labels.has(track.type)) {
         return [];
       }
 
