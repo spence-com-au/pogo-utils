@@ -1,6 +1,6 @@
 /**
  * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written,
- * whether two passes saw the same Pokémon and where storage ends. Here rather than in `scripts/inventory.mts` so the suite can import them,
+ * whether two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in `scripts/inventory.mts` so the suite can import them,
  * that script parsing `process.argv` and driving a phone at its top level.
  */
 
@@ -107,6 +107,37 @@ export class Marks {
 
 function bump(map: Map<string, number>, key: string, by: number) {
   map.set(key, (map.get(key) ?? 0) + by);
+}
+
+/**
+ * Why a pass that visited `visited` Pokémon stopped short of what the game counted for it, or null where it did not or
+ * the count did not read. `walk` sends again a swipe it finds dropped, but not every time: a drop past an unread
+ * screen, one dropped `DROP_RETRIES` times over, or a count that did not read leaves a walk stopped short, as do the
+ * reasons it stops of its own. This is what keeps such a pass from being written as complete: a full pass of 45 out
+ * of 2,708, or a shiny pass of 82 out of 908 that writes `no` against every shiny it missed.
+ *
+ * `skip` and `limit` are the full pass's `--skip` and `--limit`, which are what it was asked to visit of the count.
+ */
+export function shortfall(
+  pass: string,
+  visited: number,
+  counted: number | null,
+  skip = 0,
+  limit = Infinity,
+): string | null {
+  if (counted === null) {
+    return null;
+  }
+
+  const expected = Math.min(limit, Math.max(counted - skip, 0));
+
+  if (visited >= expected) {
+    return null;
+  }
+
+  const of = skip > 0 ? ` of the ${counted - skip} after --skip ${skip}` : '';
+
+  return `${pass}: the game counts ${counted} Pokémon, but the pass stopped after ${visited}${of}`;
 }
 
 /**
@@ -384,6 +415,9 @@ function distance(worlds: Map<number, World>, index: number): number | undefined
   return fallback;
 }
 
+/** How many times in a row `walk` sends again a swipe forward it takes to have been dropped. */
+export const DROP_RETRIES = 3;
+
 /**
  * Hands `visit` each Pokémon from the one open at `from`, `first` being that one's reading where it has already been
  * made, and stops after `max` of them or at the end of storage.
@@ -401,6 +435,16 @@ function distance(worlds: Map<number, World>, index: number): number | undefined
  * Pokémon it may already have written. A screen that may be new, unread or reading differently from the last, it
  * visits all the same: a wrong guess there writes again only a Pokémon whose screen once went unread, and says so when
  * the end comes.
+ *
+ * A swipe the phone drops looks like the end too: the look-back finds the Pokémon before the last where storage going
+ * on would have put the last, and rules out storage going on. `total`, the count the game shows for what is walked,
+ * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the last Pokémon visited, short of `total` — the
+ * swipe forward is taken as dropped rather than the end: struck from what the walk has done, as though never sent, and
+ * sent again, up to `DROP_RETRIES` times in a row, so that a count read too high costs a few swipes at the real end.
+ * Struck rather than the end merely set aside, which would take the screen read again for a twin: one Pokémon written
+ * twice and the next one skipped. An end found further back, past an unread screen, is not retried, and is left to
+ * `shortfall` to report, as is a drop on the first swipe of a pass: with nothing read before the first Pokémon, the
+ * look-back cannot tell a drop from a twin, and the walk stops as it does for twins there.
  */
 export async function walk<R extends { key: string | null }>(
   { read, next, back }: Steps<R>,
@@ -408,12 +452,14 @@ export async function walk<R extends { key: string | null }>(
   max: number,
   from: number,
   first?: R,
+  total: number | null = null,
 ) {
   const log: Step[] = [];
   let ends = [Infinity];
   let pending = first;
   let latest: string | null = null;
   let misses = 0;
+  let retries = 0;
 
   const swipe = async (move: 1 | -1, times: number) => {
     for (let i = 0; i < times; i++) {
@@ -431,6 +477,9 @@ export async function walk<R extends { key: string | null }>(
     );
 
   for (let index = from; index < from + max; index++) {
+    // The swipe forward that brought the walk here, the last step taken, where this is not the first Pokémon.
+    const forward = log.length - 1;
+    const before = { ends: [...ends], misses };
     const reading = pending ?? (await read());
     pending = undefined;
     log.push({ key: reading.key });
@@ -470,6 +519,16 @@ export async function walk<R extends { key: string | null }>(
     }
 
     if (!possible.has(Infinity)) {
+      if (total !== null && Math.min(...ends) === index - 1 && index < total && retries < DROP_RETRIES) {
+        console.error(`  the swipe to #${index + 1} went nowhere, short of the ${total} counted; swiping again`);
+        retries++;
+        log.splice(forward, 1);
+        ({ ends, misses } = before);
+        await swipe(1, 1);
+        index--;
+        continue;
+      }
+
       const repeats = index - 1 - Math.min(...ends);
 
       if (repeats > 0) {
@@ -487,6 +546,7 @@ export async function walk<R extends { key: string | null }>(
     }
 
     latest = reading.key ?? latest;
+    retries = 0;
     await visit(reading, index);
     ends.push(index);
     await swipe(1, 1);

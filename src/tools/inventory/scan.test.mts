@@ -9,6 +9,7 @@ import { type Overlay } from './overlay.mts';
 import {
   count,
   csv,
+  DROP_RETRIES,
   FLAGS,
   keyOf,
   land,
@@ -18,6 +19,7 @@ import {
   Marks,
   parseCsv,
   parseFlags,
+  shortfall,
   walk,
   type Landmark,
 } from './scan.mts';
@@ -178,22 +180,35 @@ test('the clear is longer than every search the scan sends', () => {
 /**
  * Walks a storage of `keys` the way a phone would: a swipe past either end goes nowhere. Answers the position each
  * Pokémon was visited at, so a walk that visits the right keys from the wrong place is caught as well. The first read
- * of each position in `missed` comes back unread, as a screen OCR misses once does.
+ * of each position in `missed` comes back unread, as a screen OCR misses once does. Each swipe forward whose number,
+ * counting from 0, is in `dropped` goes nowhere, as #581's phone dropped one in ten, and `total` is the count the
+ * game shows for the walk.
  */
-async function walked(keys: readonly string[], max = Infinity, from = 0, missed: readonly number[] = []) {
+async function walked(
+  keys: readonly string[],
+  max = Infinity,
+  from = 0,
+  missed: readonly number[] = [],
+  dropped: readonly number[] = [],
+  total: number | null = null,
+) {
   let at = from;
+  let forward = 0;
   const unread = new Set(missed);
+  const drops = new Set(dropped);
   const visited: [string | null, number][] = [];
 
   await walk(
     {
       read: async () => ({ key: unread.delete(at) ? null : (keys[at] ?? null) }),
-      next: async () => void (at = Math.min(at + 1, keys.length - 1)),
+      next: async () => void (at = drops.has(forward++) ? at : Math.min(at + 1, keys.length - 1)),
       back: async () => void (at = Math.max(at - 1, 0)),
     },
     async ({ key }) => void visited.push([key, at]),
     max,
     from,
+    undefined,
+    total,
   );
 
   return visited;
@@ -286,6 +301,96 @@ test.for([
   ['another Pokémon', ['x', 'y', 'a', 'a', 'b']],
 ] as const)('a miss just before a run of twins still visits every Pokémon once, given %s', async ([, keys]) => {
   expect((await walked(keys, Infinity, 0, [1])).map(([, at]) => at)).toEqual(keys.map((_, i) => i));
+});
+
+/**
+ * What #581's phone did: one swipe in ten went nowhere, which `walk` takes for the end of storage, and the passes came
+ * out at 82 of 908 shiny and 45 of 2,708 in all with nothing said. Held against the game's own count, they fail.
+ */
+test('a pass that stops short of the count the game shows for it fails, saying how short', () => {
+  expect(shortfall('shiny', 82, 908)).toBe('shiny: the game counts 908 Pokémon, but the pass stopped after 82');
+  expect(shortfall('the full pass', 5, 2708, 40)).toBe(
+    'the full pass: the game counts 2708 Pokémon, but the pass stopped after 5 of the 2668 after --skip 40',
+  );
+});
+
+test.for([
+  ['reached the count', 908, 908, 0, Infinity],
+  ['visited a screen twice past it', 909, 908, 0, Infinity],
+  ['reached its --limit', 10, 2708, 0, 10],
+  ['reached the end after its --skip', 8, 2708, 2700, Infinity],
+  ['a count that did not read', 45, null, 0, Infinity],
+] as const)('a pass that %s does not fail', ([, visited, counted, skip, limit]) => {
+  expect(shortfall('pass', visited, counted, skip, limit)).toBeNull();
+});
+
+/**
+ * #581: a swipe that went nowhere read as the end of storage, and the pass stopped there. With the game's count, the
+ * walk swipes again and visits every Pokémon once — the one before the drop not twice, and the one after not skipped.
+ */
+test.for([
+  ['between two Pokémon', ['a', 'b', 'c', 'd'], [1]],
+  ['between two of one species', ['a', 'b', 'b', 'c'], [1]],
+  ['twice in a row', ['a', 'b', 'c', 'd'], [1, 2]],
+  ['twice over the walk', ['a', 'b', 'c', 'd', 'e'], [1, 3]],
+] as const)('a dropped swipe %s is sent again short of the count', async ([, keys, dropped]) => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('went nowhere'));
+  error.mockRestore();
+});
+
+test('a walk skipped into storage counts its retries against the whole of storage', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['a', 'b', 'c', 'd'], Infinity, 1, [], [1], 4)).toEqual([
+    ['b', 1],
+    ['c', 2],
+    ['d', 3],
+  ]);
+  error.mockRestore();
+});
+
+test('a dropped swipe with no count to hold it to still ends the walk, for `shortfall` to report', async () => {
+  expect(await walked(['a', 'b', 'c'], Infinity, 0, [], [1])).toEqual([
+    ['a', 0],
+    ['b', 1],
+  ]);
+});
+
+test('a count read too high costs a few swipes at the real end and visits nothing twice', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  let swipes = 0;
+  const keys = ['a', 'b', 'c'];
+  let at = 0;
+  const visited: string[] = [];
+
+  await walk(
+    {
+      read: async () => ({ key: keys[at] ?? null }),
+      next: async () => void (swipes++, (at = Math.min(at + 1, keys.length - 1))),
+      back: async () => void (at = Math.max(at - 1, 0)),
+    },
+    async ({ key }) => void visited.push(key as string),
+    Infinity,
+    0,
+    undefined,
+    10,
+  );
+
+  expect(visited).toEqual(keys);
+  expect(error).toHaveBeenCalledTimes(DROP_RETRIES);
+  expect(swipes).toBeLessThan(keys.length + 3 * (DROP_RETRIES + 1));
+  error.mockRestore();
+});
+
+test('a drop on the first swipe of a pass cannot be told from a twin, so the walk stops there and says so', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['a', 'b', 'c'], Infinity, 0, [], [0], 3)).toEqual([['a', 0]]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
+  error.mockRestore();
 });
 
 test('a CSV reads back the rows `csv` wrote, quotes, commas, line breaks and all', () => {

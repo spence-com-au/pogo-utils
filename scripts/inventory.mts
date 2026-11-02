@@ -50,8 +50,8 @@
  * the account is the user's to weigh.
  */
 
-import { adbCli } from '../src/tools/inventory/adb-cli.mts';
-import { Device } from '../src/tools/inventory/adb.mts';
+import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
+import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
@@ -85,12 +85,14 @@ import {
   Marks,
   parseFlags,
   reachOf,
+  shortfall,
   walk as stepThrough,
   type Flag,
   type Landmark,
 } from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
 import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
+import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -104,6 +106,12 @@ import { parseArgs, styleText } from 'node:util';
 const SETTLE_BAND = { from: 0.34, to: 0.95 };
 const SETTLE_CHANGE = 0.02;
 const SETTLE_ATTEMPTS = 4;
+
+/**
+ * How long a swipe from one Pokémon to the next takes, in milliseconds: `input swipe`'s own, which is what
+ * `config.swipes.next` and `config.waits.swipe` were measured with, now given to the touchscreen instead.
+ */
+const NEXT_MS = 300;
 
 /** How many frames one `--scroll` may take before it is a loop rather than a screen. */
 const SCROLL_FRAMES = 12;
@@ -338,7 +346,10 @@ async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Sig
   return read;
 }
 
-async function scan() {
+/**
+ * `held` is the shell the touchscreen is made on, which the caller closes once the scan is over, however it ends.
+ */
+async function scan(held: Transport) {
   // Ahead of the phone, so a typo fails before anything is driven.
   const limit = count('limit', options.limit, Infinity);
   const skip = count('skip', options.skip, 0);
@@ -376,7 +387,35 @@ async function scan() {
 
   const screens = options['keep-screens'];
   const shot = await device.screenshot();
-  const { tap, swipe, dismiss, closeDetail, search, tileLabel, firstTile } = storage(device, config, data, shot);
+  const { tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile } = storage(
+    device,
+    config,
+    data,
+    shot,
+  );
+
+  // The swipe from one Pokémon to the next on a touchscreen of the scan's own, the one `pnpm battle` drives the field
+  // with. `input swipe` went nowhere 3 to 5 times in 40 on a Pixel 4 XL with Android 13, at every wait and height
+  // `--config` offers, and nothing a walk reads can tell a dropped swipe from the end of storage: the same Pokémon is
+  // on the screen either way, and two of one species differ by less of the panel than a still screen does from itself
+  // — Unown B and Unown ! by 0.48%, against 0.54%. Where the phone will not have it, `input swipe` it is, with the
+  // game's counts below for `walk` to tell its drops from the end by, and to catch a pass they still cut short.
+  const touch = await touchscreen(held).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`${reason}; swiping with \`input swipe\` instead, which can drop a swipe and cut a pass short`);
+
+    return null;
+  });
+
+  const drag = async ([from, to]: [Point, Point], wait: number) => {
+    if (touch) {
+      await touch.swipe(from, to, NEXT_MS);
+      await sleep(wait);
+    } else {
+      await swipe([from, to], wait);
+    }
+  };
+
   let overlayBox: OverlayBox | null = config.overlay ?? null;
 
   // A phone with PGSharp's overlay switched off would otherwise sweep for it on every Pokémon, for ever.
@@ -572,22 +611,28 @@ async function scan() {
     return readDetail();
   };
 
-  /** Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it. */
+  /**
+   * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it, of `total`
+   * the game counts, which is how a swipe that went nowhere is told from the end. Answers how many it visited, for
+   * `shortfall` to hold against that count.
+   */
   const walk = async (
     visit: (reading: Reading, index: number) => Promise<void>,
+    total: number | null,
     max: number,
     from = 0,
     first?: Reading,
   ) => {
     const [grab, drop] = config.swipes.next;
-    const next = () => swipe([grab, drop], config.waits.swipe);
-    const back = () => swipe([drop, grab], config.waits.swipe);
+    let visited = 0;
+    const next = () => drag([grab, drop], config.waits.swipe);
+    const back = () => drag([drop, grab], config.waits.swipe);
 
     if (from > 0) {
       // Blind and at half the wait, which is quick and drops swipes: a skip of 136 landed 9 short. `land` is what makes
       // up for them, finding the rows already written and stepping on past them.
       for (let i = 0; i < from; i++) {
-        await swipe(config.swipes.next, config.waits.swipe / 2);
+        await drag([grab, drop], config.waits.swipe / 2);
       }
 
       const reach = reachOf(from);
@@ -604,8 +649,15 @@ async function scan() {
       }
     }
 
-    await stepThrough({ read: readDetail, next, back }, visit, max, from, from === 0 ? first : undefined);
+    const counted = async (reading: Reading, index: number) => {
+      visited++;
+      await visit(reading, index);
+    };
+
+    await stepThrough({ read: readDetail, next, back }, counted, max, from, from === 0 ? first : undefined, total);
     await closeDetail();
+
+    return visited;
   };
 
   // The flag passes come first, so that the full pass can write each row complete as it goes.
@@ -617,7 +669,15 @@ async function scan() {
     const first = await openFirst(grid);
 
     if (first.key !== null) {
-      await walk(async ({ detail, overlay }) => marks.add(detail, overlay), Infinity, 0, first);
+      const total = matches(grid);
+      const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), total, Infinity, 0, first);
+      const short = shortfall(flag, visited, total);
+
+      // Thrown rather than left blank: what cut this pass short would cut the full pass short too, which is hours of
+      // phone time to find that out in.
+      if (short) {
+        throw new Error(`${short}; marking only those would write \`no\` against the rest`);
+      }
     } else if (tileLabel(grid)) {
       // The grid showed a Pokémon and it would not read, which is not the answer a search matching nothing gives:
       // marking nothing would write `no` against every Pokémon the search holds. So the column is left blank instead.
@@ -643,7 +703,10 @@ async function scan() {
   let written = 0;
   const started = Date.now();
 
-  await walk(
+  // Read off the grid before the walk leaves it, both to tell a dropped swipe from the end and to check the pass after.
+  const total = stored(grid);
+
+  const visited = await walk(
     async ({ detail, overlay, id, image, latest }, index) => {
       const name = String(index + 1).padStart(5, '0');
       const notes: string[] = [];
@@ -799,12 +862,19 @@ async function scan() {
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,
       );
     },
+    total,
     limit,
     skip,
     first,
   );
 
   console.error(`Wrote ${written} Pokémon to ${out}`);
+
+  const short = shortfall('the full pass', visited, total, skip, limit);
+
+  if (short) {
+    throw new Error(`${short}; \`--skip ${skip + visited}\` carries on from the next one`);
+  }
 }
 
 /**
@@ -1159,7 +1229,15 @@ async function snap() {
 
 // Last, so that everything above is initialised before anything runs.
 if (command === 'scan') {
-  await scan();
+  // Held open for the scan's touchscreen, which goes with it, and so closed however the scan ends: open, it would keep
+  // the process waiting on it after the last row.
+  const held = adbHeld(options.serial);
+
+  try {
+    await scan(held);
+  } finally {
+    held.close();
+  }
 } else if (command === 'snap') {
   await snap();
 } else if (command === 'parse' && rest.length > 0) {
