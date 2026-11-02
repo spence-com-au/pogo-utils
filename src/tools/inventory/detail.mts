@@ -187,14 +187,52 @@ export function joined(line: Line, lines: readonly Line[]): Line {
  * Where the overlay did not read as a line, which is 88 of them, the search reaches the top of the screen as before.
  */
 export function nameLineOf(lines: readonly Line[], hp: Line, labelled?: Line): Line | undefined {
+  return underOverlay(lines, hp, labelled)
+    .filter((l) => NAME_SHAPE.test(l.text))
+    .at(-1);
+}
+
+/** What `nameLineOf` takes a line for a name by, and what a line read again on its own has to be too. */
+const NAME_SHAPE = /\p{L}{3}|\p{N}{2}|#/u;
+
+/** Every line between PGSharp's overlay and the HP, nearest the HP last, that a name could be. */
+function underOverlay(lines: readonly Line[], hp: Line, labelled?: Line): Line[] {
   const above = lines.filter((l) => l.top + l.height <= hp.top + 4);
   const overlay = above.filter((l) => TRIPLE.test(l.text)).at(-1);
 
   return above
     .filter((l) => overlay === undefined || l.top >= overlay.top + overlay.height)
-    .filter((l) => l !== labelled && /\p{L}{3}|\p{N}{2}|#/u.test(l.text))
-    .filter((l) => !CP_LABEL.test(foldCp(l.text)))
-    .at(-1);
+    .filter((l) => l !== labelled && !CP_LABEL.test(foldCp(l.text)));
+}
+
+/**
+ * How far round a line its own read reaches, in the line's height. Tesseract is on the edge between `##` and `HH` on
+ * the Lugia that is called it: one frame's box read alone flips between the two at a few pixels' difference in margin,
+ * `HH` at 0.05, `##` at 0.1 and 0.15, `HH` again at 0.2. At 0.15, unenlarged or doubled, all four frames of it read
+ * `##` under both engines, where no margin reads `tt if` and half a height `HH`. Unenlarged because at 0.1 doubling
+ * reads `H##`, and that `NAME_SHAPE` would take.
+ */
+const NAME_PAD = 0.15;
+
+/**
+ * The name where `nameLineOf` found none, off the nearest line under the overlay read again on its own. The
+ * whole-screen pass read `lugia-hashes-hh.png`'s `##` as `HH`, which `NAME_SHAPE` turns down, and the same box alone
+ * reads `##`. Only that case pays for it, a name line read whole being what nearly every capture has: none of 839
+ * detail captures reaches it, and the one that does is this Lugia.
+ */
+async function nameAgain(image: Image, lines: readonly Line[], hp: Line, labelled?: Line): Promise<string | null> {
+  const nearest = underOverlay(lines, hp, labelled).at(-1);
+
+  if (nearest === undefined) {
+    return null;
+  }
+
+  const pad = Math.round(nearest.height * NAME_PAD);
+  const text = await ocrLine(
+    crop(image, nearest.left - pad, nearest.top - pad, nearest.width + pad * 2, nearest.height + pad * 2),
+  );
+
+  return text !== null && NAME_SHAPE.test(text) ? text : null;
 }
 
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
@@ -211,7 +249,11 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const hp = hpLine ? Number(hpPattern.exec(hpLine.text)?.[2]) : null;
 
   const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
-  const name = nameLine ? sanitise(nameLine.text) : null;
+  const name = nameLine
+    ? sanitise(nameLine.text)
+    : hpLine
+      ? sanitise((await nameAgain(image, lines, hpLine, labelled)) ?? '')
+      : null;
 
   // The name again off its own band, where what the pass found is no species. Taken only where the band itself names
   // one, so it can turn a missed name into the name and never one species into another: `articuno-kanto.png` detects
