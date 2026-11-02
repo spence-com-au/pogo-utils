@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 
+import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
 import { usePhone } from '../phone-store.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
@@ -640,7 +641,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     say('busy', `Searching on ${phone.name}…`);
 
     try {
-      const { searchStorage } = await import('../inventory/reader.js');
+      const { searchStorage } = await loadChunk(() => import('../inventory/reader.js'));
       const found = await searchStorage(
         phone.transport,
         term,
