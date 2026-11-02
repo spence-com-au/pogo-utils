@@ -11,10 +11,17 @@
  * The readings are quoted off the real loop, dumped out of `readOverlay` over every fixture, rather than invented. What
  * keeps them from going stale as transcription is the corpus itself: a treatment that starts reading those bands
  * differently moves the triple `articuno-galar.png`'s row denies, and `screens.test.mts` fails there.
+ *
+ * The last test is the exception, reading a band through Tesseract: a half level, which the corpus holds no row for.
  */
 
-import { assembled, confirmed, fuller } from './overlay.mts';
-import { expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { afterAll, expect, test } from 'vitest';
+import { assembled, confirmed, fuller, readOverlay } from './overlay.mts';
+import { decodePng } from './png.mts';
+import { useTestEngine } from './test-engine.mts';
+
+afterAll(useTestEngine());
 
 /**
  * The two captures this answers, as the readings the real loop hands it. `articuno-galar.png` is the case the feature
@@ -200,4 +207,19 @@ test('two readings extending it as far are a guess', () => {
       { iv: { attack: 1, defense: 10, stamina: 1 } },
     ]),
   ).toBeNull();
+});
+
+/**
+ * A half level, which no capture in `screens.test.mts` is at: PGSharp prints 21.5 as `L21½`, and the shortlist has to
+ * reach it or `identify` notes that the overlay reads as no level the HP can be. Read off the real overlay rather than
+ * quoted, since what is under test is what Tesseract makes of the `½` — a stray `1` that offered only whole levels, the
+ * `%` it reads now. The band is the box `findOverlay` found on a Luxray's detail screen, cropped to it because the
+ * corpus takes stitches alone and this capture is one screen.
+ */
+test('a half level is offered as one', async () => {
+  const image = decodePng(readFileSync(new URL('fixtures/overlay/luxray-half-level.png', import.meta.url)));
+  const overlay = await readOverlay(image, { x: 0, y: 0, width: 1, height: 1 });
+
+  expect(overlay?.iv).toStrictEqual({ attack: 15, defense: 15, stamina: 15 });
+  expect(overlay?.levels, 'the `½` of `L21½` reads as no half').toContain(21.5);
 });
