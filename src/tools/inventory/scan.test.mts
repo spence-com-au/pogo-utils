@@ -6,7 +6,21 @@
 
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
-import { count, csv, FLAGS, keyOf, looseKeyOf, Marks, parseFlags, walk } from './scan.mts';
+import {
+  count,
+  csv,
+  FLAGS,
+  keyOf,
+  land,
+  landmarkOf,
+  landmarksBefore,
+  looseKeyOf,
+  Marks,
+  parseCsv,
+  parseFlags,
+  walk,
+  type Landmark,
+} from './scan.mts';
 import { CLEAR_KEYS } from './storage.mts';
 import { expect, test, vi } from 'vitest';
 
@@ -272,4 +286,156 @@ test.for([
   ['another Pokémon', ['x', 'y', 'a', 'a', 'b']],
 ] as const)('a miss just before a run of twins still visits every Pokémon once, given %s', async ([, keys]) => {
   expect((await walked(keys, Infinity, 0, [1])).map(([, at]) => at)).toEqual(keys.map((_, i) => i));
+});
+
+test('a CSV reads back the rows `csv` wrote, quotes, commas, line breaks and all', () => {
+  const rows = [
+    ['index', 'notes'],
+    ['1', 'say "hi", twice'],
+    ['2', 'two\nlines'],
+    ['3', ''],
+  ];
+
+  expect(parseCsv(rows.map((row) => `${row.map(csv).join(',')}\n`).join(''))).toStrictEqual(rows);
+});
+
+/** The columns `landmarksBefore` reads, in a CSV of `rows` given as index, HP, weight, height and IVs. */
+function written(rows: readonly (readonly [number, string, string, string, string])[]) {
+  const header = 'index,species,hp,weight_kg,height_m,attack_iv,defense_iv,stamina_iv,notes\n';
+
+  return (
+    header +
+    rows
+      .map(([index, hp, weight, height, iv]) => {
+        const [a = '', d = '', s = ''] = iv.split('/');
+        return `${index},Pikachu,${hp},${weight},${height},${a},${d},${s},"a, note"\n`;
+      })
+      .join('')
+  );
+}
+
+test('a skip is checked against the last rows written up to it, oldest first', () => {
+  const text = written([
+    [1, '40', '6', '0.4', '1/2/3'],
+    [2, '41', '6.1', '0.41', ''],
+    [3, '42', '6.2', '0.42', '4/5/6'],
+    [4, '43', '6.3', '0.43', '7/8/9'],
+  ]);
+
+  expect(landmarksBefore(text, 3)).toStrictEqual([
+    { hp: 40, weight: 6, height: 0.4, iv: '1/2/3' },
+    { hp: 41, weight: 6.1, height: 0.41, iv: null },
+    { hp: 42, weight: 6.2, height: 0.42, iv: '4/5/6' },
+  ]);
+});
+
+test('the rows checked stop at one with no HP, and take the last written under a number', () => {
+  const text = written([
+    [1, '40', '6', '0.4', ''],
+    [2, '', '', '', ''],
+    [3, '42', '6.2', '0.42', ''],
+    [4, '43', '6.3', '0.43', ''],
+    [3, '99', '9', '0.9', ''],
+    [4, '44', '6.4', '0.44', ''],
+  ]);
+
+  expect(landmarksBefore(text, 4).map(({ hp }) => hp)).toStrictEqual([99, 44]);
+  expect(landmarksBefore(text, 3).map(({ hp }) => hp)).toStrictEqual([99]);
+});
+
+test.for([
+  ['a row the CSV does not have', 7, 'holds no row 7'],
+  ['a row with no HP', 2, 'row 2 has no HP'],
+] as const)('a skip to %s is refused', ([, skip, why]) => {
+  const text = written([
+    [1, '40', '6', '0.4', ''],
+    [2, '', '', '', ''],
+  ]);
+
+  expect(() => landmarksBefore(text, skip)).toThrow(why);
+});
+
+test('a CSV without the columns a landing is checked by is refused', () => {
+  expect(() => landmarksBefore('index,hp\n1,40\n', 1)).toThrow('not a CSV this scan wrote');
+});
+
+/** A Pikachu of `hp`, read whole. */
+const at = (hp: number): Landmark => ({ hp, weight: 6.1, height: 0.41, iv: '1/2/3' });
+
+/**
+ * Lands a skip of `from` over a storage of `hps`, with the forward swipes numbered in `dropped` — counting the blind
+ * skip's — going nowhere. Answers where the walk would start and what `land` said it had been off by.
+ */
+async function landed(hps: readonly number[], from: number, dropped: readonly number[] = [], reach = 10) {
+  let position = 0;
+  let swipes = 0;
+  const drop = new Set(dropped);
+
+  const next = async () => {
+    swipes++;
+
+    if (!drop.has(swipes)) {
+      position = Math.min(position + 1, hps.length - 1);
+    }
+  };
+
+  for (let i = 0; i < from; i++) {
+    await next();
+  }
+
+  const behind = hps.slice(Math.max(from - 3, 0), from).map(at);
+  const off = await land(
+    {
+      read: async () => ({ key: String(hps[position]) }),
+      next,
+      back: async () => void (position = Math.max(position - 1, 0)),
+    },
+    behind,
+    ({ key }) => at(Number(key)),
+    reach,
+  );
+
+  return { position, off };
+}
+
+const storage = Array.from({ length: 40 }, (_, i) => 100 + i);
+
+test('a skip that dropped no swipe starts where it was asked to', async () => {
+  expect(await landed(storage, 20)).toStrictEqual({ position: 20, off: 0 });
+});
+
+test('a skip that dropped swipes steps on by every one it dropped', async () => {
+  expect(await landed(storage, 20, [3, 8, 9, 15])).toStrictEqual({ position: 20, off: 4 });
+});
+
+test('a swipe dropped while looking for the rows does not move the start', async () => {
+  // The skip's 20 swipes, then the search's: the third of those goes nowhere.
+  expect((await landed(storage, 20, [5, 23])).position).toBe(20);
+});
+
+test('twins among the rows checked are found all the same', async () => {
+  const twins = [...storage.slice(0, 18), 500, 500, ...storage.slice(20)];
+
+  expect(await landed(twins, 20, [2])).toStrictEqual({ position: 20, off: 1 });
+});
+
+test('a skip to near the start of storage lands where it was asked to', async () => {
+  expect((await landed(storage, 1)).position).toBe(1);
+});
+
+test('a skip that cannot find the rows before it fails rather than start anywhere', async () => {
+  const dropped = Array.from({ length: 15 }, (_, i) => i + 1);
+
+  await expect(landed(storage, 20, dropped, 5)).rejects.toThrow('did not turn up within 5 Pokémon');
+});
+
+test('a reading with no HP is no landmark, and one with no IVs matches whatever IVs were written', () => {
+  expect(landmarkOf(detail({ hp: null }), null)).toBeNull();
+  expect(landmarkOf(detail(), null)).toStrictEqual({ hp: 50, weight: 6.1, height: 0.41, iv: null });
+});
+
+test('a twin of the last row written, starting the pass, is not skipped', async () => {
+  const twins = [...storage.slice(0, 19), 500, 500, ...storage.slice(21)];
+
+  expect(await landed(twins, 20, [4])).toStrictEqual({ position: 20, off: 1 });
 });
