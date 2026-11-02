@@ -5,6 +5,7 @@
  */
 
 import { type Detail } from './detail.mts';
+import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
 import { type Overlay } from './overlay.mts';
 
@@ -639,5 +640,35 @@ export async function walk<R extends { key: string | null }>(
     await visit(reading, index);
     ends.push(index);
     await swipe(1, 1);
+  }
+}
+
+/** What one look down a detail screen for the moves found, and whether `movesCutOff` said they can run on below it. */
+export interface MovesLook {
+  moves: Moves;
+  cutOff: boolean;
+}
+
+/**
+ * How many steps down a detail screen the scan will go for the moves. One reaches them on almost every Pokémon, and
+ * the second is Necrozma's: its fusion panel leaves the `GYMS & RAIDS` tab at the foot of the screen one step brings
+ * up. Bounded, since a screen `movesCutOff` cannot place the tab on — one that misread it — would otherwise be looked
+ * down for ever.
+ */
+export const MOVE_STEPS = 2;
+
+/**
+ * The moves, looked for `steps` steps down the screen and, while a look comes back short of a fast and a charged move
+ * on a screen the moves can run on past, one step further each time, up to `MOVE_STEPS`. So the ordinary Pokémon costs
+ * the one look it always did: another is taken only once the first has been read and found wanting, since `look` reads
+ * while the phone scrolls back up, and deciding before that would put the read in front of every scroll back.
+ */
+export async function reachMoves(look: (steps: number) => Promise<MovesLook>): Promise<Moves> {
+  for (let steps = 1; ; steps++) {
+    const { moves, cutOff } = await look(steps);
+
+    if ((moves.fast !== null && moves.charged.length > 0) || !cutOff || steps >= MOVE_STEPS) {
+      return moves;
+    }
   }
 }

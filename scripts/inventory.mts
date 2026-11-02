@@ -62,7 +62,7 @@ import { parseDetail, readLines, type Detail } from '../src/tools/inventory/deta
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, type Identity } from '../src/tools/inventory/identify.mts';
-import { parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
+import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
 import { findOverlay, readOverlay, widen, type Overlay, type OverlayBox } from '../src/tools/inventory/overlay.mts';
@@ -87,6 +87,7 @@ import {
   landmarksBefore,
   Marks,
   parseFlags,
+  reachMoves,
   reachOf,
   shortfall,
   walk as stepThrough,
@@ -126,6 +127,9 @@ const SCROLL_FRAMES = 12;
  * 1697, at 1000 it moved 966 to 1032, and at 2000 it moved 847, margin this already has bought at a second a Pokémon.
  */
 const SCROLL_DRAG_MS = 1000;
+
+/** The note on a row whose swipe to the moves moved further than `offsetBetween` could measure, once however many. */
+const UNMEASURED_SWIPE = 'the swipe to the moves could not be measured; the scroll back is what it dragged';
 
 /**
  * How far down the panel may be left after a snap has dragged it back, as a fraction of the screen's height, under
@@ -774,84 +778,97 @@ async function scan(held: Transport) {
         notes.push(overlayBox ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
       }
 
-      let reading: Promise<Moves> | null = null;
-
       if (!options['no-moves']) {
-        let scrolled: Image;
-        let back: number;
+        moves = await reachMoves(async (steps) => {
+          let scrolled: Image;
+          let back: number;
 
-        if (options.scroll) {
-          // The same two halves `snap` takes: the screenshot already in hand as the first frame, rather than a second
-          // photograph of a screen that has moved on, and the height it was drawn at recorded on the stitch.
-          //
-          // `latest` rather than `image`, since the frame handed over is the one `scrollFrames` does not wait for and
-          // the reading may have come from an attempt before it.
-          //
-          // Under the plain name, the stitch being the capture and `-detail` above the frame the row was read from.
-          // `name` here is the scan's own index, so a capture kept for the corpus is still renamed to the Pokémon it
-          // shows; what the plain name buys is that the suffix is no longer part of what has to come off.
-          const capture = await scrollFrames(device, latest);
-          scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
-          back = capture.offsets.reduce((a, b) => a + b, 0);
-          keep(name, scrolled, { Viewport: `${latest.width}x${latest.height}` });
+          if (options.scroll) {
+            // The same two halves `snap` takes: the screenshot already in hand as the first frame, rather than a
+            // second photograph of a screen that has moved on, and the height it was drawn at recorded on the stitch.
+            //
+            // `latest` rather than `image`, since the frame handed over is the one `scrollFrames` does not wait for and
+            // the reading may have come from an attempt before it.
+            //
+            // Under the plain name, the stitch being the capture and `-detail` above the frame the row was read from.
+            // `name` here is the scan's own index, so a capture kept for the corpus is still renamed to the Pokémon it
+            // shows; what the plain name buys is that the suffix is no longer part of what has to come off.
+            const capture = await scrollFrames(device, latest);
+            scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
+            back = capture.offsets.reduce((a, b) => a + b, 0);
+            keep(name, scrolled, { Viewport: `${latest.width}x${latest.height}` });
 
-          // So the stitch and this row are a pair or say they are not. A fixture is promoted from the stitch while its
-          // expectations are derived from the committed png, so nothing downstream would report the two having been
-          // read a `config.waits.swipe` apart — and the readings that need a second look are the ones the corpus is
-          // collected for.
-          if (latest !== image) {
-            notes.push('the capture kept for this row is a later read of the screen than the row itself');
+            // So the stitch and this row are a pair or say they are not. A fixture is promoted from the stitch while
+            // its expectations are derived from the committed png, so nothing downstream would report the two having
+            // been read a `config.waits.swipe` apart — and the readings that need a second look are the ones the
+            // corpus is collected for.
+            if (latest !== image) {
+              notes.push('the capture kept for this row is a later read of the screen than the row itself');
+            }
+
+            if (capture.lost) {
+              notes.push(`the scroll lost its place after frame ${capture.frames.length}`);
+            }
+          } else {
+            // One step of the `--scroll` branch's capture, at its speed, so that the shift lands inside what
+            // `offsetBetween` looks for. Half the screen at `input swipe`'s 300ms moved a Pixel 4 XL's panel as far as
+            // 0.69 of the screen, to its foot or flung past the finger, where the band reaches 0.41: 38 rows of 40
+            // went unmeasured. The step still brings the moves up from the panel's foot to about two-thirds of the way
+            // down, and `steps` of them is what `reachMoves` asks for where one did not.
+            //
+            // A look after the first starts from a fresh screenshot rather than `latest`, since `scrollUp` stops short
+            // of the top on purpose and what is measured has to be what it scrolls back.
+            const [from, to] = scrollStep(config.scrollBand, latest.width, latest.height);
+            scrolled = steps === 1 ? latest : await device.screenshot();
+            back = 0;
+
+            for (let step = 0; step < steps; step++) {
+              const before = scrolled;
+
+              await device.swipe(from, to, SCROLL_DRAG_MS);
+              await sleep(config.waits.scroll);
+              scrolled = await device.screenshot();
+
+              // Measured against the screen before the swipe, on the same footing as the `--scroll` branch above and
+              // `latest` for the same reason. What the drag asked for is no bound on what it got: the panel flings a
+              // little past the finger, or has less than the step left to give, and the distance that matters is the
+              // one it actually moved.
+              const moved = offsetBetween(before, scrolled, config.scrollBand);
+              back += moved ?? from[1] - to[1];
+
+              // A fling past half the step again is more than `offsetBetween` looks for. Falling back to the drag can
+              // overshoot the top where the panel had less than that to give, so it is recorded rather than hidden.
+              if (moved === null && !notes.includes(UNMEASURED_SWIPE)) {
+                notes.push(UNMEASURED_SWIPE);
+              }
+            }
+
+            // The screen the moves were read from, so a second look replaces the first's.
+            keep(`${name}-moves`, scrolled);
           }
 
-          if (capture.lost) {
-            notes.push(`the scroll lost its place after frame ${capture.frames.length}`);
+          // Read while the phone scrolls back, since nothing that follows depends on the moves. Awaited with the
+          // swipes, so that a read failing before the phone is back is a rejection here rather than an unhandled one.
+          let dialog = false;
+          let cutOff = false;
+          const reading = ocr(scrolled).then((lines) => {
+            dialog = dialogOpen(lines);
+            cutOff = !options.scroll && movesCutOff(lines, scrolled);
+
+            return parseMoves(lines, data, id.form, scrolled);
+          });
+          await Promise.all([reading, scrollUp(device, shot, back)]);
+
+          // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
+          // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
+          // which would do nothing either. Nor is it looked past, the screen read having been the dialog's.
+          if (dialog) {
+            await dismiss();
+            notes.push('a dialog opened on the swipe to the moves and was closed');
           }
-        } else {
-          // One step of the `--scroll` branch's capture, at its speed, so that the shift lands inside what
-          // `offsetBetween` looks for. Half the screen at `input swipe`'s 300ms moved a Pixel 4 XL's panel as far as
-          // 0.69 of the screen, to its foot or flung past the finger, where the band reaches 0.41: 38 rows of 40 went
-          // unmeasured. The step still brings the moves up from the panel's foot to about two-thirds of the way down.
-          const [from, to] = scrollStep(config.scrollBand, latest.width, latest.height);
-          await device.swipe(from, to, SCROLL_DRAG_MS);
-          await sleep(config.waits.scroll);
-          scrolled = await device.screenshot();
-          keep(`${name}-moves`, scrolled);
 
-          // Measured against the screen before the swipe, on the same footing as the `--scroll` branch above and
-          // `latest` for the same reason. What the drag asked for is no bound on what it got: the panel flings a
-          // little past the finger, or has less than the step left to give, and the distance that matters is the one
-          // it actually moved.
-          const moved = offsetBetween(latest, scrolled, config.scrollBand);
-          back = moved ?? from[1] - to[1];
-
-          if (moved === null) {
-            // A fling past half the step again is more than `offsetBetween` looks for. Falling back to the drag can
-            // overshoot the top where the panel had less than that to give, so it is recorded rather than hidden.
-            notes.push('the swipe to the moves could not be measured; the scroll back is what it dragged');
-          }
-        }
-
-        // Read while the phone scrolls back, since nothing that follows depends on the moves. Awaited with the swipes,
-        // so that a read failing before the phone is back is a rejection here rather than an unhandled one.
-        let dialog = false;
-        reading = ocr(scrolled).then((lines) => {
-          dialog = dialogOpen(lines);
-
-          return parseMoves(lines, data, id.form, scrolled);
+          return { moves: await reading, cutOff: cutOff && !dialog };
         });
-        await Promise.all([reading, scrollUp(device, shot, back)]);
-
-        // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
-        // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
-        // which would do nothing either.
-        if (dialog) {
-          await dismiss();
-          notes.push('a dialog opened on the swipe to the moves and was closed');
-        }
-      }
-
-      if (reading) {
-        moves = await reading;
 
         if (moves.fast === null || moves.charged.length === 0) {
           notes.push('moves not fully read');
