@@ -382,6 +382,57 @@ test('taps past a result it started on, then plays the battle counted', async ()
   expect(taps).toEqual(['result', 'training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
 });
 
+/**
+ * `menu-result` as the game fades it in, its ✓ teal already but `YOU WIN!` still too faint to read: each channel of the
+ * verdict's band at 80%, its white at 204, short of what `readOutcome` takes for lettering. The demo battle's first
+ * frame of its result is drawn so, the verdict half faded in over the ✓ at full colour.
+ */
+function fadingIn(result: Image): Image {
+  const data = result.data.slice();
+  const [from, to] = [0.38, 0.65].map((y) => Math.round(y * result.height) * result.width * 4);
+
+  for (let i = from ?? 0; i < (to ?? 0); i += 4) {
+    data[i] = Math.round((data[i] ?? 0) * 0.8);
+    data[i + 1] = Math.round((data[i + 1] ?? 0) * 0.8);
+    data[i + 2] = Math.round((data[i + 2] ?? 0) * 0.8);
+  }
+
+  return { ...result, data };
+}
+
+// A result screenshot as it fades in is looked at again rather than counted unread, as the demo battle's was (#610).
+test('reads the verdict of a result screenshot as it fades in', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      won: {
+        frame: fixture('other-win'),
+        screenshot: fixture('menu-unknown-medal'),
+        lasts: { ms: 8000, to: 'fading' },
+      },
+      fading: { frame: fadingIn(fixture('menu-result')), lasts: { ms: 1000, to: 'result' } },
+    },
+    'training',
+  );
+  const report = recorder();
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(report.events).toContain('run: battle 1 won');
+});
+
 /** The map's Poké Ball, BATTLE on the main menu, and the Battle tab scrolled from GO Battle League to Training. */
 test('finds its way to the leader from the map', async () => {
   const { phone, clock, taps } = scripted(

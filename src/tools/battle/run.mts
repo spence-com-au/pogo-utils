@@ -1741,11 +1741,17 @@ export async function run(
           // card, with no verdict to read.
           const ended = result && menu.screen !== 'unknown';
 
+          // The verdict fades in over a ✓ already teal, which is all a result after a battle is known by: the demo
+          // battle's first frame of its result has `YOU WIN!` half drawn, too faint to read, and a run that screenshot
+          // it there counted its win unread. The game holds the result until it is tapped, so a verdict unread is read
+          // again off a second screenshot, a frame or more later, before the battle is counted without it.
+          const verdict = async () => (await readOutcome(screenshot)) ?? readOutcome(await phone.screenshot());
+
           return {
             screenshot,
             menu,
             ended,
-            outcome: ended && menu.screen === 'result' ? await readOutcome(screenshot) : undefined,
+            outcome: ended && menu.screen === 'result' ? await verdict() : undefined,
           };
         })(),
       );
