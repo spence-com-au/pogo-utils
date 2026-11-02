@@ -19,8 +19,10 @@ import {
   landmarksBefore,
   looseKeyOf,
   Marks,
+  MOVE_STEPS,
   parseCsv,
   parseFlags,
+  reachMoves,
   shortfall,
   walk,
   type Landmark,
@@ -703,4 +705,55 @@ test('a look back that misses the overlay where the worlds differ only in IVs st
   expect(visited.map(([, place]) => place)).toEqual([0, 1]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
   error.mockRestore();
+});
+
+/**
+ * Looks down a detail screen whose moves are `depth` steps down, answering what `movesCutOff` would of each look: the
+ * moves where it went that far, and a screen stopping above them where it did not. Answers the steps each look took.
+ */
+async function lookingFor(depth: number) {
+  const steps: number[] = [];
+
+  const moves = await reachMoves(async (n) => {
+    steps.push(n);
+
+    return n >= depth
+      ? { moves: { fast: 'Psycho Cut', charged: ['Future Sight'] }, cutOff: false }
+      : { moves: { fast: null, charged: [] }, cutOff: true };
+  });
+
+  return { moves, steps };
+}
+
+test('moves one step down are looked for once', async () => {
+  expect(await lookingFor(1)).toStrictEqual({
+    moves: { fast: 'Psycho Cut', charged: ['Future Sight'] },
+    steps: [1],
+  });
+});
+
+test('moves below the screen one step brings up are looked for again, a step further', async () => {
+  expect(await lookingFor(2)).toStrictEqual({
+    moves: { fast: 'Psycho Cut', charged: ['Future Sight'] },
+    steps: [1, 2],
+  });
+});
+
+test('a screen that never reaches past the moves is looked down `MOVE_STEPS` times and no more', async () => {
+  expect(await lookingFor(Infinity)).toStrictEqual({
+    moves: { fast: null, charged: [] },
+    steps: Array.from({ length: MOVE_STEPS }, (_, i) => i + 1),
+  });
+});
+
+test('a short reading on a screen that reaches past the moves is a misread, and not looked for again', async () => {
+  const steps: number[] = [];
+  const moves = await reachMoves(async (n) => {
+    steps.push(n);
+
+    return { moves: { fast: 'Psycho Cut', charged: [] }, cutOff: false };
+  });
+
+  expect(moves).toStrictEqual({ fast: 'Psycho Cut', charged: [] });
+  expect(steps).toStrictEqual([1]);
 });

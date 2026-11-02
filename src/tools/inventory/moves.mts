@@ -107,6 +107,22 @@ function moveRows(lines: readonly Line[]): Line[] {
 }
 
 /**
+ * Whether the moves can run on past the foot of `image`, so that a screen further down would show what this one does
+ * not: the `GYMS & RAIDS` tab is not on it, or the screen ends with less than `MOVE_ROOM` under the tab. A panel the
+ * game draws above POWER UP is what does it — Necrozma's fusion artwork, its paragraph and two FUSE buttons leave the
+ * tab at the very foot of the screen the scan's one step down brings up, every move row below it.
+ *
+ * Measured from the tab rather than read off whatever follows the moves, which OCR does not see: NEW ATTACK is white on
+ * a pale button and comes through on neither `pikachu.png` nor Necrozma's stitch. So a screen with the room says the
+ * moves were there to be read, and a reading short of them on it is a misread another scroll would not help.
+ */
+export function movesCutOff(lines: readonly Line[], image: Image): boolean {
+  const tab = findLine(lines, MOVE_TAB);
+
+  return !tab || image.height - (tab.top + tab.height) < image.width * MOVE_ROOM;
+}
+
+/**
  * The move a row names. A charged move is followed by its energy bar, which comes through as a couple of short
  * nonsense tokens — `© Energy Ball ay Ay` — and four characters of them is enough to put the row past the slack. So
  * the whole row is tried first and short trailing tokens dropped one at a time only while nothing has matched:
@@ -158,6 +174,13 @@ const BELOW_MOVES = /\b(new attack|caught|hatched|traded|swap buddies|transfer|a
  * since OCR cuts it to `WEATHER BON` about as often as not.
  */
 const CAPTION = /\bweather bon/;
+
+/**
+ * The room under the tabs a fast move's row and one charged move's take, as a fraction of the width: the second row's
+ * foot is about 0.2 of it below the tabs on both `pikachu.png`, 1008 wide, and Necrozma's stitch, 1440 wide. The rest is
+ * slack, and `no-pgsharp.png`, ending halfway through its charged move's row, is 0.19.
+ */
+const MOVE_ROOM = 0.25;
 
 /** Three rows of moves and a little slack; and how much of the width a name can occupy, short of its power. */
 const MOVE_ROWS = 6;
