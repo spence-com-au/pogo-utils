@@ -364,7 +364,7 @@ async function scan(held: Transport) {
   // `--config` offers, and nothing a walk reads can tell a dropped swipe from the end of storage: the same Pokémon is
   // on the screen either way, and two of one species differ by less of the panel than a still screen does from itself
   // — Unown B and Unown ! by 0.48%, against 0.54%. Where the phone will not have it, `input swipe` it is, with the
-  // counts below to catch a pass it cuts short.
+  // game's counts below for `walk` to tell its drops from the end by, and to catch a pass they still cut short.
   const touch = await touchscreen(held).catch((error: unknown) => {
     const reason = error instanceof Error ? error.message : String(error);
     console.error(`${reason}; swiping with \`input swipe\` instead, which can drop a swipe and cut a pass short`);
@@ -577,11 +577,13 @@ async function scan(held: Transport) {
   };
 
   /**
-   * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it. Answers how
-   * many it visited, for `shortfall` to hold against the game's own count.
+   * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it, of `total`
+   * the game counts, which is how a swipe that went nowhere is told from the end. Answers how many it visited, for
+   * `shortfall` to hold against that count.
    */
   const walk = async (
     visit: (reading: Reading, index: number) => Promise<void>,
+    total: number | null,
     max: number,
     from = 0,
     first?: Reading,
@@ -601,7 +603,7 @@ async function scan(held: Transport) {
       await visit(reading, index);
     };
 
-    await stepThrough({ read: readDetail, next, back }, counted, max, from, from === 0 ? first : undefined);
+    await stepThrough({ read: readDetail, next, back }, counted, max, from, from === 0 ? first : undefined, total);
     await closeDetail();
 
     return visited;
@@ -616,8 +618,9 @@ async function scan(held: Transport) {
     const first = await openFirst(grid);
 
     if (first.key !== null) {
-      const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), Infinity, 0, first);
-      const short = shortfall(flag, visited, matches(grid));
+      const total = matches(grid);
+      const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), total, Infinity, 0, first);
+      const short = shortfall(flag, visited, total);
 
       // Thrown rather than left blank: what cut this pass short would cut the full pass short too, which is hours of
       // phone time to find that out in.
@@ -650,6 +653,9 @@ async function scan(held: Transport) {
 
   let written = 0;
   const started = Date.now();
+
+  // Read off the grid before the walk leaves it, both to tell a dropped swipe from the end and to check the pass after.
+  const total = stored(grid);
 
   const visited = await walk(
     async ({ detail, overlay, id, image, latest }, index) => {
@@ -807,6 +813,7 @@ async function scan(held: Transport) {
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,
       );
     },
+    total,
     limit,
     skip,
     first,
@@ -814,7 +821,7 @@ async function scan(held: Transport) {
 
   console.error(`Wrote ${written} Pokémon to ${out}`);
 
-  const short = shortfall('the full pass', visited, stored(grid), skip, limit);
+  const short = shortfall('the full pass', visited, total, skip, limit);
 
   if (short) {
     throw new Error(`${short}; \`--skip ${skip + visited}\` carries on from the next one`);
