@@ -4,10 +4,11 @@
  * a reader with no phone sees: a different Pokémon at every read, and a search that finds storage from one of them.
  */
 
-import { DEMO_DETAILS } from '../../generated.ts';
+import { DEMO_DETAILS, DEMO_STORAGE } from '../../generated.ts';
 import { Device } from './adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
+import { readLines } from './detail.mts';
 import { type GameData } from './game-master.mts';
 import { decodePng, screenIn, type Image } from './png.mts';
 import { storage } from './storage.mts';
@@ -58,4 +59,12 @@ test('a search walks from a detail screen to storage, answers its count, and lea
   // The counter `storage/searched.png` shows beside the magnifier.
   expect(matches(lines)).toBe(3464);
   expect(same(await device.screenshot(), screenAt(DEMO_DETAILS[2] as string))).toBe(true);
+});
+
+test('the unsearched grid answers how many storage holds, under the POKÉMON tab rather than the EGGS', async () => {
+  const device = new Device(demoTransport(read));
+  const { stored } = storage(device, CONFIG, DATA, await device.screenshot(), () => {});
+
+  // `storage/grid.png` reads `12800 / 12825` under POKÉMON and `12 / 12` under EGGS.
+  expect(stored(await readLines(screenAt(DEMO_STORAGE)))).toBe(12800);
 });

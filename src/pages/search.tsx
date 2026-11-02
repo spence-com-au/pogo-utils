@@ -22,6 +22,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 
+import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
 import { usePhone } from '../phone-store.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
@@ -640,7 +641,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     say('busy', `Searching on ${phone.name}…`);
 
     try {
-      const { searchStorage } = await import('../inventory/reader.js');
+      const { searchStorage } = await loadChunk(() => import('../inventory/reader.js'));
       const found = await searchStorage(
         phone.transport,
         term,
@@ -974,7 +975,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   return (
     <>
       <header class="page">
-        <h1>Search Strings</h1>
+        <h1 class="sr">Search Strings</h1>
         <p class="sub">
           Build a string for the game's own search box, either way round: lay it out as cards in <em>Builder</em>, where
           every card has to match and any one pill on a card will do, or write it out yourself in <em>Advanced</em>,

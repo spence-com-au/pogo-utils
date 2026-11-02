@@ -1007,7 +1007,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   return (
     <>
       <header class="page">
-        <h1>Events</h1>
+        <h1 class="sr">Events</h1>
         {/*
          * The live region, rather than `<main>`: the count is the one line that answers a search, a filter or a load,
          * where the body under it changes on every keystroke and with the relative times on the minute tick.

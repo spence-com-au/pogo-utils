@@ -189,7 +189,7 @@ export default function InventoryPage() {
   return (
     <>
       <header class="page">
-        <h1>Inventory</h1>
+        <h1 class="sr">Inventory</h1>
         <p class="sub">
           Read one Pokémon’s detail screen — species, form, CP, HP, level, IVs, size, tags and moves — the way{' '}
           <code>pnpm inventory parse</code> does, in the browser. Nothing leaves the page.

@@ -10,6 +10,7 @@ import { useRef, useState } from 'preact/hooks';
 
 import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBackup } from './backup.js';
 import { putBack } from './battle/awake.js';
+import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
@@ -70,7 +71,7 @@ export function Settings() {
     setPhoneStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
 
     try {
-      const { connect } = await import('./inventory/webusb.js');
+      const { connect } = await loadChunk(() => import('./inventory/webusb.js'));
       const picked = await connect();
 
       // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
@@ -106,7 +107,7 @@ export function Settings() {
       if (phone?.serial === DEMO_SERIAL) {
         await phone.close();
       } else {
-        const { demoPhone } = await import('./inventory/demo.js');
+        const { demoPhone } = await loadChunk(() => import('./inventory/demo.js'));
 
         // Asked again once the module is in, which a first use waits on: a phone picked in the chooser meanwhile, or
         // taken back by a battle that ended, is real, and `hold` would close it.

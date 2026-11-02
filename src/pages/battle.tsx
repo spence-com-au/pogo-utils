@@ -294,7 +294,7 @@ export default function BattlePage() {
   return (
     <>
       <header class="page">
-        <h1>Battle</h1>
+        <h1 class="sr">Battle</h1>
         <p class="sub">
           Play Team Leader training or GO Battle League battles on an Android phone, the way{' '}
           <code>pnpm battle run</code> does, in the browser: it watches the screen and taps through each battle and the

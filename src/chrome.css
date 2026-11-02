@@ -16,10 +16,18 @@ header.page {
   padding: 20px 22px 6px;
 }
 
-header.page h1 {
-  margin: 0;
-  font-size: 26px;
-  letter-spacing: -0.02em;
+/**
+ * Words for a screen reader that the eye is given some other way: a page's name, which the tab bar already says, or a
+ * label the eye reads off a glyph or a picture.
+ */
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 header.page .sub {
