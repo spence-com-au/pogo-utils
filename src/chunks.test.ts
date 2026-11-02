@@ -12,9 +12,20 @@ const gone = () => Promise.reject(new TypeError('Failed to fetch dynamically imp
 let stored: Map<string, string>;
 let reload: ReturnType<typeof vi.fn>;
 
+/** What was fetched, and how, in the order `reload` and `fetch` were called. */
+let calls: string[];
+
 beforeEach(() => {
   stored = new Map();
-  reload = vi.fn();
+  calls = [];
+  reload = vi.fn(() => calls.push('reload'));
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => calls.push(`${init.cache} ${url}`));
+  vi.stubGlobal('document', {
+    querySelectorAll: (selector: string) =>
+      selector === 'script[src]'
+        ? [{ src: 'https://spence.com.au/pogo-utils/src/main.js' }]
+        : [{ href: 'https://spence.com.au/pogo-utils/src/main.css' }],
+  });
   vi.stubGlobal('sessionStorage', {
     getItem: (key: string) => stored.get(key) ?? null,
     setItem: (key: string, value: string) => stored.set(key, value),
@@ -68,6 +79,18 @@ test('a chunk a deploy took away reloads the page, and the reloaded page reports
   await expect(reloaded(gone)).rejects.toThrow('Failed to fetch dynamically imported module');
   await expect(reloaded(gone)).rejects.toThrow();
   expect(reload).toHaveBeenCalledTimes(1);
+});
+
+test('the entries the document names are fetched past the cache before the reload, which would otherwise reuse them', async () => {
+  // Pages serves the unhashed `main.js` and `main.css` with `max-age=600`, and Chrome's reload revalidates only the
+  // document: without these, a deploy within ten minutes of the tab's load reloads into the same missing chunk.
+  await settled((await load())(gone));
+
+  expect(calls).toEqual([
+    'reload https://spence.com.au/pogo-utils/src/main.js',
+    'reload https://spence.com.au/pogo-utils/src/main.css',
+    'reload',
+  ]);
 });
 
 test('a document after the reloaded one may reload for the next deploy', async () => {
