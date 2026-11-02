@@ -7,8 +7,10 @@
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
 import {
+  agree,
   count,
   csv,
+  distance,
   DROP_RETRIES,
   FLAGS,
   keyOf,
@@ -182,7 +184,8 @@ test('the clear is longer than every search the scan sends', () => {
  * Pokémon was visited at, so a walk that visits the right keys from the wrong place is caught as well. The first read
  * of each position in `missed` comes back unread, as a screen OCR misses once does. Each swipe forward whose number,
  * counting from 0, is in `dropped` goes nowhere, as #581's phone dropped one in ten, and `total` is the count the
- * game shows for the walk.
+ * game shows for the walk. The second read of each position in `again` reads as that entry says, as a screen whose
+ * overlay or name reads another way on a second look.
  */
 async function walked(
   keys: readonly string[],
@@ -191,16 +194,26 @@ async function walked(
   missed: readonly number[] = [],
   dropped: readonly number[] = [],
   total: number | null = null,
+  again: Readonly<Record<number, string>> = {},
 ) {
   let at = from;
   let forward = 0;
   const unread = new Set(missed);
+  const reads = new Map<number, number>();
   const drops = new Set(dropped);
   const visited: [string | null, number][] = [];
 
   await walk(
     {
-      read: async () => ({ key: unread.delete(at) ? null : (keys[at] ?? null) }),
+      read: async () => {
+        reads.set(at, (reads.get(at) ?? 0) + 1);
+
+        if (unread.delete(at)) {
+          return { key: null };
+        }
+
+        return { key: (reads.get(at) === 2 ? again[at] : undefined) ?? keys[at] ?? null };
+      },
       next: async () => void (at = drops.has(forward++) ? at : Math.min(at + 1, keys.length - 1)),
       back: async () => void (at = Math.max(at - 1, 0)),
     },
@@ -303,6 +316,66 @@ test.for([
   expect((await walked(keys, Infinity, 0, [1])).map(([, at]) => at)).toEqual(keys.map((_, i) => i));
 });
 
+test('a key with IVs agrees with the same key read without the overlay, and not with other IVs', () => {
+  expect(agree('a|1|2|3|1/2/3', 'a|1|2|3|')).toBe(true);
+  expect(agree('a|1|2|3|', 'a|1|2|3|1/2/3')).toBe(true);
+  expect(agree('a|1|2|3|1/2/3', 'a|1|2|3|1/2/4')).toBe(false);
+  expect(agree('a|1|2|3|', 'a|1|2|4|')).toBe(false);
+  expect(agree('a', 'b')).toBe(false);
+});
+
+const iv = (name: string) => `${name}|50|1.5|0.4|15/15/15`;
+const blind = (name: string) => `${name}|50|1.5|0.4|`;
+
+test('a look back that misses the overlay a first read saw goes on, after a skip', async () => {
+  const keys = [iv('z'), iv('a'), iv('a'), iv('c')];
+
+  expect(await walked(keys, Infinity, 1, [], [], null, { 1: blind('a') })).toEqual([
+    [keys[1], 1],
+    [keys[2], 2],
+    [keys[3], 3],
+  ]);
+});
+
+test('a look back that reads a Pokémon another way, then as before, is a misread and the walk goes on', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['z', 'a', 'a', 'c'], Infinity, 1, [], [], null, { 1: 'q' })).toEqual([
+    ['a', 1],
+    ['a', 2],
+    ['c', 3],
+  ]);
+  expect(error).not.toHaveBeenCalled();
+  error.mockRestore();
+});
+
+// Nothing then tells the twins from the end, so the walk stops — but on a screen it says it could not settle, not
+// silently on a misread.
+test('a look back that reads three ways is taken for a misread rather than the end of storage', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const keys = ['a', 'b', 'b', 'c'];
+  let at = 1;
+  let looks = 0;
+  const visited: [string | null, number][] = [];
+
+  await walk(
+    {
+      // Every read of the first twin after the first answers something new.
+      read: async () => ({ key: at === 1 && looks++ > 0 ? `m${looks}` : (keys[at] ?? null) }),
+      next: async () => void (at = Math.min(at + 1, keys.length - 1)),
+      back: async () => void (at = Math.max(at - 1, 0)),
+    },
+    async ({ key }) => void visited.push([key, at]),
+    Infinity,
+    1,
+  );
+
+  expect(visited).toEqual([['b', 1]]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('taking it for a misread'));
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
+  error.mockRestore();
+});
+
 /**
  * What #581's phone did: one swipe in ten went nowhere, which `walk` takes for the end of storage, and the passes came
  * out at 82 of 908 shiny and 45 of 2,708 in all with nothing said. Held against the game's own count, they fail.
@@ -391,6 +464,25 @@ test('a drop on the first swipe of a pass cannot be told from a twin, so the wal
   expect(await walked(['a', 'b', 'c'], Infinity, 0, [], [0], 3)).toEqual([['a', 0]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
   error.mockRestore();
+});
+
+test('a walk skipped to the last Pokémon in storage ends there, by a look back that reads the same each time', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['a', 'b'], Infinity, 1)).toEqual([['b', 1]]);
+  expect(error).not.toHaveBeenCalled();
+  error.mockRestore();
+});
+
+test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
+  // Storage going on lands on the IV-less read first, and each IV key agrees with it but not with the other.
+  const worlds = new Map([
+    [Infinity, { at: 5, known: new Map([[4, blind('a')]]) }],
+    [3, { at: 3, known: new Map([[2, iv('a')]]) }],
+    [2, { at: 2, known: new Map([[1, 'a|50|1.5|0.4|1/2/3']]) }],
+  ]);
+
+  expect(distance(worlds, 5)).toBe(1);
 });
 
 test('a CSV reads back the rows `csv` wrote, quotes, commas, line breaks and all', () => {
@@ -543,4 +635,38 @@ test('a twin of the last row written, starting the pass, is not skipped', async 
   const twins = [...storage.slice(0, 19), 500, 500, ...storage.slice(21)];
 
   expect(await landed(twins, 20, [4])).toStrictEqual({ position: 20, off: 1 });
+});
+
+test('a look back that misses the overlay where the worlds differ only in IVs stops looking, rather than loop', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const keys = ['a|50|1.5|0.4|1/1/1', 'a|50|1.5|0.4|2/2/2', 'a|50|1.5|0.4|2/2/2'];
+  let at = 0;
+  let reads = 0;
+  const seen = new Set<number>();
+  const visited: [string | null, number][] = [];
+
+  await walk(
+    {
+      // The first twin reads its IVs once; every look back at it after that misses the overlay.
+      read: async () => {
+        if (++reads > 50) {
+          throw new Error('the walk is looking back at the same place for ever');
+        }
+
+        const key = keys[at] ?? null;
+        const blind = at === 1 && seen.has(1);
+        seen.add(at);
+        return { key: blind && key ? key.slice(0, key.lastIndexOf('|') + 1) : key };
+      },
+      next: async () => void (at = Math.min(at + 1, keys.length - 1)),
+      back: async () => void (at = Math.max(at - 1, 0)),
+    },
+    async ({ key }) => void visited.push([key, at]),
+    Infinity,
+    0,
+  );
+
+  expect(visited.map(([, place]) => place)).toEqual([0, 1]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
+  error.mockRestore();
 });

@@ -59,6 +59,22 @@ export function keyOf(detail: Detail, overlay: Overlay | null): string | null {
   return `${fold(detail.name ?? '')}|${looseKeyOf(detail, overlay)}`;
 }
 
+/**
+ * Whether two keys can be one Pokémon read twice: the same, or the same but for the IVs where one read missed the
+ * overlay. PGSharp's overlay reads on one look and not the next, so a key with IVs and one without are not a
+ * disagreement, only a reading that lost a field.
+ */
+export function agree(a: string, b: string): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  const i = a.lastIndexOf('|');
+  const j = b.lastIndexOf('|');
+
+  return i >= 0 && j >= 0 && a.slice(0, i) === b.slice(0, j) && (a.slice(i + 1) === '' || b.slice(j + 1) === '');
+}
+
 /** The same without the name, so a nickname read differently in two passes still matches. */
 export function looseKeyOf(detail: Detail, overlay: Overlay | null): string {
   const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : '';
@@ -358,7 +374,7 @@ export interface Steps<R extends { key: string | null }> {
 type Step = { move: 1 | -1 } | { key: string | null };
 
 /** Where a walk would be, and what each place in storage read, had storage ended at one place. */
-interface World {
+export interface World {
   at: number;
   known: Map<number, string>;
 }
@@ -375,11 +391,14 @@ function replay(log: readonly Step[], from: number, end: number): World | null {
     if ('move' in step) {
       at = Math.min(Math.max(at + step.move, 0), end);
     } else if (step.key !== null) {
-      if ((known.get(at) ?? step.key) !== step.key) {
+      const before = known.get(at) ?? step.key;
+
+      if (!agree(before, step.key)) {
         return null;
       }
 
-      known.set(at, step.key);
+      // The fuller of the two, so a later read is held to the IVs either of them saw.
+      known.set(at, step.key.length > before.length ? step.key : before);
     }
   }
 
@@ -392,7 +411,7 @@ function replay(log: readonly Step[], from: number, end: number): World | null {
  * which a read could rule any of them out. No further than `index`, so storage still going on never lands on its
  * start, and the same distance forward brings the walk back to where it was in every world.
  */
-function distance(worlds: Map<number, World>, index: number): number | undefined {
+export function distance(worlds: ReadonlyMap<number, World>, index: number): number | undefined {
   let fallback: number | undefined;
 
   for (let k = 1; k <= index; k++) {
@@ -400,20 +419,28 @@ function distance(worlds: Map<number, World>, index: number): number | undefined
     const open = landed.get(Infinity);
     const ended = [...landed].filter(([end]) => end !== Infinity).map(([, key]) => key);
 
-    if (open !== undefined && ended.every((key) => key !== undefined && key !== open)) {
+    if (open !== undefined && ended.every((key) => key !== undefined && !agree(key, open))) {
       return k;
     }
 
-    const keys = new Set([...landed.values()]);
+    const keys = [...landed.values()];
 
-    // A read rules out a world only where it lands on a Pokémon already read, and differently from it.
-    if (fallback === undefined && keys.size > 1) {
+    // A read rules out a world only where it lands on a Pokémon already read, and differently from it. Pairwise, since
+    // `agree` is not transitive: two keys with different IVs each agree with one that missed them.
+    if (fallback === undefined && keys.some((a) => keys.some((b) => !same(a, b)))) {
       fallback = k;
     }
   }
 
   return fallback;
 }
+
+function same(a: string | undefined, b: string | undefined): boolean {
+  return a === undefined || b === undefined ? a === b : agree(a, b);
+}
+
+/** How many times a look back reads a screen that would end the walk on nothing it has read before. */
+const LOOKS = 3;
 
 /** How many times in a row `walk` sends again a swipe forward it takes to have been dropped. */
 export const DROP_RETRIES = 3;
@@ -429,6 +456,13 @@ export const DROP_RETRIES = 3;
  * each place storage might have ended — every one it has visited, until a read rules it out by reading that place two
  * ways. Where one is left beside storage going on, it swipes back to where the two would land on Pokémon it read
  * differently, reads, and swipes forward again.
+ *
+ * A look back that rules out storage going on is believed at once where it confirms a Pokémon read before. Where it
+ * confirms nothing — every world it leaves landing on a place not yet read, as after `from` skipped past everything
+ * before it — it may as well be a misread of the Pokémon storage going on expects, the overlay lost or a name read
+ * another way. So the walk looks again, up to {@link LOOKS} times in all: a look that keeps storage going on wins, the
+ * same reading every time is believed, and readings that disagree among themselves are taken for misreads, so the walk
+ * goes on.
  *
  * Where nothing it has read can tell them apart — a run of twins from the start of the pass, the first Pokémon in
  * storage or one `from` skipped to, with nothing known before it — the walk stops and says so rather than visit a
@@ -476,6 +510,41 @@ export async function walk<R extends { key: string | null }>(
       }),
     );
 
+  /** Reads the Pokémon a look back landed on, `landed` being what each world had already read there. */
+  const look = async (landed: Map<number, string | undefined>) => {
+    const looks: string[] = [];
+
+    for (let i = 0; i < LOOKS; i++) {
+      const { key } = await read();
+      log.push({ key });
+
+      if (key === null) {
+        return key;
+      }
+
+      const after = worlds();
+
+      if (after.has(Infinity) || [...after.keys()].some((end) => landed.get(end) !== undefined)) {
+        return key;
+      }
+
+      log.pop();
+      looks.push(key);
+    }
+
+    const [head = null] = looks;
+
+    // Pairwise, since `agree` is not transitive: two looks with different IVs each agree with one that missed them.
+    if (head !== null && looks.every((a) => looks.every((b) => agree(a, b)))) {
+      log.push({ key: head });
+      return head;
+    }
+
+    console.error(`  a look back read ${looks.join(', ')}; taking it for a misread and going on`);
+    log.push({ key: null });
+    return null;
+  };
+
   for (let index = from; index < from + max; index++) {
     // The swipe forward that brought the walk here, the last step taken, where this is not the first Pokémon.
     const forward = log.length - 1;
@@ -499,14 +568,23 @@ export async function walk<R extends { key: string | null }>(
         break;
       }
 
+      const landed = new Map([...possible].map(([end, { at, known }]) => [end, known.get(Math.max(at - k, 0))]));
       await swipe(-1, k);
-      const { key } = await read();
-      log.push({ key });
+      const key = await look(landed);
       await swipe(1, k);
       ends = [...possible.keys()];
+      const left = possible.size;
       possible = worlds();
 
       if (key === null) {
+        break;
+      }
+
+      // A look that rules out no world and teaches none of them anything leaves the walk where it was, and the next
+      // look would land on the same place: a read that missed the overlay, say, where the worlds differ only in IVs.
+      const learnt = [...possible].some(([end, { at, known }]) => known.get(Math.max(at - k, 0)) !== landed.get(end));
+
+      if (possible.size === left && !learnt) {
         break;
       }
     }
@@ -538,7 +616,7 @@ export async function walk<R extends { key: string | null }>(
       break;
     }
 
-    if (possible.size > 1 && reading.key !== null && reading.key === latest) {
+    if (possible.size > 1 && reading.key !== null && latest !== null && agree(reading.key, latest)) {
       console.error(
         `  ${reading.key} may be the last Pokémon read again, so its end cannot be told; stopping this pass`,
       );
