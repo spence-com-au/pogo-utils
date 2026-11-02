@@ -60,19 +60,17 @@ export function keyOf(detail: Detail, overlay: Overlay | null): string | null {
 }
 
 /**
- * Whether two keys can be one Pokémon read twice: the same, or the same but for the IVs where one read missed the
- * overlay. PGSharp's overlay reads on one look and not the next, so a key with IVs and one without are not a
- * disagreement, only a reading that lost a field.
+ * Whether two keys can be one Pokémon read twice: the same, or the same but for fields among the last `blank` that one
+ * read left blank — by default the IVs alone, where one read missed the overlay. PGSharp's overlay reads on one look
+ * and not the next, so a key with IVs and one without are not a disagreement, only a reading that lost a field. The
+ * walk keeps the default, since `replay` takes the longer of two keys for the fuller, which holds only while one field
+ * can be the one missing; `Marks` lets the weight and height go too.
  */
-export function agree(a: string, b: string): boolean {
-  if (a === b) {
-    return true;
-  }
+export function agree(a: string, b: string, blank = 1): boolean {
+  const x = a.split('|');
+  const y = b.split('|');
 
-  const i = a.lastIndexOf('|');
-  const j = b.lastIndexOf('|');
-
-  return i >= 0 && j >= 0 && a.slice(0, i) === b.slice(0, j) && (a.slice(i + 1) === '' || b.slice(j + 1) === '');
+  return x.length === y.length && x.every((f, i) => f === y[i] || (i >= x.length - blank && (f === '' || y[i] === '')));
 }
 
 /** The same without the name, so a nickname read differently in two passes still matches. */
@@ -82,47 +80,60 @@ export function looseKeyOf(detail: Detail, overlay: Overlay | null): string {
   return [detail.hp, detail.weight, detail.height, iv].join('|');
 }
 
+interface Found {
+  key: string;
+  loose: string;
+}
+
 /**
  * The Pokémon a flag search found, held as a multiset of keys so that each one marks exactly one row of the full pass.
- * A looser key without the name is kept beside it, since a name is the field OCR is likeliest to read two ways.
+ * A looser key without the name is kept beside each, since a name is the field OCR is likeliest to read two ways.
  */
 export class Marks {
-  readonly #exact = new Map<string, number>();
-  readonly #loose = new Map<string, number>();
+  readonly #found: Found[] = [];
   size = 0;
 
   add(detail: Detail, overlay: Overlay | null) {
     const key = keyOf(detail, overlay);
 
     if (key) {
-      bump(this.#exact, key, 1);
-      bump(this.#loose, looseKeyOf(detail, overlay), 1);
+      this.#found.push({ key, loose: looseKeyOf(detail, overlay) });
       this.size++;
     }
   }
 
-  /** Whether this Pokémon was in the search, using up the match so a twin is not marked by the same entry. */
+  /**
+   * Whether this Pokémon was in the search, using up the match so a twin is not marked by the same entry. Last of all
+   * the weight, height and IVs may each be blank on one side, since OCR reads a field on one pass and loses it on the
+   * other: the shiny pass read `magnemite|50||0.25|13/13/5` for the full pass's `magnemite|50|5.55|0.25|13/13/5`. Last,
+   * so a row takes an entry the same as it before one that merely fails to differ, which is left for a twin. What no
+   * order can do is see the rows still to come: a row with a field blank takes the first entry it fits, which a later
+   * row may have matched exactly. That needs two of one species sharing an HP and every field both read, and moves a
+   * mark between them rather than gaining or losing one.
+   */
   take(detail: Detail, overlay: Overlay | null): boolean {
     const key = keyOf(detail, overlay);
     const loose = looseKeyOf(detail, overlay);
 
-    if (key && (this.#exact.get(key) ?? 0) > 0) {
-      bump(this.#exact, key, -1);
-      bump(this.#loose, loose, -1);
-      return true;
+    if (key === null) {
+      return false;
     }
 
-    if (key && (this.#loose.get(loose) ?? 0) > 0) {
-      bump(this.#loose, loose, -1);
-      return true;
+    for (const fits of [
+      (e: Found) => e.key === key,
+      (e: Found) => e.loose === loose,
+      (e: Found) => agree(e.key, key, 3),
+    ]) {
+      const i = this.#found.findIndex(fits);
+
+      if (i >= 0) {
+        this.#found.splice(i, 1);
+        return true;
+      }
     }
 
     return false;
   }
-}
-
-function bump(map: Map<string, number>, key: string, by: number) {
-  map.set(key, (map.get(key) ?? 0) + by);
 }
 
 /**

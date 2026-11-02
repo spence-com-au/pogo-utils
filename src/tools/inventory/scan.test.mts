@@ -115,6 +115,40 @@ test('a name read two ways across the passes still finds its mark', () => {
   expect(marks.take(detail({ name: 'Sparkv' }), overlay(10, 11, 12))).toBe(true);
 });
 
+test('a weight the flag pass left blank still finds its mark, the shiny Magnemite of a live run', () => {
+  const marks = new Marks();
+  const magnemite = (hp: number, weight: number | null, height: number) =>
+    detail({ name: 'Magnemite', hp, weight, height });
+
+  marks.add(magnemite(45, 6.7, 0.32), overlay(15, 7, 14));
+  marks.add(magnemite(50, null, 0.25), overlay(13, 13, 5));
+  marks.add(magnemite(71, 3.68, 0.26), overlay(11, 15, 6));
+
+  expect(marks.take(magnemite(50, 5.55, 0.26), overlay(13, 13, 5)), 'a field read on both sides differs').toBe(false);
+  expect(marks.take(magnemite(50, 5.55, 0.25), overlay(13, 13, 5))).toBe(true);
+  expect(marks.take(magnemite(45, 6.7, 0.32), overlay(15, 7, 14))).toBe(true);
+  expect(marks.take(magnemite(71, 3.68, 0.26), overlay(11, 15, 6))).toBe(true);
+  expect(marks.take(magnemite(50, 5.55, 0.25), overlay(13, 13, 5)), 'the one mark was used twice').toBe(false);
+});
+
+test('a height the full pass left blank still finds its mark', () => {
+  const marks = new Marks();
+
+  marks.add(detail(), overlay(15, 15, 15));
+
+  expect(marks.take(detail({ height: null }), overlay(15, 15, 15))).toBe(true);
+});
+
+test('a row read in full takes the entry it equals, leaving the one with a blank to its twin', () => {
+  const marks = new Marks();
+
+  marks.add(detail({ weight: null }), overlay(15, 15, 15));
+  marks.add(detail({ weight: 6.1 }), overlay(15, 15, 15));
+
+  expect(marks.take(detail({ weight: 6.1 }), overlay(15, 15, 15))).toBe(true);
+  expect(marks.take(detail({ weight: 7.2 }), overlay(15, 15, 15)), 'the blank entry went to the first row').toBe(true);
+});
+
 test('a screen with no key is neither marked nor matched', () => {
   const marks = new Marks();
 
