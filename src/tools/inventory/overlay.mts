@@ -42,8 +42,13 @@ export interface Overlay {
   form: string | null;
 }
 
-/** Only these survive the whitelist: the level's `L`, the digits and the slashes between the three IVs. */
-const OVERLAY_ALPHABET = 'L0123456789/ ';
+/**
+ * Only these survive the whitelist: the level's `L`, the digits, the slashes between the three IVs and the `%` that
+ * Tesseract makes of a half level's `½`. The `½` itself is no use here, the model never answering it: whitelisted, a
+ * Luxray's `L21½ IV100` still reads `L211`, its `½` a stray `1` that leaves 21.5 offered by nothing. With `%` allowed
+ * the same band reads `L21%1`, which is what `levelsIn` turns back into a half.
+ */
+const OVERLAY_ALPHABET = 'L0123456789/% ';
 
 /**
  * How much to upscale the isolated overlay before reading it. 2 because that is what the IVs were measured against —
@@ -673,6 +678,17 @@ function levelsIn(text: string): number[] {
 
     if (next !== undefined) {
       offer((run.at(-1) ?? '') + (next.at(0) ?? ''));
+    }
+  }
+
+  // And the half a `%` stands for, PGSharp printing 21.5 as `L21½` and nothing else on the line being a percent sign.
+  // Offered beside the whole levels above rather than in their place, the shortlist being generous for the reason it
+  // always was: which end of the run a stray `1` sits on is no clearer for there being a `½` after it.
+  for (const [, digits = ''] of text.matchAll(/(\d+)%/g)) {
+    for (const length of [1, 2]) {
+      if (digits.length >= length) {
+        offer(`${digits.slice(-length)}.5`);
+      }
     }
   }
 
