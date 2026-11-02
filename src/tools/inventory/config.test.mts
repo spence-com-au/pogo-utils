@@ -40,3 +40,10 @@ test('an overlay box is taken whole, there being none by default', () => {
   expect(DEFAULTS.overlay).toBeUndefined();
   expect(configWith({ overlay }).overlay).toBe(overlay);
 });
+
+test('a "user" is taken where it is a whole number and refused otherwise', () => {
+  expect(configWith({ user: 10 }).user).toBe(10);
+  expect(configWith({}).user).toBeUndefined();
+  expect(() => configWith({ user: -1 })).toThrow('an Android user is a whole number');
+  expect(() => configWith({ user: '10' })).toThrow('an Android user is a whole number');
+});
