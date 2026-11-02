@@ -16,10 +16,18 @@ header.page {
   padding: 20px 22px 6px;
 }
 
+/**
+ * The page's name, for a screen reader moving by heading: the eye has the tab bar to say which page this is, so it is
+ * not drawn a second time under it.
+ */
+
 header.page h1 {
-  margin: 0;
-  font-size: 26px;
-  letter-spacing: -0.02em;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 header.page .sub {
