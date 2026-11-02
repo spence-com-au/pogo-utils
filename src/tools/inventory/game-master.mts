@@ -59,6 +59,13 @@ export interface Form {
    * still offers to evolve it for 50.
    */
   evolveCandy: readonly number[];
+
+  /**
+   * Whether the game hands this form out only as a shadow, which purifying one keeps: Lugia's and Ho-Oh's Apex forms,
+   * `LUGIA_S` and `HO_OH_S`, from the Apex event. They share every number the ordinary form has, so a Pokémon that is
+   * neither shadow nor purified is the one thing that can rule them out.
+   */
+  shadowOnly: boolean;
 }
 
 export interface Move {

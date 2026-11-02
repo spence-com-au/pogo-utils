@@ -759,12 +759,29 @@ async function scan(held: Transport) {
   const total = term === undefined ? stored(grid) : matches(grid);
 
   const visited = await walk(
-    async ({ detail, overlay, id, image, latest }, index) => {
+    async ({ detail, overlay, id: read, image, latest }, index) => {
       const name = String(index + 1).padStart(5, '0');
       const notes: string[] = [];
       let moves: Moves = { fast: null, charged: [] };
       const iv = overlay?.iv ?? null;
       keep(`${name}-detail`, image);
+
+      // Blank for a flag not asked for, or one whose pass would not read, rather than a `no` nothing checked.
+      const flag = (f: Flag) => {
+        const marks = marked.get(f);
+
+        return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
+      };
+
+      // Each taken once, since `take` uses the match up. Identified again where the two passes say whether this is
+      // shadow or purified, which is all that rules out a form the game only hands out as a shadow, and which the
+      // reading `walk` took could not know.
+      const shadow = flag('shadow');
+      const purified = flag('purified');
+      const shadowed =
+        shadow === 'yes' || purified === 'yes' ? true : shadow === 'no' && purified === 'no' ? false : null;
+      const id =
+        shadowed === null ? read : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shadowed);
 
       if (detail.hp === null) {
         notes.push('detail screen not read');
@@ -858,13 +875,6 @@ async function scan(held: Transport) {
         }
       }
 
-      // Blank for a flag not asked for, or one whose pass would not read, rather than a `no` nothing checked.
-      const flag = (f: Flag) => {
-        const marks = marked.get(f);
-
-        return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
-      };
-
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
       const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
       const total = iv ? iv.attack + iv.defense + iv.stamina : null;
@@ -886,8 +896,8 @@ async function scan(held: Transport) {
         shiny: flag('shiny'),
         lucky: flag('lucky'),
         size: detail.size,
-        shadow: flag('shadow'),
-        purified: flag('purified'),
+        shadow,
+        purified,
         cp: id.cp ?? detail.cp,
         hp: detail.hp,
         level: id.levels.join(' / '),
