@@ -5,7 +5,7 @@
 
 import { launchable } from './adb.mts';
 import { type OverlayBox } from './overlay.mts';
-import { SCREEN_BAND, type Band } from './stitch.mts';
+import { SCREEN_BAND, SCROLL_STRIP, type Band } from './stitch.mts';
 
 export type Point = [number, number];
 
@@ -78,9 +78,12 @@ export const DEFAULTS: Config = {
       [0.85, 0.3],
       [0.15, 0.3],
     ],
+
+    // Down the same margin as the way down, and for its reason: a drag that starts at 0.35 of the height down the
+    // middle starts on the POWER UP or EVOLVE row of a scrolled panel, and one the phone drops is a tap there.
     scrollUp: [
-      [0.5, 0.35],
-      [0.5, 0.9],
+      [SCROLL_STRIP, 0.35],
+      [SCROLL_STRIP, 0.9],
     ],
   },
   waits: { launch: 30000, tap: 900, swipe: 1100, scroll: 800, menu: 800, search: 1500 },

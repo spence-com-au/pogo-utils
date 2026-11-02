@@ -71,7 +71,7 @@ import {
 } from '../src/tools/inventory/report.mts';
 import { count, csv, keyOf, Marks, parseFlags, walk as stepThrough, type Flag } from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
-import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
+import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -333,7 +333,7 @@ async function scan() {
 
   const screens = options['keep-screens'];
   const shot = await device.screenshot();
-  const { at, tap, swipe, search, tileLabel, firstTile } = storage(device, config, data, shot);
+  const { tap, swipe, dismiss, closeDetail, search, tileLabel, firstTile } = storage(device, config, data, shot);
   let overlayBox: OverlayBox | null = config.overlay ?? null;
 
   // A phone with PGSharp's overlay switched off would otherwise sweep for it on every Pokémon, for ever.
@@ -475,7 +475,14 @@ async function scan() {
 
         const image = await settled(device);
         latest = image;
-        const detail = await parseDetail(await readLines(image), data, image);
+        const lines = await readLines(image);
+        const detail = await parseDetail(lines, data, image);
+
+        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over: closed here, so the next
+        // attempt reads the screen beneath it rather than every attempt reading the dialog and the pass stopping.
+        if (detail.hp === null && dialogOpen(lines)) {
+          await dismiss();
+        }
 
         // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. The
         // sweeps are rationed over the whole run, so one granted on every attempt buys three tries of the same
@@ -537,7 +544,7 @@ async function scan() {
     const next = () => swipe([grab, drop], config.waits.swipe);
     const back = () => swipe([drop, grab], config.waits.swipe);
     await stepThrough({ read: readDetail, next, back }, visit, max, from, from === 0 ? first : undefined);
-    await tap(at(config.taps.closeDetail));
+    await closeDetail();
   };
 
   // The flag passes come first, so that the full pass can write each row complete as it goes.
@@ -652,8 +659,21 @@ async function scan() {
 
         // Read while the phone scrolls back, since nothing that follows depends on the moves. Awaited with the swipes,
         // so that a read failing before the phone is back is a rejection here rather than an unhandled one.
-        reading = ocr(scrolled).then((lines) => parseMoves(lines, data, id.form, scrolled));
+        let dialog = false;
+        reading = ocr(scrolled).then((lines) => {
+          dialog = dialogOpen(lines);
+
+          return parseMoves(lines, data, id.form, scrolled);
+        });
         await Promise.all([reading, scrollUp(device, shot, back)]);
+
+        // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
+        // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
+        // which would do nothing either.
+        if (dialog) {
+          await dismiss();
+          notes.push('a dialog opened on the swipe to the moves and was closed');
+        }
       }
 
       if (reading) {
