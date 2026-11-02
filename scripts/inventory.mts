@@ -13,7 +13,7 @@
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
- *   pnpm inventory scan [--out inventory.csv] [--limit N] [--skip N] [--flags shiny,lucky,…]
+ *   pnpm inventory scan [--out inventory.csv] [--search TERM] [--limit N] [--skip N] [--flags shiny,lucky,…]
  *                       [--tags 'Trade to 0xNULL,…'] [--no-moves] [--scroll] [--keep-screens DIR]
  *                       [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
  *   pnpm inventory snap [--search TERM] [--verbose] [--refresh] [--config FILE] [--serial SERIAL] [--user N]
@@ -28,6 +28,9 @@
  *                       the same for screenshots already saved, with no phone needed
  *   A flag handed to a command whose line omits it is refused rather than ignored — see `HONOURED`.
  *   `help`, or `--help` beside any command, prints this.
+ *
+ * `--search TERM` scans only what storage's own search matches, the flag passes too: each searches `shiny&TERM` and the
+ * like, the game reading a `,` inside a clause as or and the `&` between clauses as and.
  *
  * `--skip N` resumes a scan whose `--out` already holds rows 1 to N, and appends to it. It swipes N Pokémon on blind,
  * then finds row N by its HP, weight, height and IVs and starts just past it, since a swipe can go nowhere and a skip
@@ -219,6 +222,7 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 const HONOURED: Record<string, readonly string[]> = {
   scan: [
     'out',
+    'search',
     'limit',
     'skip',
     'flags',
@@ -254,6 +258,42 @@ const ignored = honoured ? passed.filter((flag) => !honoured.includes(flag)) : [
 if (ignored.length > 0) {
   console.error(`${command} does not act on ${ignored.map((flag) => `--${flag}`).join(', ')}\n`);
   console.error(USAGE);
+  process.exit(1);
+}
+
+/**
+ * Why `--search` cannot be used, or null where it can or was not given. Asked before the phone is opened: a term `type`
+ * will not send, or one longer than the box can be cleared of, is one the phone would be driven to storage and into the
+ * search box for before anything said so.
+ */
+function refusedSearch(term: string | undefined): string | null {
+  if (term === undefined) {
+    return null;
+  }
+
+  const unsent = unsearchable(term);
+
+  if (unsent !== null) {
+    return `--search ${unsent}`;
+  }
+
+  // The one term `unsearchable` passes and `--search` cannot use: `typeable` is `*`-quantified, so both `''` and a run
+  // of spaces satisfy it. An empty search matches everything, which would snap whatever the unfiltered grid happens to
+  // show first and exit 0 — a capture under a name claiming it is something else. `--search "$TERM"` with `TERM` unset
+  // is how it arrives. A whitespace-only term is worse still: `search` types the space, so the `term === ''` test that
+  // closes the suggestions panel is skipped, and `firstTile` falls back to its blind tap onto the first Recent chip —
+  // opening whatever was searched for last.
+  if (term.trim() === '') {
+    return '--search needs a term; an empty one matches everything, so it would name nothing';
+  }
+
+  return null;
+}
+
+const refused = refusedSearch(options.search);
+
+if (refused !== null) {
+  console.error(`${command}: ${refused}`);
   process.exit(1);
 }
 
@@ -354,6 +394,7 @@ async function scan(held: Transport) {
   const limit = count('limit', options.limit, Infinity);
   const skip = count('skip', options.skip, 0);
   const out = options.out;
+  const term = options.search;
 
   // The rows a skip has to land just past, read before the phone is driven, since a skip with nothing to check its
   // landing against is one that lands short by every swipe it dropped and says nothing: the rows written next repeat
@@ -665,7 +706,7 @@ async function scan(held: Transport) {
 
   for (const flag of flags) {
     const marks = new Marks();
-    const grid = await search(flag);
+    const grid = await search(term === undefined ? flag : `${flag}&${term}`);
     const first = await openFirst(grid);
 
     if (first.key !== null) {
@@ -693,18 +734,20 @@ async function scan(held: Transport) {
     writeFileSync(out, `${COLUMNS.join(',')}\n`);
   }
 
-  const grid = await search('');
+  const grid = await search(term ?? '');
   const first = await openFirst(grid);
 
   if (first.key === null) {
-    throw new Error('storage looks empty, or the first Pokémon did not open; try `pnpm inventory snap` to see why');
+    const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
+
+    throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
   }
 
   let written = 0;
   const started = Date.now();
 
   // Read off the grid before the walk leaves it, both to tell a dropped swipe from the end and to check the pass after.
-  const total = stored(grid);
+  const total = term === undefined ? stored(grid) : matches(grid);
 
   const visited = await walk(
     async ({ detail, overlay, id, image, latest }, index) => {
@@ -1031,30 +1074,6 @@ async function scrollUp(device: Device, screen: Image, pixels: number) {
  */
 async function snap() {
   const name = rest[0] ?? new Date().toISOString().replaceAll(':', '-');
-
-  // Refused before the phone is opened: a term `type` will not send, or one longer than the box can be cleared of, is
-  // one the phone would be driven to storage and into the search box for before anything said so.
-  const unsent = options.search === undefined ? null : unsearchable(options.search);
-
-  if (unsent !== null) {
-    console.error(`snap: --search ${unsent}`);
-    process.exitCode = 1;
-
-    return;
-  }
-
-  // The one term `unsearchable` passes and `--search` cannot use: `typeable` is `*`-quantified, so both `''` and a run
-  // of spaces satisfy it. An empty search matches everything, which would snap whatever the unfiltered grid happens to
-  // show first and exit 0 — a capture under a name claiming it is something else, and the unreproducible snap
-  // `--search` is here to replace. `--search "$TERM"` with `TERM` unset is how it arrives. A whitespace-only term is
-  // worse still: `search` types the space, so the `term === ''` test that closes the suggestions panel is skipped, and
-  // `firstTile` falls back to its blind tap onto the first Recent chip — opening whatever was searched for last.
-  if (options.search?.trim() === '') {
-    console.error('snap: --search needs a term; an empty one matches everything, so the capture would name nothing');
-    process.exitCode = 1;
-
-    return;
-  }
 
   const device = new Device(adbCli(options.serial));
   await device.check();
