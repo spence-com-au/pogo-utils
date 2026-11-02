@@ -974,7 +974,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   return (
     <>
       <header class="page">
-        <h1>Search Strings</h1>
+        <h1 class="sr">Search Strings</h1>
         <p class="sub">
           Build a string for the game's own search box, either way round: lay it out as cards in <em>Builder</em>, where
           every card has to match and any one pill on a card will do, or write it out yourself in <em>Advanced</em>,

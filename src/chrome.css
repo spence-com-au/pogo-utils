@@ -17,11 +17,11 @@ header.page {
 }
 
 /**
- * The page's name, for a screen reader moving by heading: the eye has the tab bar to say which page this is, so it is
- * not drawn a second time under it.
+ * Words for a screen reader that the eye is given some other way: a page's name, which the tab bar already says, or a
+ * label the eye reads off a glyph or a picture.
  */
 
-header.page h1 {
+.sr {
   position: absolute;
   width: 1px;
   height: 1px;
