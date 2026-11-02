@@ -6,7 +6,7 @@
 
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
-import { agree, count, csv, FLAGS, keyOf, looseKeyOf, Marks, parseFlags, walk } from './scan.mts';
+import { agree, count, csv, distance, FLAGS, keyOf, looseKeyOf, Marks, parseFlags, walk } from './scan.mts';
 import { CLEAR_KEYS } from './storage.mts';
 import { expect, test, vi } from 'vitest';
 
@@ -356,4 +356,15 @@ test('a walk skipped to the last Pokémon in storage ends there, by a look back 
   expect(await walked(['a', 'b'], Infinity, 1)).toEqual([['b', 1]]);
   expect(error).not.toHaveBeenCalled();
   error.mockRestore();
+});
+
+test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
+  // Storage going on lands on the IV-less read first, and each IV key agrees with it but not with the other.
+  const worlds = new Map([
+    [Infinity, { at: 5, known: new Map([[4, blind('a')]]) }],
+    [3, { at: 3, known: new Map([[2, iv('a')]]) }],
+    [2, { at: 2, known: new Map([[1, 'a|50|1.5|0.4|1/2/3']]) }],
+  ]);
+
+  expect(distance(worlds, 5)).toBe(1);
 });

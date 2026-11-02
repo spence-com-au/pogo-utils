@@ -136,7 +136,7 @@ export interface Steps<R extends { key: string | null }> {
 type Step = { move: 1 | -1 } | { key: string | null };
 
 /** Where a walk would be, and what each place in storage read, had storage ended at one place. */
-interface World {
+export interface World {
   at: number;
   known: Map<number, string>;
 }
@@ -173,7 +173,7 @@ function replay(log: readonly Step[], from: number, end: number): World | null {
  * which a read could rule any of them out. No further than `index`, so storage still going on never lands on its
  * start, and the same distance forward brings the walk back to where it was in every world.
  */
-function distance(worlds: Map<number, World>, index: number): number | undefined {
+export function distance(worlds: ReadonlyMap<number, World>, index: number): number | undefined {
   let fallback: number | undefined;
 
   for (let k = 1; k <= index; k++) {
@@ -185,10 +185,11 @@ function distance(worlds: Map<number, World>, index: number): number | undefined
       return k;
     }
 
-    const [first, ...rest] = landed.values();
+    const keys = [...landed.values()];
 
-    // A read rules out a world only where it lands on a Pokémon already read, and differently from it.
-    if (fallback === undefined && rest.some((key) => !same(key, first))) {
+    // A read rules out a world only where it lands on a Pokémon already read, and differently from it. Pairwise, since
+    // `agree` is not transitive: two keys with different IVs each agree with one that missed them.
+    if (fallback === undefined && keys.some((a) => keys.some((b) => !same(a, b)))) {
       fallback = k;
     }
   }
