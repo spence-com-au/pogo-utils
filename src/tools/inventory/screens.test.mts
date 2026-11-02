@@ -3,11 +3,12 @@
  *
  * **A row says what the Pokémon is, not what the readers answered.** A `Fixture` is the screen; a `Defects` beside it
  * is where some reader answers something else, pinned rather than softened away — fixing one is a change to the code
- * and so a pull request of its own. The `unseparated` ones are no second read of the same screen, but eight of the
- * nine are the artwork declining two icons a 12-bin hue histogram cannot tell apart, which a sharper signature could;
- * only `basculin-blue.png` is beyond every reader, its form being under PGSharp's own box. Everything after that is
- * derived from the pair, so a consequence cannot drift from its cause, and `COVERAGE` pins the counts rather than
- * leaving them to prose nothing checks.
+ * and so a pull request of its own. The `unseparated` ones are no second read of the same screen, but seven of the nine
+ * are the artwork declining two icons a 12-bin hue histogram cannot tell apart, which a sharper signature could;
+ * `lugia-hashes.png` is the artwork with nothing to compare, `ARTWORK` recording no icon for either Lugia, which a
+ * recorded pair could; and only `basculin-blue.png` is beyond every reader, its form being under PGSharp's own box.
+ * Everything after that is derived from the pair, so a consequence cannot drift from its cause, and `COVERAGE` pins the
+ * counts rather than leaving them to prose nothing checks.
  *
  * `NEGATIVE` holds the captures that are not detail screens, asserting the readers do not invent on a screen none of
  * them was written for. `no-pgsharp.png` and `pgsharp-no-overlay.png` are one Squirtle captured twice and so a control
