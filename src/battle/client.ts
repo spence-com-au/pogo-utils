@@ -6,6 +6,7 @@
  * phone, and other tabs see no phone held meanwhile.
  */
 
+import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
 import type { Phone } from '../inventory/webusb.js';
@@ -52,8 +53,8 @@ export async function lend(
   // need not load. The demo phone comes back as the settings menu holds it, its battle being the Worker's alone.
   reconnect: (serial: string) => Promise<Phone> = async (serial) =>
     serial === DEMO_SERIAL
-      ? (await import('../inventory/demo.js')).demoPhone()
-      : (await import('../inventory/webusb.js')).reconnect(serial),
+      ? (await loadChunk(() => import('../inventory/demo.js'))).demoPhone()
+      : (await loadChunk(() => import('../inventory/webusb.js'))).reconnect(serial),
 ): Promise<Run> {
   // Out of the store before anything is awaited, so that a second `lend` meanwhile finds none to lend.
   const phone = store.release();

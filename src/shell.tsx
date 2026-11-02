@@ -9,6 +9,7 @@
 import type { FunctionComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
+import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { Nav } from './nav.js';
 import { fromHash, pageOf, type Page, type Route } from './router.js';
@@ -22,13 +23,13 @@ export type PageComponent = FunctionComponent<{ query: string }>;
  * fail, and either way the seven names would no longer be checked against anything.
  */
 const PAGES: Record<Page, () => Promise<{ default: PageComponent }>> = {
-  events: () => import('./pages/events.js'),
-  map: () => import('./pages/map.js'),
-  search: () => import('./pages/search.js'),
-  pokedex: () => import('./pages/pokedex.js'),
-  integrations: () => import('./pages/integrations.js'),
-  inventory: () => import('./pages/inventory.js'),
-  battle: () => import('./pages/battle.js'),
+  events: () => loadChunk(() => import('./pages/events.js')),
+  map: () => loadChunk(() => import('./pages/map.js')),
+  search: () => loadChunk(() => import('./pages/search.js')),
+  pokedex: () => loadChunk(() => import('./pages/pokedex.js')),
+  integrations: () => loadChunk(() => import('./pages/integrations.js')),
+  inventory: () => loadChunk(() => import('./pages/inventory.js')),
+  battle: () => loadChunk(() => import('./pages/battle.js')),
 };
 
 /**
