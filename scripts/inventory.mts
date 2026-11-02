@@ -265,16 +265,22 @@ if (ignored.length > 0) {
  * Why `--search` cannot be used, or null where it can or was not given. Asked before the phone is opened: a term `type`
  * will not send, or one longer than the box can be cleared of, is one the phone would be driven to storage and into the
  * search box for before anything said so.
+ *
+ * Asked of every string the command will type, not the term alone: a scan's flag passes type `costume&TERM`, up to nine
+ * characters more, and a term that fits the clear while that does not leaves the rest prepended to the next search —
+ * whose own `🔍(N)` then vouches for the narrower set it found.
  */
-function refusedSearch(term: string | undefined): string | null {
+function refusedSearch(term: string | undefined, passes: readonly Flag[]): string | null {
   if (term === undefined) {
     return null;
   }
 
-  const unsent = unsearchable(term);
+  for (const pass of [null, ...passes]) {
+    const unsent = unsearchable(pass === null ? term : `${pass}&${term}`);
 
-  if (unsent !== null) {
-    return `--search ${unsent}`;
+    if (unsent !== null) {
+      return pass === null ? `--search ${unsent}` : `--search, as the ${pass} pass types it, ${unsent}`;
+    }
   }
 
   // The one term `unsearchable` passes and `--search` cannot use: `typeable` is `*`-quantified, so both `''` and a run
@@ -290,7 +296,11 @@ function refusedSearch(term: string | undefined): string | null {
   return null;
 }
 
-const refused = refusedSearch(options.search);
+// Parsed for `scan` alone, the one command `HONOURED` lets `--flags` reach, so that `help --flags x` prints the usage.
+const flags = command === 'scan' && options.flags !== undefined ? parseFlags(options.flags) : DEFAULT_FLAGS;
+
+// Only for a command that searches: `help` has no list to have filtered `--search` out, and prints the usage regardless.
+const refused = honoured?.includes('search') ? refusedSearch(options.search, command === 'scan' ? flags : []) : null;
 
 if (refused !== null) {
   console.error(`${command}: ${refused}`);
@@ -416,7 +426,6 @@ async function scan(held: Transport) {
   await device.check();
   const data = await loadGameData(CACHE, options.refresh);
   const icons = await iconsFor(CACHE, data, options.refresh);
-  const flags = options.flags === undefined ? DEFAULT_FLAGS : parseFlags(options.flags);
 
   // The chips under the HP say which tags a Pokémon carries, so this is a vocabulary rather than a list to search for:
   // the names are the user's own, and only something to match against can say that `Shiny SJ` is the `Shiny` chip with

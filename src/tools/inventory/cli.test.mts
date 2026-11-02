@@ -324,6 +324,32 @@ test.for(['scan', 'snap'])(
 );
 
 /**
+ * A scan types more than its term: each flag pass searches `costume&TERM` and the like, so a term the box can be cleared
+ * of alone may still overflow the clear as a flag pass sends it, leaving the remainder prepended to the next search.
+ * Six short of the clear, so `shiny&` and `lucky&` fit it exactly and only `costume&` goes over.
+ */
+test('`scan` refuses a `--search` that only a flag pass would overflow, before it opens the phone', async () => {
+  const failure = await run(process.execPath, [SCRIPT, 'scan', '--search', 'a'.repeat(CLEAR_KEYS - 6)]).catch(
+    (error: unknown) => error,
+  );
+  const { stderr } = failure as { stderr: string };
+
+  expect(failure).toMatchObject({ code: 1 });
+  expect(stderr).toContain(`as the costume pass types it, is ${CLEAR_KEYS + 2} characters`);
+  expect(stderr, 'the phone was reached before the length was checked').not.toContain('adb');
+});
+
+/**
+ * `--help` prints the usage beside any command, whatever else is on the line, so a `--search` it would refuse elsewhere
+ * is never checked.
+ */
+test('`--help` prints the usage even beside a `--search` that would be refused', async () => {
+  const { stderr } = await run(process.execPath, [SCRIPT, 'snap', '--help', '--search', '']);
+
+  expect(stderr).toContain('pnpm inventory snap');
+});
+
+/**
  * An empty `--search` is refused too, which `typeable` alone does not do: its pattern is `*`-quantified, so `''` passes
  * it, and spaces are stripped before the test, so a run of them passes as well. Both are terms that name nothing — an
  * empty search matches everything, and the snap would be of whatever the grid showed first under a name saying it is
