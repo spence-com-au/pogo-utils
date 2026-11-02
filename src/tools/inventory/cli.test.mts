@@ -291,8 +291,8 @@ test('the `--search` term the usage advertises is one the phone can be sent', ()
  * is: the alternative is driving the phone into storage and onto the search box before anything says the term was never
  * going to be sent, which leaves storage open with the keyboard up and nothing captured.
  */
-test('`snap` refuses an untypeable `--search`, before it opens the phone', async () => {
-  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', '+burmy (sandy)']).catch(
+test.for(['scan', 'snap'])('`%s` refuses an untypeable `--search`, before it opens the phone', async (command) => {
+  const failure = await run(process.execPath, [SCRIPT, command, '--search', '+burmy (sandy)']).catch(
     (error: unknown) => error,
   );
   const { stderr } = failure as { stderr: string };
@@ -309,15 +309,44 @@ test('`snap` refuses an untypeable `--search`, before it opens the phone', async
  * The length is taken off `CLEAR_KEYS` rather than written out, so raising or lowering the clear moves this with it. A
  * run of `a`s because `typeable` has to pass first — the refusal under test is the length and not the characters.
  */
-test('`snap` refuses a `--search` longer than the box can be cleared of, before it opens the phone', async () => {
-  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch(
+test.for(['scan', 'snap'])(
+  '`%s` refuses a `--search` longer than the box can be cleared of, before it opens the phone',
+  async (command) => {
+    const failure = await run(process.execPath, [SCRIPT, command, '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch(
+      (error: unknown) => error,
+    );
+    const { stderr } = failure as { stderr: string };
+
+    expect(failure).toMatchObject({ code: 1 });
+    expect(stderr).toContain(`more than the ${CLEAR_KEYS} the box can be cleared of`);
+    expect(stderr, 'the phone was reached before the length was checked').not.toContain('adb');
+  },
+);
+
+/**
+ * A scan types more than its term: each flag pass searches `costume&TERM` and the like, so a term the box can be cleared
+ * of alone may still overflow the clear as a flag pass sends it, leaving the remainder prepended to the next search.
+ * Six short of the clear, so `shiny&` and `lucky&` fit it exactly and only `costume&` goes over.
+ */
+test('`scan` refuses a `--search` that only a flag pass would overflow, before it opens the phone', async () => {
+  const failure = await run(process.execPath, [SCRIPT, 'scan', '--search', 'a'.repeat(CLEAR_KEYS - 6)]).catch(
     (error: unknown) => error,
   );
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
-  expect(stderr).toContain(`more than the ${CLEAR_KEYS} the box can be cleared of`);
+  expect(stderr).toContain(`as the costume pass types it, is ${CLEAR_KEYS + 2} characters`);
   expect(stderr, 'the phone was reached before the length was checked').not.toContain('adb');
+});
+
+/**
+ * `--help` prints the usage beside any command, whatever else is on the line, so a `--search` it would refuse elsewhere
+ * is never checked.
+ */
+test('`--help` prints the usage even beside a `--search` that would be refused', async () => {
+  const { stderr } = await run(process.execPath, [SCRIPT, 'snap', '--help', '--search', '']);
+
+  expect(stderr).toContain('pnpm inventory snap');
 });
 
 /**
@@ -327,10 +356,12 @@ test('`snap` refuses a `--search` longer than the box can be cleared of, before 
  * something else. `--search "$TERM"` with `TERM` unset is how either one reaches here.
  */
 test.for([
-  ['empty', ''],
-  ['whitespace-only', '   '],
-] as const)('`snap` refuses a %s `--search`, before it opens the phone', async ([, term]) => {
-  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', term]).catch((error: unknown) => error);
+  ['scan', 'empty', ''],
+  ['scan', 'whitespace-only', '   '],
+  ['snap', 'empty', ''],
+  ['snap', 'whitespace-only', '   '],
+] as const)('`%s` refuses an %s `--search`, before it opens the phone', async ([command, , term]) => {
+  const failure = await run(process.execPath, [SCRIPT, command, '--search', term]).catch((error: unknown) => error);
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
