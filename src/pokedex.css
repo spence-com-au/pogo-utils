@@ -153,6 +153,7 @@ body[data-page='pokedex'] {
   .dexhead h1 {
     flex: 1 1 0;
     min-width: 0;
+    margin: 0;
     color: var(--go-deep);
     font-size: 24px;
     font-weight: 600;
