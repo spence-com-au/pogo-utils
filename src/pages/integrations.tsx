@@ -214,7 +214,7 @@ export default function IntegrationsPage() {
   return (
     <>
       <header class="page">
-        <h1>Integrations</h1>
+        <h1 class="sr">Integrations</h1>
       </header>
 
       <main class="backup">
