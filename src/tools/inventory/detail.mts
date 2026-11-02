@@ -185,9 +185,14 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   // no words at all. Three letters or two digits, measured rather than guessed: the name sits 117 to 173 pixels above
   // the HP across the corpus, and what sits nearer is the bar's own furniture, read as `os` or `oy` on five captures
   // at a gap of 57 to 62. Two characters of anything admits those and they win for being nearest.
+  //
+  // Or a `#`, which a nickname can be made of entirely: `lugia-hashes.png` is called `##`, and passing over it took
+  // the catch date's `20/06` beside the artwork as the name instead. Tesseract reads a `#` into 505 lines on 368 of
+  // 839 detail captures, nearly all of them the status bar's icons, but into none within 400 pixels above the HP
+  // except that name — so admitting it changes no other capture's name line.
   const nameLine = hpLine
     ? lines
-        .filter((l) => l.top + l.height <= hpLine.top + 4 && l !== labelled && /\p{L}{3}|\p{N}{2}/u.test(l.text))
+        .filter((l) => l.top + l.height <= hpLine.top + 4 && l !== labelled && /\p{L}{3}|\p{N}{2}|#/u.test(l.text))
         .filter((l) => !CP_LABEL.test(foldCp(l.text)))
         .at(-1)
     : undefined;
@@ -402,12 +407,13 @@ export const HEIGHT = /(\d+[.,]\d+)\s*m\b/i;
 export const measurement = (text: string) => WEIGHT.test(text) || HEIGHT.test(text);
 
 /**
- * What a name may be made of after OCR. `%` and `*` are here because a nickname can be made of them, and stripping them
- * left `96` for `96%` and `Steve` for `** Steve`; the gender signs because two species' own names carry one. Tesseract
- * does read a `*` out of sparkles and icons, but not on the line a name is taken from: over 770 detail captures it reads
- * one into 124 other lines on 95 of them, and into no name line but `budew-asterisks.png`'s.
+ * What a name may be made of after OCR. `%`, `*` and `#` are here because a nickname can be made of them, and stripping
+ * them left `96` for `96%`, `Steve` for `** Steve` and nothing at all for `##`; the gender signs because two species'
+ * own names carry one. Tesseract does read a `*` out of sparkles and icons, but not on the line a name is taken from:
+ * over 770 detail captures it reads one into 124 other lines on 95 of them, and into no name line but
+ * `budew-asterisks.png`'s. A `#` is the same, measured where the name line is chosen.
  */
-const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%*♀♂:-]/gu, '').trim() || null;
+const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%*#♀♂:-]/gu, '').trim() || null;
 
 /**
  * The name read off the band between the artwork and the HP bar, answered only where it is a species' name, which is
