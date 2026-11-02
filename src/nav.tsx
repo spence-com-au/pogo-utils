@@ -6,6 +6,8 @@
  * edits and getting one wrong showed as two current tabs or none.
  */
 
+import { useEffect, useRef } from 'preact/hooks';
+
 import { Notices } from './notices.js';
 import { Phone } from './phone.js';
 import { PAGES, toHash, type Page } from './router.js';
@@ -20,9 +22,32 @@ import { Settings } from './settings.js';
  * class.
  */
 export function Nav({ current }: { current: Page }) {
+  const nav = useRef<HTMLElement>(null);
+
+  /**
+   * Bring the open tab into view where the tabs scroll, as on a narrow phone, so the one marked current is never the
+   * one scrolled off the end. The bar's own `scrollLeft` rather than `scrollIntoView`, which would scroll the page too.
+   */
+  useEffect(() => {
+    const bar = nav.current;
+    const tab = bar?.querySelector<HTMLElement>('[aria-current="page"]');
+
+    if (!bar || !tab) {
+      return;
+    }
+
+    const left = tab.offsetLeft - bar.offsetLeft;
+
+    if (left < bar.scrollLeft) {
+      bar.scrollLeft = left;
+    } else if (left + tab.offsetWidth > bar.scrollLeft + bar.clientWidth) {
+      bar.scrollLeft = left + tab.offsetWidth - bar.clientWidth;
+    }
+  }, [current]);
+
   return (
     <div class="topbar">
-      <nav class="topnav">
+      <nav class="topnav" ref={nav}>
         {PAGES.map(({ name, label, icon }) => (
           <a
             key={name}

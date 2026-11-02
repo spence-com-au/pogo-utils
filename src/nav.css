@@ -84,6 +84,19 @@
   display: flex;
 }
 
+/**
+ * A rule between the tabs and the controls, so the bar reads as two groups rather than one run of icons — which on a
+ * phone, with the labels gone, is all either is.
+ */
+.topnav + .menu::before {
+  content: '';
+  align-self: center;
+  width: 1px;
+  height: 24px;
+  margin-right: 4px;
+  background: var(--border);
+}
+
 .menu-toggle {
   position: relative;
   display: inline-flex;
@@ -103,6 +116,20 @@
 .menu-toggle:hover,
 .menu-toggle[aria-expanded='true'] {
   color: var(--text);
+}
+
+/**
+ * The phone control with no phone held: greyed and faded, so the one in colour with a dot reads as connected beside it
+ * without either needing a word. An emoji takes no `color`, so a filter is what can grey it.
+ */
+.phone-none .phone-icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.phone-none:hover .phone-icon,
+.phone-none:focus-visible .phone-icon {
+  opacity: 0.8;
 }
 
 /**
@@ -312,16 +339,28 @@
  */
 @media (width <= 560px) {
   .topnav {
-    padding: 0 4px;
+    gap: 0;
+    padding: 0 2px;
   }
 
   .menu-toggle {
-    padding: 0 10px;
+    padding: 0 6px;
   }
 
+  /**
+   * Seven tabs and three controls fit 360px at this padding, the narrowest phone width in common use. Narrower still,
+   * the tabs scroll, and `Nav` keeps the open one in view; wider, they share what is spare rather than leaving it in
+   * one gap before the controls.
+   */
   .topnav .tab {
+    flex: 1 0 auto;
+    justify-content: center;
     gap: 6px;
-    padding: 13px 12px;
+    padding: 13px 6px;
+  }
+
+  .topnav + .menu::before {
+    margin-right: 2px;
   }
 
   /**

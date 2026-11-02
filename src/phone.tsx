@@ -1,7 +1,8 @@
 /**
  * The phone control in the top bar, between the notifications and the settings, on every tab: a phone that, pressed,
  * offers the browser's chooser to connect the Android phone held over WebUSB. Not a menu: connecting is the one thing
- * to do with it, so a press does it rather than opening a panel to press again in. A dot on it says a phone is held.
+ * to do with it, so a press does it rather than opening a panel to press again in. It is greyed out while no phone
+ * is held, and in colour with a green dot while one is, so the bar says which from any tab.
  * It lived on the Inventory page, then in the settings panel once the Search page used it too, and has a control of
  * its own now that the Battle tab uses it as well.
  *
@@ -121,8 +122,17 @@ export function Phone() {
 
   return (
     <div class="menu phone" ref={root}>
-      <button type="button" class="menu-toggle" aria-label={label} title={label} disabled={connecting} onClick={press}>
-        <span aria-hidden="true">📱</span>
+      <button
+        type="button"
+        class={phone ? 'menu-toggle' : 'menu-toggle phone-none'}
+        aria-label={label}
+        title={label}
+        disabled={connecting}
+        onClick={press}
+      >
+        <span class="phone-icon" aria-hidden="true">
+          📱
+        </span>
         {/* A dot rather than a count, there being one phone at most: lit while one is held, so the bar says so. */}
         {phone && <span class="phone-held" aria-hidden="true" />}
       </button>
