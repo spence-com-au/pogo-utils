@@ -524,9 +524,18 @@ export async function walk<R extends { key: string | null }>(
       const key = await look(landed);
       await swipe(1, k);
       ends = [...possible.keys()];
+      const before = possible;
       possible = worlds();
 
       if (key === null) {
+        break;
+      }
+
+      // A look that rules out no world and teaches none of them anything leaves the walk where it was, and the next
+      // look would land on the same place: a read that missed the overlay, say, where the worlds differ only in IVs.
+      const learnt = [...possible].some(([end, { at, known }]) => known.get(Math.max(at - k, 0)) !== landed.get(end));
+
+      if (possible.size === before.size && !learnt) {
         break;
       }
     }

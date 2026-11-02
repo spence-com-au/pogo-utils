@@ -536,3 +536,37 @@ test('a twin of the last row written, starting the pass, is not skipped', async 
 
   expect(await landed(twins, 20, [4])).toStrictEqual({ position: 20, off: 1 });
 });
+
+test('a look back that misses the overlay where the worlds differ only in IVs stops looking, rather than loop', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const keys = ['a|50|1.5|0.4|1/1/1', 'a|50|1.5|0.4|2/2/2', 'a|50|1.5|0.4|2/2/2'];
+  let at = 0;
+  let reads = 0;
+  const seen = new Set<number>();
+  const visited: [string | null, number][] = [];
+
+  await walk(
+    {
+      // The first twin reads its IVs once; every look back at it after that misses the overlay.
+      read: async () => {
+        if (++reads > 50) {
+          throw new Error('the walk is looking back at the same place for ever');
+        }
+
+        const key = keys[at] ?? null;
+        const blind = at === 1 && seen.has(1);
+        seen.add(at);
+        return { key: blind && key ? key.slice(0, key.lastIndexOf('|') + 1) : key };
+      },
+      next: async () => void (at = Math.min(at + 1, keys.length - 1)),
+      back: async () => void (at = Math.max(at - 1, 0)),
+    },
+    async ({ key }) => void visited.push([key, at]),
+    Infinity,
+    0,
+  );
+
+  expect(visited.map(([, place]) => place)).toEqual([0, 1]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
+  error.mockRestore();
+});
