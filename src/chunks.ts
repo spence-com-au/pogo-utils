@@ -13,9 +13,10 @@
 const RELOADED = 'chunks:reloaded';
 
 /**
- * Whether this document is a reload a failed import asked for. Read once as it starts and cleared, so that a reader
- * reloading it themselves, or the next deploy this one outlives, gets another try. Where storage is blocked
- * `sessionStorage` throws rather than answer, and a reload that could not be marked is never made.
+ * Whether this document is a reload a failed import asked for. Read once as it starts and cleared, so that the document
+ * after it, reloaded by the reader or opened in a new tab, gets another try. This one reports every failure for as long
+ * as it stays open, a later deploy's included. Where storage is blocked `sessionStorage` throws rather than answer, and
+ * a reload that could not be marked is never made.
  */
 const reloaded = (() => {
   try {
