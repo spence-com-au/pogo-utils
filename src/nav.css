@@ -8,11 +8,12 @@
  */
 
 /**
- * The bar itself, holding the tabs and the notifications and settings controls beside them. The background and rule are
+ * The bar itself, holding the tabs and the notifications, phone and settings controls beside them. The background and rule are
  * drawn here rather than on the tabs, so they run under all of it.
  *
  * Positioned so the panels its menus open hang from its right edge rather than each from its own control: the bell sits
- * a gear's width in from the edge, and a phone-wide panel anchored to it would run that far off the left of the screen.
+ * two controls' width in from the edge, and a phone-wide panel anchored to it would run that far off the left of the
+ * screen.
  */
 .topbar {
   position: relative;
@@ -76,12 +77,25 @@
 }
 
 /**
- * The notifications and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels they
+ * The notifications, phone and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels they
  * open are not clipped by it.
  */
 .menu {
   flex: 0 0 auto;
   display: flex;
+}
+
+/**
+ * A rule between the tabs and the controls, so the bar reads as two groups rather than one run of icons — which on a
+ * phone, with the labels gone, is all either is.
+ */
+.topnav + .menu::before {
+  content: '';
+  align-self: center;
+  width: 1px;
+  height: 24px;
+  margin-right: 4px;
+  background: var(--border);
 }
 
 .menu-toggle {
@@ -96,9 +110,49 @@
   cursor: pointer;
 }
 
+.menu-toggle:disabled {
+  cursor: progress;
+}
+
 .menu-toggle:hover,
 .menu-toggle[aria-expanded='true'] {
   color: var(--text);
+}
+
+/**
+ * The phone control with no phone held: greyed and faded, so the one in colour with a dot reads as connected beside it
+ * without either needing a word. An emoji takes no `color`, so a filter is what can grey it.
+ */
+.phone-none .phone-icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.phone-none:hover .phone-icon,
+.phone-none:focus-visible .phone-icon {
+  opacity: 0.8;
+}
+
+/**
+ * Lit on the phone control while a phone, the demo's included, is held: the bar says so from any tab without opening
+ * the panel.
+ */
+.phone-held {
+  position: absolute;
+  top: 11px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--start);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+/** What the last press of the phone control has to say: the chooser to look for, or why it did not connect. */
+.phone-note p {
+  margin: 0;
+  padding: 10px 12px;
+  line-height: 1.5;
 }
 
 .notices-count {
@@ -284,16 +338,28 @@
  */
 @media (width <= 560px) {
   .topnav {
-    padding: 0 4px;
+    gap: 0;
+    padding: 0 2px;
   }
 
   .menu-toggle {
-    padding: 0 10px;
+    padding: 0 6px;
   }
 
+  /**
+   * Seven tabs and three controls fit 360px at this padding, the narrowest phone width in common use. Narrower still,
+   * the tabs scroll, and `Nav` keeps the open one in view; wider, they share what is spare rather than leaving it in
+   * one gap before the controls.
+   */
   .topnav .tab {
+    flex: 1 0 auto;
+    justify-content: center;
     gap: 6px;
-    padding: 13px 12px;
+    padding: 13px 6px;
+  }
+
+  .topnav + .menu::before {
+    margin-right: 2px;
   }
 
   /**

@@ -281,7 +281,7 @@ test('leaves a phone connected during the run held, not reopening the lent one',
   expect(reconnect).not.toHaveBeenCalled();
 });
 
-test('takes the lent phone back over the demo phone, which the menu offers while none is held', async () => {
+test('takes the lent phone back over the demo phone, which the phone button holds under ?demo while none is held', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
   const { store, start, reconnect, back } = await setUp(log, () => Promise.resolve(there.connection));

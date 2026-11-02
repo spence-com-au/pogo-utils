@@ -1,6 +1,6 @@
 /**
  * The Battle page: Team Leader training or GO Battle League battles played on the phone, as `pnpm battle run` plays
- * them, from the browser. The phone connected from the settings menu is lent to the battle's Worker for the run, which
+ * them, from the browser. The phone connected from the phone button is lent to the battle's Worker for the run, which
  * plays it there, where a hidden tab's timers are not held back, and tells the page what it does: how the run stands,
  * the two sides of the battle, what each does and the menus it taps through, drawn as the terminal draws its panel,
  * with the phone's screen beside them.
@@ -289,7 +289,7 @@ export default function BattlePage() {
           ? 'Ready to play on the demo phone: a recorded Training battle, which plays the same whatever is tapped.'
           : phone
             ? `Ready to play on ${phone.name}.`
-            : 'No phone connected: connect one from Settings (⚙️ in the top bar).';
+            : 'No phone connected: connect one with 📱 in the top bar.';
 
   return (
     <>

@@ -1,19 +1,16 @@
 /**
  * The settings control at the end of the top bar, beside the notifications, on every tab: a gear that opens a panel
- * for what belongs to the browser rather than to any one page. So far that is two things. The backup of everything this
- * app keeps in `localStorage` — export it as a file, or import one back — lived on the Events page while the events
+ * for what belongs to the browser rather than to any one page. So far that is the backup of everything this app keeps
+ * in `localStorage` — export it as a file, or import one back — which lived on the Events page while the events
  * preferences were the only thing stored, and moved here once other tabs had choices of their own worth carrying. The
- * phone held over WebUSB lived on the Inventory page, and moved here once the Search page used it too.
+ * phone held over WebUSB was here too, and has a control of its own in the bar now, in `phone.tsx`.
  */
 
 import { useRef, useState } from 'preact/hooks';
 
 import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBackup } from './backup.js';
-import { putBack } from './battle/awake.js';
-import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
-import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
 
 /**
@@ -48,77 +45,7 @@ export function Settings() {
    */
   const picker = useRef<HTMLInputElement>(null);
 
-  const phone = usePhone();
-  const demo = phone?.serial === DEMO_SERIAL;
-
-  /**
-   * What the last attempt to connect a phone has to say, or null once there is nothing to add to the phone held.
-   * `failed` marks a failed connection, the one time it points to WebADB, a shell over the same WebUSB to find out why:
-   * kept on the message rather than beside it, so the link cannot outlive the message it explains.
-   */
-  const [phoneStatus, setPhoneStatus] = useState<{ message: string; failed?: boolean } | null>(null);
-  const [connecting, setConnecting] = useState(false);
-
   useDismiss(open, () => setOpen(false), root);
-
-  /**
-   * Offer the browser's chooser and hold whatever is picked. `webusb.ts` is fetched only now: it brings Tango, which
-   * would otherwise load on every tab for a menu most visits never open. A browser with no WebUSB finds out here too,
-   * `connect` refusing with the reason.
-   */
-  async function connectPhone() {
-    setConnecting(true);
-    setPhoneStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
-
-    try {
-      const { connect } = await loadChunk(() => import('./inventory/webusb.js'));
-      const picked = await connect();
-
-      // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
-      if (picked === null) {
-        setPhoneStatus(phoneStore.phone ? null : { message: 'No phone was picked.' });
-        return;
-      }
-
-      await phoneStore.hold(picked);
-      setPhoneStatus(null);
-
-      // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
-      await putBack(picked).catch((e: unknown) =>
-        setPhoneStatus({ message: `Could not put back the setting a battle kept the phone awake by: ${said(e)}` }),
-      );
-    } catch (e) {
-      // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
-      setPhoneStatus({ message: `Could not connect: ${said(e)}`, failed: 'usb' in navigator });
-    } finally {
-      setConnecting(false);
-    }
-  }
-
-  /**
-   * Hold the demo phone, or put it away. Never in place of a real one, which may be partway through something: the
-   * buttons below see to the one held, Connect waiting on the demo and the demo on a phone let go, and `lend` to one
-   * lent to a battle, which nothing is held in place of, by taking it back over the demo once the battle ends.
-   */
-  async function toggleDemo() {
-    setPhoneStatus(null);
-
-    try {
-      if (phone?.serial === DEMO_SERIAL) {
-        await phone.close();
-      } else {
-        const { demoPhone } = await loadChunk(() => import('./inventory/demo.js'));
-
-        // Asked again once the module is in, which a first use waits on: a phone picked in the chooser meanwhile, or
-        // taken back by a battle that ended, is real, and `hold` would close it.
-        if (phoneStore.phone === null) {
-          await phoneStore.hold(demoPhone());
-        }
-      }
-    } catch (e) {
-      setPhoneStatus({ message: `Could not start the demo: ${said(e)}` });
-    }
-  }
 
   /**
    * Hand the saved preferences over as a file. A storage failure is reported rather than swallowed: `writeBackup` lets
@@ -244,48 +171,6 @@ export function Settings() {
            */}
           <p class="settings-status" aria-live="polite">
             {status}
-          </p>
-        </section>
-
-        <section class="settings-section" aria-labelledby="settings-phone">
-          <h2 id="settings-phone">Phone</h2>
-          <p class="settings-note">
-            Connect an Android phone with USB debugging on. Close any <code>adb</code> server first.
-          </p>
-
-          <div class="settings-actions">
-            <button
-              type="button"
-              disabled={connecting || demo}
-              title={demo ? 'Put the demo phone away first' : undefined}
-              onClick={() => void connectPhone()}
-            >
-              {phone && !demo ? 'Connect another phone' : 'Connect a phone'}
-            </button>
-            <button
-              type="button"
-              disabled={connecting || (phone !== null && !demo)}
-              title={phone && !demo ? 'Only with no phone connected' : undefined}
-              onClick={() => void toggleDemo()}
-            >
-              {demo ? 'Put the demo phone away' : 'Use a demo phone'}
-            </button>
-          </div>
-
-          {/* Present from the first render, for the reason the backup's status above is. */}
-          <p class="settings-status" aria-live="polite">
-            {phoneStatus?.message ??
-              (demo
-                ? 'Using the demo phone: the tabs read recorded screens, not your account.'
-                : phone
-                  ? `Connected to ${phone.name}.`
-                  : null)}
-            {phoneStatus?.failed && (
-              <>
-                {' '}
-                <a href="https://webadb.com/">WebADB</a> can help find out why.
-              </>
-            )}
           </p>
         </section>
       </div>

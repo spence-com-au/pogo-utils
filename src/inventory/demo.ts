@@ -3,7 +3,7 @@
  * connected over WebUSB, so the Inventory and Search pages run their real readers against it and know nothing of the
  * difference. Its screen is `demoTransport`'s, the recordings fetched as each is first shown.
  *
- * Fetched by the settings menu only once the demo is asked for, bringing the readers with it, which the pages fetch
+ * Fetched by the phone button only once the demo is asked for, behind `?demo`, bringing the readers with it, which the pages fetch
  * for themselves the first time they read a phone anyway.
  */
 

@@ -7,7 +7,7 @@ application and reached from a shared top tab bar:
   subscription.
 - **Map** (`#/map`) — an interactive map of GPX walking tracks and teleport waypoints.
 - **Search** (`#/search`) — a builder for the strings the game's own Pokémon search box takes, which it can type into
-  that box itself on a phone connected from the settings menu.
+  that box itself on a phone connected with 📱 in the top bar.
 - **Pokédex** (`#/pokedex`) — every species and its forms: what is in the game, which have a shiny and which hunts still
   want it.
 - **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, a Live
@@ -15,8 +15,8 @@ application and reached from a shared top tab bar:
   [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
 - **Inventory** (`#/inventory`) — one Pokémon's detail screen read end to end, off a phone over WebUSB or from a saved
   screenshot: what [`pnpm inventory parse`](#pokémon-inventory) prints, without installing anything.
-- **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected from the
-  settings menu, as [`pnpm battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
+- **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected with 📱 in the
+  top bar, as [`pnpm battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
 
 **➡️ [Open the site](https://spence.com.au/pogo-utils/)**
 
@@ -562,13 +562,17 @@ Chromium API, so Chrome or Edge, and a phone an `adb` server on the same compute
 `adb kill-server` first. Where the connection will not come up, [WebADB](https://webadb.com/) is a shell over the same
 WebUSB to find out why; it is a hosted app rather than a library, which is why the site imports Tango instead.
 
-The phone is connected from the settings menu (⚙️ in the top bar) rather than from any one page, and the connection
-outlives the tab it was made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until the phone is
-unplugged, so `adb` cannot reach the phone until then or until the site is closed. That is what the Search page's
-**Search** button uses. Beside **Copy** while a phone is held, it drives storage the way `snap --search` does, through
-the same [`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front,
-storage opened from the map or a detail screen, the string typed into the box, and the game's own count of what matched
-reported back. The OCR it finds its way with is fetched on the first press rather than with the page.
+The phone is connected with 📱 in the top bar rather than from any one page, and the connection outlives the tab it was
+made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until the phone is unplugged, so `adb`
+cannot reach the phone until then or until the site is closed. That is what the Search page's **Search** button uses.
+Beside **Copy** while a phone is held, it drives storage the way `snap --search` does, through the same
+[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front, storage opened
+from the map or a detail screen, the string typed into the box, and the game's own count of what matched reported back.
+The OCR it finds its way with is fetched on the first press rather than with the page.
+
+With no phone to hand, `?demo` in the address (`/?demo#/inventory`) makes the same button hold a demo phone instead,
+which answers from recorded screens rather than an account, so each tab can be tried without one; a second press puts it
+away. It is kept out of the standard bar, being for trying the site rather than using it.
 
 The readers run in the browser unchanged. [`png.mts`](src/tools/inventory/png.mts) decodes with
 [fflate](https://github.com/101arrowz/fflate) rather than `node:zlib`, keeping both the `Viewport` chunk a stitch
