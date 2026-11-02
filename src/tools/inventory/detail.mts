@@ -402,10 +402,12 @@ export const HEIGHT = /(\d+[.,]\d+)\s*m\b/i;
 export const measurement = (text: string) => WEIGHT.test(text) || HEIGHT.test(text);
 
 /**
- * What a name may be made of after OCR. `%` is here because it is a character a nickname can be made of, and stripping
- * it left `96` for `96%`; the gender signs because two species' own names carry one.
+ * What a name may be made of after OCR. `%` and `*` are here because a nickname can be made of them, and stripping them
+ * left `96` for `96%` and `Steve` for `** Steve`; the gender signs because two species' own names carry one. Tesseract
+ * does read a `*` out of sparkles and icons, but not on the line a name is taken from: over 770 detail captures it reads
+ * one into 124 other lines on 95 of them, and into no name line but `budew-asterisks.png`'s.
  */
-const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%♀♂:-]/gu, '').trim() || null;
+const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%*♀♂:-]/gu, '').trim() || null;
 
 /**
  * The name read off the band between the artwork and the HP bar, answered only where it is a species' name, which is
