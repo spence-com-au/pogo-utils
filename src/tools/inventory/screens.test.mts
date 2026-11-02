@@ -21,7 +21,7 @@ import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail, readLines } from './detail.mts';
-import { clearable, identify, label } from './identify.mts';
+import { clearable, identify, label, shadowOf } from './identify.mts';
 import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
@@ -1739,6 +1739,32 @@ test(
 );
 
 /**
+ * Whether each capture is shadow, purified or neither, as `shadowOf` reads it off the stardust the `POWER UP` row asks,
+ * against what its row states: the two shadows, the purified Snorlax, and every other row that it is neither. Any it
+ * says nothing about are named, so a capture joining them is a reader that stopped reading a figure.
+ */
+test(
+  'the stardust to power up says which captures are shadow and which purified',
+  async () => {
+    const silent: string[] = [];
+
+    for (const fixture of FIXTURES) {
+      const { detail, identity } = await readingOf(fixture.file);
+      const shade = shadowOf(DATA, detail, identity.levels);
+
+      if (shade === null) {
+        silent.push(fixture.file);
+      } else {
+        expect(shade, fixture.file).toBe(fixture.shadow ? 'shadow' : fixture.purified ? 'purified' : 'neither');
+      }
+    }
+
+    expect(silent, 'which captures the stardust says nothing about has changed').toStrictEqual([]);
+  },
+  WHOLE_CORPUS_TIMEOUT,
+);
+
+/**
  * Which captures the `EVOLVE` row's candy is read off, and what — each checked by eye against the screen, the rows
  * stating no candy of their own. The whole map for the reason the CP's is one: a reader losing one capture and gaining
  * another cannot come out even. Every capture absent from it draws no `EVOLVE` row on its first screen, a legendary or
@@ -2174,6 +2200,7 @@ test('overworld.png is the map, and every reader declines it', async () => {
     height: null,
     hp: null,
     name: null,
+    powerUp: null,
     size: null,
     tags: [],
     types: [],

@@ -6,7 +6,7 @@
  * Three readings. `pumpkaboo-large.png`'s is a level 1 Pumpkaboo at 2/0/6, where a Large and a Super both show 14 HP
  * and CP 14 and only the height tells them apart. `sinistea-phony.png`'s is one every form of Sinistea fits equally:
  * Phony and Antique share a dex, a type and all three base stats, and the `EVOLVE` row's candy is the only thing on the
- * screen that parts them. And an ordinary Lugia's, which only the scan's shadow and purified passes part from its Apex
+ * screen that parts them. And an ordinary Lugia's, which only the stardust its `POWER UP` row asks parts from its Apex
  * form.
  */
 
@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type Detail } from './detail.mts';
 import { type Form, type GameData } from './game-master.mts';
-import { identify, label } from './identify.mts';
+import { identify, label, shadowOf } from './identify.mts';
 import { type Overlay } from './overlay.mts';
 
 /** The game master the readers are asserted against, vended beside the captures. */
@@ -35,6 +35,7 @@ const pumpkaboo = (height: number | null, size: Detail['size']): Detail => ({
   size,
   tags: [],
   evolveCandy: null,
+  powerUp: null,
 });
 
 const answer = (detail: Detail) => {
@@ -92,6 +93,7 @@ const SINISTEA: Detail = {
   size: null,
   tags: [],
   evolveCandy: 50,
+  powerUp: null,
 };
 
 const OVERLAY: Overlay = { levels: [15], iv: { attack: 11, defense: 11, stamina: 12 }, checked: true, form: null };
@@ -256,6 +258,7 @@ const LUGIA: Detail = {
   size: null,
   tags: [],
   evolveCandy: null,
+  powerUp: 1900,
 };
 
 const LUGIA_OVERLAY: Overlay = {
@@ -265,7 +268,7 @@ const LUGIA_OVERLAY: Overlay = {
   form: null,
 };
 
-/** The answer, the forms beside it and the notes for that Lugia, as the shadow and purified passes left it. */
+/** The answer, the forms beside it and the notes for that Lugia, as `shadowed` leaves it. */
 const lugia = (shadowed: boolean | null) => {
   const identity = identify(DATA, LUGIA, LUGIA_OVERLAY, undefined, null, shadowed);
 
@@ -281,8 +284,8 @@ test('the forms the game hands out only as shadows are the two Apex ones', () =>
 });
 
 /**
- * The Apex form is ruled out only where the passes said the Pokémon is neither shadow nor purified. A shadow Lugia, a
- * purified one or one no pass asked about can still be it, and nothing on the screen says which.
+ * The Apex form is ruled out only where the Pokémon is known to be neither shadow nor purified. A shadow Lugia, a
+ * purified one or one nothing has said about can still be it.
  */
 test('a Lugia neither shadow nor purified is not its Apex form', () => {
   expect(lugia(false)).toStrictEqual({ form: 'Lugia', unseparated: [], notes: [] });
@@ -295,4 +298,33 @@ test('a Lugia neither shadow nor purified is not its Apex form', () => {
 
   expect(lugia(true)).toStrictEqual(either);
   expect(lugia(null)).toStrictEqual(either);
+});
+
+/**
+ * The stardust a power-up asks at the Lugia's level 15, where the game master's figure is 1,900: as it is for neither,
+ * 1.2 times it rounded up for a shadow, 0.9 times it for a purified Pokémon and half for a lucky one. Pancham's level 8
+ * is the figure that settles the rounding, its shadow asking 961 for 800 × 1.2.
+ */
+test('the stardust to power up says whether the Pokémon is shadow or purified', () => {
+  const shade = (powerUp: number | null, levels = [15]) => shadowOf(DATA, { ...LUGIA, powerUp }, levels);
+
+  expect(shade(1900)).toBe('neither');
+  expect(shade(950)).toBe('neither');
+  expect(shade(2280)).toBe('shadow');
+  expect(shade(1710)).toBe('purified');
+  expect(shade(961, [8])).toBe('shadow');
+  expect(shade(960, [8]), 'a shadow’s cost is rounded up in single precision').toBeNull();
+  expect(shade(1900, [15, 15.5])).toBe('neither');
+});
+
+/** Where the figure is unread, matches none of the costs, or the levels left would cost different amounts. */
+test('the stardust says nothing where it cannot say which', () => {
+  const shade = (powerUp: number | null, levels = [15]) => shadowOf(DATA, { ...LUGIA, powerUp }, levels);
+
+  expect(shade(null)).toBeNull();
+  expect(shade(1900, [])).toBeNull();
+  expect(shade(1000)).toBeNull();
+  expect(shade(855), 'a lucky purified Pokémon, which no capture shows').toBeNull();
+  expect(shade(1900, [14, 15])).toBeNull();
+  expect(shade(1900, [51])).toBeNull();
 });

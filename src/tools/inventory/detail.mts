@@ -52,6 +52,13 @@ export interface Detail {
    * Null where the screen draws no such row, as for a Pokémon that does not evolve, and where its figure was not read.
    */
   evolveCandy: number | null;
+
+  /**
+   * The stardust the `POWER UP` row asks for, which is the game master's cost at the Pokémon's level times whatever
+   * being shadow, purified or lucky makes it — the only thing on the plain screen that says which of the first two it
+   * is. Null where the screen draws no such row, and where its figure was not read.
+   */
+  powerUp: number | null;
 }
 
 /** Everything OCR read off an image: the whole of it, then the top fifth again inverted, where the CP is white. */
@@ -233,7 +240,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, evolveCandy] = await Promise.all([
+  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons] = await Promise.all([
     whole,
     rescued,
     weight,
@@ -242,7 +249,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     cpLine ? [] : cpsIn(image),
     typesOf(lines, data, image),
     hpLine && row ? tagsOn(image, hpLine, row) : [],
-    row ? evolveCandyOn(image, row) : null,
+    row ? buttonsOn(image, row) : null,
   ]);
 
   // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
@@ -261,7 +268,8 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     favourite: isFavourite(image),
     size: sized?.size ?? null,
     tags,
-    evolveCandy,
+    evolveCandy: buttons?.evolveCandy ?? null,
+    powerUp: buttons?.powerUp ?? null,
   };
 }
 
@@ -531,19 +539,22 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
 }
 
 /**
- * The candy the `EVOLVE` row asks for, off the rows of buttons under the measurement row. The whole-screen pass is no
- * use for finding it: white capitals on a green pill, it reads `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan
- * kept, and the figure beside it as `S50` or `225`, the candy icon taken for a digit. So the rows are found by their
- * pills, each pill's label is read on its own, and the figure is cut out of the row by its columns of ink before it is
- * read — the rightmost number in the row, which is the candy whether an item, a trade or a time of day is asked for
- * beside it.
+ * What the rows of buttons under the measurement row ask for: the candy the `EVOLVE` row does, and the stardust the
+ * `POWER UP` row does. The whole-screen pass is no use for finding either: white capitals on a green pill, it reads
+ * `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan kept, and the figure beside it as `S50` or `225`, the candy
+ * icon taken for a digit. So the rows are found by their pills, each pill's label is read on its own, and the figure
+ * is cut out of the row by its columns of ink before it is read.
  *
- * Every button row is a pill, `POWER UP` and `NEW ATTACK` as much as `EVOLVE`, which is why the label is read: the row
- * moves with what the panel holds above it, a mega energy count pushing it 185 pixels down on a Pixel 4 XL, and with
- * whether a `POWER UP` comes first at all. The first `EVOLVE` row whose figure reads is the answer, a species with a
- * branch per item drawing one row per branch.
+ * Every button row is a pill, `PURIFY` and `NEW ATTACK` as much as `EVOLVE`, which is why the label is read: the rows
+ * move with what the panel holds above them, a mega energy count pushing them 185 pixels down on a Pixel 4 XL, and a
+ * shadow's `PURIFY` comes ahead of its `POWER UP`. The candy is the rightmost number in its row, whether an item, a
+ * trade or a time of day is asked for beside it, and the first `EVOLVE` row whose figure reads is the answer, a species
+ * with a branch per item drawing one row per branch. The stardust is the first number in its row, past its icon.
  */
-export async function evolveCandyOn(image: Image, row: Line): Promise<number | null> {
+export async function buttonsOn(
+  image: Image,
+  row: Line,
+): Promise<{ evolveCandy: number | null; powerUp: number | null }> {
   const found = pills(image, row.top + row.height);
   const labels = await Promise.all(
     found.map((pill) => {
@@ -552,33 +563,45 @@ export async function evolveCandyOn(image: Image, row: Line): Promise<number | n
       return ocrLine(scale(isolate(label, LABEL_WHITE.luminance, LABEL_WHITE.chroma), 2), LABEL_ALPHABET);
     }),
   );
+  const labelled = (name: string) => found.filter((_, i) => closest(labels[i] ?? '', [name], (s) => s) !== null);
 
-  for (const [i, pill] of found.entries()) {
-    const span = closest(labels[i] ?? '', ['EVOLVE'], (s) => s) === null ? null : figureIn(image, pill);
+  let evolveCandy: number | null = null;
 
-    if (span === null) {
-      continue;
-    }
+  for (const pill of labelled('EVOLVE')) {
+    evolveCandy = await figureOn(image, pill, false);
 
-    // Cropped to the middle of the pill the ink was measured in, and no further either side than a gap could be: a
-    // wider band takes in an edge of the candy icon, which reads as a leading digit, and a taller one the floating
-    // menu button's rim where the row sits low enough to reach it — `30` for a `50` with the rim in the corner.
-    const margin = pill.height * FIGURE_GAP;
-    const band = crop(
-      image,
-      span.left - margin,
-      pill.top + pill.height * INK_BAND.from,
-      span.right - span.left + margin * 2,
-      pill.height * (INK_BAND.to - INK_BAND.from),
-    );
-    const digits = ((await ocrLine(scale(band, 2), '0123456789,')) ?? '').replaceAll(',', '');
-
-    if (/^\d+$/.test(digits)) {
-      return Number(digits);
+    if (evolveCandy !== null) {
+      break;
     }
   }
 
-  return null;
+  const [power] = labelled('POWER UP');
+
+  return { evolveCandy, powerUp: power ? await figureOn(image, power, true) : null };
+}
+
+/** The figure `figureIn` finds in a row, read; null where none is found or what is read is no number. */
+async function figureOn(image: Image, pill: Pill, first: boolean): Promise<number | null> {
+  const span = figureIn(image, pill, first);
+
+  if (span === null) {
+    return null;
+  }
+
+  // Cropped to the middle of the pill the ink was measured in, and no further either side than a gap could be: a
+  // wider band takes in an edge of the candy icon, which reads as a leading digit, and a taller one the floating menu
+  // button's rim where the row sits low enough to reach it — `30` for a `50` with the rim in the corner.
+  const margin = pill.height * FIGURE_GAP;
+  const band = crop(
+    image,
+    span.left - margin,
+    pill.top + pill.height * INK_BAND.from,
+    span.right - span.left + margin * 2,
+    pill.height * (INK_BAND.to - INK_BAND.from),
+  );
+  const digits = ((await ocrLine(scale(band, 2), '0123456789,')) ?? '').replaceAll(',', '');
+
+  return /^\d+$/.test(digits) ? Number(digits) : null;
 }
 
 /** A button row's pill, in the screen's rows. */
@@ -631,8 +654,12 @@ export function pills(image: Image, from: number): Pill[] {
  * height at most, and the one between a candy icon and its figure 0.12 at least. The gap is for a pale candy, whose
  * stripes alone are ink: the white one on a Pixel 4 XL breaks into glyphs of which the widest is 0.32, near enough to a
  * digit not to rely on width alone.
+ *
+ * `first` asks instead for the leftmost number, which in a `POWER UP` row is the stardust ahead of the candy. The
+ * stardust icon before it is a narrow glyph standing a gap apart, so a number is taken only where it is at least as
+ * many glyphs as a power-up's cost can be.
  */
-export function figureIn(image: Image, pill: Pill): { left: number; right: number } | null {
+export function figureIn(image: Image, pill: Pill, first = false): { left: number; right: number } | null {
   const from = Math.round(image.width * PANEL.from);
   const to = Math.round(image.width * PANEL.to);
   const panel = rgb(image, from, pill.top + pill.height / 2);
@@ -657,24 +684,28 @@ export function figureIn(image: Image, pill: Pill): { left: number; right: numbe
   }
 
   const narrow = (g: { left: number; right: number }) => g.right - g.left <= pill.height * DIGIT_WIDTH;
-  const end = glyphs.findLastIndex(narrow);
-  const last = glyphs[end];
 
-  if (last === undefined) {
-    return null;
-  }
+  // The runs of narrow glyphs, each ended by a wide one or a gap.
+  const runs: { left: number; right: number; glyphs: number }[] = [];
+  let open = false;
 
-  let left = last.left;
+  for (const glyph of glyphs) {
+    const run = runs.at(-1);
 
-  for (const glyph of glyphs.slice(0, end).reverse()) {
-    if (!narrow(glyph) || left - glyph.right >= pill.height * FIGURE_GAP) {
-      break;
+    if (!narrow(glyph)) {
+      open = false;
+    } else if (open && run && glyph.left - run.right < pill.height * FIGURE_GAP) {
+      run.right = glyph.right;
+      run.glyphs++;
+    } else {
+      runs.push({ ...glyph, glyphs: 1 });
+      open = true;
     }
-
-    left = glyph.left;
   }
 
-  return { left, right: last.right };
+  const run = first ? runs.find((r) => r.glyphs >= SHORTEST_COST) : runs.at(-1);
+
+  return run ? { left: run.left, right: run.right } : null;
 }
 
 /**
@@ -701,6 +732,9 @@ const INK_CONTRAST = 60;
 
 /** The widest a digit is, in its pill's height. */
 const DIGIT_WIDTH = 0.3;
+
+/** The fewest glyphs a power-up's stardust is drawn in, the cheapest being a lucky Pokémon's 100 at level 1. */
+const SHORTEST_COST = 3;
 
 /** The narrowest gap that ends a figure, in its pill's height, between the 0.05 inside one and an icon's 0.12. */
 const FIGURE_GAP = 0.08;

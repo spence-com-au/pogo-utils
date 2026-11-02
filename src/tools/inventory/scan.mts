@@ -5,6 +5,7 @@
  */
 
 import { type Detail } from './detail.mts';
+import { type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
 import { type Overlay } from './overlay.mts';
@@ -23,6 +24,38 @@ export function parseFlags(list: string): Flag[] {
   }
 
   return names as Flag[];
+}
+
+/** A yes-or-no column: blank where nothing answered it, rather than a `no` nothing checked. */
+export type Mark = 'yes' | 'no' | '';
+
+/**
+ * The `shadow` and `purified` columns, each from its search pass where that ran and from `shadow`, what the stardust to
+ * power up says, where it did not — with a note where both answered and disagree, the pass's answer being the one
+ * kept — and `identify`'s `shadowed` from the two together. Null where they disagree, one of them being wrong and
+ * nothing here saying which.
+ */
+export function shaded(
+  passes: Readonly<Record<'shadow' | 'purified', Mark>>,
+  shadow: Shade | null,
+): { shadow: Mark; purified: Mark; shadowed: boolean | null; notes: string[] } {
+  const notes: string[] = [];
+
+  const column = (f: 'shadow' | 'purified'): Mark => {
+    const seen = shadow === null ? '' : shadow === f ? 'yes' : 'no';
+
+    if (passes[f] !== '' && seen !== '' && passes[f] !== seen) {
+      notes.push(`the ${f} search says ${passes[f]}, where the stardust to power up says ${seen}`);
+    }
+
+    return passes[f] || seen;
+  };
+
+  const marks = { shadow: column('shadow'), purified: column('purified') };
+  const either = marks.shadow === 'yes' || marks.purified === 'yes';
+  const neither = marks.shadow === 'no' && marks.purified === 'no';
+
+  return { ...marks, shadowed: notes.length > 0 ? null : either ? true : neither ? false : null, notes };
 }
 
 /** A count option, checked here rather than left to turn into a `NaN` that quietly writes nothing after a long run. */

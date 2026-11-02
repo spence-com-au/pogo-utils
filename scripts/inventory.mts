@@ -8,8 +8,9 @@
  * The level and the three IVs come off PGSharp's own overlay, which is why the scanner needs PGSharp rather than the
  * stock client — nothing else gives the IVs without walking the appraisal dialogue every time. The form is worked out
  * rather than read, HP being fixed by base stamina, the stamina IV and the level; see `inventory/game-master.mts`.
- * Shiny, lucky and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
- * pass recognises by name, HP, weight, height and IVs together.
+ * Shadow and purified are worked out too, from the stardust a power-up costs at that level. Shiny, lucky and costume
+ * say nothing on the screen at all, so each is a search pass instead, whose matches the full pass recognises by name,
+ * HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where it is asked for.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
@@ -61,7 +62,7 @@ import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.
 import { parseDetail, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
-import { clearable, identify, type Identity } from '../src/tools/inventory/identify.mts';
+import { clearable, identify, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
@@ -89,9 +90,11 @@ import {
   parseFlags,
   reachMoves,
   reachOf,
+  shaded,
   shortfall,
   walk as stepThrough,
   type Flag,
+  type Mark,
   type Landmark,
 } from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
@@ -771,19 +774,23 @@ async function scan(held: Transport) {
       keep(`${name}-detail`, image);
 
       // Blank for a flag not asked for, or one whose pass would not read, rather than a `no` nothing checked.
-      const flag = (f: Flag) => {
+      const flag = (f: Flag): Mark => {
         const marks = marked.get(f);
 
         return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
       };
 
-      // Each taken once, since `take` uses the match up. Identified again where the two passes say whether this is
-      // shadow or purified, which is all that rules out a form the game only hands out as a shadow, and which the
-      // reading `walk` took could not know.
-      const shadow = flag('shadow');
-      const purified = flag('purified');
-      const shadowed =
-        shadow === 'yes' || purified === 'yes' ? true : shadow === 'no' && purified === 'no' ? false : null;
+      // Each pass's flag taken once, since `take` uses the match up. Identified again where the columns say whether
+      // this is shadow or purified, which is all that rules out a form the game only hands out as a shadow, and which
+      // the reading `walk` took could not know.
+      const {
+        shadow,
+        purified,
+        shadowed,
+        notes: disagreements,
+      } = shaded({ shadow: flag('shadow'), purified: flag('purified') }, shadowOf(data, detail, read.levels));
+      notes.push(...disagreements);
+
       const id =
         shadowed === null ? read : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shadowed);
 

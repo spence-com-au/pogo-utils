@@ -72,8 +72,8 @@ export interface Identity {
  * joining it, but the name still decides whether there is a **nickname**, so a Ho-Oh called `96%` keeps it. It says
  * nothing about the form.
  *
- * `shadowed` is whether the Pokémon is shadow or purified, which the scan's `shadow` and `purified` passes answer and
- * nothing here reads off the screen: null where they did not run.
+ * `shadowed` is whether the Pokémon is shadow or purified, which the scan's `shadow` and `purified` passes answer, and
+ * `shadowOf` where they did not run: null where neither says.
  */
 export function identify(
   data: GameData,
@@ -360,6 +360,34 @@ export function identify(
 
   return { form, cp, alternatives, unseparated, levels, nickname, notes };
 }
+
+/**
+ * Whether the screen says the Pokémon is shadow or purified, or neither, from the stardust its `POWER UP` row asks at
+ * the levels `identify` settled: a shadow's costs 1.2 times the game master's figure, a purified one's 0.9 and a lucky
+ * one's 0.5. Null where no figure was read, where the levels cost different amounts, and where the figure is none of
+ * these — an event changing the costs, a misread, or a lucky purified Pokémon, which no capture shows.
+ *
+ * The product is taken in single precision and rounded up, which is the one way of taking it that agrees with every
+ * screen: a shadow Pancham at level 8 asks 961 for 800 × 1.2, and a shadow Landorus at 20 asks 3,000 for 2,500 × 1.2.
+ */
+export function shadowOf(data: GameData, detail: Detail, levels: readonly number[]): Shade | null {
+  const { stardust, shadow, purified, lucky } = data.powerUp;
+
+  const at = (level: number): Shade | null => {
+    const cost = stardust[Math.floor(level) - 1];
+    const asks = (...by: number[]) =>
+      cost !== undefined && by.some((b) => Math.ceil(Math.fround(cost * Math.fround(b))) === detail.powerUp);
+
+    return asks(1, lucky) ? 'neither' : asks(purified) ? 'purified' : asks(shadow) ? 'shadow' : null;
+  };
+
+  const answers = new Set(levels.map(at));
+  const [answer = null] = answers;
+
+  return answers.size === 1 ? answer : null;
+}
+
+export type Shade = 'shadow' | 'purified' | 'neither';
 
 export function label(f: Form): string {
   return f.form ? `${f.species} (${f.form})` : f.species;

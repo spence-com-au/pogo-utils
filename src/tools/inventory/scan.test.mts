@@ -23,6 +23,7 @@ import {
   parseCsv,
   parseFlags,
   reachMoves,
+  shaded,
   shortfall,
   walk,
   type Landmark,
@@ -45,6 +46,7 @@ function detail(fields: Partial<Detail> = {}): Detail {
     size: null,
     tags: [],
     evolveCandy: null,
+    powerUp: null,
     ...fields,
   };
 }
@@ -756,4 +758,39 @@ test('a short reading on a screen that reaches past the moves is a misread, and 
 
   expect(moves).toStrictEqual({ fast: 'Psycho Cut', charged: [] });
   expect(steps).toStrictEqual([1]);
+});
+
+/** A default scan runs neither pass, so what the stardust says is both columns and `identify`'s `shadowed`. */
+test('the screen fills the shadow and purified columns no pass answered', () => {
+  const unasked = { shadow: '', purified: '' } as const;
+
+  expect(shaded(unasked, 'neither')).toStrictEqual({ shadow: 'no', purified: 'no', shadowed: false, notes: [] });
+  expect(shaded(unasked, 'shadow')).toStrictEqual({ shadow: 'yes', purified: 'no', shadowed: true, notes: [] });
+  expect(shaded(unasked, 'purified')).toStrictEqual({ shadow: 'no', purified: 'yes', shadowed: true, notes: [] });
+  expect(shaded(unasked, null)).toStrictEqual({ shadow: '', purified: '', shadowed: null, notes: [] });
+  expect(shaded({ shadow: '', purified: 'no' }, null), 'one pass alone cannot rule both out').toStrictEqual({
+    shadow: '',
+    purified: 'no',
+    shadowed: null,
+    notes: [],
+  });
+});
+
+/**
+ * The game's own search outranks the screen, and where they part it is noted rather than settled — so neither is
+ * trusted to rule out a form only a shadow can be.
+ */
+test('a pass that ran keeps its answer, and a disagreement with the screen is noted', () => {
+  expect(shaded({ shadow: 'yes', purified: 'no' }, 'shadow')).toStrictEqual({
+    shadow: 'yes',
+    purified: 'no',
+    shadowed: true,
+    notes: [],
+  });
+  expect(shaded({ shadow: 'no', purified: '' }, 'shadow')).toStrictEqual({
+    shadow: 'no',
+    purified: 'no',
+    shadowed: null,
+    notes: ['the shadow search says no, where the stardust to power up says yes'],
+  });
 });

@@ -198,6 +198,32 @@ test('a narrow glyph a gap away from the figure is no part of it, and one nearer
   });
 });
 
+/**
+ * A `POWER UP` row: the stardust icon, a narrow glyph standing a gap apart, then `3,000`, the candy and its `3`. A pale
+ * candy is ink only in its stripes, three glyphs as narrow as digits, and the stardust is still the first figure.
+ */
+test('the first figure is the stardust, past its icon and whatever the candy is drawn as', () => {
+  const stardust: [number, number, Rgb][] = [
+    [520, 15, [170, 90, 220]],
+    [545, 20, INK],
+    [567, 6, INK],
+    [575, 20, INK],
+    [597, 20, INK],
+    [619, 20, INK],
+  ];
+  const three: [number, number, Rgb] = [752, 21, INK];
+
+  expect(figureIn(row(...stardust, CANDY, three), PILL, true)).toStrictEqual({ left: 545, right: 639 });
+  expect(figureIn(row(...stardust, CANDY, three), PILL), 'the candy is still the last figure').toStrictEqual({
+    left: 752,
+    right: 773,
+  });
+
+  const stripes: [number, number, Rgb][] = [699, 711, 723].map((left) => [left, 8, INK]);
+
+  expect(figureIn(row(...stardust, ...stripes, three), PILL, true)).toStrictEqual({ left: 545, right: 639 });
+});
+
 test('a row with no narrow glyph has no figure', () => {
   expect(figureIn(row(CANDY), PILL)).toBeNull();
   expect(figureIn(row(), PILL)).toBeNull();
