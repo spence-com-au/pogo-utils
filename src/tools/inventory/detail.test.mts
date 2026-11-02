@@ -11,7 +11,7 @@
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
-import { cpOn, figureIn, joined, pills, readingsOf, rescue } from './detail.mts';
+import { cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
 import { type Line } from './ocr.mts';
 import { type Image } from './png.mts';
 import { expect, test } from 'vitest';
@@ -95,6 +95,45 @@ test('only digits abutting the line on its own row are joined to it', () => {
   for (const other of [line('69 HP', 498, 127, 99, 63), line('69', 498, 300, 99, 63), line('69', 600, 127, 99, 63)]) {
     expect(joined(label, [label, other]), `${other.text} at ${other.left},${other.top} was joined`).toBe(label);
   }
+});
+
+/**
+ * Two frames of the Lugia called `##`, from a live scan's `00014-detail.png` on a Pixel 4 XL, every line above the HP
+ * as `readLines` dumped it. The first reads the name as it is drawn; the second reads it as `HH`, which nothing admits,
+ * and left the overlay above it as the nearest line that would do, so the CSV wrote `L15 iw82 131410` for a nickname.
+ * Under the overlay there is nothing left, which is a blank nickname rather than a wrong one — the status bar's
+ * `10:06` above it being what a rule that only passed over the overlay's own line took instead.
+ */
+test('a name is never taken from PGSharp’s overlay or above it', () => {
+  const hp = line('126 / 126 HP', 607, 1458, 227, 31);
+  const read = [
+    line('8:40', 100, 32, 99, 36),
+    line('cpe155.', 494, 175, 306, 93),
+    line('L151v82 13/14/10', 504, 623, 417, 43),
+    line('DD te', 816, 1034, 214, 160),
+    line('2019', 1265, 1138, 114, 38),
+    line('20/06', 1270, 1204, 105, 29),
+    line('##', 665, 1288, 109, 69),
+    hp,
+  ];
+
+  expect(nameLineOf(read, hp)?.text, 'a name drawn as `##` is no longer read').toBe('##');
+
+  const unread = [
+    line('@#°o Vu', 1096, 24, 246, 67),
+    line('10:06', 100, 32, 121, 36),
+    line('ceP1553', 494, 180, 358, 87),
+    line('Ww', 1245, 188, 110, 105),
+    line('L15 iw82 13/14/10', 504, 623, 417, 43),
+    line('ll)', 581, 1030, 78, 89),
+    line('Lb', 823, 1046, 75, 91),
+    line('HH', 666, 1288, 107, 69),
+    line('126 / 126 HP', 609, 1459, 224, 29),
+  ];
+
+  expect(nameLineOf(unread, unread.at(-1) as Line)?.text, 'a name was taken from the overlay or above it').toBe(
+    undefined,
+  );
 });
 
 /** `unown-b.png` under the same engine: one space inside the number, which the CLI reads as a slash instead. */

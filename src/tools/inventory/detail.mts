@@ -11,7 +11,7 @@ import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
 import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
 import { genderOf, isFavourite, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
-import { OVERLAY_CHROMA, OVERLAY_LUMINANCE } from './overlay.mts';
+import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
   name: string | null;
   hp: number | null;
@@ -168,6 +168,35 @@ export function joined(line: Line, lines: readonly Line[]): Line {
   };
 }
 
+/**
+ * The line a name is read off: the nearest above the HP bar. A nickname reads here as readily as a species, and a
+ * player can set one that is no words at all. Three letters or two digits, measured rather than guessed: the name sits
+ * 117 to 173 pixels above the HP across the corpus, and what sits nearer is the bar's own furniture, read as `os` or
+ * `oy` on five captures at a gap of 57 to 62. Two characters of anything admits those and they win for being nearest.
+ *
+ * Or a `#`, which a nickname can be made of entirely: `lugia-hashes.png` is called `##`, and passing over it took the
+ * catch date's `20/06` beside the artwork as the name instead. Tesseract reads a `#` into 505 lines on 368 of 839
+ * detail captures, nearly all of them the status bar's icons, but into none within 400 pixels above the HP except that
+ * name — so admitting it changes no other capture's name line.
+ *
+ * And never at or above PGSharp's overlay, which is drawn over the artwork the name sits under. Another frame of the
+ * same Lugia read its `##` as `HH`, which none of the above admits, so the nearest line left was the overlay's `L15
+ * iw82 13/14/10` and the nickname became `L15 iw82 131410`; leaving that out, the status bar's `10:06` was next. The
+ * overlay is found by its IV triple, `findOverlay`'s own signature, rather than by its box, since the scan reads the
+ * detail before it has looked for a box and on its first Pokémon has none. Over the 839 captures it changes no name.
+ * Where the overlay did not read as a line, which is 88 of them, the search reaches the top of the screen as before.
+ */
+export function nameLineOf(lines: readonly Line[], hp: Line, labelled?: Line): Line | undefined {
+  const above = lines.filter((l) => l.top + l.height <= hp.top + 4);
+  const overlay = above.filter((l) => TRIPLE.test(l.text)).at(-1);
+
+  return above
+    .filter((l) => overlay === undefined || l.top >= overlay.top + overlay.height)
+    .filter((l) => l !== labelled && /\p{L}{3}|\p{N}{2}|#/u.test(l.text))
+    .filter((l) => !CP_LABEL.test(foldCp(l.text)))
+    .at(-1);
+}
+
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
   const longest = cpDigits(data);
   const labelled = cpLabelOf(lines, image);
@@ -181,21 +210,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const hpLine = lines.find((l) => /hp/i.test(l.text) && hpPattern.test(l.text));
   const hp = hpLine ? Number(hpPattern.exec(hpLine.text)?.[2]) : null;
 
-  // The nearest line above the HP bar; a nickname reads here as readily as a species, and a player can set one that is
-  // no words at all. Three letters or two digits, measured rather than guessed: the name sits 117 to 173 pixels above
-  // the HP across the corpus, and what sits nearer is the bar's own furniture, read as `os` or `oy` on five captures
-  // at a gap of 57 to 62. Two characters of anything admits those and they win for being nearest.
-  //
-  // Or a `#`, which a nickname can be made of entirely: `lugia-hashes.png` is called `##`, and passing over it took
-  // the catch date's `20/06` beside the artwork as the name instead. Tesseract reads a `#` into 505 lines on 368 of
-  // 839 detail captures, nearly all of them the status bar's icons, but into none within 400 pixels above the HP
-  // except that name — so admitting it changes no other capture's name line.
-  const nameLine = hpLine
-    ? lines
-        .filter((l) => l.top + l.height <= hpLine.top + 4 && l !== labelled && /\p{L}{3}|\p{N}{2}|#/u.test(l.text))
-        .filter((l) => !CP_LABEL.test(foldCp(l.text)))
-        .at(-1)
-    : undefined;
+  const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
   const name = nameLine ? sanitise(nameLine.text) : null;
 
   // The name again off its own band, where what the pass found is no species. Taken only where the band itself names
