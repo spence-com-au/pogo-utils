@@ -8,7 +8,7 @@
  */
 
 /**
- * The bar itself, holding the tabs and the notifications and settings controls beside them. The background and rule are
+ * The bar itself, holding the tabs and the notifications, phone and settings controls beside them. The background and rule are
  * drawn here rather than on the tabs, so they run under all of it.
  *
  * Positioned so the panels its menus open hang from its right edge rather than each from its own control: the bell sits
@@ -76,7 +76,7 @@
 }
 
 /**
- * The notifications and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels they
+ * The notifications, phone and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels they
  * open are not clipped by it.
  */
 .menu {
@@ -96,9 +96,35 @@
   cursor: pointer;
 }
 
+.menu-toggle:disabled {
+  cursor: progress;
+}
+
 .menu-toggle:hover,
 .menu-toggle[aria-expanded='true'] {
   color: var(--text);
+}
+
+/**
+ * Lit on the phone control while a phone, the demo's included, is held: the bar says so from any tab without opening
+ * the panel.
+ */
+.phone-held {
+  position: absolute;
+  top: 11px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--start);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+/** What the last press of the phone control has to say: the chooser to look for, or why it did not connect. */
+.phone-note p {
+  margin: 0;
+  padding: 10px 12px;
+  line-height: 1.5;
 }
 
 .notices-count {
@@ -218,32 +244,34 @@
 }
 
 /**
- * The settings panel's contents: a titled section per thing it controls, each a line of explanation, its buttons, and
+ * The settings panel's contents: a section per thing it controls, each a line of explanation, its buttons, and
  * the line that reports what the last press did.
  */
-.settings-section {
+.menu-section {
   padding: 10px 12px 12px;
 }
 
-.settings-section h2 {
+.menu-section h2 {
   margin: 0 0 4px;
   font-size: 13px;
 }
 
-.settings-note {
+.menu-note {
   margin: 0 0 10px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.settings-actions {
+.menu-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.settings-actions button {
+.menu-actions button {
   padding: 6px 14px;
+  white-space: nowrap;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -253,18 +281,18 @@
   cursor: pointer;
 }
 
-.settings-actions button:hover:not(:disabled),
-.settings-actions button:focus-visible {
+.menu-actions button:hover:not(:disabled),
+.menu-actions button:focus-visible {
   border-color: var(--track);
   color: var(--track);
 }
 
-.settings-actions button:disabled {
+.menu-actions button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.settings-status {
+.menu-status {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.5;
@@ -274,7 +302,7 @@
  * Waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line box, so its margin
  * is the whole of what it costs and this takes that away.
  */
-.settings-status:empty {
+.menu-status:empty {
   margin: 0;
 }
 

@@ -381,7 +381,7 @@ function current(state: State) {
  * it is shown only while that is still the string on the page.
  *
  * `unheld` is a press with no phone to send to, a kind of its own because it stops being true in a way the others do
- * not: connecting a phone in Settings leaves this page mounted and the string unchanged.
+ * not: connecting a phone from the top bar leaves this page mounted and the string unchanged.
  */
 interface Sent {
   query: string;
@@ -630,7 +630,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   async function sendToPhone() {
     // Said where the answer to a search goes, so a reader pressing the greyed-out button learns why it did nothing.
     if (phone === null) {
-      setSent({ query, kind: 'unheld', message: 'No phone is connected. Connect one in Settings to search on it.' });
+      setSent({
+        query,
+        kind: 'unheld',
+        message: 'No phone is connected. Connect one with 📱 in the top bar to search on it.',
+      });
 
       return;
     }
@@ -1031,7 +1035,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                 aria-label="Search on the phone"
                 title={
                   phone === null
-                    ? 'Connect a phone in Settings to type this into its Pokémon storage search'
+                    ? 'Connect a phone with 📱 in the top bar to type this into its Pokémon storage search'
                     : `Type this into Pokémon storage’s search on ${phone.name}`
                 }
                 aria-disabled={phone === null}

@@ -1,6 +1,6 @@
 /**
  * The battle's Worker, from the page. One context at a time can claim the phone's USB device, and the page holds it in
- * `phoneStore` from the settings menu's connect on. So for a run the page lets it go and tells the Worker its serial,
+ * `phoneStore` from the phone button's connect on. So for a run the page lets it go and tells the Worker its serial,
  * the Worker opens it again from the devices the site was granted, and once the Worker says it has stopped, having let
  * it go in turn, the page opens it again and holds it as before. Neither open asks anything of the user, nor of the
  * phone, and other tabs see no phone held meanwhile.
@@ -50,7 +50,7 @@ export async function lend(
   start: () => Endpoint = () => new Worker(BATTLE_WORKER, { type: 'module' }),
 
   // `webusb.ts` fetched only once a run takes the phone back: it brings Tango, which a page that merely imports this
-  // need not load. The demo phone comes back as the settings menu holds it, its battle being the Worker's alone.
+  // need not load. The demo phone comes back as the phone button holds it, its battle being the Worker's alone.
   reconnect: (serial: string) => Promise<Phone> = async (serial) =>
     serial === DEMO_SERIAL
       ? (await loadChunk(() => import('../inventory/demo.js'))).demoPhone()
@@ -66,7 +66,7 @@ export async function lend(
   const { serial } = phone;
 
   /**
-   * The phone held by the page again, unless the settings menu connected another meanwhile: that one is the user's
+   * The phone held by the page again, unless the phone button connected another meanwhile: that one is the user's
    * choice and stays held, so this one is not reopened, or is let go of again where the connect landed while it was
    * being. The demo phone is no other, the menu offering it while this one is lent only because nothing is held then,
    * so it is put away for this one rather than left in its place with nothing to play on. Failing to come back is told
@@ -101,7 +101,9 @@ export async function lend(
 
         throw error === undefined
           ? failure
-          : new Error(`${error}; the phone could not be taken back, so connect it again in settings: ${said(failure)}`);
+          : new Error(
+              `${error}; the phone could not be taken back, so connect it again with 📱 in the top bar: ${said(failure)}`,
+            );
       });
   };
 

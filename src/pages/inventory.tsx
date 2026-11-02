@@ -1,6 +1,6 @@
 /**
  * The Inventory page: one Pokémon's detail screen read end to end in the browser, which is what `pnpm inventory snap`
- * and `parse` do from a terminal. A phone connected over WebUSB — from the settings menu, which every tab shares — is
+ * and `parse` do from a terminal. A phone connected over WebUSB — from the phone button, which every tab shares — is
  * asked for whatever it is showing, or a PNG already saved is dropped in, and the page prints what every reader makes
  * of it — the same four blocks `parse` prints, from the same `readScreen`.
  *
@@ -209,8 +209,8 @@ export default function InventoryPage() {
           <h2>From a phone</h2>
 
           <p>
-            Connect an Android phone from Settings (⚙️ in the top bar), open a Pokémon in Pokémon GO with PGSharp’s IV
-            display showing, and take whatever it shows.
+            Connect an Android phone with 📱 in the top bar, open a Pokémon in Pokémon GO with PGSharp’s IV display
+            showing, and take whatever it shows.
           </p>
 
           <div class="actions">
