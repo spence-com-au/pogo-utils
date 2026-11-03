@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
-import { type Verdict, wouldShield } from './damage.mts';
+import { NO_STAGES, type Verdict, wouldShield } from './damage.mts';
 import {
   Energy,
   holding,
@@ -348,6 +348,25 @@ test.each([
   expect(energy.fastFaints(MATCHUP, 0.08, lowered)).toBe(
     'their next fast move would faint us, Counter modelled at ~7% with 8% left',
   );
+});
+
+/**
+ * The hit measured, which keeps a shield, is only ever one measured against the Pokémon out at no stages: never the
+ * model, never a step from another pairing, as at a prompt straight after a switch, and never once the stages move.
+ */
+test('a hit measured is one measured against the Pokémon out, at no stages', () => {
+  const energy = new Energy(DATA);
+  const none = { own: NO_STAGES, their: NO_STAGES };
+  const lowered = { own: { attack: 0, defense: -2 }, their: NO_STAGES };
+  const azumarill: Matchup = { ...MATCHUP, opponent: { species: 'Azumarill', cp: 1497 } };
+
+  expect(energy.measured(MATCHUP, none), 'none yet').toBe(undefined);
+
+  fight(energy, { step: COUNTER, hits: 3 });
+
+  expect(energy.measured(MATCHUP, none)).toBeCloseTo(COUNTER);
+  expect(energy.measured(azumarill, none), 'another opponent, not yet read').toBe(undefined);
+  expect(energy.measured(MATCHUP, lowered), 'our defense since lowered').toBe(undefined);
 });
 
 test('nothing is told of a fast move where our HP or a build to model it on is unknown', () => {

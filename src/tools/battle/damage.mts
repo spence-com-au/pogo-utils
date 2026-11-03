@@ -356,6 +356,9 @@ export function wouldFaint(
  */
 const HARD = 1.4;
 
+/** How far a steady bar wanders from itself frame to frame: 2 points, as `health.mts`'s `JUMP` measured it. */
+export const WANDER = 0.02;
+
 /** Whether to take a shield against the opponent's charged move, and why. */
 export interface Shielding {
   shield: boolean;
@@ -367,14 +370,32 @@ export interface Cycle {
   /** What one of them takes of our bar, `Energy.step`: undefined before one has been measured. */
   step: number | undefined;
 
+  /**
+   * What one of them takes of our bar as measured against the Pokémon out, `Energy.measured`: absent where none has
+   * been, or the stages have moved since.
+   */
+  hit?: number;
+
   /** The opponent's energy as counted, and what each fast move gains: `Energy.estimate`'s, null where uncounted. */
   estimate: { energy: number; gain: number } | null;
 }
 
 /**
  * Whether to take a shield against the opponent's charged move, and why: `verdict` is `wouldFaint`'s on it, `hp` the
- * fraction of our bar left and `shields` how many we hold. Taken where any of these holds, the first that does naming
- * why, and otherwise kept:
+ * fraction of our bar left and `shields` how many we hold.
+ *
+ * Kept first of all where one more of the opponent's fast moves would faint us whether or not we shield: `cycle.hit`
+ * taking at least what is left less the bar's `WANDER`, as `Energy.fastFaints` judges it for throwing early. The shield
+ * saves nothing then, ours fainting a turn later, and is gone for the Pokémon sent in next. In the Baltimore 2027
+ * Regional grand final (https://www.youtube.com/watch?v=Jcf3aN2U_wU), a low Galarian Corsola shielded Discharge at 2:44
+ * and fainted at 1 HP to the Volt Switch after it, which the casters called a shield KO; at 7:00 the same Corsola kept
+ * its last shield with two Foul Plays ready, for the next Pokémon. Only on a hit measured off our bar against the
+ * Pokémon out: `fastFaints` falls back on a modelled hit, the most it could take of any build, which errs towards
+ * fainting. A charged move of ours lit may land before that fast move, and needs no shield either way: the fast move
+ * after it still faints us. Anything unknown of the fast move, none measured or our HP unread, takes the shield as
+ * below; what is unknown of the charged move says nothing of the fast move's hit, which our bar measured.
+ *
+ * Otherwise taken where any of these holds, the first that does naming why, and otherwise kept:
  *
  * - The hit would faint us, or something it rests on is unknown, as `verdict.faints` says.
  * - Any charged move the opponent is allowed for, `verdict.worst`, would take at least 1/`HARD` of what is left.
@@ -419,6 +440,13 @@ export function wouldShield(
   cycle: Cycle,
 ): Shielding {
   const { hardest, share, worst } = verdict;
+
+  if (hp !== null && shields > 0 && cycle.hit !== undefined && cycle.hit >= hp - WANDER) {
+    return {
+      shield: false,
+      why: `their next fast move faints us anyway, one taking ~${percent(cycle.hit)} with ${percent(hp)} left`,
+    };
+  }
 
   if (verdict.faints || hp === null || hardest === undefined || share === undefined || worst === undefined) {
     return { shield: true, why: hardest === undefined ? verdict.why : `${verdict.why}; that would faint us` };

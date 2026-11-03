@@ -1188,7 +1188,13 @@ export async function run(
               affordable,
               stages,
             );
-      const shielding = wouldShield(data, verdict, health.own, ourShields, { step: energy.step, estimate });
+
+      // Kept, whatever the verdict, where the hit measured off our bar says their next fast move faints us anyway.
+      const shielding = wouldShield(data, verdict, health.own, ourShields, {
+        step: energy.step,
+        hit: energy.measured(facing, stages),
+        estimate,
+      });
       const shield = ourShields > 0 && shielding.shield;
 
       // One more of the opponent's fast moves fainting us, which no shield stops.

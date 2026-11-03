@@ -409,6 +409,44 @@ test('a harder move the count does not yet afford takes the shield against one i
   });
 });
 
+/**
+ * Drill Peck would faint Palkia at 3% and at 5% alike. Measured taking 2 points a hit, Thunder Shock faints it at 3%
+ * too, within the bar's 2 points of wander, and the shield saves nothing; at 5% the shield buys a Thunder Shock more.
+ * Unmeasured, the shield is taken as before.
+ */
+test.each<[string, number, number | undefined, Shielding]>([
+  [
+    'at 3%, which the next Thunder Shock measured faints it from anyway',
+    0.03,
+    0.02,
+    { shield: false, why: 'their next fast move faints us anyway, one taking ~2% with 3% left' },
+  ],
+  [
+    'at 5%, which it does not',
+    0.05,
+    0.02,
+    { shield: true, why: 'Drill Peck would take ~34%, with 5% left; that would faint us' },
+  ],
+  [
+    'at 3% with no hit measured against Zapdos',
+    0.03,
+    undefined,
+    { shield: true, why: 'Drill Peck would take ~34%, with 3% left; that would faint us' },
+  ],
+])('Palkia shields Zapdos’s Drill Peck %s', (_, hp, hit, shielding) => {
+  expect(palkia(hp, 2, { ...THUNDER_SHOCK, ...(hit !== undefined && { hit }) })).toEqual(shielding);
+});
+
+test('a fast move measured to faint us keeps no shield where our HP is unread or none is left to keep', () => {
+  const measured = { ...THUNDER_SHOCK, hit: 0.02 };
+
+  expect(palkia(null, 2, measured), 'our HP unread').toEqual({ shield: true, why: 'our HP unread' });
+  expect(palkia(0.03, 0, measured), 'no shield left').toEqual({
+    shield: true,
+    why: 'Drill Peck would take ~34%, with 3% left; that would faint us',
+  });
+});
+
 test('their fast moves unmeasured or their energy uncounted, the shield is taken', () => {
   expect(palkia(0.9, 2, { ...THUNDER_SHOCK, step: undefined })).toEqual({
     shield: true,
