@@ -1876,6 +1876,90 @@ test.each([
 });
 
 /**
+ * The game master with Entei's base attack 3 higher, which leaves a rank-1 Entei at CP 4163 built as before but for
+ * its attack, ~214 to the ~212 of a rank-1 Kyogre at CP 3813: Entei then wins CMP, where it loses it to its ~211.
+ */
+const ENTEI_STRONGER: GameData = {
+  ...DATA,
+  forms: DATA.forms.map((form) => (form.species === 'Entei' ? { ...form, attack: form.attack + 3 } : form)),
+};
+
+/**
+ * Kyogre, CP 3813, against Entei, CP 4163, in Master League, both sides' shields painted spent and Hydro Pump's button
+ * painted unlit: Hydro Pump is held for, worth more per energy into Entei, with Avalanche lit. Giratina's icon stands
+ * for Kyogre on the party screen, as `mirror`'s does for Entei, so that the card the moves under the buttons fit names
+ * ours. Our bar, repainted, loses 4 points to each of Entei's fast moves, counted as Fire Spin's 10 energy, 200ms apart
+ * once the battle's first read has named it, from 60%. Overheat, 55 energy, would take ~42% of a rank-1 Kyogre, fainting
+ * us from 46% down; Scorching Sands, 50, ~35%, from 38%. After 4 hits, at 44%, 40 energy and one more for the count
+ * afford only Scorching Sands, and Overheat only with one more again; after 5, at 40%, Overheat. Losing CMP, Avalanche
+ * goes after 4; winning it, after 5, the throw it saved told after 4.
+ */
+test.each([
+  [
+    'loses',
+    ENTEI_STRONGER,
+    'hit4',
+    [
+      'own: threw Avalanche: Entei wins CMP (atk ~214 v ~212), Overheat affordable after one more Fire Spin; not holding for Hydro Pump',
+    ],
+  ],
+  [
+    'wins',
+    DATA,
+    'hit5',
+    [
+      'own: not throwing Avalanche yet: Kyogre wins CMP (atk ~212 v ~211), Overheat affordable after one more Fire Spin',
+      'own: threw Avalanche: Overheat would faint us, 60 energy affords it; not holding for Hydro Pump',
+    ],
+  ],
+])('where ours %s CMP, a fainting move is feared a fast move sooner', async (_, data, tapped, said) => {
+  const icons = ICONS.map((icon) => ({ ...icon, species: icon.species === 'Giratina' ? 'Kyogre' : icon.species }));
+  const spent = painted(
+    fixture('charged-two-both'),
+    [111, 81, 118],
+    [0.23, 0.2027, 0.242, 0.2153],
+    [0.7, 0.195, 0.78, 0.222],
+  );
+  const unlit = painted(spent, [107, 105, 112], [68 / 360, 635 / 360, 152 / 360, 676 / 360]);
+  const ours = (px: number) =>
+    painted(
+      painted(unlit, [10, 45, 80], [22 / 360, 201 / 360, 122 / 360, 207 / 360]),
+      [25, 255, 190],
+      [22 / 360, 201 / 360, (22 + px) / 360, 207 / 360],
+    );
+  const names = Array.from({ length: 8 }, (_, i) => (i === 0 ? 'fight' : `hit${i}`));
+  const hits = names.map((name, i): [string, Scene] => [
+    name,
+    {
+      frame: ours(60 - 4 * i),
+      tap: { at: [0.69, 0.889], to: 'minigame' },
+      lasts: { ms: i === 0 ? 400 : 200, to: names[i + 1] ?? 'won' },
+    },
+  ]);
+  const { phone, clock, taps } = scripted(
+    { ...battleAndBack(), minigame: minigameNoneFainted(), ...Object.fromEntries(hits) },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps.filter((scene) => names.includes(scene))).toEqual([tapped]);
+  expect(report.events.filter((line) => /^own: (threw|not throwing)/.test(line))).toEqual(said);
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the

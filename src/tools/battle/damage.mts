@@ -171,6 +171,73 @@ export function capped(opponent: Side, cap: number | null): Side {
   return opponent.cp === null && cap !== null ? { ...opponent, cp: cap } : opponent;
 }
 
+/** Who throws first where both sides throw a charged move on the same turn, and why. */
+export interface Priority {
+  /** Whether ours is sure to: false where theirs is, where it is too close to call and where anything is unknown. */
+  wins: boolean;
+  why: string;
+}
+
+/**
+ * Who wins charge-move priority, CMP: where both sides throw a charged move on the same turn, the one with the higher
+ * attack stat throws first, and a hit fainting the other leaves its move never thrown. The attack is each form's built
+ * rank 1 for the CP read, as `buildsOf` builds it, unrounded.
+ *
+ * The attack compared is the stat alone, `(base + IV) × CPM`: the shadow bonus and the stat stages count for nothing.
+ * PvPoke's battle (pvpoke/pvpoke@e02bde7, `src/js/battle/Battle.js`) compares `poke.stats.atk` with the opponent's,
+ * lines 259–265 and 782–785, which `Pokemon.js` sets as `cpm × (baseStats.atk + ivs.atk)` (line 380), its shadow
+ * multiplier and stat buffs applied only in `getEffectiveStat` (lines 2099–2115), which the comparison never calls. Its
+ * CMP chart (pvpoke.com/attack-cmp-chart) says the same in words: "Damage multipliers such as the Shadow bonus or stat
+ * buffs/debuffs have no effect on CMP", and the full decimal attack decides it.
+ *
+ * Its chart and its battle disagree on an exact tie: the chart says "the winner is determined at random", where the
+ * battle lets both moves land. Either way ours is not sure to go first, so a tie is a loss here. So are attacks that
+ * overlap, between the forms either side could be, too close to call: ours wins only where every one of its
+ * builds out-attacks every one of theirs. So is anything unread — either species or CP, or a CP over `cap` — their CP
+ * unread not taken as the cap as `wouldFaint` takes it, the cap's build saying nothing of a Pokémon under it.
+ *
+ * The builds are guesses at rank 1, and a Pokémon built otherwise has another attack: a guess, like every other the
+ * damage model makes, that losing CMP only throws a fast move sooner on.
+ */
+export function chargePriority(data: GameData, own: Side, opponent: Side, cap: number | null): Priority {
+  const ours = buildsOf(data, own, cap);
+  const theirs = buildsOf(data, opponent, cap);
+
+  if (ours.length === 0) {
+    return { wins: false, why: `CMP unknown: ${unbuilt(own, cap, 'our')}` };
+  }
+
+  if (theirs.length === 0) {
+    return { wins: false, why: `CMP unknown: ${unbuilt(opponent, cap, 'their')}` };
+  }
+
+  const span = (side: Battler[]) => side.map(({ build }) => build.attack);
+  const [ourLeast, ourMost] = [Math.min(...span(ours)), Math.max(...span(ours))];
+  const [theirLeast, theirMost] = [Math.min(...span(theirs)), Math.max(...span(theirs))];
+  const range = (least: number, most: number) =>
+    Math.round(least) === Math.round(most) ? `~${Math.round(least)}` : `~${Math.round(least)}–${Math.round(most)}`;
+  const [ourName, theirName] = [own.species ?? 'ours', opponent.species ?? 'theirs'];
+
+  if (ourLeast > theirMost) {
+    return {
+      wins: true,
+      why: `${ourName} wins CMP (atk ${range(ourLeast, ourMost)} v ${range(theirLeast, theirMost)})`,
+    };
+  }
+
+  if (ourMost < theirLeast) {
+    return {
+      wins: false,
+      why: `${theirName} wins CMP (atk ${range(theirLeast, theirMost)} v ${range(ourLeast, ourMost)})`,
+    };
+  }
+
+  return {
+    wins: false,
+    why: `CMP too close to call (atk ${range(ourLeast, ourMost)} v ${range(theirLeast, theirMost)})`,
+  };
+}
+
 /**
  * The HP a charged move takes, `floor(0.5 × power × attack / defense × STAB × effectiveness × 1.3) + 1`, which is
  * PvPoke's `DamageCalculator.damage` (pvpoke/pvpoke@415436c, `src/js/battle/DamageCalculator.js`), its
