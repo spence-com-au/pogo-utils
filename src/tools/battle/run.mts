@@ -352,6 +352,7 @@ export async function run(
   let known = clock.now();
   let otherSince: number | undefined;
   let noBattle = 0;
+  let faded = false;
   let search = carousel();
 
   // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
@@ -1762,9 +1763,16 @@ export async function run(
 
       const { screenshot, menu: read } = done;
 
+      // The verdict fades in a frame after the result's ✓ is drawn, so a read can catch the ✓ alone, as the demo clip's
+      // frame 4913 shows it. That read is passed over for the next, and only a result unread twice running is counted
+      // without its verdict.
+      const fading: boolean = done.ended && read.screen === 'result' && !done.outcome && !faded;
+      faded = fading;
+
       // GO Battle League never comes back to the map of itself once a battle has been played: a Poké Ball there is the
       // reward encounter's, which is left for the player rather than tapped.
-      let menu: Menu = read.screen === 'map' && mode.mode === 'gbl' && battles > 0 ? { screen: 'unknown' } : read;
+      let menu: Menu =
+        fading || (read.screen === 'map' && mode.mode === 'gbl' && battles > 0) ? { screen: 'unknown' } : read;
       screen = menu.screen;
 
       // Greyed out read after read, not once among others.
