@@ -216,11 +216,11 @@ interface Fixture {
  * eight at once, falsifiably — re-run it and the first match is in the set the row claims. Negation is the half only a
  * search can give, since nothing on the screen says a Pokémon is **not** lucky.
  *
- * The other 47 rows have no search behind them. They arrived named for what they are, and the name is a claim the
+ * The other 50 rows have no search behind them. They arrived named for what they are, and the name is a claim the
  * rendered screen has to bear out — weaker provenance, and sufficient for what those rows are for.
  *
  * `xurkitree.png`'s search is the weakest of the six: `alola` pins its region and nothing else, so its `size` and
- * flags rest on the same eye as the 47 and it is one of those rows in everything but provenance. The two shadows'
+ * flags rest on the same eye as the 50 and it is one of those rows in everything but provenance. The two shadows'
  * searches pin `shadow` and nothing else of what a row states.
  *
  * | file                  | search                                                                               |
@@ -1484,7 +1484,7 @@ const COVERAGE = {
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 45,
+  noDefects: 46,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
