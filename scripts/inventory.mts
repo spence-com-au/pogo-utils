@@ -1,17 +1,19 @@
 /**
  * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds to a CSV: species, form,
- * costume, shiny, lucky, size, CP, HP, level, IVs and moves. Pokémon GO has no export, so this reads the screen the way
- * a person would — open the first Pokémon, read it, swipe to the next — with Tesseract doing the reading.
+ * costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO has no export, so this
+ * reads the screen the way a person would — open the first Pokémon, read it, swipe to the next — with Tesseract doing
+ * the reading.
  *
  * Each field comes from wherever it can be got most reliably. The CP, HP, name, weight, height, types, gender, size
- * badge, favourite star and tag chips are read off the detail screen, and the moves off the same screen scrolled down.
- * The level and the three IVs come off PGSharp's own overlay, which is why the scanner needs PGSharp rather than the
- * stock client — nothing else gives the IVs without walking the appraisal dialogue every time. The form is worked out
- * rather than read, HP being fixed by base stamina, the stamina IV and the level; see `inventory/game-master.mts`.
- * Shadow and purified are worked out too, from the stardust a power-up costs at that level. Shiny and costume say
- * nothing on the screen at all, so each is a search pass instead, whose matches the full pass recognises by name, HP,
- * weight, height and IVs together. A pass for shadow or purified outranks the screen where it is asked for. Lucky has
- * a pass too, and a caption under the name besides, which marks the row whatever the pass made of it.
+ * badge, favourite star, tag chips and the Dynamax or Gigantamax row are read off the detail screen, and the moves off
+ * the same screen scrolled down. The level and the three IVs come off PGSharp's own overlay, which is why the scanner
+ * needs PGSharp rather than the stock client — nothing else gives the IVs without walking the appraisal dialogue every
+ * time. The form is worked out rather than read, HP being fixed by base stamina, the stamina IV and the level; see
+ * `inventory/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
+ * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
+ * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
+ * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
+ * made of it.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
@@ -165,6 +167,7 @@ const COLUMNS = [
   'size',
   'shadow',
   'purified',
+  'max',
   'cp',
   'hp',
   'level',
@@ -928,6 +931,7 @@ async function scan(held: Transport) {
         size: detail.size,
         shadow,
         purified,
+        max: detail.max,
         cp: id.cp ?? detail.cp,
         hp: detail.hp,
         level: id.levels.join(' / '),

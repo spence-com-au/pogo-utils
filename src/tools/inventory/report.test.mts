@@ -37,6 +37,7 @@ const READING: Reading = {
     tags: [],
     evolveCandy: null,
     powerUp: null,
+    max: null,
   },
   moves: { fast: 'Astonish', charged: ['Struggle'] },
   box: null,

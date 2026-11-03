@@ -37,6 +37,7 @@ const pumpkaboo = (height: number | null, size: Detail['size']): Detail => ({
   tags: [],
   evolveCandy: null,
   powerUp: null,
+  max: null,
 });
 
 const answer = (detail: Detail) => {
@@ -96,6 +97,7 @@ const SINISTEA: Detail = {
   tags: [],
   evolveCandy: 50,
   powerUp: null,
+  max: null,
 };
 
 const OVERLAY: Overlay = { levels: [15], iv: { attack: 11, defense: 11, stamina: 12 }, checked: true, form: null };
@@ -262,6 +264,7 @@ const LUGIA: Detail = {
   tags: [],
   evolveCandy: null,
   powerUp: 1900,
+  max: null,
 };
 
 const LUGIA_OVERLAY: Overlay = {

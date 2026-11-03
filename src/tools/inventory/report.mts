@@ -155,6 +155,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
     fact('species', form?.species, 'worked out'),
     ...(form?.form ? [fact('form', form.form, 'worked out')] : []),
     ...(identity.nickname ? [fact('nickname', identity.nickname, 'read')] : []),
+    ...(detail.max ? [fact('max', detail.max, 'read')] : []),
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
     fact('hp', detail.hp, 'read'),
     fact('level', identity.levels.join(' or '), 'worked out'),
