@@ -8,7 +8,7 @@
 import { signatureOf, type Signature } from './artwork.mts';
 import { parseDetail, readLines, type Detail } from './detail.mts';
 import { type Form, type GameData } from './game-master.mts';
-import { identify, type Identity } from './identify.mts';
+import { identify, settledForm, type Identity } from './identify.mts';
 import { parseMoves, type Moves } from './moves.mts';
 import { type Line } from './ocr.mts';
 import { findOverlay, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
@@ -146,6 +146,7 @@ export interface Fact {
  */
 export function answer({ detail, moves, overlay, identity }: Reading): { facts: Fact[]; notes: string[] } {
   const { form } = identity;
+  const settled = settledForm(identity);
   const fact = (label: string, value: string | number | null | undefined, source: Source): Fact =>
     value === null || value === undefined || value === ''
       ? { label, value: 'unknown', source: null }
@@ -153,7 +154,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
 
   const facts = [
     fact('species', form?.species, 'worked out'),
-    ...(form?.form ? [fact('form', form.form, 'worked out')] : []),
+    ...(settled || identity.unseparated.length > 0 ? [fact('form', settled, 'worked out')] : []),
     ...(identity.nickname ? [fact('nickname', identity.nickname, 'read')] : []),
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
     fact('hp', detail.hp, 'read'),

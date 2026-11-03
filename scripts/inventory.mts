@@ -63,7 +63,7 @@ import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.
 import { parseDetail, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
-import { clearable, identify, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
+import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
@@ -918,7 +918,7 @@ async function scan(held: Transport) {
 
         nickname: id.nickname,
         dex: id.form?.dex ?? null,
-        form: id.form?.form ?? null,
+        form: settledForm(id),
         gender: detail.gender,
         favourite: detail.favourite ? 'yes' : 'no',
         tags: carried.join('; '),

@@ -93,6 +93,21 @@ test('a CP that could not be worked out falls back to the one read, and a form a
   );
 });
 
+/**
+ * Forms the screen cannot separate leave the form unknown rather than naming the one `identify` sorted first — every
+ * unsure Minior was written `Red` — and the same where that one is the species' plain form, as Gimmighoul's is.
+ */
+test('a form nothing on the screen settles is unknown, not the first of its candidates', () => {
+  const unsettled = (form: string | null, other: string) =>
+    answer({
+      ...READING,
+      identity: { ...READING.identity, form: { ...APPLIN, form }, unseparated: [{ ...APPLIN, form: other }] },
+    }).facts.find((f) => f.label === 'form');
+
+  expect(unsettled('Red', 'Green')).toStrictEqual({ label: 'form', value: 'unknown', source: null });
+  expect(unsettled(null, 'Roaming')).toStrictEqual({ label: 'form', value: 'unknown', source: null });
+});
+
 /** Nothing identified and no overlay: every field is unknown and claims no source. */
 test('a screen that read nothing answers unknown, from nowhere', () => {
   const { facts } = answer({
