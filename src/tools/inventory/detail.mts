@@ -569,6 +569,15 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
     });
   };
 
+  // The whole-screen pass's reading: a line made of type names and nothing else, which is what keeps `WEIGHT` from
+  // lending it a letter the way the band's looser match is guarded against.
+  const line = lines.find((l) => {
+    const words = fold(l.text).split(' ').filter(Boolean);
+
+    return words.length > 0 && words.length <= 2 && words.every((w) => names.has(w));
+  });
+  const pass = line ? found(line.text) : [];
+
   // Either of the pair will do, since the weight and the height sit on one row and the labels on the row beneath it —
   // and taking only the weight lost a Cyndaquil whose `0.44m` read perfectly and whose `kg` did not.
   const beside = lines.find((l) => measurement(l.text));
@@ -586,19 +595,18 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
     );
     const read = found((await ocrLine(scale(band, 2), TYPE_ALPHABET)) ?? '');
 
-    if (read.length > 0) {
+    // Unless the pass read the band's types and another besides. The band can take the slash for a letter and glue it
+    // to the second name: `frigibax.png`'s comes back `T DRAGON TICE`, which the word boundary rightly refuses as
+    // `ice`, losing a type the pass had read whole as `DRAGON / ICE`.
+    const more = pass.length > read.length && read.every((t) => pass.includes(t));
+
+    if (read.length > 0 && !more) {
       return read;
     }
   }
 
-  // Where neither was read there is nothing to find the row by, so fall back on the whole-screen pass.
-  const line = lines.find((l) => {
-    const words = fold(l.text).split(' ').filter(Boolean);
-
-    return words.length > 0 && words.length <= 2 && words.every((w) => names.has(w));
-  });
-
-  return line ? found(line.text) : [];
+  // Where neither was read there is nothing to find the row by, so the whole-screen pass is all there is.
+  return pass;
 }
 
 /**
