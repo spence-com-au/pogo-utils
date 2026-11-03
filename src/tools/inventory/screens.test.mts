@@ -1484,7 +1484,7 @@ const COVERAGE = {
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 45,
+  noDefects: 46,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
