@@ -387,10 +387,10 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 }
 
 /**
- * Measured over the 49 committed captures: 40 are exactly 0 and the five favourites run 18.18% to 26.49%. Not 0.02,
- * because `spinda-04.png`'s warm bokeh background puts **15.34%** in that corner behind a white-outline star. Gold
- * alone cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's
- * 24.31%, inside the favourites' range, which is what `FAVOURITE_WHITE` is for.
+ * Measured over the 55 committed captures: 47 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
+ * because `castform-rainy.png`'s background puts **15.78%** in that corner behind a white-outline star. Gold alone
+ * cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's 24.31%,
+ * inside the favourites' range, which is what `FAVOURITE_WHITE` is for.
  */
 const FAVOURITE_GOLD = 0.17;
 
