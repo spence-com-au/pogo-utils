@@ -934,8 +934,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       const items = track.items.filter((item) => item.startMs < rangeEndMs).sort((a, b) => a.startMs - b.startMs);
 
       // A track the filter has switched off drops out entirely. A row is one `eventType`, which is what the chips
-      // switch, so there is no still-visible part of it to keep.
-      if (filteredTypes.has(track.type)) {
+      // switch, so there is no still-visible part of it to keep. A track the feed carries no event of drops out too:
+      // `labels` holds every type the feed carries, whatever the filters, so a row exists only where a chip can switch
+      // it off, rather than an empty one for a type `TRACKS` names but the feed has stopped using.
+      if (filteredTypes.has(track.type) || !labels.has(track.type)) {
         return [];
       }
 
