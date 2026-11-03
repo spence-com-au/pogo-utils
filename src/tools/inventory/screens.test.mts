@@ -626,6 +626,19 @@ const FIXTURES: readonly Fixture[] = [
     weight: 250.88,
   },
   {
+    cp: 124,
+    file: 'magikarp-best-buddy.png',
+    form: null,
+    gender: 'female',
+    height: 1.08,
+    hp: 52,
+    name: '96%',
+    overlay: { iv: { attack: 15, defense: 15, stamina: 13 }, level: 16 },
+    species: 'Magikarp',
+    types: ['Water'],
+    weight: 14.38,
+  },
+  {
     cp: 756,
     file: 'maschiff-female.png',
     form: null,
@@ -1098,7 +1111,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 55 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 56 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1270,9 +1283,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 55.
+ * covers everything else in this file — one capture rather than 56.
  *
- * They need it because a body that waits on all 55 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 56 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1461,15 +1474,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 55,
+  rows: 56,
   negatives: 3,
-  answeredAsThemselves: 54,
-  oneLevel: 55,
-  crossCheckAgrees: 55,
+  answeredAsThemselves: 55,
+  oneLevel: 56,
+  crossCheckAgrees: 56,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 44,
+  noDefects: 45,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1510,9 +1523,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 55 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 56 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 55 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 56 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1635,6 +1648,7 @@ test(
       'landorus-shadow.png': 1965,
       'lugia-hashes-hh.png': 1553,
       'lugia-hashes.png': 1553,
+      'magikarp-best-buddy.png': 124,
       'meowth-alola.png': 431,
       'meowth-galar.png': 571,
       'pancham-shadow.png': 315,
@@ -1866,6 +1880,7 @@ test(
       'eevee-background.png': 25,
       'frigibax.png': 25,
       'growlithe-nickname.png': 50,
+      'magikarp-best-buddy.png': 400,
       'maschiff-female.png': 50,
       'maschiff-male.png': 50,
       'meowth-alola.png': 50,
@@ -1943,7 +1958,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(55);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(56);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2522,6 +2537,7 @@ test(
       'landorus-shadow.png': { fast: 'Rock Throw', charged: ['Frustration'] },
       'lugia-hashes-hh.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
       'lugia-hashes.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
+      'magikarp-best-buddy.png': { fast: 'Splash', charged: ['Struggle'] },
       'maschiff-female.png': { fast: 'Bite', charged: ['Psychic Fangs'] },
       'maschiff-male.png': { fast: 'Snarl', charged: ['Psychic Fangs'] },
       'meloetta-aria.png': { fast: 'Quick Attack', charged: ['Thunderbolt'] },
@@ -2696,7 +2712,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 55.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 56.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(

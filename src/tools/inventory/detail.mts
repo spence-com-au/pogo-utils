@@ -9,7 +9,7 @@
 
 import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
-import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
+import { brighten, chroma, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
 import { genderOf, isFavourite, isLucky, isLuckyCaption, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
@@ -254,6 +254,46 @@ async function nameAgain(image: Image, lines: readonly Line[], hp: Line, labelle
   return text !== null && NAME_SHAPE.test(text) ? text : null;
 }
 
+/**
+ * The name line's text without the best-buddy badge, which the game draws in front of a best buddy's name, a gold and
+ * red rosette about the name's cap height that Tesseract reads as a `1` or an `i`: `magikarp-best-buddy.png`, called
+ * `96%`, read `1 96%`. Told apart by colour rather than by what it reads as, so a nickname that does start with a `1`
+ * keeps it. The name is drawn dark grey on white: no pixel inside the corpus's 56 other name lines is more saturated
+ * than a chroma of 41, nor one inside 501 more from scans' detail screens as much as `BADGE_CHROMA`, where the badge
+ * reaches 166 and carries 88 columns past it. So the line is read again from past the last such column, and only where
+ * they start within a line-height of its left, the badge being the first thing on it.
+ */
+async function unbadged(image: Image, line: Line): Promise<string> {
+  let end: number | undefined;
+
+  for (let x = line.left; x < line.left + line.width; x++) {
+    for (let y = line.top; y < line.top + line.height; y++) {
+      if (chroma(...rgb(image, x, y)) >= BADGE_CHROMA) {
+        if (end === undefined && x - line.left > line.height) {
+          return line.text;
+        }
+
+        end = x + 1;
+        break;
+      }
+    }
+  }
+
+  if (end === undefined) {
+    return line.text;
+  }
+
+  const pad = Math.round(line.height * NAME_PAD);
+  const text = await ocrLine(
+    crop(image, end, line.top - pad, line.left + line.width - end + pad, line.height + pad * 2),
+  );
+
+  return text ?? line.text;
+}
+
+/** How saturated a pixel inside the name line has to be to be the best-buddy badge rather than the name's grey. */
+const BADGE_CHROMA = 80;
+
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
   const longest = cpDigits(data);
   const labelled = cpLabelOf(lines, image);
@@ -269,7 +309,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
   const name = nameLine
-    ? sanitise(nameLine.text)
+    ? sanitise(await unbadged(image, nameLine))
     : hpLine
       ? sanitise((await nameAgain(image, lines, hpLine, labelled)) ?? '')
       : null;
