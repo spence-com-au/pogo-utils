@@ -32,6 +32,7 @@ const READING: Reading = {
     types: ['Grass', 'Dragon'],
     gender: 'female',
     favourite: false,
+    lucky: false,
     size: 'XL',
     tags: [],
     evolveCandy: null,

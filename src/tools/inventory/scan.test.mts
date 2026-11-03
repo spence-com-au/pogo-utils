@@ -43,6 +43,7 @@ function detail(fields: Partial<Detail> = {}): Detail {
     types: ['Electric'],
     gender: null,
     favourite: false,
+    lucky: false,
     size: null,
     tags: [],
     evolveCandy: null,

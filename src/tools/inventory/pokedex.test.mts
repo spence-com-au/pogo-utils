@@ -85,6 +85,7 @@ test('a Nidoran whose glyph was lost is the Nidoran the entry names', () => {
     types: ['Poison'],
     gender: null,
     favourite: false,
+    lucky: false,
     size: null,
     tags: [],
     evolveCandy: null,

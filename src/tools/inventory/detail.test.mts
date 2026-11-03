@@ -137,6 +137,19 @@ test('a name is never taken from PGSharp’s overlay or above it', () => {
   );
 });
 
+/**
+ * `castform-rainy.png`'s name and HP where `readLines` finds them, with the caption between them that the whole-screen
+ * pass reads on no capture but read on two rows of a live scan, where it became the nickname. A nickname of `Lucky`
+ * beside it is still a name.
+ */
+test('a lucky Pokémon’s caption is never taken for its name', () => {
+  const hp = line('104 / 104 HP', 425, 1070, 160, 37);
+  const caption = line('LUCKY POKEMON', 358, 978, 290, 32);
+
+  expect(nameLineOf([line('Rainy 93%', 351, 900, 309, 61), caption, hp], hp)?.text).toBe('Rainy 93%');
+  expect(nameLineOf([line('Lucky', 420, 900, 170, 61), caption, hp], hp)?.text).toBe('Lucky');
+});
+
 /** `unown-b.png` under the same engine: one space inside the number, which the CLI reads as a slash instead. */
 test('a CP with one space inside it is read whole', () => {
   expect(cpOn('cP48 7', LONGEST), 'a CP with a space inside it is read as its first half').toBe('487');
