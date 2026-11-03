@@ -402,6 +402,25 @@ is logged as `threw Ancient Power: Iron Head would faint us, 56 energy affords i
 the move picked is lit as well, as Body Slam is when Earthquake lights beside it, the throw passes it over rather than
 holds for it, logged as `threw Earthquake: Psyshock would faint us, 40 energy affords it; worth more than Body Slam`.
 
+**Charge-move priority.** Where both sides throw a charged move on the same turn, the one with the higher attack stat
+throws first, and a hit that faints the other leaves its move never thrown: charge-move priority, or CMP. So where ours
+isn't sure to win it, the throw above goes a fast move sooner: once _one more_ of the opponent's fast moves would let
+its counted energy, with the allowance, afford a move that would faint us. Ours then lands before a tie can arise. Who
+wins is the higher attack of each side's rank-1 build for the CP read, as [below](#when-to-shield)
+([`damage.mts`](damage.mts)'s `chargePriority`), unrounded. The shadow bonus and stat stages count for nothing: PvPoke's
+battle compares the two Pokémon's `stats.atk`, base plus IV times the CP multiplier, and applies the shadow multiplier
+and buffs only in `getEffectiveStat`, which the comparison doesn't call (`Battle.js` lines 259–265 and 782–785,
+`Pokemon.js` lines 380 and 2099–2115, at pvpoke/pvpoke@e02bde7), and its
+[CMP chart](https://pvpoke.com/attack-cmp-chart/) says the same: "Damage multipliers such as the Shadow bonus or stat
+buffs/debuffs have no effect on CMP". On an exact tie the two disagree: the chart says the winner is random, where the
+battle lets both moves land. Either way ours isn't sure to go first, so a tie counts as a loss, as does an overlap
+between the attacks of the forms either side could be, too close to call, and anything unread, the opponent's CP
+included. The builds are guesses at rank 1, a Pokémon built otherwise having another attack. Losing it is logged as
+`threw Avalanche: Entei wins CMP (atk ~214 v ~212), Overheat affordable after one more Fire Spin; not holding for Hydro Pump`.
+Winning it changes nothing, but the throw it saved is logged once, as
+`not throwing Avalanche yet: Kyogre wins CMP (atk ~212 v ~211), Overheat affordable after one more Fire Spin`. A
+[finish](#which-charged-move-to-throw) needs no such rule, going the moment it is lit.
+
 **A fast move that would faint us.** The same throw goes, shields or not, where one more of the opponent's fast moves
 would faint us: one hit, as [measured off our bar](#the-opponents-energy), taking at least what the bar shows less 2
 points for its wander. Until a hit has been measured against the Pokémon out, it is modelled instead, for the fast move
@@ -657,8 +676,5 @@ The strategy still leaves some gaps:
   hits, as the opponent's is by its, it would hold more often.
 - **Our moves under the buttons.** The labels are matched among every move our species can hold, where its card's own
   two would leave a misread less to land on.
-- **Out of scope for now:**
-  - Getting a throw in before the opponent's.
-  - Choosing who to send in by the opponent's energy.
-
-  Both need a model of what the opponent will _choose_, not just what it can afford.
+- **Out of scope for now:** choosing who to send in by the opponent's energy, which needs a model of what the opponent
+  will _choose_, not just what it can afford.

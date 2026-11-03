@@ -9,6 +9,7 @@ import { cpOf, multiplierOf, type Form, type GameData } from '../inventory/game-
 import {
   afterThrow,
   buildsOf,
+  chargePriority,
   finisher,
   hit,
   NO_STAGES,
@@ -16,6 +17,7 @@ import {
   wouldFaint,
   wouldShield,
   type Cycle,
+  type Priority,
   type Shielding,
   type Side,
   type Stages,
@@ -490,4 +492,79 @@ test('our attack and their defense stages move the hit that finishes', () => {
   expect(at(0.12, staged({}, { attack: -2 })), 'our attack down two').toBe(undefined);
   expect(at(0.2, staged({ defense: -2 })), 'their defense down two').toBe(0.31);
   expect(at(0.12, staged({ attack: 4 }, { defense: -4 })), 'their attack and our defense do not').toBe(0.31);
+});
+
+/** Giratina at the CP of `charged-shadow-sneak`, its Altered and Origin forms built rank 1 to ~130 and ~149 attack. */
+const GIRATINA_SNEAK = { species: 'Giratina', cp: 2392 };
+
+test.each<[string, Side, Side, number | null, Priority]>([
+  [
+    'every form of ours out-attacking every one of theirs',
+    GIRATINA_SNEAK,
+    { species: 'Registeel', cp: 2500 },
+    ULTRA,
+    { wins: true, why: 'Giratina wins CMP (atk ~130–149 v ~121)' },
+  ],
+  [
+    'theirs out-attacking every form of ours',
+    GIRATINA_SNEAK,
+    { species: 'Mamoswine', cp: 2472 },
+    ULTRA,
+    { wins: false, why: 'Mamoswine wins CMP (atk ~175 v ~130–149)' },
+  ],
+  [
+    'ours out-attacking every form of theirs',
+    { species: 'Mamoswine', cp: 2472 },
+    GIRATINA_SNEAK,
+    ULTRA,
+    { wins: true, why: 'Mamoswine wins CMP (atk ~175 v ~130–149)' },
+  ],
+  [
+    'by the full decimal attack, ~211.87 to ~211.33',
+    { species: 'Kyogre', cp: 3813 },
+    { species: 'Entei', cp: 4163 },
+    null,
+    { wins: true, why: 'Kyogre wins CMP (atk ~212 v ~211)' },
+  ],
+  [
+    'an attack between the forms ours could be',
+    GIRATINA_SNEAK,
+    { species: 'Lapras', cp: 2500 },
+    ULTRA,
+    { wins: false, why: 'CMP too close to call (atk ~130–149 v ~133)' },
+  ],
+  [
+    'an exact tie, which the game breaks at random',
+    CHARIZARD,
+    CHARIZARD,
+    ULTRA,
+    { wins: false, why: 'CMP too close to call (atk ~170 v ~170)' },
+  ],
+])('charge-move priority: %s', (_, own, opponent, cap, priority) => {
+  expect(chargePriority(DATA, own, opponent, cap)).toEqual(priority);
+});
+
+test('anything unknown loses charge-move priority, their CP unread not taken as the cap', () => {
+  const priority = (own: Side, opponent: Side) => chargePriority(DATA, own, opponent, ULTRA);
+
+  expect(priority({ species: null, cp: 2495 }, MAGMAR)).toEqual({
+    wins: false,
+    why: 'CMP unknown: our species unread',
+  });
+  expect(priority({ species: 'Charizard', cp: null }, MAGMAR)).toEqual({
+    wins: false,
+    why: 'CMP unknown: our CP unread',
+  });
+  expect(priority(CHARIZARD, { species: null, cp: 1826 })).toEqual({
+    wins: false,
+    why: 'CMP unknown: their species unread',
+  });
+  expect(priority(CHARIZARD, { species: 'Magmar', cp: null })).toEqual({
+    wins: false,
+    why: 'CMP unknown: their CP unread',
+  });
+  expect(priority(CHARIZARD, { species: 'Magmar', cp: 2600 })).toEqual({
+    wins: false,
+    why: 'CMP unknown: their CP 2600 is over the 2500 cap, so misread',
+  });
 });

@@ -49,6 +49,7 @@ import {
 } from './strategy.mts';
 import {
   afterThrow,
+  chargePriority,
   finisher,
   NO_STAGES,
   wouldFaint,
@@ -551,6 +552,10 @@ export async function run(
   // the next was last told for: told once, rather than on every frame it lasts, until a throw ends it.
   let hits = new Hits();
   let sparing: string | null | undefined;
+
+  // Where winning charge-move priority kept a throw for fear of fainting from going a fast move sooner, what it was told
+  // for, the opponent, its move and its energy: told once, rather than on every frame until the next hit.
+  let prioritised: string | undefined;
   let prompted = 0;
   let unprompted = 0;
 
@@ -873,6 +878,7 @@ export async function run(
         energy = new Energy(data, meta);
         hits = new Hits();
         sparing = undefined;
+        prioritised = undefined;
         mirrored = undefined;
         ourEnergy = new OurEnergy(
           data,
@@ -1194,11 +1200,47 @@ export async function run(
       // One more of the opponent's fast moves fainting us, which no shield stops.
       const fast = energy.fastFaints(facing, health.own, stages);
 
+      // Charge-move priority: where both sides throw on the same turn, the higher attack throws first, and a hit that
+      // faints the other leaves its move never thrown. So with none of our shields left, where ours is not sure to win
+      // it, the throw for fear of a fainting move the count affords, below, goes a fast move sooner: once one more of
+      // the opponent's fast moves would afford the move, so that ours lands before a tie can arise. Asked only where
+      // that fear is not already in force, and only on the count's word, as it is. Where ours wins, nothing changes,
+      // and the fast move it saved is told.
+      const priority = cap === undefined ? undefined : chargePriority(data, facing.own, facing.opponent, cap);
+      const sooner =
+        priority &&
+        estimate &&
+        affordable !== undefined &&
+        ourShields === 0 &&
+        !(verdict.faints && verdict.afforded !== undefined)
+          ? wouldFaint(
+              data,
+              facing.own,
+              facing.opponent,
+              health.own,
+              cap ?? null,
+              meta,
+              theirMoves.get(seen.opponent ?? ''),
+              affordable + estimate.gain,
+              stages,
+            )
+          : undefined;
+      const prioritising =
+        priority && estimate && sooner?.faints && sooner.afforded !== undefined
+          ? {
+              wins: priority.wins,
+              why: `${priority.why}, ${sooner.afforded} affordable after one more ${estimate.fast}`,
+              key: `${seen.opponent ?? ''} ${sooner.afforded} ${estimate.energy}`,
+            }
+          : undefined;
+      const losing = prioritising && !prioritising.wins ? prioritising.why : undefined;
+
       // With no shield left, a hit that would faint us makes this throw our last, so what it does to our own stats is
       // past mattering, and so does a fast move that would, whatever the shields. The shield's verdict, unknowns and an
       // unread cap counting as fainting here too: guessed wrong, either way it costs no more than the stages of one
-      // move, where telling a guess from a read would take `Verdict` saying which it is.
-      const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined;
+      // move, where telling a guess from a read would take `Verdict` saying which it is. So too where a lost CMP has
+      // the fainting move a fast move away.
+      const lastHit = (ourShields === 0 && verdict.faints) || fast !== undefined || losing !== undefined;
       const ownTypes = typesOf(data, us);
       const theirTypes = typesOf(data, them);
       const ready = state === 'charged' ? reads.readyButtons(frame) : [];
@@ -1251,7 +1293,18 @@ export async function run(
       const afforded =
         !shield && verdict.faints && verdict.afforded !== undefined
           ? `${verdict.afforded} would faint us, ${affordable} energy affords it`
+          : losing;
+
+      // Won, the throw a lost CMP would have made now, told once; not where a finish or another fear throws anyway.
+      const kept =
+        pick && prioritising?.wins && prioritised !== prioritising.key && !finish && fast === undefined
+          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, prioritising.why)
           : undefined;
+
+      if (kept && prioritising) {
+        log(`not throwing ${seen.moves.get(kept.x) ?? 'a charged move'} yet`, 'own', prioritising.why);
+        prioritised = prioritising.key;
+      }
 
       // Seen sooner than either, where our energy is counted: the move chosen filling only after their fast moves have
       // worn us down.
