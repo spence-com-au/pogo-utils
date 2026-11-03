@@ -1295,17 +1295,6 @@ export async function run(
           ? `${verdict.afforded} would faint us, ${affordable} energy affords it`
           : losing;
 
-      // Won, the throw a lost CMP would have made now, told once; not where a finish or another fear throws anyway.
-      const kept =
-        pick && prioritising?.wins && prioritised !== prioritising.key && !finish && fast === undefined
-          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, prioritising.why)
-          : undefined;
-
-      if (kept && prioritising) {
-        log(`not throwing ${seen.moves.get(kept.x) ?? 'a charged move'} yet`, 'own', prioritising.why);
-        prioritised = prioritising.key;
-      }
-
       // Seen sooner than either, where our energy is counted: the move chosen filling only after their fast moves have
       // worn us down.
       const counted = slot !== undefined && ours ? ourEnergy.estimate(slot) : null;
@@ -1319,6 +1308,18 @@ export async function run(
         pick && fears.length > 0
           ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, fears.join('; '), { lastHit })
           : undefined;
+
+      // Won, the throw a lost CMP would have made now, told once: the move it would have thrown as our last hit, as a
+      // lost one counts it. Not where a finish or another fear throws anyway.
+      const kept =
+        pick && prioritising?.wins && prioritised !== prioritising.key && !finish && fears.length === 0
+          ? beforeFainting(data, seen.moves, lit, ownTypes, theirTypes, pick, prioritising.why, { lastHit: true })
+          : undefined;
+
+      if (kept && prioritising) {
+        log(`not throwing ${seen.moves.get(kept.x) ?? 'a charged move'} yet`, 'own', prioritising.why);
+        prioritised = prioritising.key;
+      }
 
       // A finish before a throw for fear of fainting: the opponent gone, its hit that would faint us never comes, where
       // the one lit worth the most could leave it standing to land it.
