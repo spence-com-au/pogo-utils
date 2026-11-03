@@ -2893,6 +2893,9 @@ test.each([
 /** Where Charizard's bar ends on `battle-charizard-magmar`, at 93%, and two points of it short of there, as a box. */
 const CHARIZARD_HIT = [114 / 360, 243 / 360, 117 / 360, 248 / 360];
 
+/** As `CHARIZARD_HIT`, but eight points of Charizard's bar. */
+const CHARIZARD_HARD_HIT = [108 / 360, 243 / 360, 117 / 360, 248 / 360];
+
 /** Where the right of our two shields is on the Pixel 4 XL's frames, as a box for `painted`: it goes first. */
 const OUR_SECOND_SHIELD = [0.273, 0.2, 0.289, 0.218];
 
@@ -2955,6 +2958,43 @@ test.each([
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(tapped);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([said]);
+});
+
+/**
+ * The prompt at 9% as above, but with Magmar's fast move measured taking 8 points of Charizard rather than 2: the next
+ * faints Charizard whether or not it shields Fire Blast, so the shield is kept for the next Pokémon, as a low Galarian
+ * Corsola's was not in the Baltimore 2027 Regional grand final, which shielded Discharge and fainted to the Volt Switch
+ * after it.
+ */
+test('keeps the shield where their next fast move, measured, faints us anyway', async () => {
+  const fight = fixture('battle-charizard-magmar');
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      ...charizardHit(fixture('shield-low')),
+      hit: { frame: painted(fight, [52, 86, 97], CHARIZARD_HARD_HIT), swipes: { count: 10, to: 'prompt' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    'own: kept shield: their next fast move faints us anyway, one taking ~8% with 9% left',
+  ]);
 });
 
 /**

@@ -454,8 +454,17 @@ it.
 ### When to shield
 
 The shield prompt never names the move coming, so the hit judged is the hardest move the opponent could be throwing
-([`damage.mts`](damage.mts)'s `wouldFaint`). A shield is taken where any of these holds, and kept otherwise
-([`damage.mts`](damage.mts)'s `wouldShield`):
+([`damage.mts`](damage.mts)'s `wouldFaint`). First, though, a shield is kept wherever one more of the opponent's fast
+moves would faint us whether or not we shield: one hit taking at least the HP our bar shows less its 2 points of wander.
+The shield saves nothing then, ours fainting a turn later, and is gone for the Pokémon sent in next. In the Baltimore
+2027 Regional grand final ([video](https://www.youtube.com/watch?v=Jcf3aN2U_wU)), a low Galarian Corsola shielded
+Discharge at 2:44 and fainted at 1 HP to the Volt Switch after it, which the casters called a "shield KO". Only a hit
+measured off our bar against the Pokémon out, at stages unmoved, keeps one ([`energy.mts`](energy.mts)'s
+`Energy.measured`): the modelled hit that throwing early falls back on errs towards fainting, the wrong side for keeping
+a shield. A charged move of ours lit may land before that fast move, but needs no shield either way. Kept, it is logged
+as `their next fast move faints us anyway, one taking ~8% with 9% left`.
+
+Otherwise, a shield is taken where any of these holds, and kept otherwise ([`damage.mts`](damage.mts)'s `wouldShield`):
 
 - **The hit would faint us:** it would take at least **90%** of the HP our bar shows. The margin short of 100% allows
   for the HP being read off a bar and the opponent's build being a guess.

@@ -37,6 +37,7 @@ import {
   type Side,
   type Stages,
   type Verdict,
+  WANDER,
 } from './damage.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, lowersDefense, type Shown } from './strategy.mts';
@@ -242,6 +243,18 @@ export class Energy {
   }
 
   /**
+   * What one of the opponent's fast moves takes of our bar, measured against the Pokémon out in `matchup`, or undefined
+   * where nothing measured says: no step yet in a stretch of these two, or `stages` moved off none. Unlike `step`, a
+   * stretch of another pairing says nothing, as at a shield prompt straight after the opponent's switch, the prompt
+   * pausing the count before any frame of the fight has started a stretch for the newcomer. And unlike `fastFaints`,
+   * the model never stands in, nor a step once the stages have moved: either errs towards a hit that faints us, which
+   * is the safe side for throwing early and the wrong side for keeping a shield.
+   */
+  measured(matchup: Matchup, stages: { own: Stages; their: Stages }): number | undefined {
+    return stages.their.attack === 0 && stages.own.defense === 0 ? this.#stepAgainst(matchup) : undefined;
+  }
+
+  /**
    * Why the opponent's next fast move would faint us, `hp` being the fraction of our bar left, or undefined where it
    * would not or cannot be told: one hit taking at least what is left less the bar's `WANDER`, a hit of 12% counting
    * against 13% left. PvPoke's battle AI throws the charged move it has lit that does the most damage once one more of
@@ -277,7 +290,7 @@ export class Energy {
       return undefined;
     }
 
-    const step = this.#stretch && keyOf(this.#stretch.matchup) === keyOf(matchup) ? this.#stretch.step : undefined;
+    const step = this.#stepAgainst(matchup);
     const staged = stages.their.attack !== 0 || stages.own.defense !== 0;
     const fast =
       step === undefined || staged
@@ -369,6 +382,11 @@ export class Energy {
     }
 
     return { energy: Math.min(FULL, tally.carried + hits * gain), fast, gain };
+  }
+
+  /** The step measured in this stretch, where it is one of `matchup`'s pairing. */
+  #stepAgainst(matchup: Matchup): number | undefined {
+    return this.#stretch && keyOf(this.#stretch.matchup) === keyOf(matchup) ? this.#stretch.step : undefined;
   }
 
   #tallyOf(species: string): Tally {
@@ -497,9 +515,6 @@ export class Hits {
  * more of the opponent's fast moves landing on a count that allows for only one it missed.
  */
 const SPARE_HITS = 4;
-
-/** How far a steady bar wanders from itself frame to frame: 2 points, as `health.mts`'s `JUMP` measured it. */
-const WANDER = 0.02;
 
 /** The fight as it stands, which `spare` weighs. */
 export interface Standing {
