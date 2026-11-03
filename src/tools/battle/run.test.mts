@@ -326,6 +326,37 @@ test('plays a battle from the Battle tab and taps its way back round', async () 
   expect(taps).toEqual(['training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
 });
 
+// The demo clip's first frame of its result, the ✓ drawn and the verdict still fading in, caught by a read as #610 saw
+// it: read again rather than counted unread. It lasts long enough for one read to land on it, as a single frame can.
+test('reads a result again whose verdict is still fading in', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      won: {
+        frame: fixture('other-win'),
+        screenshot: fixture('menu-unknown-medal'),
+        lasts: { ms: 8000, to: 'fading' },
+      },
+      fading: { frame: fixture('menu-result-fading'), lasts: { ms: 300, to: 'result' } },
+    },
+    'training',
+  );
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+});
+
 /**
  * PGSharp's star at the left edge near the foot of a Pixel 4 XL, as `uiautomator dump` would write it: clear of
  * everything read, but over where the minigame's last row is swept from, x 0.05 at y 0.88.
