@@ -260,7 +260,7 @@ const FORM_SUFFIX = /\(([^()]{1,20})\)/g;
 export const OVERLAY_LUMINANCE = 150;
 export const OVERLAY_CHROMA = 55;
 
-const TRIPLE = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/;
+export const TRIPLE = /(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/;
 
 /** The same pattern anchored, so `tripleIn` can ask it *at* an offset rather than from one. Derived, not retyped. */
 const TRIPLE_AT = new RegExp(TRIPLE.source, 'y');
