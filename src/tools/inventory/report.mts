@@ -6,7 +6,7 @@
  */
 
 import { signatureOf, type Signature } from './artwork.mts';
-import { parseDetail, readLines, type Detail } from './detail.mts';
+import { parseDetail, powerUpOn, readLines, type Detail } from './detail.mts';
 import { type Form, type GameData } from './game-master.mts';
 import { identify, type Identity } from './identify.mts';
 import { parseMoves, type Moves } from './moves.mts';
@@ -66,7 +66,12 @@ export async function readScreen(
   const [lines, stitched] = await Promise.all([readLines(screen), screen === image ? undefined : readLines(image)]);
 
   const whole = stitched ?? lines;
-  const detail = await parseDetail(lines, data, screen);
+  const read = await parseDetail(lines, data, screen);
+
+  // The one reading off the stitch besides the moves: a panel above `POWER UP` can push it below the screen's foot, as
+  // Necrozma's fusion panel does, and the scan reads it off the screen scrolled down for the moves the same way.
+  const powerUp = read.powerUp ?? (screen === image ? null : await powerUpOn(image));
+  const detail = { ...read, powerUp };
   const found = configured
     ? { box: configured, overlay: await readOverlay(screen, configured) }
     : await findOverlay(screen);

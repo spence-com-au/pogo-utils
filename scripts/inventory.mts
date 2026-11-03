@@ -44,7 +44,8 @@
  * A scroll capture drags the screen up until it stops moving and stitches the frames into one tall image, which is how
  * a screen longer than the phone is seen whole. The stitch is **not** given to the other readers, and that is a limit
  * rather than an oversight: the star corner, the overlay sweep, the tag band and the artwork are each anchored on a
- * fraction of the image's height. `parseMoves` is the one reader that is not, being anchored on `GYMS & RAIDS`.
+ * fraction of the image's height. `parseMoves` is the one reader that is not, being anchored on `GYMS & RAIDS`, and
+ * `powerUpOn` finds its row by the label wherever it is, for a screen that ends above it.
  *
  * `snap` and `parse` are the tools for fixing a misread. Every tap position, swipe and delay is in `DEFAULTS` and can
  * be overridden from a JSON file passed as `--config`, with positions as fractions of the screen so one file suits any
@@ -62,7 +63,7 @@ import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { parseDetail, readLines, type Detail } from '../src/tools/inventory/detail.mts';
+import { parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
@@ -784,24 +785,28 @@ async function scan(held: Transport) {
         return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
       };
 
-      // Each pass's flag taken once, since `take` uses the match up. Identified again where the columns say whether
-      // this is shadow or purified, which is all that rules out a form the game only hands out as a shadow, and which
-      // the reading `walk` took could not know.
-      const {
-        shadow,
-        purified,
-        shadowed,
-        notes: disagreements,
-      } = shaded({ shadow: flag('shadow'), purified: flag('purified') }, shadowOf(data, detail, read.levels));
-      notes.push(...disagreements);
+      // Each pass's flag taken once, since `take` uses the match up.
+      const passes = { shadow: flag('shadow'), purified: flag('purified') };
+
+      // Identified again where the columns say whether this is shadow or purified, which is all that rules out a form
+      // the game only hands out as a shadow, and which the reading `walk` took could not know. A function, since a
+      // screen asking no stardust is settled again off the screen the moves are read from.
+      const settle = (powerUp: number | null) => {
+        const shade = shaded(passes, shadowOf(data, { ...detail, powerUp }, read.levels));
+        const id =
+          shade.shadowed === null
+            ? read
+            : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shade.shadowed);
+
+        return { ...shade, id };
+      };
+
+      let settled = settle(detail.powerUp);
 
       // Taken whatever the screen says, so that a match the pass holds for this Pokémon is used up here rather than
       // left to mark another. The caption is the screen stating it, where the pass can have been cut short.
       const passed = flag('lucky');
       const lucky = detail.lucky ? 'yes' : passed;
-
-      const id =
-        shadowed === null ? read : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shadowed);
 
       if (detail.hp === null) {
         notes.push('detail screen not read');
@@ -812,6 +817,8 @@ async function scan(held: Transport) {
       }
 
       if (!options['no-moves']) {
+        let below: number | null = null;
+
         moves = await reachMoves(async (steps) => {
           let scrolled: Image;
           let back: number;
@@ -888,9 +895,14 @@ async function scan(held: Transport) {
             dialog = dialogOpen(lines);
             cutOff = !options.scroll && movesCutOff(lines, scrolled);
 
-            return parseMoves(lines, data, id.form, scrolled);
+            return parseMoves(lines, data, settled.id.form, scrolled);
           });
-          await Promise.all([reading, scrollUp(device, shot, back)]);
+
+          // A panel above `POWER UP` can push it below the plain screen's foot, as Necrozma's fusion panel does, and
+          // then the screen scrolled down for the moves is where its stardust is.
+          const power = detail.powerUp === null ? powerUpOn(scrolled) : Promise.resolve(null);
+          await Promise.all([reading, power, scrollUp(device, shot, back)]);
+          below = (await power) ?? below;
 
           // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
           // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
@@ -906,7 +918,14 @@ async function scan(held: Transport) {
         if (moves.fast === null || moves.charged.length === 0) {
           notes.push('moves not fully read');
         }
+
+        if (below !== null) {
+          settled = settle(below);
+        }
       }
+
+      const { shadow, purified, id } = settled;
+      notes.push(...settled.notes);
 
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
       const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
