@@ -63,7 +63,7 @@ export interface Detail {
    */
   powerUp: number | null;
 
-  /** The Max treatment the row under the measurements names, null where it names none or the HP was not read. */
+  /** The Max treatment the row under the measurements names, null where it names none or they were not read. */
   max: Max | null;
 }
 
@@ -296,13 +296,6 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   // the two share — which is the weight as often as not.
   const heightLine = lines.find((l) => HEIGHT.test(l.text));
 
-  // The badge ahead of the word reads as a glyph or two — `chansey-dynamax.png` reads `ay Dynamax` — so the word is
-  // matched at the end of its line. Only below the measurements, or the HP where those went unread, so a Pokémon
-  // nicknamed `Dynamax` is not taken for one.
-  const above = row ?? hpLine;
-  const word = above && lines.flatMap((l) => (l.top > above.top ? (MAX.exec(l.text)?.[1] ?? []) : []))[0];
-  const max = word ? (word.toLowerCase() as Max) : null;
-
   const weight = number(WEIGHT) ?? (row ? measured(image, row, 0) : null);
   const height = number(HEIGHT) ?? (row ? measured(image, row, 1 - MEASURE_WIDTH) : null);
 
@@ -321,18 +314,20 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons, lucky] = await Promise.all([
-    whole,
-    rescued,
-    weight,
-    height,
-    badged,
-    cpLine ? [] : cpsIn(image),
-    typesOf(lines, data, image),
-    hpLine && row ? tagsOn(image, hpLine, row) : [],
-    row ? buttonsOn(image, row) : null,
-    hpLine ? isLucky(image, hpLine) : false,
-  ]);
+  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons, lucky, max] =
+    await Promise.all([
+      whole,
+      rescued,
+      weight,
+      height,
+      badged,
+      cpLine ? [] : cpsIn(image),
+      typesOf(lines, data, image),
+      hpLine && row ? tagsOn(image, hpLine, row) : [],
+      row ? buttonsOn(image, row) : null,
+      hpLine ? isLucky(image, hpLine) : false,
+      row ? maxUnder(image, row) : null,
+    ]);
 
   // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
   // the arithmetic as candidates, the way the sweep's numbers are, rather than guessed at.
@@ -491,7 +486,26 @@ const MEASURE_WIDTH = 0.38;
 const WEIGHT = /(\d+[.,]\d+)\s*kg\b/i;
 export const HEIGHT = /(\d+[.,]\d+)\s*m\b/i;
 
-const MAX = /\b(dynamax|gigantamax)\s*$/i;
+/**
+ * The Max treatment the row under the measurements names, read off a band of its own: the whole-screen pass drops it
+ * from a plain screen as often as not, reading the Gigantamax Gengar's off its stitch and nothing off the screen
+ * alone. Its top sits a fixed fraction of the screen's width below the measurements' top — 196 pixels on the
+ * 1008-wide `chansey-dynamax.png`, 279 on the 1440-wide `gengar-gigantamax.png` — and a Pokémon with no such row has
+ * its stardust there, which reads as no treatment at all.
+ */
+async function maxUnder(image: Image, row: Line): Promise<Max | null> {
+  const { width } = image;
+  const band = crop(image, width * 0.1, row.top + width * MAX_BAND.from, width * 0.8, width * MAX_BAND.height);
+  const word = MAX.exec((await ocrLine(band, MAX_ALPHABET)) ?? '')?.[1];
+
+  return word ? (word.toLowerCase() as Max) : null;
+}
+
+/** The band `maxUnder` reads, in fractions of the screen's width below the measurements' top. */
+const MAX_BAND = { from: 0.14, height: 0.11 };
+
+const MAX_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
+const MAX = /\b(dynamax|gigantamax)\b/i;
 
 export const measurement = (text: string) => WEIGHT.test(text) || HEIGHT.test(text);
 
