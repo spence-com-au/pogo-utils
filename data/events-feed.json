@@ -5,7 +5,7 @@
     "eventType": "raid-battles",
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/cresselia-darkrai-in-5-star-raid-battles-november-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/legendary-cresselia.jpg",
     "start": "2026-11-16T06:00:00.000",
     "end": "2026-11-24T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
@@ -16,7 +16,7 @@
     "eventType": "raid-battles",
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/deoxys-normal-defense-attack-speed-formes-in-5-star-raid-battles-november-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/deoxys-all-formes.jpg",
     "start": "2026-11-25T06:00:00.000",
     "end": "2026-12-01T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
@@ -104,7 +104,7 @@
     "eventType": "raid-battles",
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/giratina-altered-forme-in-5-star-raid-battles-november-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/giratinaaltered.jpg",
     "start": "2026-11-04T06:00:00.000",
     "end": "2026-11-08T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
@@ -140,17 +140,6 @@
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-10-06-go-pass-october-2026/go-pass-october-2026.jpg",
     "start": "2026-10-06T10:00:00.000",
     "end": "2026-11-03T10:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "halloween-2026-part-1",
-    "name": "Pokémon GO Halloween 2026 Part I",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/halloween-2026-part-1/",
-    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-10-27-halloween-2026-part-1/halloween-2026-part-1.jpg",
-    "start": null,
-    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -500,7 +489,7 @@
     "eventType": "raid-battles",
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/shadow-tornadus-incarnate-forme-in-shadow-raids-november-16-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/tornadus.jpg",
     "start": "2026-11-16T06:00:00.000",
     "end": "2026-12-01T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
@@ -511,7 +500,7 @@
     "eventType": "raid-battles",
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/shadow-tornadus-incarnate-forme-in-shadow-raids-november-4-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/tornadus.jpg",
     "start": "2026-11-04T06:00:00.000",
     "end": "2026-11-08T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
