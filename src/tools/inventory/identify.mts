@@ -389,6 +389,15 @@ export function shadowOf(data: GameData, detail: Detail, levels: readonly number
 
 export type Shade = 'shadow' | 'purified' | 'neither';
 
+/**
+ * The form an answer names, which is none where the screen never said which. `form` is then only the shortest name of
+ * the forms left, kept for the species, dex and moves they share — written down as the form, it read as a reading, and
+ * every unsure Minior became `Red`.
+ */
+export function settledForm(identity: Identity): string | null {
+  return identity.unseparated.length > 0 ? null : (identity.form?.form ?? null);
+}
+
 export function label(f: Form): string {
   return f.form ? `${f.species} (${f.form})` : f.species;
 }
