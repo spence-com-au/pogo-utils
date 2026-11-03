@@ -8,9 +8,10 @@
  * The level and the three IVs come off PGSharp's own overlay, which is why the scanner needs PGSharp rather than the
  * stock client — nothing else gives the IVs without walking the appraisal dialogue every time. The form is worked out
  * rather than read, HP being fixed by base stamina, the stamina IV and the level; see `inventory/game-master.mts`.
- * Shadow and purified are worked out too, from the stardust a power-up costs at that level. Shiny, lucky and costume
- * say nothing on the screen at all, so each is a search pass instead, whose matches the full pass recognises by name,
- * HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where it is asked for.
+ * Shadow and purified are worked out too, from the stardust a power-up costs at that level. Shiny and costume say
+ * nothing on the screen at all, so each is a search pass instead, whose matches the full pass recognises by name, HP,
+ * weight, height and IVs together. A pass for shadow or purified outranks the screen where it is asked for. Lucky has
+ * a pass too, and a caption under the name besides, which marks the row whatever the pass made of it.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
@@ -791,6 +792,11 @@ async function scan(held: Transport) {
       } = shaded({ shadow: flag('shadow'), purified: flag('purified') }, shadowOf(data, detail, read.levels));
       notes.push(...disagreements);
 
+      // Taken whatever the screen says, so that a match the pass holds for this Pokémon is used up here rather than
+      // left to mark another. The caption is the screen stating it, where the pass can have been cut short.
+      const passed = flag('lucky');
+      const lucky = detail.lucky ? 'yes' : passed;
+
       const id =
         shadowed === null ? read : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shadowed);
 
@@ -918,7 +924,7 @@ async function scan(held: Transport) {
         tags: carried.join('; '),
         costume: flag('costume'),
         shiny: flag('shiny'),
-        lucky: flag('lucky'),
+        lucky,
         size: detail.size,
         shadow,
         purified,

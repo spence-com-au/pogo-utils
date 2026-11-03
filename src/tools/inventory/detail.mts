@@ -10,7 +10,7 @@
 import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
 import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
-import { genderOf, isFavourite, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
+import { genderOf, isFavourite, isLucky, isLuckyCaption, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
   name: string | null;
@@ -19,6 +19,9 @@ export interface Detail {
   height: number | null;
   types: string[];
   favourite: boolean;
+
+  /** Whether the green `LUCKY POKÉMON` caption is drawn under the name; false where there was no HP to find it by. */
+  lucky: boolean;
 
   /** What OCR made of the CP, which is white over the artwork and read on about half the captures. */
   cp: number | null;
@@ -202,14 +205,18 @@ export function nameLineOf(lines: readonly Line[], hp: Line, labelled?: Line): L
 /** What `nameLineOf` takes a line for a name by, and what a line read again on its own has to be too. */
 const NAME_SHAPE = /\p{L}{3}|\p{N}{2}|#/u;
 
-/** Every line between PGSharp's overlay and the HP, nearest the HP last, that a name could be. */
+/**
+ * Every line between PGSharp's overlay and the HP, nearest the HP last, that a name could be. Never a lucky Pokémon's
+ * caption, which sits between the name and the HP and so is nearest where it is read: two rows of a live scan were
+ * nicknamed `LUCKY POKEMON` for it.
+ */
 function underOverlay(lines: readonly Line[], hp: Line, labelled?: Line): Line[] {
   const above = lines.filter((l) => l.top + l.height <= hp.top + 4);
   const overlay = above.filter((l) => TRIPLE.test(l.text)).at(-1);
 
   return above
     .filter((l) => overlay === undefined || l.top >= overlay.top + overlay.height)
-    .filter((l) => l !== labelled && !CP_LABEL.test(foldCp(l.text)));
+    .filter((l) => l !== labelled && !CP_LABEL.test(foldCp(l.text)) && !isLuckyCaption(l.text));
 }
 
 /**
@@ -302,7 +309,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons] = await Promise.all([
+  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons, lucky] = await Promise.all([
     whole,
     rescued,
     weight,
@@ -312,6 +319,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     typesOf(lines, data, image),
     hpLine && row ? tagsOn(image, hpLine, row) : [],
     row ? buttonsOn(image, row) : null,
+    hpLine ? isLucky(image, hpLine) : false,
   ]);
 
   // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
@@ -328,6 +336,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     types,
     gender: hpLine ? genderOf(image, hpLine) : null,
     favourite: isFavourite(image),
+    lucky,
     size: sized?.size ?? null,
     tags,
     evolveCandy: buttons?.evolveCandy ?? null,

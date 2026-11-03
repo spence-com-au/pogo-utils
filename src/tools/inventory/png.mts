@@ -476,7 +476,7 @@ export function brighten(image: Image, min: number): Image {
 }
 
 /** Black where `keep` holds for a pixel's three channels and white elsewhere, opaque throughout. */
-function threshold(image: Image, keep: (r: number, g: number, b: number) => boolean): Image {
+export function threshold(image: Image, keep: (r: number, g: number, b: number) => boolean): Image {
   const data = new Uint8Array(image.data.length);
 
   for (let i = 0; i < image.data.length; i += 4) {

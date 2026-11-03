@@ -1,11 +1,13 @@
 /**
  * What the detail screen states in pixels rather than in words: the size pill over the height, the favourite's star,
- * the gender symbol beside the HP and the account's own tag chips. The seam with `detail.mts` is the method rather
- * than the subject — each of these is found by colour or shape first, and three of the four need no OCR at all.
+ * the gender symbol beside the HP, a lucky Pokémon's caption and the account's own tag chips. The seam with
+ * `detail.mts` is the method rather than the subject — each of these is found by colour or shape first, and the star
+ * and the symbol need no OCR at all.
  */
 
-import { fold, ocrLine, type Line } from './ocr.mts';
-import { chroma, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
+import { closest } from './game-master.mts';
+import { fold, ocr, ocrLine, type Line } from './ocr.mts';
+import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from './png.mts';
 
 /**
  * What the symbol beside the HP says, in the game's own search terms: `genderunknown` is what the game calls a species
@@ -194,6 +196,48 @@ export function genderOf(image: Image, hp: Line): Gender {
 
   return symbol.height / Math.max(1, symbol.width) >= GENDER_TALL ? 'female' : 'male';
 }
+
+/**
+ * Whether the green `LUCKY POKÉMON` caption is drawn between the name and the HP. The whole-screen pass reads it on no
+ * capture, and where it did read it the line was nearest the HP and taken for a nickname, so it is looked for on its
+ * own: only the caption's green kept, which drops the teal name above it, and the band read sparse, which takes the HP
+ * bar's own green below it for a picture rather than a line. Over the corpus both lucky captures read `LUCKY POKEMON`
+ * and the other 54 read nothing at all.
+ *
+ * Reaching from the HP rather than from the name line, since that line is the caption itself where it went wrong.
+ */
+export async function isLucky(image: Image, hp: Line): Promise<boolean> {
+  const band = crop(
+    image,
+    image.width * LUCKY_INSET,
+    hp.top - hp.height * LUCKY_RISE,
+    image.width * (1 - LUCKY_INSET * 2),
+    hp.height * LUCKY_RISE,
+  );
+
+  return (await ocr(threshold(band, captionGreen))).some((line) => isLuckyCaption(line.text));
+}
+
+/**
+ * Whether a line reads as the lucky caption. Never a nickname, which the game holds to twelve characters where
+ * `LUCKY POKÉMON` runs to thirteen.
+ */
+export const isLuckyCaption = (text: string) => closest(text, [LUCKY_CAPTION], (c) => c) !== null;
+
+const LUCKY_CAPTION = 'Lucky Pokémon';
+
+/**
+ * The caption's green, rgb(100,195,130) at its core, against the name's teal rgb(64,96,96) — which no green floor
+ * reaches — and the HP bar's mint rgb(100,230,180), which this keeps and the sparse read declines.
+ */
+const captionGreen = (r: number, g: number, b: number) => g - r >= 60 && g - b >= 40;
+
+/**
+ * How far above the HP the caption band reaches, in the HP line's own heights, and how much of the width it omits:
+ * the band `detail.mts` reads a name off, the caption sitting inside it.
+ */
+const LUCKY_RISE = 5;
+const LUCKY_INSET = 0.1;
 
 /** A tag chip is the only coloured thing on the panel, and it is drawn between the HP and the weight. */
 const TAG_CHROMA = 45;

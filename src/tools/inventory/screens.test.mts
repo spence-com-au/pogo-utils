@@ -1067,6 +1067,8 @@ for (const fixture of FIXTURES) {
     test('favourite', async () =>
       expect((await readingOf(fixture.file)).detail.favourite).toBe(defects.favourite ?? fixture.favourite ?? false));
 
+    test('lucky', async () => expect((await readingOf(fixture.file)).detail.lucky).toBe(fixture.lucky ?? false));
+
     test('tags', async () => {
       const { detail } = await readingOf(fixture.file);
 
@@ -2247,6 +2249,7 @@ test('overworld.png is the map, and every reader declines it', async () => {
     gender: null,
     height: null,
     hp: null,
+    lucky: false,
     name: null,
     powerUp: null,
     size: null,
