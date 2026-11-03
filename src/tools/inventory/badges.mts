@@ -89,6 +89,9 @@ function extentOf(image: Image, matches: (r: number, g: number, b: number) => bo
 /** The warm gold the game fills a favourite's star with. */
 const gold = (r: number, g: number, b: number) => r >= 180 && g >= 110 && g <= 235 && b <= 130 && r - b >= 90;
 
+/** The near-white an ordinary star's outline is drawn in, and a favourite's solid gold star has none of. */
+const white = (r: number, g: number, b: number) => Math.min(r, g, b) >= 220;
+
 /** Any hue at all, against a panel that is neutral grey. What the size badge's pill needs, since its hue varies. */
 const coloured = (r: number, g: number, b: number) => chroma(r, g, b) >= SIZE_CHROMA;
 
@@ -151,13 +154,15 @@ export async function sizeOf(image: Image, height: Line): Promise<Size | null> {
 
 /**
  * Whether the star at the top right is filled. A favourite's is solid gold where an ordinary one is a white outline, so
- * this is the one flag colour alone settles. The star is the game's own furniture rather than PGSharp's, so it scales
- * with the screen and a fraction holds where one for the overlay did not — 0.900, 0.074 against 0.903, 0.080.
+ * this is the one flag colour alone settles — but by the white as much as by the gold, since a gold or yellow
+ * background behind an outline puts as much gold in the corner as a filled star does. The star is the game's own
+ * furniture rather than PGSharp's, so it scales with the screen and a fraction holds where one for the overlay did not
+ * — 0.900, 0.074 against 0.903, 0.080.
  */
 export function isFavourite(image: Image): boolean {
   const star = crop(image, image.width * 0.86, image.height * 0.05, image.width * 0.1, image.height * 0.06);
 
-  return patchIn(star, gold).fraction >= FAVOURITE_GOLD;
+  return patchIn(star, gold).fraction >= FAVOURITE_GOLD && patchIn(star, white).fraction < FAVOURITE_WHITE;
 }
 
 /**
@@ -383,11 +388,21 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 
 /**
  * Measured over the 49 committed captures: 40 are exactly 0 and the five favourites run 18.18% to 26.49%. Not 0.02,
- * because `spinda-04.png`'s warm bokeh background puts **15.34%** in that corner behind a white-outline star. A
- * discriminator rather than headroom, and thin on both sides: 1.2 points under the lowest favourite and 1.7 over the
- * worst non-favourite.
+ * because `spinda-04.png`'s warm bokeh background puts **15.34%** in that corner behind a white-outline star. Gold
+ * alone cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's
+ * 24.31%, inside the favourites' range, which is what `FAVOURITE_WHITE` is for.
  */
 const FAVOURITE_GOLD = 0.17;
+
+/**
+ * Near-white in the star's corner, which is the outline itself and so does not move with the background: exactly 0 on
+ * all five favourites in the corpus, solid gold leaving none, and 6.40% to 7.23% on its 50 outline stars. The two
+ * plain Pixel 4 XL screens of Axew over yellow bokeh that gold alone read as favourites hold 7.07% and 7.33%, and
+ * issue #586 found none under 6.4% over about 450 live outlines. Anything between 0 and 6.4% separates them, so the line
+ * sits a third of the way up: a favourite's edge catching some glare still clears it, and an outline would have to
+ * lose two thirds of itself to fall under it.
+ */
+const FAVOURITE_WHITE = 0.02;
 
 /**
  * The size badge's pill as a band over the height, measured in the height's own height: the pill is a little under two

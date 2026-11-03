@@ -529,7 +529,6 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 656,
-    defects: { favourite: true },
     file: 'frigibax.png',
     form: null,
     gender: 'male',
@@ -1469,7 +1468,7 @@ const COVERAGE = {
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 44,
+  noDefects: 45,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -2721,6 +2720,13 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.levels` again, so `identify` has started settling on a level the row denies',
   ).toStrictEqual([]);
 
+  // And the star, which `frigibax.png`'s bokeh filled with as much gold as a favourite's until `isFavourite` asked for
+  // the outline's white as well.
+  expect(
+    FIXTURES.filter((f) => f.defects && 'favourite' in f.defects).map((f) => f.file),
+    'a capture needs `defects.favourite` again, so `isFavourite` has started reading an outline star as filled',
+  ).toStrictEqual([]);
+
   // And both kinds of bracketed form: some captures carry a suffix that names a form of their species, and two carry
   // one that names no form at all, those being PGSharp's `[` and `\` for Unown's two punctuation forms.
   assert.ok(
@@ -2737,7 +2743,7 @@ test('the corpus reaches both sides of every attribute', () => {
   expect(
     [...new Set(FIXTURES.flatMap((f) => Object.keys(f.defects ?? {})))].sort(),
     'a reader has started or stopped disagreeing with the screen about something',
-  ).toStrictEqual(['favourite', 'label', 'unseparated']);
+  ).toStrictEqual(['label', 'unseparated']);
 
   // And the other side of it, which the keys above cannot give: that some capture carries no defect at all. Without it
   // a reader that was wrong everywhere would pass every row it had a `defects` entry in.
