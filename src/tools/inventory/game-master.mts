@@ -121,6 +121,12 @@ export interface GameData {
 
   /** What a move of the first type multiplies its damage by against a Pokémon of the second, by type name. */
   effectiveness: Record<string, Record<string, number>>;
+
+  /**
+   * The stardust a power-up costs, by whole level from 1, and what a shadow's, a purified Pokémon's and a lucky one's
+   * cost is that times.
+   */
+  powerUp: { stardust: number[]; shadow: number; purified: number; lucky: number };
 }
 
 export interface IVs {

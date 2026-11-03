@@ -170,10 +170,11 @@ const MOVE_TAB = /\b(gyms|raids|trainer battles)\b/;
 const BELOW_MOVES = /\b(new attack|caught|hatched|traded|swap buddies|transfer|appraise)\b/;
 
 /**
- * The caption under a move the weather boosts: furniture, and three edits from Weather Ball. Matched by its start,
- * since OCR cuts it to `WEATHER BON` about as often as not.
+ * The captions under a move: furniture, `WEATHER BONUS` three edits from Weather Ball and a shadow's `SHADOW BONUS` two
+ * from Shadow Bone, which the whole move list took it for on both shadow captures. The weather's is matched by its
+ * start, since OCR cuts it to `WEATHER BON` about as often as not, and the shadow's by the `BONU` the move lacks.
  */
-const CAPTION = /\bweather bon/;
+const CAPTION = /\bweather bon|\bbonu/;
 
 /**
  * The room under the tabs a fast move's row and one charged move's take, as a fraction of the width: the second row's

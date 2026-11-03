@@ -50,7 +50,16 @@ test('sends nothing without GITHUB_TOKEN', async () => {
   expect(await authorisation('https://api.github.com/repos/PokeMiners/pogo_assets/git/trees/master')).toBeNull();
 });
 
-/** The forms `loadGameData` makes of a game master of `templates`, beside a level table and nothing else. */
+/** The power-up costs `loadGameData` requires, which nothing below reads. */
+const POWER_UP = [
+  {
+    templateId: 'POKEMON_UPGRADE_SETTINGS',
+    data: { pokemonUpgrades: { stardustCost: [], shadowStardustMultiplier: 1.2, purifiedStardustMultiplier: 0.9 } },
+  },
+  { templateId: 'LUCKY_POKEMON_SETTINGS', data: { luckyPokemonSettings: { powerUpStardustDiscountPercent: 0.5 } } },
+];
+
+/** The forms `loadGameData` makes of a game master of `templates`, beside the tables it requires and nothing else. */
 async function formsOf(templates: object[]) {
   const dir = mkdtempSync(join(tmpdir(), 'download-'));
 
@@ -61,6 +70,7 @@ async function formsOf(templates: object[]) {
         templateId: 'PLAYER_LEVEL_SETTINGS',
         data: { playerLevel: { cpMultiplier: Array.from({ length: 100 }, (_, i) => 0.1 + i / 100) } },
       },
+      ...POWER_UP,
       ...templates,
     ]),
   );

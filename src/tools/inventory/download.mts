@@ -120,6 +120,12 @@ interface Template {
     };
     typeEffective?: { attackType: string; attackScalar: number[] };
     playerLevel?: { cpMultiplier: number[] };
+    pokemonUpgrades?: {
+      stardustCost: number[];
+      shadowStardustMultiplier: number;
+      purifiedStardustMultiplier: number;
+    };
+    luckyPokemonSettings?: { powerUpStardustDiscountPercent: number };
   };
 }
 
@@ -428,6 +434,13 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  const upgrades = templates.find((t) => t.data.pokemonUpgrades)?.data.pokemonUpgrades;
+  const lucky = templates.find((t) => t.data.luckyPokemonSettings)?.data.luckyPokemonSettings;
+
+  if (upgrades === undefined || lucky === undefined) {
+    throw new Error('the game master states no power-up costs, for a lucky Pokémon or at all');
+  }
+
   return {
     forms: forms.sort((a, b) => a.dex - b.dex),
     moves,
@@ -436,6 +449,12 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     cpm,
     combat,
     effectiveness,
+    powerUp: {
+      stardust: upgrades.stardustCost,
+      shadow: upgrades.shadowStardustMultiplier,
+      purified: upgrades.purifiedStardustMultiplier,
+      lucky: lucky.powerUpStardustDiscountPercent,
+    },
   };
 }
 

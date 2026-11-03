@@ -41,9 +41,9 @@ const dumpRows = (text: string) => text.split('\n').filter((line) => DUMP.test(l
  *
  * All three files are load-bearing, measured rather than reasoned about — seeded with the game master alone, a `parse`
  * run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP multiplier for
- * every level, where an empty icon index and string table it takes in its stride. That emptiness is what lets the
- * stderr below be asserted — no form means no icon to fetch, so an empty stderr is exactly the claim that the seeded
- * cache was read rather than merely present.
+ * every level or without the power-up costs, where an empty icon index and string table it takes in its stride. That
+ * emptiness is what lets the stderr below be asserted — no form means no icon to fetch, so an empty stderr is exactly
+ * the claim that the seeded cache was read rather than merely present.
  *
  * `extra` is appended to those templates for the tests that need a form to exist, and defaults to none so every other
  * caller keeps that emptiness. `icons` names what the index holds and writes each file beside it: the index is what
@@ -60,6 +60,11 @@ function reads(extra: readonly unknown[] = [], icons: readonly string[] = []): s
     join(cache, GAME_MASTER_CACHE),
     JSON.stringify([
       { templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: levels } } },
+      {
+        templateId: 'POKEMON_UPGRADE_SETTINGS',
+        data: { pokemonUpgrades: { stardustCost: [], shadowStardustMultiplier: 1.2, purifiedStardustMultiplier: 0.9 } },
+      },
+      { templateId: 'LUCKY_POKEMON_SETTINGS', data: { luckyPokemonSettings: { powerUpStardustDiscountPercent: 0.5 } } },
       ...extra,
     ]),
   );
