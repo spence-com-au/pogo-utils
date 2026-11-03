@@ -62,7 +62,12 @@ export interface Detail {
    * is. Null where the screen draws no such row, and where its figure was not read.
    */
   powerUp: number | null;
+
+  /** The Max treatment the row under the measurements names, null where it names none or the HP was not read. */
+  max: Max | null;
 }
+
+export type Max = 'dynamax' | 'gigantamax';
 
 /** Everything OCR read off an image: the whole of it, then the top fifth again inverted, where the CP is white. */
 export async function readLines(image: Image): Promise<Line[]> {
@@ -291,6 +296,13 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   // the two share — which is the weight as often as not.
   const heightLine = lines.find((l) => HEIGHT.test(l.text));
 
+  // The badge ahead of the word reads as a glyph or two — `chansey-dynamax.png` reads `ay Dynamax` — so the word is
+  // matched at the end of its line. Only below the measurements, or the HP where those went unread, so a Pokémon
+  // nicknamed `Dynamax` is not taken for one.
+  const above = row ?? hpLine;
+  const word = above && lines.flatMap((l) => (l.top > above.top ? (MAX.exec(l.text)?.[1] ?? []) : []))[0];
+  const max = word ? (word.toLowerCase() as Max) : null;
+
   const weight = number(WEIGHT) ?? (row ? measured(image, row, 0) : null);
   const height = number(HEIGHT) ?? (row ? measured(image, row, 1 - MEASURE_WIDTH) : null);
 
@@ -341,6 +353,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     tags,
     evolveCandy: buttons?.evolveCandy ?? null,
     powerUp: buttons?.powerUp ?? null,
+    max,
   };
 }
 
@@ -477,6 +490,8 @@ const MEASURE_WIDTH = 0.38;
  */
 const WEIGHT = /(\d+[.,]\d+)\s*kg\b/i;
 export const HEIGHT = /(\d+[.,]\d+)\s*m\b/i;
+
+const MAX = /\b(dynamax|gigantamax)\s*$/i;
 
 export const measurement = (text: string) => WEIGHT.test(text) || HEIGHT.test(text);
 

@@ -90,6 +90,7 @@ test('a Nidoran whose glyph was lost is the Nidoran the entry names', () => {
     tags: [],
     evolveCandy: null,
     powerUp: null,
+    max: null,
   };
 
   const identity = identify(DATA, detail, null, undefined, dexOn(lines('0032 NIDORAN'), DATA));

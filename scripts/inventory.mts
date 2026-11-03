@@ -1,6 +1,6 @@
 /**
  * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds to a CSV: species, form,
- * costume, shiny, lucky, size, CP, HP, level, IVs and moves. Pokémon GO has no export, so this reads the screen the way
+ * costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO has no export, so this reads the screen the way
  * a person would — open the first Pokémon, read it, swipe to the next — with Tesseract doing the reading.
  *
  * Each field comes from wherever it can be got most reliably. The CP, HP, name, weight, height, types, gender, size
@@ -165,6 +165,7 @@ const COLUMNS = [
   'size',
   'shadow',
   'purified',
+  'max',
   'cp',
   'hp',
   'level',
@@ -928,6 +929,7 @@ async function scan(held: Transport) {
         size: detail.size,
         shadow,
         purified,
+        max: detail.max,
         cp: id.cp ?? detail.cp,
         hp: detail.hp,
         level: id.levels.join(' / '),

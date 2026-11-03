@@ -48,6 +48,7 @@ function detail(fields: Partial<Detail> = {}): Detail {
     tags: [],
     evolveCandy: null,
     powerUp: null,
+    max: null,
     ...fields,
   };
 }

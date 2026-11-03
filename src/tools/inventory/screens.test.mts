@@ -1069,6 +1069,11 @@ for (const fixture of FIXTURES) {
 
     test('lucky', async () => expect((await readingOf(fixture.file)).detail.lucky).toBe(fixture.lucky ?? false));
 
+    test('max', async () =>
+      expect((await readingOf(fixture.file)).detail.max).toBe(
+        fixture.gigantamax ? 'gigantamax' : fixture.dynamax ? 'dynamax' : null,
+      ));
+
     test('tags', async () => {
       const { detail } = await readingOf(fixture.file);
 
@@ -2252,6 +2257,7 @@ test('overworld.png is the map, and every reader declines it', async () => {
     lucky: false,
     name: null,
     powerUp: null,
+    max: null,
     size: null,
     tags: [],
     types: [],
