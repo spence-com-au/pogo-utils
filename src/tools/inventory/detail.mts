@@ -324,7 +324,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
       cpLine ? [] : cpsIn(image),
       typesOf(lines, data, image),
       hpLine && row ? tagsOn(image, hpLine, row) : [],
-      row ? buttonsOn(image, row) : null,
+      row ? buttonsOn(image, row.top + row.height) : null,
       hpLine ? isLucky(image, hpLine) : false,
       row ? maxUnder(image, row) : null,
     ]);
@@ -648,11 +648,11 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
 }
 
 /**
- * What the rows of buttons under the measurement row ask for: the candy the `EVOLVE` row does, and the stardust the
- * `POWER UP` row does. The whole-screen pass is no use for finding either: white capitals on a green pill, it reads
- * `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan kept, and the figure beside it as `S50` or `225`, the candy
- * icon taken for a digit. So the rows are found by their pills, each pill's label is read on its own, and the figure
- * is cut out of the row by its columns of ink before it is read.
+ * What the rows of buttons from row `from` down ask for, which on the plain screen is the measurement row's foot: the
+ * candy the `EVOLVE` row does, and the stardust the `POWER UP` row does. The whole-screen pass is no use for finding
+ * either: white capitals on a green pill, it reads `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan kept, and
+ * the figure beside it as `S50` or `225`, the candy icon taken for a digit. So the rows are found by their pills, each
+ * pill's label is read on its own, and the figure is cut out of the row by its columns of ink before it is read.
  *
  * Every button row is a pill, `PURIFY` and `NEW ATTACK` as much as `EVOLVE`, which is why the label is read: the rows
  * move with what the panel holds above them, a mega energy count pushing them 185 pixels down on a Pixel 4 XL, and a
@@ -662,9 +662,9 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
  */
 export async function buttonsOn(
   image: Image,
-  row: Line,
+  from: number,
 ): Promise<{ evolveCandy: number | null; powerUp: number | null }> {
-  const found = pills(image, row.top + row.height);
+  const found = pills(image, from);
   const labels = await Promise.all(
     found.map((pill) => {
       const label = crop(image, image.width * PILL.left, pill.top, image.width * PILL.width, pill.height);
@@ -687,6 +687,17 @@ export async function buttonsOn(
   const [power] = labelled('POWER UP');
 
   return { evolveCandy, powerUp: power ? await figureOn(image, power, true) : null };
+}
+
+/**
+ * The stardust the `POWER UP` row asks for, found anywhere on `image`: a screen scrolled down, or a whole stitch, for
+ * the Pokémon whose plain screen ends above the row. Necrozma's fusion panel — artwork, a paragraph and two `FUSE` rows
+ * — is one, leaving `POWER UP` some 700 pixels below the foot of a Pixel 4 XL's screen, so `buttonsOn` reads no figure
+ * there and `shadowOf` cannot say it is neither shadow nor purified. Searched from the top rather than below the
+ * measurement row, which a screen scrolled down no longer shows; each pill's label is what keeps the `FUSE` rows out.
+ */
+export async function powerUpOn(image: Image): Promise<number | null> {
+  return (await buttonsOn(image, 0)).powerUp;
 }
 
 /** The figure `figureIn` finds in a row, read; null where none is found or what is read is no number. */

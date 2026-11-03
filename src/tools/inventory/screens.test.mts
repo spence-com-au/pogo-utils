@@ -21,7 +21,7 @@ import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-
 import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT, parseDetail, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT, parseDetail, powerUpOn, readLines } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
@@ -698,6 +698,18 @@ const FIXTURES: readonly Fixture[] = [
     weight: 3.88,
   },
   {
+    cp: 2078,
+    file: 'necrozma.png',
+    form: null,
+    gender: 'genderunknown',
+    height: 2.82,
+    hp: 137,
+    overlay: { iv: { attack: 14, defense: 14, stamina: 12 }, level: 20 },
+    species: 'Necrozma',
+    types: ['Psychic'],
+    weight: 326.1,
+  },
+  {
     cp: 315,
     file: 'pancham-shadow.png',
     form: null,
@@ -956,9 +968,13 @@ const FIXTURES: readonly Fixture[] = [
  * is the same screenshot every time it is read, so there is nothing for a shared one to carry between tests.
  */
 const read = async (file: string) => {
-  const image = screenIn(decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url))));
+  const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
+  const image = screenIn(stitch);
   const lines = await readLines(image);
-  const detail = await parseDetail(lines, DATA, image);
+  const parsed = await parseDetail(lines, DATA, image);
+
+  // Off the whole stitch where the screen draws no `POWER UP` row, as `readScreen` does.
+  const detail = { ...parsed, powerUp: parsed.powerUp ?? (await powerUpOn(stitch)) };
   const found = await findOverlay(image);
 
   // The artwork's own signature, which is the only thing that separates forms identical in every number. Floored on the
@@ -1097,7 +1113,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 55 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 56 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1269,9 +1285,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 55.
+ * covers everything else in this file — one capture rather than 56.
  *
- * They need it because a body that waits on all 55 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 56 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1460,11 +1476,11 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 55,
+  rows: 56,
   negatives: 3,
-  answeredAsThemselves: 54,
-  oneLevel: 55,
-  crossCheckAgrees: 55,
+  answeredAsThemselves: 55,
+  oneLevel: 56,
+  crossCheckAgrees: 56,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
@@ -1509,9 +1525,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 55 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 56 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 55 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 56 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1636,6 +1652,7 @@ test(
       'lugia-hashes.png': 1553,
       'meowth-alola.png': 431,
       'meowth-galar.png': 571,
+      'necrozma.png': 2078,
       'pancham-shadow.png': 315,
       'pikachu-ash-hat.png': 489,
       'pikachu-willows-assistant.png': 385,
@@ -1809,7 +1826,8 @@ test(
 /**
  * Whether each capture is shadow, purified or neither, as `shadowOf` reads it off the stardust the `POWER UP` row asks,
  * against what its row states: the two shadows, the purified Snorlax, and every other row that it is neither. Any it
- * says nothing about are named, so a capture joining them is a reader that stopped reading a figure.
+ * says nothing about are named, so a capture joining them is a reader that stopped reading a figure. `necrozma.png`'s
+ * row is below its screen's foot, its fusion panel in the way, so its figure is the stitch's.
  */
 test(
   'the stardust to power up says which captures are shadow and which purified',
@@ -1942,7 +1960,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(55);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(56);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2527,6 +2545,7 @@ test(
       'meowth-alola.png': { fast: 'Scratch', charged: ['Foul Play'] },
       'meowth-galar.png': { fast: 'Metal Sound', charged: ['Trailblaze'] },
       'meowth-kanto.png': { fast: 'Bite', charged: ['Night Slash'] },
+      'necrozma.png': { fast: 'Psycho Cut', charged: ['Future Sight'] },
       'no-pgsharp.png': { fast: 'Bubble', charged: [] },
       'overworld.png': { fast: null, charged: [] },
       'pancham-shadow.png': { fast: 'Tackle', charged: ['Frustration'] },
@@ -2695,7 +2714,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 55.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 56.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(
