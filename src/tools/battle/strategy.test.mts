@@ -14,6 +14,7 @@ import {
   bestButton,
   bestLit,
   chargedOf,
+  clearerOf,
   counterOf,
   damage,
   nextOut,
@@ -580,6 +581,29 @@ test.each<[(string | null)[], number, number[], string | null, number | undefine
     ).toBe(slot);
   },
 );
+
+test.each<[(string | null)[], { attack: number; defense: number }, string | null, number | undefined, string]>([
+  [['Latias', 'Kyogre'], { attack: -2, defense: 0 }, 'Glaceon', 1, 'Kyogre is safe from Glaceon'],
+  [['Kyogre', 'Kyogre'], { attack: 0, defense: -1 }, 'Salamence', 1, 'ours need not be threatened'],
+  [['Latias', 'Mamoswine'], { attack: -1, defense: 0 }, 'Sneasel', undefined, 'Close Combat hits Mamoswine'],
+  [['Latias', 'Kyogre'], { attack: 0, defense: 0 }, 'Glaceon', undefined, 'nothing dropped'],
+  [['Latias', 'Kyogre'], { attack: 1, defense: 1 }, 'Glaceon', undefined, 'a rise is kept'],
+  [['Latias', 'Kyogre'], { attack: -2, defense: 0 }, null, undefined, 'theirs not read'],
+  [[null, 'Kyogre'], { attack: -2, defense: 0 }, 'Glaceon', undefined, 'ours not read'],
+  [['Latias', null], { attack: -2, defense: 0 }, 'Glaceon', undefined, 'an unread card is not known safe'],
+])('with %o and stages %o against %s clears the drop by switching to slot %s: %s', (party, stages, opponent, slot) => {
+  expect(
+    clearerOf(DATA, cards(party), 0, { species: party[0] ?? null }, stages, new Set(), { species: opponent })?.slot,
+  ).toBe(slot);
+});
+
+test('a switch clearing a drop says what it clears', () => {
+  expect(
+    clearerOf(DATA, cards(['Latias', 'Kyogre']), 0, { species: 'Latias' }, { attack: -1, defense: -2 }, new Set(), {
+      species: 'Glaceon',
+    })?.why,
+  ).toBe("clearing −1 attack and −2 defense; Kyogre is safe from Glaceon's moves");
+});
 
 test('a refuge says why it was switched to', () => {
   expect(

@@ -38,6 +38,7 @@ import {
   activeOf,
   beforeFainting,
   bestButton,
+  clearerOf,
   counterOf,
   nextOut,
   refugeOf,
@@ -1597,6 +1598,27 @@ export async function run(
               false,
             )
           : undefined;
+      }
+
+      // Ours with its attack or defense dropped, by its own throw once it has played or by the opponent's that the
+      // banner named, switches to a benched Pokémon safe from every move the opponent may hold, which clears the drop
+      // and banks whatever is lit: ours comes back whole, its energy kept. Players in three of four championship finals
+      // did so. Never into a Pokémon the opponent could farm energy off, so with none safe it stays in. It gives way to
+      // whatever the other switches give way to: a lit move that would finish the opponent, a throw tapped and not yet
+      // played, ours doomed, and our last hit, after which a drop no longer matters; and to the other switches
+      // themselves, and our switch timer. Not from a slot sent in to draw a shield, which throws rather than switch away.
+      if (
+        !counter &&
+        !switching &&
+        !finish &&
+        !pending &&
+        !lastHit &&
+        fighting &&
+        slot !== undefined &&
+        slot !== stripping &&
+        clock.now() >= calmAt
+      ) {
+        counter = stay(clearerOf(data, party, slot, us, stages.own, fainted, them, meta));
       }
 
       // A switch decided on while the opponent's newcomer flies in is tapped once it has, nothing thrown meanwhile: the
