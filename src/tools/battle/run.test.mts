@@ -2555,6 +2555,150 @@ test('switches the lead to a resister, banking a lit move held for another', asy
   ]);
 });
 
+/**
+ * The game master with Shadow Sneak lowering our attack by 2 as Psycho Boost does, and Avalanche by 1: no committed
+ * frame has a move that does lit.
+ */
+const SNEAK_DROPS: GameData = {
+  ...DATA,
+  combat: {
+    ...DATA.combat,
+    'Shadow Sneak': { ...DATA.combat['Shadow Sneak'], buffs: { chance: 1, ownAttack: -2 } },
+    'Avalanche': { ...DATA.combat.Avalanche, buffs: { chance: 1, ownAttack: -1 } },
+  } as GameData['combat'],
+};
+
+/** Where the opponent's Poké Balls are on the Pixel 4 XL's frames, as boxes for `painted`. */
+const THEIR_BALLS = [0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+
+const CLEARING =
+  "own: switching to Mamoswine against Mamoswine, banking Shadow Sneak: clearing −2 attack; Mamoswine is safe from Mamoswine's moves";
+
+/**
+ * Giratina against Mamoswine as above, none of either side's fainted and our two shields painted held, throws Shadow
+ * Sneak, lowering its attack by 2 as `SNEAK_DROPS` has it; once its minigame has played, the fight is `back` with
+ * Shadow Sneak lit again. Mamoswine, run with Avalanche and Bulldoze as `MAMOSWINE_AVALANCHE` has it, hits our own
+ * Mamoswine, the bench's second card, neutrally with both: it is switched to, banking Shadow Sneak. With Mamoswine's
+ * shields painted spent on `back`, Shadow Sneak would finish it, and is thrown instead; with our shields left spent, as
+ * recorded, Giratina's next hit is its last, and it stays in.
+ */
+test.each([
+  ['with a refuge', (frame: Image) => frame, [CLEARING]],
+  ['with a lit finisher', (frame: Image) => painted(frame, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]), []],
+  ['on its last hit', (frame: Image) => painted(frame, [107, 105, 112], ...HELD), []],
+])('clears a drop of its own throw by switching %s', async (_, paint, said) => {
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS);
+  const lit = painted(balls, [224, 161, 238], ...HELD);
+  const back = paint(lit);
+  const bench = place(BENCH[1] ?? [0, 0], BENCH_ANCHOR, back);
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: lit, tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: { ...minigameNoneFainted(), swipes: { count: 40, to: 'playing' } },
+      playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+      back: {
+        frame: back,
+        tap: [
+          { at: bench, to: 'won' },
+          { at: [0.499, 0.889], to: 'won' },
+        ],
+        lasts: { ms: 6000, to: 'won' },
+      },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: SNEAK_DROPS,
+      meta: MAMOSWINE_AVALANCHE,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps).toContain('back');
+  expect(report.events.filter((line) => line.startsWith('own: threw'))[0]).toBe('own: threw Shadow Sneak');
+  expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(said);
+});
+
+/**
+ * The same switch to Mamoswine, which the next read finds out by its CP, 2336 rather than Giratina's 2392, against
+ * Empoleon, sent in after Mamoswine fainted, its Poké Balls two to Mamoswine's three. Empoleon, run with Hydro Cannon
+ * and Drill Peck, hits neither Latias nor Giratina super effectively. Mamoswine's Avalanche, lowering its attack as
+ * `SNEAK_DROPS` has it, is painted unlit for `unlit` and then lit, and thrown; once played, inside `TIMER_MS` of the
+ * switch, Mamoswine stays in, and after it, switches to Latias, whose Thunder hits Empoleon hardest.
+ */
+test.each([
+  ['inside', 10_000, [CLEARING]],
+  [
+    'after',
+    50_000,
+    [
+      CLEARING,
+      "own: switching to Latias against Empoleon, banking Avalanche: clearing −1 attack; Latias is safe from Empoleon's moves",
+    ],
+  ],
+])('clears a drop %s our switch timer of the switch before', async (_, unlit, said) => {
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS);
+  const lit = painted(balls, [224, 161, 238], ...HELD);
+  const avalanche = painted(fixture('charged-avalanche'), [200, 60, 60], FIRST_BALL);
+  const dark = painted(avalanche, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const charged: Scene['tap'] = { at: [0.499, 0.889], to: 'minigame' };
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: lit, tap: charged },
+      minigame: { ...minigameNoneFainted(), swipes: { count: 40, to: 'playing' } },
+      playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+      back: { frame: lit, tap: { at: place(BENCH[1] ?? [0, 0], BENCH_ANCHOR, lit), to: 'mamoswine' } },
+      mamoswine: { frame: dark, lasts: { ms: unlit, to: 'avalanche' } },
+      avalanche: { frame: avalanche, tap: { at: [0.499, 0.889], to: 'thrown' } },
+      thrown: {
+        frame: painted(fixture('battle-minigame-mamoswine'), [200, 60, 60], FIRST_BALL),
+        swipes: { count: 40, to: 'played' },
+      },
+      played: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'again' } },
+      again: {
+        frame: avalanche,
+        tap: { at: place(BENCH[0] ?? [0, 0], BENCH_ANCHOR, avalanche), to: 'won' },
+        lasts: { ms: 6000, to: 'won' },
+      },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: SNEAK_DROPS,
+      meta: {
+        ...MAMOSWINE_AVALANCHE,
+        movesets: new Map([
+          ...MAMOSWINE_AVALANCHE.movesets,
+          ['Empoleon', { fast: 'Waterfall', fastMoves: ['Waterfall'], chargedMoves: ['Hydro Cannon', 'Drill Peck'] }],
+        ]),
+      },
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(said);
+});
+
 /** Where the opponent's panel is on the Pixel 4 XL's frames, its name, CP, shields and Poké Balls, as a box. */
 const THEIR_PANEL = [0.58, 0.13, 1, 0.225];
 

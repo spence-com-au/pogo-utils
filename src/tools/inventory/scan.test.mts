@@ -5,7 +5,9 @@
  */
 
 import { type Detail } from './detail.mts';
-import { type Overlay } from './overlay.mts';
+import { type Moves } from './moves.mts';
+import { findOverlay, readOverlay, type Overlay } from './overlay.mts';
+import { decodePng } from './png.mts';
 import {
   agree,
   count,
@@ -20,6 +22,8 @@ import {
   looseKeyOf,
   Marks,
   MOVE_STEPS,
+  movesOf,
+  otherPokemon,
   parseCsv,
   parseFlags,
   reachMoves,
@@ -29,7 +33,11 @@ import {
   type Landmark,
 } from './scan.mts';
 import { CLEAR_KEYS } from './storage.mts';
-import { expect, test, vi } from 'vitest';
+import { useTestEngine } from './test-engine.mts';
+import { readFileSync } from 'node:fs';
+import { afterAll, expect, test, vi } from 'vitest';
+
+afterAll(useTestEngine());
 
 /** A detail screen read with a 50 HP Pikachu's measurements, and whatever else a test says. */
 function detail(fields: Partial<Detail> = {}): Detail {
@@ -718,12 +726,12 @@ test('a look back that misses the overlay where the worlds differ only in IVs st
 async function lookingFor(depth: number) {
   const steps: number[] = [];
 
-  const moves = await reachMoves(async (n) => {
+  const { moves } = await reachMoves(async (n) => {
     steps.push(n);
 
     return n >= depth
-      ? { moves: { fast: 'Psycho Cut', charged: ['Future Sight'] }, cutOff: false }
-      : { moves: { fast: null, charged: [] }, cutOff: true };
+      ? { moves: { fast: 'Psycho Cut', charged: ['Future Sight'] }, cutOff: false, overlay: null }
+      : { moves: { fast: null, charged: [] }, cutOff: true, overlay: null };
   });
 
   return { moves, steps };
@@ -752,14 +760,155 @@ test('a screen that never reaches past the moves is looked down `MOVE_STEPS` tim
 
 test('a short reading on a screen that reaches past the moves is a misread, and not looked for again', async () => {
   const steps: number[] = [];
-  const moves = await reachMoves(async (n) => {
+  const { moves } = await reachMoves(async (n) => {
     steps.push(n);
 
-    return { moves: { fast: 'Psycho Cut', charged: [] }, cutOff: false };
+    return { moves: { fast: 'Psycho Cut', charged: [] }, cutOff: false, overlay: null };
   });
 
   expect(moves).toStrictEqual({ fast: 'Psycho Cut', charged: [] });
   expect(steps).toStrictEqual([1]);
+});
+
+const capture = (file: string) => decodePng(readFileSync(new URL(`fixtures/moves/${file}`, import.meta.url)));
+
+/**
+ * The live scan's row #6: `roggenrola-detail.png` is the detail screen it read, and `rookidee-bounced.png` the screen
+ * it scrolled down to and took `Peck` and `Sky Attack` off, which is the Rookidee before it, `rookidee-detail.png`.
+ * PGSharp draws its overlay over the moves screen in the same place, so the box found on the detail screen reads it.
+ */
+test('the overlay over a moves screen tells whose moves they are', async () => {
+  const found = await findOverlay(capture('roggenrola-detail.png'));
+
+  expect(found?.overlay.iv).toStrictEqual({ attack: 3, defense: 11, stamina: 10 });
+
+  const { box, overlay: roggenrola } = found ?? expect.unreachable('no overlay found on the Roggenrola');
+  const bounced = await readOverlay(capture('rookidee-bounced.png'), box);
+  const rookidee = await readOverlay(capture('rookidee-detail.png'), box);
+
+  expect(bounced?.iv).toStrictEqual({ attack: 11, defense: 6, stamina: 10 });
+  expect(otherPokemon(roggenrola, bounced), 'the Roggenrola took the Rookidee’s moves screen for its own').toBe(true);
+  expect(otherPokemon(rookidee, bounced), 'the Rookidee’s own moves screen is taken for another’s').toBe(false);
+});
+
+test('an overlay that went unread says nothing of whose moves they are', () => {
+  expect(otherPokemon(overlay(3, 11, 10), null)).toBe(false);
+  expect(otherPokemon(null, overlay(11, 6, 10))).toBe(false);
+});
+
+interface Shown {
+  key: string;
+  overlay: Overlay;
+  moves: Moves;
+}
+
+const ROOKIDEE: Shown = {
+  key: 'rookidee|75|2.69|0.25|11/6/10',
+  overlay: overlay(11, 6, 10),
+  moves: { fast: 'Peck', charged: ['Sky Attack'] },
+};
+
+const ROGGENROLA: Shown = {
+  key: 'roggenrola|95|16.26|0.37|3/11/10',
+  overlay: overlay(3, 11, 10),
+  moves: { fast: 'Smack Down', charged: ['Rock Blast'] },
+};
+
+const PIDOVE: Shown = {
+  key: 'pidove|50|2.1|0.3|13/5/6',
+  overlay: overlay(13, 5, 6),
+  moves: { fast: 'Quick Attack', charged: ['Air Cutter'] },
+};
+
+/**
+ * The moves `movesOf` takes for the Roggenrola, read off a storage of the Rookidee, it and a Pidove with the phone at
+ * `at`. Each look down shows where the phone is, but for a first look caught on `stale`; `swipes` is how many swipes
+ * on the phone takes before it drops the rest, `blind` how many reads of the screen miss its HP, and `read` what the
+ * walk made of the Roggenrola. Answers where the phone ends and where each look down was taken.
+ */
+async function lookingDown(
+  at: number,
+  { stale = null as Shown | null, swipes = Infinity, blind = 0, read = ROGGENROLA as Omit<Shown, 'moves'> } = {},
+) {
+  const shown = [ROOKIDEE, ROGGENROLA, PIDOVE];
+  let place = at;
+  let left = swipes;
+  let misses = blind;
+  let caught = stale;
+  const looked: number[] = [];
+  const here = () => shown[place] ?? expect.unreachable('swiped off the end');
+
+  const took = await movesOf(
+    { key: read.key, overlay: read.overlay },
+    async () => {
+      const screen = caught ?? here();
+      caught = null;
+      looked.push(place);
+
+      return { moves: screen.moves, cutOff: false, overlay: screen.overlay };
+    },
+    {
+      read: async () => (misses-- > 0 ? { key: null, overlay: null } : { key: here().key, overlay: here().overlay }),
+      next: async () => {
+        if (left-- > 0) {
+          place++;
+        }
+      },
+    },
+  );
+
+  return { moves: took.look?.moves ?? null, note: took.note, place, looked };
+}
+
+test('moves read off the Pokémon read are taken as they are', async () => {
+  expect(await lookingDown(1)).toStrictEqual({ moves: ROGGENROLA.moves, note: null, place: 1, looked: [1] });
+});
+
+/** Row #6 of the live scan: the swipe to the Roggenrola bounced back to the Rookidee after its detail screen read. */
+test('a swipe that bounced back is sent again, and the moves read off the Pokémon it reaches', async () => {
+  expect(await lookingDown(0)).toStrictEqual({
+    moves: ROGGENROLA.moves,
+    note: 'the moves screen showed another Pokémon, 11/6/10, so they were looked for again',
+    place: 1,
+    looked: [0, 1],
+  });
+});
+
+test('a moves screen caught on another Pokémon while the phone is on this one is looked at again', async () => {
+  expect(await lookingDown(1, { stale: ROOKIDEE })).toStrictEqual({
+    moves: ROGGENROLA.moves,
+    note: 'the moves screen showed another Pokémon, 11/6/10, so they were looked for again',
+    place: 1,
+    looked: [1, 1],
+  });
+});
+
+test('another Pokémon’s moves are left blank where this one cannot be found again', async () => {
+  expect(await lookingDown(0, { swipes: 0 })).toStrictEqual({
+    moves: null,
+    note: 'the moves screen showed another Pokémon, 11/6/10, and this Pokémon could not be found again',
+    place: 0,
+    looked: [0],
+  });
+});
+
+/**
+ * The swipe on is one the walk never logs, so it is taken only on a screen that is surely another Pokémon: taken from
+ * this one, it would land on the Pidove, which the walk's next swipe would go past unread.
+ */
+test.for([
+  ['a re-read that misses the HP', { blind: 1, stale: ROOKIDEE }],
+  [
+    'IVs misread on the detail screen, the moves screen showing the true ones',
+    { read: { key: 'roggenrola|95|16.26|0.37|8/11/10', overlay: overlay(8, 11, 10) } },
+  ],
+] as const)('%s leaves the moves blank without a swipe', async ([, options]) => {
+  expect(await lookingDown(1, options)).toStrictEqual({
+    moves: null,
+    note: expect.stringContaining('could not be found again'),
+    place: 1,
+    looked: [1],
+  });
 });
 
 /** A default scan runs neither pass, so what the stardust says is both columns and `identify`'s `shadowed`. */

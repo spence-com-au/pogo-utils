@@ -44,7 +44,8 @@
  * A scroll capture drags the screen up until it stops moving and stitches the frames into one tall image, which is how
  * a screen longer than the phone is seen whole. The stitch is **not** given to the other readers, and that is a limit
  * rather than an oversight: the star corner, the overlay sweep, the tag band and the artwork are each anchored on a
- * fraction of the image's height. `parseMoves` is the one reader that is not, being anchored on `GYMS & RAIDS`.
+ * fraction of the image's height. `parseMoves` is the one reader that is not, being anchored on `GYMS & RAIDS`, and
+ * `powerUpOn` finds its row by the label wherever it is, for a screen that ends above it.
  *
  * `snap` and `parse` are the tools for fixing a misread. Every tap position, swipe and delay is in `DEFAULTS` and can
  * be overridden from a JSON file passed as `--config`, with positions as fractions of the screen so one file suits any
@@ -62,10 +63,10 @@ import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { parseDetail, readLines, type Detail } from '../src/tools/inventory/detail.mts';
+import { parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
-import { clearable, identify, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
+import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
@@ -90,6 +91,7 @@ import {
   landmarkOf,
   landmarksBefore,
   Marks,
+  movesOf,
   parseFlags,
   reachMoves,
   reachOf,
@@ -672,6 +674,10 @@ async function scan(held: Transport) {
     return readDetail();
   };
 
+  const [grab, drop] = config.swipes.next;
+  const next = () => drag([grab, drop], config.waits.swipe);
+  const back = () => drag([drop, grab], config.waits.swipe);
+
   /**
    * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it, of `total`
    * the game counts, which is how a swipe that went nowhere is told from the end. Answers how many it visited, for
@@ -684,10 +690,7 @@ async function scan(held: Transport) {
     from = 0,
     first?: Reading,
   ) => {
-    const [grab, drop] = config.swipes.next;
     let visited = 0;
-    const next = () => drag([grab, drop], config.waits.swipe);
-    const back = () => drag([drop, grab], config.waits.swipe);
 
     if (from > 0) {
       // Blind and at half the wait, which is quick and drops swipes: a skip of 136 landed 9 short. `land` is what makes
@@ -770,7 +773,8 @@ async function scan(held: Transport) {
   const total = term === undefined ? stored(grid) : matches(grid);
 
   const visited = await walk(
-    async ({ detail, overlay, id: read, image, latest }, index) => {
+    async (reading, index) => {
+      const { detail, overlay, id: read, image } = reading;
       const name = String(index + 1).padStart(5, '0');
       const notes: string[] = [];
       let moves: Moves = { fast: null, charged: [] };
@@ -784,24 +788,28 @@ async function scan(held: Transport) {
         return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
       };
 
-      // Each pass's flag taken once, since `take` uses the match up. Identified again where the columns say whether
-      // this is shadow or purified, which is all that rules out a form the game only hands out as a shadow, and which
-      // the reading `walk` took could not know.
-      const {
-        shadow,
-        purified,
-        shadowed,
-        notes: disagreements,
-      } = shaded({ shadow: flag('shadow'), purified: flag('purified') }, shadowOf(data, detail, read.levels));
-      notes.push(...disagreements);
+      // Each pass's flag taken once, since `take` uses the match up.
+      const passes = { shadow: flag('shadow'), purified: flag('purified') };
+
+      // Identified again where the columns say whether this is shadow or purified, which is all that rules out a form
+      // the game only hands out as a shadow, and which the reading `walk` took could not know. A function, since a
+      // screen asking no stardust is settled again off the screen the moves are read from.
+      const settle = (powerUp: number | null) => {
+        const shade = shaded(passes, shadowOf(data, { ...detail, powerUp }, read.levels));
+        const id =
+          shade.shadowed === null
+            ? read
+            : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shade.shadowed);
+
+        return { ...shade, id };
+      };
+
+      let settled = settle(detail.powerUp);
 
       // Taken whatever the screen says, so that a match the pass holds for this Pokémon is used up here rather than
       // left to mark another. The caption is the screen stating it, where the pass can have been cut short.
       const passed = flag('lucky');
       const lucky = detail.lucky ? 'yes' : passed;
-
-      const id =
-        shadowed === null ? read : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shadowed);
 
       if (detail.hp === null) {
         notes.push('detail screen not read');
@@ -812,8 +820,13 @@ async function scan(held: Transport) {
       }
 
       if (!options['no-moves']) {
-        moves = await reachMoves(async (steps) => {
+        // From a reading rather than this one, since `movesOf` looks again from a fresh one where the screen scrolled
+        // down was another Pokémon's.
+        const look = async ({ image, latest }: Reading, steps: number) => {
           let scrolled: Image;
+
+          // The screen the overlay is read off, which in a stitch is its last frame: the first is the detail screen.
+          let shown: Image;
           let back: number;
 
           if (options.scroll) {
@@ -828,6 +841,7 @@ async function scan(held: Transport) {
             // shows; what the plain name buys is that the suffix is no longer part of what has to come off.
             const capture = await scrollFrames(device, latest);
             scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
+            shown = capture.frames.at(-1) ?? latest;
             back = capture.offsets.reduce((a, b) => a + b, 0);
             keep(name, scrolled, { Viewport: `${latest.width}x${latest.height}` });
 
@@ -878,19 +892,28 @@ async function scan(held: Transport) {
 
             // The screen the moves were read from, so a second look replaces the first's.
             keep(`${name}-moves`, scrolled);
+            shown = scrolled;
           }
 
           // Read while the phone scrolls back, since nothing that follows depends on the moves. Awaited with the
           // swipes, so that a read failing before the phone is back is a rejection here rather than an unhandled one.
           let dialog = false;
           let cutOff = false;
-          const reading = ocr(scrolled).then((lines) => {
+          const found = ocr(scrolled).then((lines) => {
             dialog = dialogOpen(lines);
             cutOff = !options.scroll && movesCutOff(lines, scrolled);
 
-            return parseMoves(lines, data, id.form, scrolled);
+            return parseMoves(lines, data, settled.id.form, scrolled);
           });
-          await Promise.all([reading, scrollUp(device, shot, back)]);
+
+          // Only where the detail screen's overlay read, there being nothing to hold this one to otherwise, and without
+          // a sweep: they are rationed, and the moves screen is no place to spend one.
+          const seen = overlay ? overlayOf(shown, false) : Promise.resolve(null);
+
+          // A panel above `POWER UP` can push it below the plain screen's foot, as Necrozma's fusion panel does, and
+          // then the screen scrolled down for the moves is where its stardust is.
+          const power = detail.powerUp === null ? powerUpOn(scrolled) : Promise.resolve(null);
+          await Promise.all([found, seen, power, scrollUp(device, shot, back)]);
 
           // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
           // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
@@ -900,13 +923,42 @@ async function scan(held: Transport) {
             notes.push('a dialog opened on the swipe to the moves and was closed');
           }
 
-          return { moves: await reading, cutOff: cutOff && !dialog };
-        });
+          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, powerUp: await power };
+        };
+
+        // The stardust off any look of one reach, since the step further down that a second look takes can scroll
+        // `POWER UP` off the top. Per reach, so a look `movesOf` threw away for showing another Pokémon keeps none.
+        const reach = async (from: Reading) => {
+          let powerUp: number | null = null;
+          const last = await reachMoves(async (steps) => {
+            const found = await look(from, steps);
+            powerUp = found.powerUp ?? powerUp;
+
+            return found;
+          });
+
+          return { ...last, powerUp };
+        };
+
+        const took = await movesOf(reading, reach, { read: readDetail, next });
+        const below = took.look?.powerUp ?? null;
+        moves = took.look?.moves ?? moves;
+
+        if (took.note) {
+          notes.push(took.note);
+        }
 
         if (moves.fast === null || moves.charged.length === 0) {
           notes.push('moves not fully read');
         }
+
+        if (below !== null) {
+          settled = settle(below);
+        }
       }
+
+      const { shadow, purified, id } = settled;
+      notes.push(...settled.notes);
 
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
       const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
@@ -921,7 +973,7 @@ async function scan(held: Transport) {
 
         nickname: id.nickname,
         dex: id.form?.dex ?? null,
-        form: id.form?.form ?? null,
+        form: settledForm(id),
         gender: detail.gender,
         favourite: detail.favourite ? 'yes' : 'no',
         tags: carried.join('; '),

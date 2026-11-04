@@ -676,10 +676,14 @@ export async function walk<R extends { key: string | null }>(
   }
 }
 
-/** What one look down a detail screen for the moves found, and whether `movesCutOff` said they can run on below it. */
+/**
+ * What one look down a detail screen for the moves found, whether `movesCutOff` said they can run on below it, and
+ * PGSharp's overlay as it reads on the screen looked at, which it draws there too.
+ */
 export interface MovesLook {
   moves: Moves;
   cutOff: boolean;
+  overlay: Overlay | null;
 }
 
 /**
@@ -691,17 +695,86 @@ export interface MovesLook {
 export const MOVE_STEPS = 2;
 
 /**
- * The moves, looked for `steps` steps down the screen and, while a look comes back short of a fast and a charged move
- * on a screen the moves can run on past, one step further each time, up to `MOVE_STEPS`. So the ordinary Pokémon costs
- * the one look it always did: another is taken only once the first has been read and found wanting, since `look` reads
- * while the phone scrolls back up, and deciding before that would put the read in front of every scroll back.
+ * The look that found the moves, looked for `steps` steps down the screen and, while a look comes back short of a fast
+ * and a charged move on a screen the moves can run on past, one step further each time, up to `MOVE_STEPS`. So the
+ * ordinary Pokémon costs the one look it always did: another is taken only once the first has been read and found
+ * wanting, since `look` reads while the phone scrolls back up, and deciding before that would put the read in front of
+ * every scroll back.
  */
-export async function reachMoves(look: (steps: number) => Promise<MovesLook>): Promise<Moves> {
+export async function reachMoves<L extends MovesLook>(look: (steps: number) => Promise<L>): Promise<L> {
   for (let steps = 1; ; steps++) {
-    const { moves, cutOff } = await look(steps);
+    const found = await look(steps);
+    const { moves, cutOff } = found;
 
     if ((moves.fast !== null && moves.charged.length > 0) || !cutOff || steps >= MOVE_STEPS) {
-      return moves;
+      return found;
     }
   }
+}
+
+/**
+ * Whether two overlays are of different Pokémon: both read, and their IVs differ. One that went unread says nothing
+ * either way. The IVs rather than the level, whose shortlist is a guess that moves between two reads of one screen.
+ */
+export function otherPokemon(a: Overlay | null, b: Overlay | null): boolean {
+  return a !== null && b !== null && ivsOf(a) !== ivsOf(b);
+}
+
+const ivsOf = ({ iv }: Overlay) => `${iv.attack}/${iv.defense}/${iv.stamina}`;
+
+/** Whether two keys differ in each of the HP, weight and height, every one of them read on both. */
+function elsewhere(a: string, b: string): boolean {
+  const x = a.split('|').slice(1, 4);
+  const y = b.split('|').slice(1, 4);
+
+  return x.every((f, i) => f !== '' && y[i] !== '' && f !== y[i]);
+}
+
+/**
+ * The moves of the Pokémon `reading` read, `reach` scrolling down the screen from a reading of it and reading them —
+ * never another Pokémon's. A swipe to the next Pokémon can bounce back after the detail screen was read: a live scan
+ * read a Roggenrola at `L21 IV53 3/11/10`, and the screen it scrolled down to was the Rookidee before it, `L20 IV60
+ * 11/6/10` over `Peck` and `Sky Attack`, which the row was written with. So the overlay over the moves is held to the
+ * reading's, and where it is another Pokémon's the screen is read again to find which one the phone is on: this one,
+ * the moves screen having been a frame of another, or the one before it, which one swipe on puts right. Then the moves
+ * are looked for again, once. That also leaves the walk where it thinks it is: left on the Rookidee, its next swipe
+ * landed on the Roggenrola again, which it took for a swipe that went nowhere.
+ *
+ * Answers the look taken for this Pokémon, so that whatever else was read off its screen is this Pokémon's too, and a
+ * note of what happened. Where it could not be put right there is no look, and nothing off another's screen is kept.
+ */
+export async function movesOf<R extends { key: string | null; overlay: Overlay | null }, L extends MovesLook>(
+  reading: R,
+  reach: (from: R) => Promise<L>,
+  { read, next }: Pick<Steps<R>, 'read' | 'next'>,
+): Promise<{ look: L | null; note: string | null }> {
+  const first = await reach(reading);
+
+  if (!otherPokemon(reading.overlay, first.overlay) || reading.key === null) {
+    return { look: first, note: null };
+  }
+
+  const other = `the moves screen showed another Pokémon, ${ivsOf(first.overlay as Overlay)}`;
+  const lost = { look: null, note: `${other}, and this Pokémon could not be found again` };
+  let again = await read();
+
+  // A swipe the walk does not log, so taken only where the screen is surely another Pokémon: one whose HP, weight and
+  // height all read and all differ from this one's, as the Rookidee's 75 HP, 2.69kg and 0.25m do from the Roggenrola's
+  // 95, 16.26 and 0.37. Not on the IVs, which are what disagreed: a misread of them in `reading` would send the phone
+  // on from this Pokémon to the next, which the walk would then swipe past without ever reading. A misread of any one
+  // of the three only costs the moves.
+  if (again.key !== null && elsewhere(again.key, reading.key)) {
+    await next();
+    again = await read();
+  }
+
+  if (again.key === null || !agree(again.key, reading.key)) {
+    return lost;
+  }
+
+  const second = await reach(again);
+
+  return otherPokemon(reading.overlay, second.overlay)
+    ? { look: null, note: `${other}, and another again when looked at twice` }
+    : { look: second, note: `${other}, so they were looked for again` };
 }

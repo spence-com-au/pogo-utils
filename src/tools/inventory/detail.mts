@@ -324,50 +324,42 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
       ? named(image, hpLine, data.species)
       : null;
 
-  const number = (pattern: RegExp) => {
-    const line = lines.find((l) => pattern.test(l.text));
+  // Below the HP, which is what makes a whole `1m` or `12kg` safe to take — see `WEIGHT`.
+  const panel = hpLine ? lines.filter((l) => l.top > hpLine.top) : [];
+
+  const number = (line: Line | undefined, pattern: RegExp) => {
     const value = line ? pattern.exec(line.text)?.[1] : undefined;
+
     return value === undefined ? null : Number(value.replace(',', '.'));
   };
 
-  const row = lines.find((l) => measurement(l.text));
+  const row = panel.find((l) => measurement(l.text));
+  const weightLine = panel.find((l) => WEIGHT.test(l.text));
+  const weight = number(weightLine, WEIGHT) ?? (row ? measured(image, row) : null);
 
   // The size badge sits over the height in particular, so that line is found on its own rather than taken from the row
-  // the two share — which is the weight as often as not.
-  const heightLine = lines.find((l) => HEIGHT.test(l.text));
+  // the two share — which is the weight as often as not. Off the row's own end before the whole-screen pass, which
+  // reads a Kecleon's unbadged `1.1m` as `1.4m` and loses a badged height altogether, and the badge with it.
+  const sized = (async () => {
+    const line = (row && (await heightOn(image, row))) ?? panel.find((l) => HEIGHT.test(l.text));
 
-  const weight = number(WEIGHT) ?? (row ? measured(image, row, 0) : null);
-  const height = number(HEIGHT) ?? (row ? measured(image, row, 1 - MEASURE_WIDTH) : null);
-
-  // A badged height is suspect where an unbadged one is not, the pill's tail descending into the digits it is drawn
-  // over: `spoink.png` renders `1.1m` and the whole-screen pass reads `1.4m`. Reading that line on its own answers
-  // `1.1m`.
-  //
-  // Gated on the badge rather than run on every capture, though either would be safe — the cropped read agrees with
-  // all 43 heights. Five wear a badge, so this is five more OCR passes rather than 43.
-  const badged = heightLine
-    ? sizeOf(image, heightLine).then(async (size) => ({
-        size,
-        height: size === null ? null : await remeasured(image, heightLine),
-      }))
-    : null;
+    return { height: number(line, HEIGHT), size: line ? await sizeOf(image, line) : null };
+  })();
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
-  const [cpWhole, nameRescued, weightRead, heightRead, sized, swept, types, tags, buttons, lucky, max] =
-    await Promise.all([
-      whole,
-      rescued,
-      weight,
-      height,
-      badged,
-      cpLine ? [] : cpsIn(image),
-      typesOf(lines, data, image),
-      hpLine && row ? tagsOn(image, hpLine, row) : [],
-      row ? buttonsOn(image, row) : null,
-      hpLine ? isLucky(image, hpLine) : false,
-      row ? maxUnder(image, row) : null,
-    ]);
+  const [cpWhole, nameRescued, weightRead, measures, swept, types, tags, buttons, lucky, max] = await Promise.all([
+    whole,
+    rescued,
+    weight,
+    sized,
+    cpLine ? [] : cpsIn(image),
+    typesOf(lines, row, data, image),
+    hpLine && row ? tagsOn(image, hpLine, row) : [],
+    row ? buttonsOn(image, row.top + row.height) : null,
+    hpLine ? isLucky(image, hpLine) : false,
+    row ? maxUnder(image, row) : null,
+  ]);
 
   // One reading is the CP, and several are none of them: a `/` neither the band nor the cap could settle is offered to
   // the arithmetic as candidates, the way the sweep's numbers are, rather than guessed at.
@@ -379,12 +371,12 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     name: nameRescued ?? name,
     hp,
     weight: weightRead,
-    height: sized?.height ?? heightRead,
+    height: measures.height,
     types,
     gender: hpLine ? genderOf(image, hpLine) : null,
     favourite: isFavourite(image),
     lucky,
-    size: sized?.size ?? null,
+    size: measures.size,
     tags,
     evolveCandy: buttons?.evolveCandy ?? null,
     powerUp: buttons?.powerUp ?? null,
@@ -515,16 +507,16 @@ const NAME_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ♀�
 const MEASURE_WIDTH = 0.38;
 
 /**
- * A weight and a height, which the game always writes with a decimal point. Requiring one is what makes these safe to
- * search the whole screen for, where a bare `\d\s*(kg|m)` is not: the status bar's `09:00` reads as `0900 M © Os` and
- * PGSharp's overlay offers a `53 m`. Both sit above the panel, so a bare pattern puts the size band off the top of the
- * screen and reports no badge over a gold `XXL`.
+ * A weight and a height, with the decimals the game leaves off a whole number: an Audino's `1m`, a Charmander's `12kg`.
+ * Taken only from lines below the HP, since a bare `\d\s*(kg|m)` is not safe over the whole screen: the status bar's
+ * `09:00` reads as `0900 M © Os` and PGSharp's overlay offers a `53 m`. Both sit above the panel, and either taken for
+ * the height puts the size band off the top of the screen and reports no badge over a gold `XXL`.
  *
  * Separate because the two are read as separate lines at the same height — `0.97kg` at x 131 and `0.15m` at x 759 — so
  * a caller wanting one cannot take it from whichever the row happened to be.
  */
-const WEIGHT = /(\d+[.,]\d+)\s*kg\b/i;
-export const HEIGHT = /(\d+[.,]\d+)\s*m\b/i;
+const WEIGHT = /(\d+(?:[.,]\d+)?)\s*kg\b/i;
+export const HEIGHT = /(\d+(?:[.,]\d+)?)\s*m\b/i;
 
 /**
  * The Max treatment the row under the measurements names, read off a band of its own: the whole-screen pass drops it
@@ -578,44 +570,42 @@ async function named(image: Image, hp: Line, species: readonly string[]): Promis
 }
 
 /**
- * A height read off its own line, for when the whole-screen pass read one the size badge had corrupted. Anchored on
- * the line Tesseract already found and reaching a character's height either side so a leading digit cannot be clipped.
- *
- * `m` is required here where `measured` takes a bare decimal, this being only ever asked about a height and the crop
- * wide enough to catch the weight's digits at the other end of the row.
+ * The weight read off its own end of the row, for when the whole-screen pass missed it. The number rather than the
+ * unit, the unit being the part that goes: a Cyndaquil's `5.42kg` came back `5.42k`. A decimal point is what makes a
+ * bare number safe to take where stray artwork digits are not, so a whole weight is left to the pass.
  */
-async function remeasured(image: Image, line: Line): Promise<number | null> {
-  const band = crop(
-    image,
-    line.left - line.height,
-    line.top - line.height * 0.4,
-    line.width + line.height * 2,
-    line.height * 1.8,
-  );
+async function measured(image: Image, row: Line): Promise<number | null> {
+  const band = crop(image, 0, row.top - row.height * 0.25, image.width * MEASURE_WIDTH, row.height * 1.5);
   const text = (await ocrLine(scale(band, 2), MEASURE_ALPHABET)) ?? '';
-  const value = HEIGHT.exec(text)?.[1];
+  const value = /(\d+[.,]\d+)/.exec(text)?.[1];
 
   return value === undefined ? null : Number(value.replace(',', '.'));
 }
 
 /**
- * The weight or the height read off its own end of the row they share, for when the whole-screen pass missed it. The
- * number rather than the unit, the unit being the part that goes: a Cyndaquil's `5.42kg` came back `5.42k`. A decimal
- * point is what makes a bare number safe to take, every weight and height carrying one where stray artwork digits do
- * not.
+ * The height's line read sparse off the row's right-hand end, in the screen's own coordinates so the size badge can be
+ * found above it. Cropped and doubled, which reads what the whole-screen pass does not: a Kecleon's `1.1m` that pass
+ * calls `1.4m`, and the `0.75m`, `0.48m` and `0.13m` under an `XL` or `XS` badge whose tail runs into the digits, where
+ * it finds no height at all. Sparse rather than as one line, which reads those three as `075m`, `048m` and `013m`.
+ *
+ * Topped by the row rather than by the box, which takes in that tail: `0.75m`'s reaches the top of the band, 64 tall
+ * where an unbadged height is 47, and a size band ending there cut the pill short and read its `XL` as `XXL`.
  */
-async function measured(image: Image, row: Line, from: number): Promise<number | null> {
-  const band = crop(
-    image,
-    image.width * from,
-    row.top - row.height * 0.25,
-    image.width * MEASURE_WIDTH,
-    row.height * 1.5,
-  );
-  const text = (await ocrLine(scale(band, 2), MEASURE_ALPHABET)) ?? '';
-  const value = /(\d+[.,]\d+)/.exec(text)?.[1];
+async function heightOn(image: Image, row: Line): Promise<Line | undefined> {
+  const left = Math.floor(image.width * (1 - MEASURE_WIDTH));
+  const top = Math.max(0, Math.floor(row.top - row.height * 0.25));
+  const band = crop(image, left, top, image.width * MEASURE_WIDTH, row.height * 1.5);
+  const line = (await ocr(scale(band, 2))).find((l) => HEIGHT.test(l.text));
 
-  return value === undefined ? null : Number(value.replace(',', '.'));
+  return (
+    line && {
+      ...line,
+      left: left + line.left / 2,
+      top: row.top,
+      width: line.width / 2,
+      height: top + (line.top + line.height) / 2 - row.top,
+    }
+  );
 }
 
 /** Only letters and the slash between two types; the row also holds `WEIGHT` and `HEIGHT`, which are letters too. */
@@ -629,7 +619,7 @@ const TYPE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ/ ';
  *
  * Worth more than one column: the types are what narrow a species' candidates to a form.
  */
-async function typesOf(lines: readonly Line[], data: GameData, image: Image): Promise<string[]> {
+async function typesOf(lines: readonly Line[], row: Line | undefined, data: GameData, image: Image): Promise<string[]> {
   const names = new Map(data.types.map((t) => [fold(t), t]));
 
   // Matched across whatever spaces Tesseract put inside a name, but only where it begins at a word boundary. An exact
@@ -656,21 +646,13 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
   });
   const pass = line ? found(line.text) : [];
 
-  // Either of the pair will do, since the weight and the height sit on one row and the labels on the row beneath it —
+  // The row is either of the pair, since the weight and the height sit on one row and the labels on the row beneath it —
   // and taking only the weight lost a Cyndaquil whose `0.44m` read perfectly and whose `kg` did not.
-  const beside = lines.find((l) => measurement(l.text));
-
-  if (beside) {
+  if (row) {
     // Generous, because the band is measured in the anchor's own height and the two anchors disagree: `0.44m` came
     // back 45 tall where `5.42kg` beside it came back 58, and a band sized off the shorter ended six pixels into the
     // labels and lost a Cyndaquil's `FIRE`. The alphabet keeps the digits above out of it.
-    const band = crop(
-      image,
-      image.width * 0.25,
-      beside.top + beside.height * 0.8,
-      image.width * 0.5,
-      beside.height * 2,
-    );
+    const band = crop(image, image.width * 0.25, row.top + row.height * 0.8, image.width * 0.5, row.height * 2);
     const read = found((await ocrLine(scale(band, 2), TYPE_ALPHABET)) ?? '');
 
     // Unless the pass read the band's types and another besides. The band can take the slash for a letter and glue it
@@ -688,11 +670,11 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
 }
 
 /**
- * What the rows of buttons under the measurement row ask for: the candy the `EVOLVE` row does, and the stardust the
- * `POWER UP` row does. The whole-screen pass is no use for finding either: white capitals on a green pill, it reads
- * `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan kept, and the figure beside it as `S50` or `225`, the candy
- * icon taken for a digit. So the rows are found by their pills, each pill's label is read on its own, and the figure
- * is cut out of the row by its columns of ink before it is read.
+ * What the rows of buttons from row `from` down ask for, which on the plain screen is the measurement row's foot: the
+ * candy the `EVOLVE` row does, and the stardust the `POWER UP` row does. The whole-screen pass is no use for finding
+ * either: white capitals on a green pill, it reads `EVOLVE` on 2 of the 40 detail screens a Pixel 4 XL scan kept, and
+ * the figure beside it as `S50` or `225`, the candy icon taken for a digit. So the rows are found by their pills, each
+ * pill's label is read on its own, and the figure is cut out of the row by its columns of ink before it is read.
  *
  * Every button row is a pill, `PURIFY` and `NEW ATTACK` as much as `EVOLVE`, which is why the label is read: the rows
  * move with what the panel holds above them, a mega energy count pushing them 185 pixels down on a Pixel 4 XL, and a
@@ -702,9 +684,9 @@ async function typesOf(lines: readonly Line[], data: GameData, image: Image): Pr
  */
 export async function buttonsOn(
   image: Image,
-  row: Line,
+  from: number,
 ): Promise<{ evolveCandy: number | null; powerUp: number | null }> {
-  const found = pills(image, row.top + row.height);
+  const found = pills(image, from);
   const labels = await Promise.all(
     found.map((pill) => {
       const label = crop(image, image.width * PILL.left, pill.top, image.width * PILL.width, pill.height);
@@ -727,6 +709,17 @@ export async function buttonsOn(
   const [power] = labelled('POWER UP');
 
   return { evolveCandy, powerUp: power ? await figureOn(image, power, true) : null };
+}
+
+/**
+ * The stardust the `POWER UP` row asks for, found anywhere on `image`: a screen scrolled down, or a whole stitch, for
+ * the Pokémon whose plain screen ends above the row. Necrozma's fusion panel — artwork, a paragraph and two `FUSE` rows
+ * — is one, leaving `POWER UP` some 700 pixels below the foot of a Pixel 4 XL's screen, so `buttonsOn` reads no figure
+ * there and `shadowOf` cannot say it is neither shadow nor purified. Searched from the top rather than below the
+ * measurement row, which a screen scrolled down no longer shows; each pill's label is what keeps the `FUSE` rows out.
+ */
+export async function powerUpOn(image: Image): Promise<number | null> {
+  return (await buttonsOn(image, 0)).powerUp;
 }
 
 /** The figure `figureIn` finds in a row, read; null where none is found or what is read is no number. */

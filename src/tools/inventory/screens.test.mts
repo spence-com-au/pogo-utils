@@ -21,7 +21,7 @@ import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-
 import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT, parseDetail, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT, parseDetail, powerUpOn, readLines } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
@@ -271,6 +271,18 @@ const FIXTURES: readonly Fixture[] = [
     species: 'Articuno',
     types: ['Ice', 'Flying'],
     weight: 48.28,
+  },
+  {
+    cp: 922,
+    file: 'audino.png',
+    form: null,
+    gender: 'male',
+    height: 1,
+    hp: 144,
+    overlay: { iv: { attack: 12, defense: 11, stamina: 12 }, level: 20 },
+    species: 'Audino',
+    types: ['Normal'],
+    weight: 22.44,
   },
   {
     cp: 253,
@@ -529,7 +541,6 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 656,
-    defects: { favourite: true },
     file: 'frigibax.png',
     form: null,
     gender: 'male',
@@ -583,6 +594,18 @@ const FIXTURES: readonly Fixture[] = [
     tags: ['Shiny', 'Lucky'],
     types: ['Fire', 'Flying'],
     weight: 246.49,
+  },
+  {
+    cp: 861,
+    file: 'kecleon.png',
+    form: null,
+    gender: 'male',
+    height: 1.1,
+    hp: 86,
+    overlay: { iv: { attack: 15, defense: 11, stamina: 12 }, level: 15 },
+    species: 'Kecleon',
+    types: ['Normal'],
+    weight: 27,
   },
   {
     cp: 1965,
@@ -710,6 +733,18 @@ const FIXTURES: readonly Fixture[] = [
     species: 'Meowth',
     types: ['Normal'],
     weight: 3.88,
+  },
+  {
+    cp: 2078,
+    file: 'necrozma.png',
+    form: null,
+    gender: 'genderunknown',
+    height: 2.82,
+    hp: 137,
+    overlay: { iv: { attack: 14, defense: 14, stamina: 12 }, level: 20 },
+    species: 'Necrozma',
+    types: ['Psychic'],
+    weight: 326.1,
   },
   {
     cp: 315,
@@ -885,6 +920,19 @@ const FIXTURES: readonly Fixture[] = [
     weight: 24.06,
   },
   {
+    cp: 1118,
+    file: 'stunfisk-xs.png',
+    form: 'Galarian',
+    gender: 'female',
+    height: 0.48,
+    hp: 148,
+    overlay: { iv: { attack: 6, defense: 5, stamina: 8 }, level: 20 },
+    size: 'XS',
+    species: 'Stunfisk',
+    types: ['Ground', 'Steel'],
+    weight: 9.55,
+  },
+  {
     cp: 487,
     file: 'unown-b.png',
     form: 'B',
@@ -970,9 +1018,13 @@ const FIXTURES: readonly Fixture[] = [
  * is the same screenshot every time it is read, so there is nothing for a shared one to carry between tests.
  */
 const read = async (file: string) => {
-  const image = screenIn(decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url))));
+  const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
+  const image = screenIn(stitch);
   const lines = await readLines(image);
-  const detail = await parseDetail(lines, DATA, image);
+  const parsed = await parseDetail(lines, DATA, image);
+
+  // Off the whole stitch where the screen draws no `POWER UP` row, as `readScreen` does.
+  const detail = { ...parsed, powerUp: parsed.powerUp ?? (await powerUpOn(stitch)) };
   const found = await findOverlay(image);
 
   // The artwork's own signature, which is the only thing that separates forms identical in every number. Floored on the
@@ -1111,7 +1163,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 56 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 60 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1283,9 +1335,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 56.
+ * covers everything else in this file — one capture rather than 60.
  *
- * They need it because a body that waits on all 56 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 60 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1474,15 +1526,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 56,
+  rows: 60,
   negatives: 3,
-  answeredAsThemselves: 55,
-  oneLevel: 56,
-  crossCheckAgrees: 56,
+  answeredAsThemselves: 59,
+  oneLevel: 60,
+  crossCheckAgrees: 60,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 45,
+  noDefects: 50,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1523,9 +1575,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 56 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 60 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 56 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 60 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1629,6 +1681,7 @@ test(
     expect(Object.fromEntries(states), 'which captures state a CP, or what they state, has changed').toStrictEqual({
       'articuno-galar.png': 1966,
       'articuno-kanto.png': 1705,
+      'audino.png': 922,
       'basculin-blue.png': 253,
       'budew-asterisks.png': 461,
       'burmy-plant.png': 206,
@@ -1645,12 +1698,14 @@ test(
       'frigibax.png': 656,
       'gengar-gigantamax.png': 1632,
       'growlithe-nickname.png': 738,
+      'kecleon.png': 861,
       'landorus-shadow.png': 1965,
       'lugia-hashes-hh.png': 1553,
       'lugia-hashes.png': 1553,
       'magikarp-best-buddy.png': 124,
       'meowth-alola.png': 431,
       'meowth-galar.png': 571,
+      'necrozma.png': 2078,
       'pancham-shadow.png': 315,
       'pikachu-ash-hat.png': 489,
       'pikachu-willows-assistant.png': 385,
@@ -1661,6 +1716,7 @@ test(
       'sinistea-phony.png': 461,
       'smoliv.png': 340,
       'spoink.png': 998,
+      'stunfisk-xs.png': 1118,
       'unown-b.png': 487,
       'unown-exclamation.png': 517,
       'unown-question.png': 486,
@@ -1824,7 +1880,8 @@ test(
 /**
  * Whether each capture is shadow, purified or neither, as `shadowOf` reads it off the stardust the `POWER UP` row asks,
  * against what its row states: the two shadows, the purified Snorlax, and every other row that it is neither. Any it
- * says nothing about are named, so a capture joining them is a reader that stopped reading a figure.
+ * says nothing about are named, so a capture joining them is a reader that stopped reading a figure. `necrozma.png`'s
+ * row is below its screen's foot, its fusion panel in the way, so its figure is the stitch's.
  */
 test(
   'the stardust to power up says which captures are shadow and which purified',
@@ -1958,7 +2015,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(56);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(60);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2510,6 +2567,7 @@ test(
       'applin.png': { fast: 'Astonish', charged: ['Struggle'] },
       'articuno-galar.png': { fast: 'Confusion', charged: ['Fly'] },
       'articuno-kanto.png': { fast: 'Powder Snow', charged: ['Ice Beam'] },
+      'audino.png': { fast: 'Zen Headbutt', charged: ['Hyper Beam'] },
       'basculin-blue.png': { fast: 'Water Gun', charged: ['Muddy Water'] },
       'budew-asterisks.png': { fast: 'Razor Leaf', charged: ['Grass Knot'] },
       'burmy-plant.png': { fast: 'Tackle', charged: ['Struggle'] },
@@ -2534,6 +2592,7 @@ test(
       'gengar-gigantamax.png': { fast: 'Shadow Claw', charged: ['Sludge Bomb'] },
       'growlithe-nickname.png': { fast: 'Ember', charged: ['Flamethrower'] },
       'ho-oh.png': { fast: 'Extrasensory', charged: ['Brave Bird'] },
+      'kecleon.png': { fast: 'Lick', charged: ['Shadow Sneak'] },
       'landorus-shadow.png': { fast: 'Rock Throw', charged: ['Frustration'] },
       'lugia-hashes-hh.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
       'lugia-hashes.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
@@ -2544,6 +2603,7 @@ test(
       'meowth-alola.png': { fast: 'Scratch', charged: ['Foul Play'] },
       'meowth-galar.png': { fast: 'Metal Sound', charged: ['Trailblaze'] },
       'meowth-kanto.png': { fast: 'Bite', charged: ['Night Slash'] },
+      'necrozma.png': { fast: 'Psycho Cut', charged: ['Future Sight'] },
       'no-pgsharp.png': { fast: 'Bubble', charged: [] },
       'overworld.png': { fast: null, charged: [] },
       'pancham-shadow.png': { fast: 'Tackle', charged: ['Frustration'] },
@@ -2560,6 +2620,7 @@ test(
       'snorlax-purified.png': { fast: 'Lick', charged: ['Return'] },
       'spinda-04.png': { fast: 'Sucker Punch', charged: ['Icy Wind'] },
       'spoink.png': { fast: 'Splash', charged: ['Psybeam'] },
+      'stunfisk-xs.png': { fast: 'Metal Claw', charged: ['Muddy Water'] },
       'unown-b.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-exclamation.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-m.png': { fast: 'Hidden Power', charged: ['Struggle'] },
@@ -2660,8 +2721,8 @@ test('the corpus reaches both sides of every attribute', () => {
 
   expect(
     distinct(FIXTURES, (f) => f.size),
-    'three of the four bands and none; no capture wears an `XS`, which is a gap and not a licence to drop the band',
-  ).toStrictEqual(['XL', 'XXL', 'XXS', 'undefined']);
+    'every band and none',
+  ).toStrictEqual(['XL', 'XS', 'XXL', 'XXS', 'undefined']);
   expect(distinct(FIXTURES, (f) => f.gender)).toStrictEqual(['female', 'genderunknown', 'male']);
   assert.ok(
     FIXTURES.some((f) => !f.form) && FIXTURES.some((f) => Boolean(f.form)),
@@ -2712,7 +2773,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 56.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 60.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(
@@ -2737,6 +2798,13 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.levels` again, so `identify` has started settling on a level the row denies',
   ).toStrictEqual([]);
 
+  // And the star, which `frigibax.png`'s bokeh filled with as much gold as a favourite's until `isFavourite` asked for
+  // the outline's white as well.
+  expect(
+    FIXTURES.filter((f) => f.defects && 'favourite' in f.defects).map((f) => f.file),
+    'a capture needs `defects.favourite` again, so `isFavourite` has started reading an outline star as filled',
+  ).toStrictEqual([]);
+
   // And both kinds of bracketed form: some captures carry a suffix that names a form of their species, and two carry
   // one that names no form at all, those being PGSharp's `[` and `\` for Unown's two punctuation forms.
   assert.ok(
@@ -2753,7 +2821,7 @@ test('the corpus reaches both sides of every attribute', () => {
   expect(
     [...new Set(FIXTURES.flatMap((f) => Object.keys(f.defects ?? {})))].sort(),
     'a reader has started or stopped disagreeing with the screen about something',
-  ).toStrictEqual(['favourite', 'label', 'unseparated']);
+  ).toStrictEqual(['label', 'unseparated']);
 
   // And the other side of it, which the keys above cannot give: that some capture carries no defect at all. Without it
   // a reader that was wrong everywhere would pass every row it had a `defects` entry in.

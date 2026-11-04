@@ -12,3 +12,4 @@
 /src/tools/inventory/fixtures/storage/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/inventory/fixtures/overlay/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/inventory/fixtures/moves/*.png filter=lfs diff=lfs merge=lfs -text
+/src/tools/inventory/fixtures/favourite/*.png filter=lfs diff=lfs merge=lfs -text
