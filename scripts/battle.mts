@@ -50,6 +50,7 @@ import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { phoneOf } from '../src/tools/battle/phone.mts';
 import { ending } from '../src/tools/battle/reporter.mts';
+import { keepFrames } from '../src/tools/battle/keep-frames.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
@@ -62,7 +63,7 @@ import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.m
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-wasm.mts';
-import { encodePng, type Image } from '../src/tools/inventory/png.mts';
+import { encodePng } from '../src/tools/inventory/png.mts';
 import { createHash } from 'node:crypto';
 import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -246,53 +247,8 @@ if (command === 'run') {
         )
       : undefined);
 
-  // The frames `run` keeps around each faint and shield prompt, named by when they were seen on the same clock the
-  // lines are timed by, `0012.437s-shield.png`, so they sort into the log. Written one a turn of the event loop rather
-  // than as they are handed over: an encode takes 10ms to 40ms and a second's frames come at once, which would hold up
-  // the answer to the very prompt they show. Whatever is still queued when the run ends is written then.
   const dir = options['keep-frames'];
-  const queued: { frame: Image; at: number; event: string }[] = [];
-  let written = 0;
-
-  const write =
-    dir === undefined
-      ? undefined
-      : ({ frame, at, event }: (typeof queued)[number]) => {
-          const name = `${((at - started) / 1000).toFixed(3).padStart(8, '0')}s-${event}.png`;
-          writeFileSync(join(dir, name), encodePng(frame));
-          written++;
-        };
-
-  const writeNext = () => {
-    const next = queued.shift();
-
-    if (next && write) {
-      write(next);
-      setImmediate(writeNext);
-    }
-  };
-
-  const keep =
-    write &&
-    ((frame: Image, at: number, event: string) => {
-      if (queued.push({ frame, at, event }) === 1) {
-        setImmediate(writeNext);
-      }
-    });
-
-  const flush = () => {
-    if (write) {
-      queued.splice(0).forEach(write);
-    }
-
-    if (written > 0) {
-      console.error(`kept ${written} frames around faints and shield prompts in ${dir}`);
-    }
-  };
-
-  if (dir !== undefined) {
-    mkdirSync(dir, { recursive: true });
-  }
+  const frames = dir === undefined ? undefined : keepFrames(dir, started);
 
   // The whole of the screen, written a picture at a time once each is known whole and `HELD_MS` have gone by since it
   // came, or a cut is known: synchronously, at about 8 KB a picture, so that a run stopped by Ctrl-C, which exits
@@ -375,13 +331,18 @@ if (command === 'run') {
   // the setting is put back by the handler alone.
   let interrupted = false;
 
-  process.once('SIGINT', () => {
-    interrupted = true;
-    panel?.done();
-    flush();
+  // What both the ways out let go of, the Ctrl-C handler and `finally`, which an interrupted run reaches both of.
+  const release = () => {
+    frames?.flush();
     screen?.close();
     closeVideo();
     held.close();
+  };
+
+  process.once('SIGINT', () => {
+    interrupted = true;
+    panel?.done();
+    release();
     void restore().finally(() => process.exit(130));
   });
 
@@ -406,7 +367,7 @@ if (command === 'run') {
 
     const tally = await run(
       phone,
-      { mode, data, icons, typeIcons: types, meta, count, ...(keep && { keep }) },
+      { mode, data, icons, typeIcons: types, meta, count, ...(frames && { keep: frames.keep }) },
       clock,
       report,
     ).finally(() => panel?.done());
@@ -429,10 +390,7 @@ if (command === 'run') {
       console.error(`kept the last ${error.frames.length} frames in ${dir}`);
     }
   } finally {
-    flush();
-    screen?.close();
-    closeVideo();
-    held.close();
+    release();
     await ocr.terminate();
 
     if (!interrupted) {
