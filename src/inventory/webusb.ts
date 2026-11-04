@@ -129,11 +129,19 @@ function usb(): AdbDaemonWebUsbDeviceManager {
 /**
  * Offers the browser's device chooser and connects to whatever is picked, or answers null where the chooser was
  * dismissed. Only ADB interfaces are offered, Tango's default filter being the class ADB declares.
+ *
+ * Null too where the phone picked is one this context already has an interface of claimed, which is the phone held:
+ * the browser hands back the same `USBDevice`, which Tango connects to again without claiming it, so a second
+ * connection would contend with the first for its packets, and closing either closes the device under both.
  */
 export async function connect(): Promise<Phone | null> {
   const device = await usb().requestDevice();
 
-  return device === undefined ? null : open(device);
+  if (device === undefined || device.raw.configuration?.interfaces.some((candidate) => candidate.claimed)) {
+    return null;
+  }
+
+  return open(device);
 }
 
 /**
