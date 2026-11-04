@@ -878,7 +878,7 @@ const LABEL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
 const CP_ALPHABET = 'CP0123456789 ';
 
 /** How many digits the highest CP any form can show runs to: perfect IVs at the highest level there is. */
-const cpDigits = (data: GameData) => {
+export const cpDigits = (data: GameData) => {
   const [, top = 0] = data.cpm.at(-1) ?? [];
   const best = { attack: 15, defense: 15, stamina: 15 };
 
