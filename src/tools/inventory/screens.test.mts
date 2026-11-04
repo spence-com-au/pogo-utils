@@ -1291,6 +1291,13 @@ const drain = async () => {
 const workers: Promise<void>[] = [];
 
 /**
+ * The Tesseract every read below goes through, which is the CLI unless `INVENTORY_OCR=wasm` asks for the page's — see
+ * `test-engine.mts`. Installed at import rather than in the hook, since a test reaching a capture the pool has not
+ * started reads it itself.
+ */
+const stopEngine = useTestEngine();
+
+/**
  * The pool, started from a hook rather than at import so that whatever starts it is also what stops it. Module
  * initialisation has no owner: `afterAll` bounds a file's tests, and Vitest runs no hooks at all for a file whose every
  * test its `-t` filter excluded — while still *evaluating* the module, so reads started at import had nothing that
@@ -1299,13 +1306,6 @@ const workers: Promise<void>[] = [];
  * Starting here costs the read-ahead nothing. `beforeAll` runs before the first test, which is the first moment any of
  * this is wanted.
  */
-/**
- * The Tesseract every read below goes through, which is the CLI unless `INVENTORY_OCR=wasm` asks for the page's — see
- * `test-engine.mts`. Installed at import rather than in the hook, since a test reaching a capture the pool has not
- * started reads it itself.
- */
-const stopEngine = useTestEngine();
-
 beforeAll(() => {
   for (let worker = 0; worker < READ_AHEAD; worker++) {
     workers.push(drain());
