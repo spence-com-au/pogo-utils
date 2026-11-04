@@ -4,8 +4,8 @@
  *
  *   node scripts/adb-lease.mts start   as a session starts: put `bin/` first on the PATH of its Bash commands, so
  *                                      that the `adb` they run is the one there
- *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and print the
- *                                      real `adb` to run, or refuse while another session holds it, saying which
+ *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and become the
+ *                                      real `adb`, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
  *                                      the phone is still running or a background subagent is
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
@@ -257,8 +257,9 @@ switch (process.argv[2]) {
       }
     }
 
-    console.log(adb);
-    break;
+    // Replaces this process, as `exec` would, and so returns only where Node has no `execve`, as on Windows.
+    process.execve?.(adb, [adb, ...args]);
+    throw new Error('adb: this Node cannot run adb in its place');
   }
 
   case 'stop': {
