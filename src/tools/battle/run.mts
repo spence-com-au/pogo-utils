@@ -788,6 +788,12 @@ export async function run(
 
     unprompted = state === 'battle' || state === 'charged' ? 0 : unprompted + (countingDown ? 1 : 0);
 
+    // The countdown hides the HUD, so it and the animation after it read as `other`: it is the battle going on, however
+    // many throws in a row, and each of its frames holds off `LOST_MS` as the fight's do.
+    if (countingDown) {
+      known = clock.now();
+    }
+
     if (countingDown && unprompted === THROWN) {
       log(`${theirName()} threw a charged move`, 'opponent', 'none of our shields left to prompt for');
 
