@@ -423,7 +423,10 @@ export function wouldFaint(
  */
 const HARD = 1.4;
 
-/** How far a steady bar wanders from itself frame to frame: 2 points, as `health.mts`'s `JUMP` measured it. */
+/**
+ * How far a steady bar wanders from itself frame to frame: 2 points, Entei's at 98–100% and Charizard's at 76–78% in a
+ * live Ultra League run.
+ */
 export const WANDER = 0.02;
 
 /** Whether to take a shield against the opponent's charged move, and why. */
@@ -558,11 +561,11 @@ export function wouldShield(
 
 /**
  * How sure a lit move must be to finish the opponent before it is thrown over the one held for: the hit counted at
- * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and 2
- * points more, which a steady bar wanders from itself frame to frame (`health.mts`'s `JUMP`). Too sure costs no more
- * than holding on as before; not sure enough leaves the opponent standing at a sliver with our energy spent.
+ * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and the
+ * bar's `WANDER` more. Too sure costs no more than holding on as before; not sure enough leaves the opponent standing
+ * at a sliver with our energy spent.
  */
-const FINISH = { hit: 0.9, slack: 0.02 } as const;
+const FINISH = { hit: 0.9, slack: WANDER } as const;
 
 /**
  * Which lit button would finish the opponent, by its x, and why: one whose move takes at least the HP its bar shows,
