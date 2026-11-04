@@ -521,13 +521,14 @@ export interface Resister extends Switch {
 }
 
 /**
- * Which slot to switch our lead to, of the bench, before the opponent's lead throws a charged move that hits ours super
+ * Which slot to switch ours to, of the bench, before the opponent throws a charged move that hits ours super
  * effectively, against whichever typing ours could have that takes it worst: one that resists every such move, less
  * than neutral against each typing its forms have, and that no other move the opponent may hold hits super effectively.
  * The throw lands on it instead, the energy spent on a resisted hit, and ours keeps its HP and whatever it has lit on
  * the bench. The hardest-hitting of those, as `refugeOf` ranks them, and between equals the first card. With it, the
  * cheapest of the moves feared, which sets when to switch: the caller's to say, by the opponent's energy as `Energy`
- * counts it, and only while both leads are out, the count starting then from a known zero and our switch timer free.
+ * counts it, and only while that count is anchored, by the zero a battle starts at or a banner since, and our switch
+ * timer is free.
  *
  * The moves feared and allowed for are `heldBy`'s. Undefined where none is feared, where no benched card resists them
  * all, or where our species or the opponent's is not known; a benched card whose species is not known, or names no

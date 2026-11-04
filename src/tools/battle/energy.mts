@@ -332,18 +332,21 @@ export class Energy {
   /**
    * The banner named the charged move `species` threw last, which settles what the throw cost: what it had then, less
    * the move's own cost rather than the cheapest it could have been. Had it less than the move costs, the count was
-   * short, and nothing is left. A banner for a throw not counted, or already settled, changes nothing.
+   * short, and nothing is left. A banner for a throw not counted, or already settled, changes nothing. Whether it
+   * settled one.
    */
-  named(species: string, move: string): void {
+  named(species: string, move: string): boolean {
     const tally = this.#tallies.get(species);
     const cost = costOf(this.#data, move);
 
     if (tally?.had === undefined || cost <= 0) {
-      return;
+      return false;
     }
 
     tally.carried = Math.max(0, tally.had - cost);
     tally.had = undefined;
+
+    return true;
   }
 
   /**
