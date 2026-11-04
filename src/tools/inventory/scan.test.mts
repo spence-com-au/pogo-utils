@@ -6,8 +6,8 @@
 
 import { type Detail } from './detail.mts';
 import { type Moves } from './moves.mts';
-import { findOverlay, readOverlay, type Overlay } from './overlay.mts';
-import { decodePng } from './png.mts';
+import { findOverlay, readOverlay, widen, type Overlay } from './overlay.mts';
+import { decodePng, screenIn } from './png.mts';
 import {
   agree,
   count,
@@ -24,11 +24,13 @@ import {
   MOVE_STEPS,
   movesOf,
   otherPokemon,
+  OverlayBoxes,
   parseCsv,
   parseFlags,
   reachMoves,
   shaded,
   shortfall,
+  SWEEPS,
   walk,
   type Landmark,
 } from './scan.mts';
@@ -789,6 +791,66 @@ test('the overlay over a moves screen tells whose moves they are', async () => {
   expect(bounced?.iv).toStrictEqual({ attack: 11, defense: 6, stamina: 10 });
   expect(otherPokemon(roggenrola, bounced), 'the Roggenrola took the Rookidee’s moves screen for its own').toBe(true);
   expect(otherPokemon(rookidee, bounced), 'the Rookidee’s own moves screen is taken for another’s').toBe(false);
+});
+
+const BAND = { x: 0.15, y: 0.198, width: 0.7, height: 0.03 };
+const SCREEN = decodePng(readFileSync(new URL('fixtures/no-pgsharp.png', import.meta.url)));
+
+/**
+ * Issue #587: a box kept from one Pokémon that clips the next one's line, so that only a sweep reads it. Each sweep
+ * succeeds, so the overlay is plainly on, and the scan must go on sweeping long after the first five.
+ */
+test('a sweep that reads the overlay spends none of the ration', async () => {
+  const find = vi.fn(async () => ({ box: BAND, overlay: overlay(12, 11, 14) }));
+  const boxes = new OverlayBoxes(BAND, find, async () => null);
+
+  for (let i = 0; i < SWEEPS * 2; i++) {
+    expect(await boxes.overlayOn(SCREEN, true), `Pokémon ${i + 1} went unread`).toStrictEqual(overlay(12, 11, 14));
+  }
+
+  expect(find).toHaveBeenCalledTimes(SWEEPS * 2);
+});
+
+test('sweeps that find nothing stop after the ration, so a phone without the overlay is not swept for ever', async () => {
+  const find = vi.fn(async () => null);
+  const boxes = new OverlayBoxes(null, find, async () => null);
+
+  for (let i = 0; i < SWEEPS * 2; i++) {
+    expect(await boxes.overlayOn(SCREEN, true)).toBeNull();
+  }
+
+  expect(find).toHaveBeenCalledTimes(SWEEPS);
+});
+
+test('a sweep widens the kept box rather than replacing it, and a look without leave reads the box alone', async () => {
+  const tight = { x: 0.2, y: 0.2, width: 0.5, height: 0.02 };
+  const find = vi.fn(async () => ({ box: BAND, overlay: overlay(1, 2, 3) }));
+  const boxes = new OverlayBoxes(tight, find, async () => null);
+
+  expect(await boxes.overlayOn(SCREEN, false)).toBeNull();
+  expect(find).not.toHaveBeenCalled();
+
+  await boxes.overlayOn(SCREEN, true);
+  expect(boxes.box).toStrictEqual(widen(tight, BAND));
+});
+
+/**
+ * The real readers: the box swept off `gengar-gigantamax.png` clips `audino.png`'s line, which is the miss a scan of
+ * that phone meets, and a sweep reads it all the same and widens the box to read both.
+ */
+test('a kept box that clips another Pokémon’s overlay is widened by a sweep until it reads both', async () => {
+  const screen = (file: string) => screenIn(decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url))));
+  const gengar = screen('gengar-gigantamax.png');
+  const audino = screen('audino.png');
+  const found = (await findOverlay(gengar)) ?? expect.unreachable('no overlay found on the Gengar');
+
+  expect(await readOverlay(audino, found.box), 'the Gengar’s box no longer clips the Audino').toBeNull();
+
+  const boxes = new OverlayBoxes(found.box, findOverlay, readOverlay);
+
+  expect(await boxes.overlayOn(audino, true)).not.toBeNull();
+  expect(await readOverlay(audino, boxes.box ?? expect.unreachable('no box'))).not.toBeNull();
+  expect(await readOverlay(gengar, boxes.box ?? expect.unreachable('no box'))).not.toBeNull();
 });
 
 test('an overlay that went unread says nothing of whose moves they are', () => {

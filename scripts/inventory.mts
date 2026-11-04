@@ -70,7 +70,7 @@ import { clearable, identify, settledForm, shadowOf, type Identity } from '../sr
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
-import { findOverlay, readOverlay, widen, type Overlay, type OverlayBox } from '../src/tools/inventory/overlay.mts';
+import { findOverlay, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
 import { decodePng, difference, encodePng, type Image } from '../src/tools/inventory/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
@@ -92,6 +92,7 @@ import {
   landmarksBefore,
   Marks,
   movesOf,
+  OverlayBoxes,
   parseFlags,
   reachMoves,
   reachOf,
@@ -479,10 +480,7 @@ async function scan(held: Transport) {
     }
   };
 
-  let overlayBox: OverlayBox | null = config.overlay ?? null;
-
-  // A phone with PGSharp's overlay switched off would otherwise sweep for it on every Pokémon, for ever.
-  let searchesLeft = 5;
+  const boxes = new OverlayBoxes(config.overlay ?? null, findOverlay, readOverlay);
 
   if (screens) {
     mkdirSync(screens, { recursive: true });
@@ -518,55 +516,21 @@ async function scan(held: Transport) {
 
     /**
      * How much of this reading is in doubt, as a score to be got to zero. Recorded with the reading rather than worked
-     * out again when two are compared: `overlayBox` is found part way through a pass, and a score that moved with it
+     * out again when two are compared: `boxes.box` is found part way through a pass, and a score that moved with it
      * would rank an earlier attempt differently for what a later one went on to learn.
      */
     faults: number;
   }
 
-  /**
-   * PGSharp's overlay, with the box it sits in found on the way if it is not known yet. The box does not move between
-   * Pokémon — only between phones — so it is worth finding once and keeping, which is the difference between a sweep
-   * of the upper screen and one crop. Only a box that actually yielded a reading is kept: one that merely looked
-   * right would go on being wrong for every Pokémon after it, where not keeping it costs another sweep.
-   *
-   * `sweep` is the caller's leave to spend one of the rationed searches, which it withholds on a look this Pokémon is
-   * being given for some other reason — the crop is still read, so a box already known still answers.
-   */
-  const overlayOf = async (image: Image, sweep: boolean): Promise<Overlay | null> => {
-    if (overlayBox) {
-      const overlay = await readOverlay(image, overlayBox);
+  const overlayOf = async (image: Image, sweep: boolean) => {
+    const known = boxes.box;
+    const overlay = await boxes.overlayOn(image, sweep);
 
-      if (overlay || !sweep || searchesLeft <= 0) {
-        return overlay;
-      }
-
-      // A box tightened on one Pokémon clips a longer line on another — a three digit percentage is a character wider,
-      // and two of twenty-five captures missed for exactly that. So a miss earns one sweep, and the box is widened to
-      // cover both rather than swapped, which converges instead of flipping between the two Pokémon that disagree.
-      searchesLeft--;
-      const wider = await findOverlay(image);
-
-      if (wider) {
-        overlayBox = widen(overlayBox, wider.box);
-      }
-
-      return wider?.overlay ?? null;
+    if (!known && boxes.box) {
+      console.error(`  found PGSharp's overlay at ${JSON.stringify(boxes.box)}`);
     }
 
-    if (!sweep || searchesLeft <= 0) {
-      return null;
-    }
-
-    searchesLeft--;
-    const found = await findOverlay(image);
-
-    if (found) {
-      overlayBox = found.box;
-      console.error(`  found PGSharp's overlay at ${JSON.stringify(found.box)}`);
-    }
-
-    return found?.overlay ?? null;
+    return overlay;
   };
 
   /**
@@ -629,13 +593,13 @@ async function scan(held: Transport) {
           await dismiss();
         }
 
-        // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. The
-        // sweeps are rationed over the whole run, so one granted on every attempt buys three tries of the same
-        // `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is what
-        // varies by phone, its own docblock measuring it at nine of twelve captures from one and none from another.
+        // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. Sweeps
+        // that find nothing are rationed over the whole run, so one granted on every attempt buys three tries of the
+        // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
+        // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from another.
         const overlay = detail.hp === null ? null : await overlayOf(image, lost === null || lost > 0);
         const key = keyOf(detail, overlay);
-        const id = identify(data, detail, overlay, artworkIn(image, overlayBox, icons));
+        const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));
 
         // The key above the other two, not beside them: a reading with no key is the one `walk` counts as a miss and
         // writes `detail screen not read`, so it must lose to any reading that got the HP however much else that one
@@ -643,7 +607,7 @@ async function scan(held: Transport) {
         // to wait for; a form that fits is the surest of the three, the name, the types, the HP and the IVs agreeing
         // being what a half-read screen cannot fake.
         const keyless = Number(key === null);
-        const fields = Number(overlay === null && overlayBox !== null) + Number(id.form === null);
+        const fields = Number(overlay === null && boxes.box !== null) + Number(id.form === null);
 
         // Notes only where the overlay read, because the ones raised without IVs are the ones no further read can
         // clear: with `iv === null` the search narrows on types alone, and 21 of the game master's 1,024 species then
@@ -799,7 +763,7 @@ async function scan(held: Transport) {
         const id =
           shade.shadowed === null
             ? read
-            : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shade.shadowed);
+            : identify(data, detail, overlay, artworkIn(image, boxes.box, icons), null, shade.shadowed);
 
         return { ...shade, id };
       };
@@ -816,7 +780,7 @@ async function scan(held: Transport) {
       }
 
       if (overlay === null) {
-        notes.push(overlayBox ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
+        notes.push(boxes.box ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
       }
 
       if (!options['no-moves']) {
