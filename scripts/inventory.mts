@@ -696,9 +696,9 @@ async function scan(held: Transport) {
     const marks = new Marks();
     const grid = await search(term === undefined ? flag : `${flag}&${term}`);
     const first = await openFirst(grid);
+    const total = matches(grid);
 
     if (first.key !== null) {
-      const total = matches(grid);
       const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), total, Infinity, 0, first);
       const short = shortfall(flag, visited, total);
 
@@ -707,9 +707,11 @@ async function scan(held: Transport) {
       if (short) {
         throw new Error(`${short}; marking only those would write \`no\` against the rest`);
       }
-    } else if (tileLabel(grid)) {
-      // The grid showed a Pokémon and it would not read, which is not the answer a search matching nothing gives:
-      // marking nothing would write `no` against every Pokémon the search holds. So the column is left blank instead.
+    } else if (total !== 0 && (total !== null || tileLabel(grid))) {
+      // The search matched Pokémon and the first would not read, which is not the answer a search matching nothing
+      // gives: marking nothing would write `no` against every Pokémon the search holds. So the column is left blank
+      // instead. The game's counter says which it was, since a shiny tile's sparkles can cost it its CP label where the
+      // search still matched, and the label stands in for it only where the counter did not read.
       console.error(`${flag}: the first Pokémon would not read, so this column is left blank`);
       continue;
     }
