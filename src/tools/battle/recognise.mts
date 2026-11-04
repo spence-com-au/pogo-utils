@@ -9,7 +9,7 @@
  * read with OCR once the screen has settled.
  */
 
-import { chroma, luminance, rgb, type Image } from '../inventory/png.mts';
+import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
 import { around, BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 
 /**
@@ -57,14 +57,14 @@ function mean(image: Image, box: Box, anchor: number): Colour {
 }
 
 /** Each channel's median over a box: the colour of whatever covers most of it, deaf to what covers the rest. */
-function median(image: Image, box: Box, anchor: number): Colour {
+function medianColour(image: Image, box: Box, anchor: number): Colour {
   const channels: [number[], number[], number[]] = [[], [], []];
 
   for (const colour of pixels(image, box, anchor)) {
     colour.forEach((level, i) => channels[i]?.push(level));
   }
 
-  return channels.map((levels) => levels.sort((a, b) => a - b)[levels.length >> 1] ?? 0) as Colour;
+  return channels.map(median) as Colour;
 }
 
 const near = (colour: Colour, target: Colour, within: number) =>
@@ -128,7 +128,7 @@ function showsHud(image: Image): boolean {
 
   return (
     blue >= green &&
-    HUD.every((box) => panel(median(image, box, TOP))) &&
+    HUD.every((box) => panel(medianColour(image, box, TOP))) &&
     HUD_NAMES.every((box) => {
       const text = darkIn(image, box);
       return text >= TEXT.least && text <= TEXT.most;

@@ -13,7 +13,7 @@
 
 import { type Moves } from '../inventory/moves.mts';
 import { ocrLine } from '../inventory/ocr.mts';
-import { crop, rgb, type Image } from '../inventory/png.mts';
+import { crop, median, rgb, type Image } from '../inventory/png.mts';
 import { around, down, place, tall, type Area, type Size } from './layout.mts';
 
 /**
@@ -102,7 +102,7 @@ function silhouetteOfCard(image: Image, x: number): Silhouette {
   const unit = image.width;
   const [cx, cy] = [x * unit, down(CARD_Y, CARD_ANCHOR, image) * image.height];
   const samples = CARD_SAMPLES.map(([dx, dy]) => rgb(image, cx + dx * HALF * unit, cy + dy * HALF * unit));
-  const card = [0, 1, 2].map((k) => samples.map((sample) => sample[k] ?? 0).sort((a, b) => a - b)[1]);
+  const card = [0, 1, 2].map((k) => median(samples.map((sample) => sample[k] ?? 0)));
   const silhouette = new Uint8Array(GRID * GRID);
 
   for (let j = 0; j < GRID; j++) {
