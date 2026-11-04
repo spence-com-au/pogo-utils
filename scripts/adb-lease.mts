@@ -1,9 +1,9 @@
 /**
  * Makes the Claude sessions sharing a plugged-in phone take turns with it, so that two never tap over each other. Run
- * by `scripts/adb-lease/adb` and by the hooks `.claude/settings.json` declares:
+ * by `bin/adb` and by the hooks `.claude/settings.json` declares:
  *
- *   node scripts/adb-lease.mts start   as a session starts: put `scripts/adb-lease/` first on the PATH of its Bash
- *                                      commands, so that the `adb` they run is the one there
+ *   node scripts/adb-lease.mts start   as a session starts: put `bin/` first on the PATH of its Bash commands, so
+ *                                      that the `adb` they run is the one there
  *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and print the
  *                                      real `adb` to run, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
@@ -45,7 +45,7 @@ interface Use {
 }
 
 /** The directory holding the `adb` that stands in front of the real one. */
-const WRAPPER = fileURLToPath(new URL('adb-lease', import.meta.url));
+const WRAPPER = fileURLToPath(new URL('../bin', import.meta.url));
 
 /** What `adb` does without reaching a phone, which takes no lease and so is never refused. */
 const HOST = new Set(['devices', 'help', 'version']);

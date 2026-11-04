@@ -1,9 +1,9 @@
 /**
- * `scripts/adb-lease/adb` and the hooks of `scripts/adb-lease.mts` end to end, each run as a session runs it: the
- * wrapper first on the PATH in front of an `adb` of the test's own, each command in a process session of its own as
- * Claude Code runs a Bash command, and the hooks with their JSON on stdin. A session is a `sleep` standing in for its
- * `claude` process, which is all a lease goes by — its pid and start time — and the lease database and the file naming
- * the session are kept in the test's own directory.
+ * `bin/adb` and the hooks of `scripts/adb-lease.mts` end to end, each run as a session runs it: the wrapper first on
+ * the PATH in front of an `adb` of the test's own, each command in a process session of its own as Claude Code runs a
+ * Bash command, and the hooks with their JSON on stdin. A session is a `sleep` standing in for its `claude` process,
+ * which is all a lease goes by — its pid and start time — and the lease database and the file naming the session are
+ * kept in the test's own directory.
  */
 
 import { type ChildProcess, execFile, execFileSync, spawn } from 'node:child_process';
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 
-const WRAPPER = fileURLToPath(new URL('../../../scripts/adb-lease/adb', import.meta.url));
+const WRAPPER = fileURLToPath(new URL('../../../bin/adb', import.meta.url));
 const SCRIPT = fileURLToPath(new URL('../../../scripts/adb-lease.mts', import.meta.url));
 
 let dir: string;

@@ -36,14 +36,14 @@
   the screenshots again and replace them there, rather than leaving the old set in place or posting a new set in a
   comment.
 - **Take turns with the phone.** Sessions share the phone plugged in here, so the `SessionStart` hook in
-  `.claude/settings.json` puts `scripts/adb-lease/adb` first on the PATH of a session's Bash commands. Every way to the
-  phone runs `adb` off the PATH — by hand, from scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm adb` — so
-  each takes the phone's lease there or is refused while another session holds it. The refusal names the holder and says
-  how to wait for it or ask it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is
-  the one way past the lease and taps over the other session's run. A session lets go of the phone when a turn ends with
-  no command that reached it still running and no background subagent, or when it exits, and a crashed one holds
-  nothing. Settings are read as a session starts, so one started before these hooks were in its checkout runs the bare
-  `adb` until it restarts.
+  `.claude/settings.json` puts `bin/adb` first on the PATH of a session's Bash commands. Every way to the phone runs
+  `adb` off the PATH — by hand, from scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm adb` — so each takes the
+  phone's lease there or is refused while another session holds it. The refusal names the holder and says how to wait
+  for it or ask it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is the one way
+  past the lease and taps over the other session's run. A session lets go of the phone when a turn ends with no command
+  that reached it still running and no background subagent, or when it exits, and a crashed one holds nothing. Settings
+  are read as a session starts, so one started before these hooks were in its checkout runs the bare `adb` until it
+  restarts.
 - **Cover the account in every capture of the phone.** A fixture, a PR screenshot or a recording hides each of the
   account's trainer names — on the VS screen, under the avatar on the map and as the partner under "OBTAINED IN A TRADE"
   on a detail screen — and the Nearby Battle QR code on the Battle tab, which is tied to the account. Fill them solid,
