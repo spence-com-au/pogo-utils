@@ -109,6 +109,7 @@ const TRACKS = [
   { type: 'choose-your-path', label: 'Choose Your Path' },
   { type: 'community-day', label: 'Community Day' },
   { type: 'event', label: 'Events' },
+  { type: 'pokemon-go-tour', label: 'GO Tour' },
   { type: 'max-battles', label: 'Max Battles' },
   { type: 'max-mondays', label: 'Max Mondays' },
   { type: 'raid-battles', label: 'Raid Battles' },
