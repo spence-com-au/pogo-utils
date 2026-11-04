@@ -70,6 +70,13 @@ function isStorage(lines: readonly Line[]): boolean {
   return findLine(lines, /\beggs?\b/) !== undefined || findLine(lines, /^search\b/) !== undefined;
 }
 
+/**
+ * Whether the main menu is open, by the Pokémon button's label as a line of its own. Whole, because the map can say the
+ * word too — a quest reading `Catch 500 Pokémon` sits above the trainer's avatar — and the button beneath that label
+ * is, on the map, a patch of ground PGSharp's tap-to-walk takes as somewhere to walk to.
+ */
+const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
+
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Replaces what the focused search box holds with `term`: cleared by `CLEAR_KEYS`, typed unless empty, and entered. */
@@ -309,6 +316,13 @@ export function storage(
       }
 
       await tap(at(config.taps.mainMenu), config.waits.menu);
+
+      // Thrown rather than tried again: a menu tap that opened something else — the stop a walking avatar carried under
+      // the Poké Ball — leaves a screen nothing here knows the controls of, and every further tap there is a guess.
+      if (!isMainMenu(await readLines(await device.screenshot()))) {
+        throw new Error('the main menu did not open; open Pokémon storage by hand and run again');
+      }
+
       await tap(at(config.taps.pokemonButton), config.waits.search);
     }
 
