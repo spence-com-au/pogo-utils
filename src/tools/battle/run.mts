@@ -5,6 +5,7 @@
  * Driven through the `Phone` in `phone.mts` rather than `adb`, so a test can stand a scripted phone in for a real one.
  */
 
+import { said } from '../../errors.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Image } from '../inventory/png.mts';
 import {
@@ -848,7 +849,7 @@ export async function run(
             }
           }
         })
-        .catch((error: unknown) => log(`banner not read: ${error instanceof Error ? error.message : String(error)}`))
+        .catch((error: unknown) => log(`banner not read: ${said(error)}`))
         .finally(() => (bannerReading = false));
     }
 
