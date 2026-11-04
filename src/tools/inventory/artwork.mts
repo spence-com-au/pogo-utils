@@ -414,7 +414,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 }
 
 /** How many icons to fetch at once. Each is some 24 KB, so the time goes on round trips rather than bytes. */
-const FETCH_BATCH = 16;
+export const FETCH_BATCH = 16;
 
 /**
  * A signature per form for every form the artwork could settle, each one's icon fetched and read by `read`, which is
