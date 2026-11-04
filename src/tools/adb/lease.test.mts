@@ -7,7 +7,7 @@
  */
 
 import { type ChildProcess, execFile, execFileSync, spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,6 +119,42 @@ test('refuses another session, saying who has the phone and how to wait or ask',
   expect(stderr).toContain('`until adb -s PHONE get-state');
   expect(stderr).toContain('ask pogo-utils-a for it with SendMessage');
   expect(ran()).toStrictEqual(['shell input tap 1 1']);
+});
+
+test.each([
+  ['has no file', undefined],
+  ['has a file that is not JSON', 'not json'],
+  ['has a file that names it no one', '{"name":7}'],
+])('refuses another session without a name where the holder %s', async (_, contents) => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, 'shell', 'true');
+
+  if (contents === undefined) {
+    rmSync(join(dir, 'sessions', `${a}.json`));
+  } else {
+    writeFileSync(join(dir, 'sessions', `${a}.json`), contents);
+  }
+
+  const { code, stderr } = await adb(b, 'shell', 'true');
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('the phone PHONE is in use by another Claude session (session');
+  expect(stderr).toContain('or find that session with ListAgents and ask it with SendMessage.');
+});
+
+test('fails where no adb is on the PATH besides the wrapper', async () => {
+  const a = await session('pogo-utils-a');
+
+  const { code, stderr } = await promisify(execFile)(process.execPath, [SCRIPT, 'adb', 'shell', 'true'], {
+    env: { ...env(a), PATH: join(dir, 'nowhere') },
+  }).then(
+    () => ({ code: 0, stderr: '' }),
+    (error: { code: number; stderr: string }) => error,
+  );
+
+  expect(code).not.toBe(0);
+  expect(stderr).toContain('no adb on the PATH besides the lease wrappers');
 });
 
 test('leases each phone apart', async () => {
