@@ -189,12 +189,14 @@ const costOf = (data: GameData, move: string) => -(data.combat[move]?.energy ?? 
 
 /**
  * What the cheapest charged move `opponent` is allowed for costs: of the two `seen`, once both have been, and otherwise
- * of those `chargedOf` allows its forms. Infinity where none is known to cost anything.
+ * of any seen and those `chargedOf` allows its forms. Infinity where none is known to cost anything.
  */
 function cheapestOf(data: GameData, opponent: Side, seen: ReadonlySet<string>, meta?: Meta | null): number {
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
   const names =
-    seen.size >= MOVES_HELD ? [...seen] : formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset));
+    seen.size >= MOVES_HELD
+      ? [...seen]
+      : [...seen, ...formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset))];
 
   return Math.min(...names.map((name) => costOf(data, name)).filter((cost) => cost > 0));
 }

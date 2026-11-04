@@ -330,8 +330,8 @@ function staged(attack: number, defense: number): string {
  * move of theirs — counts as fainting, a shield being the safe side to err on, and is what `why` names.
  *
  * `seen` is the charged moves this opponent has been seen to use, which outweighs what its players run. Both of them
- * seen, they are all it has, whatever its form. One seen narrows nothing: the other could be any allowed it, the
- * hardest among them.
+ * seen, they are all it has, whatever its form. One seen narrows nothing: it is allowed for however few run it, and
+ * the other could be any allowed it, the hardest among them.
  *
  * Of those, only the ones costing no more than `affordable` where it is given, the energy the opponent is counted as
  * having, unless that leaves none, which says the count is short rather than that nothing was thrown.
@@ -375,7 +375,7 @@ export function wouldFaint(
   let narrowed = false;
 
   for (const attacker of theirs) {
-    const names = seen.size >= MOVES_HELD ? [...seen] : chargedOf(attacker.form, moveset);
+    const names = seen.size >= MOVES_HELD ? [...seen] : [...new Set([...seen, ...chargedOf(attacker.form, moveset)])];
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
     const afforded = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
     const counted = affordable !== undefined && afforded.length > 0;
