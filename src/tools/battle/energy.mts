@@ -31,7 +31,6 @@ import {
   buildsOf,
   capped,
   hit,
-  MOVES_HELD,
   NO_STAGES,
   type Shielding,
   type Side,
@@ -40,7 +39,7 @@ import {
   WANDER,
 } from './damage.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, formsOf, lowersDefense, type Shown } from './strategy.mts';
+import { chargedOf, formsOf, lowersDefense, MOVES_HELD, type Shown } from './strategy.mts';
 
 /** As much energy as a Pokémon can hold. */
 export const FULL = 100;
