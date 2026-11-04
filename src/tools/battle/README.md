@@ -642,15 +642,23 @@ None of these switches is tried within 45s of a switch of ours, our switch timer
 same gives the bank back. Refused by the timer, or dropped a second time, none is tried again for 10s; dropped the first
 time, it's tried again at once.
 
-### Switching the lead
+### Switching to a resister
 
-While both leads are out, neither side having fainted or switched, the opponent's energy is
-[counted](#the-opponents-energy) from a known zero and our switch timer is free. If a charged move the opponent's lead
-may hold hits ours super effectively, against whichever typing ours could have that takes it worst, ours switches one
-fast move before the opponent can afford it, to a benched Pokémon that resists it ([`strategy.mts`](strategy.mts)'s
-`resisterOf`). That last fast move lands on the newcomer, and so does the throw, its energy spent on a resisted hit
-rather than a super-effective one: the game's AI, and players who throw as soon as they can, throw into it.
+While the opponent's energy is anchored, [counted](#the-opponents-energy) from a known point, and our switch timer is
+free, ours can switch to catch a throw. If a charged move the opponent may hold hits ours super effectively, against
+whichever typing ours could have that takes it worst, ours switches one fast move before the opponent can afford it, to
+a benched Pokémon that resists it ([`strategy.mts`](strategy.mts)'s `resisterOf`). That last fast move lands on the
+newcomer, and so does the throw, its energy spent on a resisted hit rather than a super-effective one: the game's AI,
+and players who throw as soon as they can, throw into it.
 
+- **Anchored.** The opponent out is its lead and has never left the field, counted from the zero a battle starts at
+  whichever of ours it has faced; or it has thrown since it last came in, and the banner named the move, which settles
+  the count at what was counted less that move's real cost. One sent in from the bench, after a switch or a faint, may
+  carry energy banked that the count can't see, so until it throws and its banner is read, no switch is made against it.
+  Players make this switch mid-battle as well as from the lead: in the Worlds 2023 final, Rubix let Medicham's first Ice
+  Punch hit Altaria, its banner settling the count, and switched to Azumarill on the second.
+- **Our switch timer.** Not within 45s of a switch of ours, as with every switch. A faint starts no timer, so the one of
+  ours sent in after a faint can switch at once.
 - **The feared move.** One the banner has named, or else one of PvPoke's moveset for the species; once the banner has
   named two, those two alone. Not every move the species can learn, which would switch on moves nobody runs, so in
   Training nothing is feared until a banner names it.
@@ -670,9 +678,9 @@ rather than a super-effective one: the game's AI, and players who throw as soon 
 
 Logged as
 `switching to Azumarill against Charizard: Blast Burn affordable after one more Fire Spin; Azumarill resists it, and nothing of Charizard's is super effective`,
-with `, banking Hydro Pump` after the opponent's name where a move is lit. The newcomer stays in, and the rules above
-play the matchup that follows, the refuge and the shield drawer waiting out our switch timer. The opponent's lead has
-its own switch timer free, so it can answer with a switch of its own; that risk is accepted.
+with `, banking Hydro Pump` after the opponent's name where a move is lit. The rules above play the matchup that
+follows, the newcomer among them, all waiting out our switch timer. The opponent may have its own switch timer free, so
+it can answer with a switch of its own; that risk is accepted.
 
 ### Knowing who is out
 

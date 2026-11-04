@@ -2699,39 +2699,49 @@ test.each([
   expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(said);
 });
 
-/** Where the opponent's panel is on the Pixel 4 XL's frames, its name, CP, shields and Poké Balls, as a box. */
-const THEIR_PANEL = [0.58, 0.13, 1, 0.225];
-
 /**
- * The same five hits, with either side's lead gone before them, which leaves no switch: the opponent's, by Mamoswine's
- * panel pasted over with Glaceon's from `battle-latias` for its first 2s, all three of its Poké Balls red, so that
- * Mamoswine, two of them grey, is read as sent in after Glaceon fainted; or ours, by our grey Poké Ball left grey, the
- * faint counted off it, and the party Giratina, Glaceon and Giratina, the second of whom is out. The hits wait 2.5s, so
- * that Mamoswine has flown in by the last, `FLY_IN_MS` after it is named, a switch decided on before then being given
- * up for Giratina doomed. Shadow Sneak, lit once the hits are over, is tapped and goes nowhere, the scene having no
- * minigame to go to.
+ * The same switch to Mamoswine, against Empoleon, sent in after Mamoswine fainted and so not anchored. Empoleon, run
+ * with Waterfall, Hydro Cannon and Drill Peck, puts up a shield prompt `wait` ms after the switch and, with `banner`,
+ * the banner naming Drill Peck, which settles its count at nothing left. Then three Waterfall, 10 energy each, take 4
+ * points each off our bar, painted over Mamoswine's on `charged-avalanche` with Avalanche unlit: the third brings Hydro
+ * Cannon's 40, super effective on Mamoswine, within one more. Latias resists it, and Drill Peck is neutral on it: it is
+ * switched to on `hit3`, only after the banner, and only outside `TIMER_MS` of the switch to Mamoswine.
  */
 test.each([
-  ['theirs', { Mamoswine: 'Glaceon' }, (image: Image) => image, true, 'opponent: Glaceon fainted; sent in Mamoswine'],
-  [
-    'ours',
-    { Mamoswine: 'Glaceon', Latias: 'Giratina' },
-    (image: Image) => pasted(image, fixture('charged-shadow-sneak'), FIRST_BALL),
-    false,
-    'own: Giratina fainted: one fewer of our Poké Balls',
-  ],
-])('switches no lead to a resister once %s has left the field', async (_, stand, paint, before, said) => {
-  const { scenes } = sneaking([96, 92, 88, 84, 80, 76], { lasts: { ms: 6000, to: 'won' } }, paint);
-  const standing: Record<string, string> = stand;
-  const icons = ICONS.map((icon) => ({ ...icon, species: standing[icon.species] ?? icon.species }));
-  const fight = scenes.fight?.frame ?? fixture('other-white');
+  ['after a banner', true, 50_000, ['hit3']],
+  ['before any banner', false, 50_000, []],
+  ['inside our switch timer', true, 10_000, []],
+])('switches to a resister mid-battle %s', async (_, banner, wait, tapped) => {
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS);
+  const lit = painted(balls, [224, 161, 238], ...HELD);
+  const avalanche = painted(fixture('charged-avalanche'), [200, 60, 60], FIRST_BALL);
+  const dark = painted(avalanche, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+
+  // Our fill run on to `px` of the bar's 100 at 360 wide, and dark beyond it.
+  const ours = (px: number) =>
+    painted(
+      painted(dark, [105, 91, 41], [29 / 360, 380 / 360, 129 / 360, 385 / 360]),
+      [26, 255, 187],
+      [29 / 360, 380 / 360, (29 + px) / 360, 385 / 360],
+    );
+  const bench = [0, 1].map((card) => ({ at: place(BENCH[card] ?? [0, 0], BENCH_ANCHOR, dark), to: 'won' }));
   const { phone, clock, taps } = scripted(
     {
-      ...scenes,
-      fight: { frame: fight, lasts: { ms: 2500, to: 'hit1' } },
-      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: before ? 'glaceon' : 'fight' } },
-      glaceon: { frame: pasted(fight, fixture('battle-latias'), THEIR_PANEL), lasts: { ms: 2000, to: 'coming' } },
-      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 1500, to: 'fight' } },
+      ...battleAndBack(),
+      fight: { frame: lit, tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: { ...minigameNoneFainted(), swipes: { count: 40, to: 'playing' } },
+      playing: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'back' } },
+      back: { frame: lit, tap: { at: place(BENCH[1] ?? [0, 0], BENCH_ANCHOR, lit), to: 'mamoswine' } },
+      mamoswine: { frame: ours(74), lasts: { ms: wait, to: 'prompt' } },
+      prompt: { frame: fixture('shield-glaceon'), lasts: { ms: 3000, to: 'banner' } },
+      banner: {
+        frame: banner ? painted(fixture('battle-banner'), [200, 60, 60], FIRST_BALL) : ours(74),
+        lasts: { ms: 2000, to: 'steady' },
+      },
+      steady: { frame: ours(74), tap: bench, lasts: { ms: 1000, to: 'hit1' } },
+      hit1: { frame: ours(70), tap: bench, lasts: { ms: 200, to: 'hit2' } },
+      hit2: { frame: ours(66), tap: bench, lasts: { ms: 200, to: 'hit3' } },
+      hit3: { frame: ours(62), tap: bench, lasts: { ms: 6000, to: 'won' } },
     },
     'party',
   );
@@ -2741,9 +2751,15 @@ test.each([
     phone,
     {
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      meta: MAMOSWINE_AVALANCHE,
-      icons,
+      data: SNEAK_DROPS,
+      meta: {
+        ...MAMOSWINE_AVALANCHE,
+        movesets: new Map([
+          ...MAMOSWINE_AVALANCHE.movesets,
+          ['Empoleon', { fast: 'Waterfall', fastMoves: ['Waterfall'], chargedMoves: ['Hydro Cannon', 'Drill Peck'] }],
+        ]),
+      },
+      icons: ICONS,
       typeIcons: TYPE_ICONS,
       count: 1,
     },
@@ -2751,10 +2767,87 @@ test.each([
     report,
   );
 
-  expect(report.events).toContain(said);
-  expect(taps.filter((scene) => /^(fight|hit)/.test(scene))).toEqual([]);
-  expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual([]);
+  expect(taps.filter((scene) => /^(steady|hit)/.test(scene))).toEqual(tapped);
+  expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual([
+    CLEARING,
+    ...(tapped.length > 0
+      ? [
+          "own: switching to Latias against Empoleon: Hydro Cannon affordable after one more Waterfall; Latias resists it, and nothing of Empoleon's is super effective",
+        ]
+      : []),
+  ]);
 });
+
+/** Where the opponent's panel is on the Pixel 4 XL's frames, its name, CP, shields and Poké Balls, as a box. */
+const THEIR_PANEL = [0.58, 0.13, 1, 0.225];
+
+/**
+ * The same five hits, with either side's lead gone before them: the opponent's, by Mamoswine's panel pasted over with
+ * Glaceon's from `battle-latias` for its first 2s, all three of its Poké Balls red, so that Mamoswine, two of them grey,
+ * is read as sent in after Glaceon fainted, its count not anchored, and nothing switched; or ours, by our grey Poké
+ * Ball left grey, the faint counted off it, and the party Giratina, Glaceon and Giratina, the second of whom is out.
+ * Their lead never gone and a faint starting no switch timer, the second Giratina switches to Glaceon as the first
+ * would. The hits wait 2.5s, so that Mamoswine has flown in by the last, `FLY_IN_MS` after it is named, a switch decided
+ * on before then being given up for Giratina doomed. Shadow Sneak, lit once the hits are over, is tapped and goes
+ * nowhere, the scene having no minigame to go to.
+ */
+test.each([
+  [
+    'their',
+    { Mamoswine: 'Glaceon' },
+    (image: Image) => image,
+    true,
+    'opponent: Glaceon fainted; sent in Mamoswine',
+    [],
+    [],
+  ],
+  [
+    'our',
+    { Mamoswine: 'Glaceon', Latias: 'Giratina' },
+    (image: Image) => pasted(image, fixture('charged-shadow-sneak'), FIRST_BALL),
+    false,
+    'own: Giratina fainted: one fewer of our Poké Balls',
+    ['hit5'],
+    [GLACEON],
+  ],
+])(
+  'after %s lead faints, switches to a resister only if theirs is out',
+  async (_, stand, paint, before, said, tapped, switched) => {
+    const { scenes } = sneaking([96, 92, 88, 84, 80, 76], { lasts: { ms: 6000, to: 'won' } }, paint);
+    const standing: Record<string, string> = stand;
+    const icons = ICONS.map((icon) => ({ ...icon, species: standing[icon.species] ?? icon.species }));
+    const fight = scenes.fight?.frame ?? fixture('other-white');
+    const { phone, clock, taps } = scripted(
+      {
+        ...scenes,
+        fight: { frame: fight, lasts: { ms: 2500, to: 'hit1' } },
+        loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: before ? 'glaceon' : 'fight' } },
+        glaceon: { frame: pasted(fight, fixture('battle-latias'), THEIR_PANEL), lasts: { ms: 2000, to: 'coming' } },
+        coming: { frame: fixture('other-vs-fade'), lasts: { ms: 1500, to: 'fight' } },
+      },
+      'party',
+    );
+    const report = recorder();
+
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        meta: MAMOSWINE_AVALANCHE,
+        icons,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+      report,
+    );
+
+    expect(report.events).toContain(said);
+    expect(taps.filter((scene) => /^(fight|hit)/.test(scene))).toEqual(tapped);
+    expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
+  },
+);
 
 /**
  * Latias leads, from the party screen, and faints to Glaceon; the switch prompt's first card sends in Mamoswine, the
