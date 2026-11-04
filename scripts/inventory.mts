@@ -596,7 +596,8 @@ async function scan(held: Transport) {
         // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. Sweeps
         // that find nothing are rationed over the whole run, so one granted on every attempt buys three tries of the
         // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
-        // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from another.
+        // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from
+        // another.
         const overlay = detail.hp === null ? null : await overlayOf(image, lost === null || lost > 0);
         const key = keyOf(detail, overlay);
         const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));

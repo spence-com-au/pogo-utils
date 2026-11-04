@@ -811,7 +811,7 @@ test('a sweep that reads the overlay spends none of the ration', async () => {
   expect(find).toHaveBeenCalledTimes(SWEEPS * 2);
 });
 
-test('sweeps that find nothing stop after the ration, so a phone without the overlay is not swept for ever', async () => {
+test('sweeps that find nothing stop at the ration, so a phone without the overlay is not swept for ever', async () => {
   const find = vi.fn(async () => null);
   const boxes = new OverlayBoxes(null, find, async () => null);
 
