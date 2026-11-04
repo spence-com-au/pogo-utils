@@ -3430,6 +3430,42 @@ test.each([
 });
 
 /**
+ * With none of our shields left, the opponent's throws one after another — each its countdown and its animation, the
+ * fight never showing between — run longer than `LOST_MS`, as Sealeo's did against Blanche on a Pixel 4 XL (#580). The
+ * countdown is the battle going on, so the run plays on to its end rather than stopping lost.
+ */
+test('waits out countdowns in a row for longer than the run takes to give up as lost', async () => {
+  const throwing = (n: number, to: string): Record<string, Scene> => ({
+    [`countdown${n}`]: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 5000, to: `animation${n}` } },
+    [`animation${n}`]: { frame: fixture('other-white'), lasts: { ms: 8000, to } },
+  });
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('battle-pixel8-greninja'), swipes: { count: 10, to: 'countdown0' } },
+      ...throwing(0, 'countdown1'),
+      ...throwing(1, 'won'),
+    },
+    'fight',
+  );
+
+  expect(
+    await run(
+      phone,
+      {
+        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+        data: DATA,
+        icons: ICONS,
+        typeIcons: TYPE_ICONS,
+        count: 1,
+      },
+      clock,
+    ),
+  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(clock.now()).toBeGreaterThan(LOST_MS);
+});
+
+/**
  * The switch prompt carries a countdown too, as after Moltres fainted to a Garganacl, recorded off a Pixel 8 Pro. With
  * its grey Poké Ball painted red, no faint of ours accounts for the prompt, and the run takes it for `other`, as it does
  * a dark field that matches the prompt's slate. With none of our shields left, its countdown is still no throw.
