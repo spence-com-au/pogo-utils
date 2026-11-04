@@ -219,8 +219,8 @@ export class OverlayBoxes {
     }
 
     // A box tightened on one Pokémon clips a longer line on another — a three digit percentage is a character wider,
-    // and two of twenty-five captures missed for exactly that. So the box is widened to cover both rather than swapped, which converges instead of flipping between the two
-    // Pokémon that disagree.
+    // and two of twenty-five captures missed for exactly that. So the box is widened to cover both rather than
+    // swapped, which converges instead of flipping between the two Pokémon that disagree.
     this.box = this.box ? widen(this.box, found.box) : found.box;
 
     return found.overlay;
