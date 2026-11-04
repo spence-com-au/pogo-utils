@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { accessSync, appendFileSync, constants, existsSync, readdirSync, readFileSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -78,9 +78,9 @@ const stat = (pid: number | string) => {
 const live = (use: Use) => stat(use.pid)?.[STARTED] === use.started;
 
 function open(): DatabaseSync {
-  const db = new DatabaseSync(join(process.env.XDG_RUNTIME_DIR ?? tmpdir(), 'pogo-utils-adb-lease.sqlite'), {
-    timeout: 10_000,
-  });
+  const dir = join(process.env.XDG_RUNTIME_DIR ?? tmpdir(), 'pogo-utils');
+  mkdirSync(dir, { recursive: true });
+  const db = new DatabaseSync(join(dir, 'adb-lease.sqlite'), { timeout: 10_000 });
 
   db.exec(`CREATE TABLE IF NOT EXISTS use (
     serial TEXT NOT NULL,
