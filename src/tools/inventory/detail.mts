@@ -10,7 +10,17 @@
 import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
 import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
-import { genderOf, isFavourite, isLucky, isLuckyCaption, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
+import {
+  badgeEnd,
+  genderOf,
+  isFavourite,
+  isLucky,
+  isLuckyCaption,
+  sizeOf,
+  tagsOn,
+  type Gender,
+  type Size,
+} from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
   name: string | null;
@@ -254,6 +264,25 @@ async function nameAgain(image: Image, lines: readonly Line[], hp: Line, labelle
   return text !== null && NAME_SHAPE.test(text) ? text : null;
 }
 
+/**
+ * The name line's text without the best-buddy badge in front of it, which Tesseract reads as a `1` or an `i`:
+ * `magikarp-best-buddy.png`, called `96%`, read `1 96%`. So the line is read again from past the badge `badgeEnd` finds.
+ */
+async function unbadged(image: Image, line: Line): Promise<string> {
+  const end = badgeEnd(image, line);
+
+  if (end === null) {
+    return line.text;
+  }
+
+  const pad = Math.round(line.height * NAME_PAD);
+  const text = await ocrLine(
+    crop(image, end, line.top - pad, line.left + line.width - end + pad, line.height + pad * 2),
+  );
+
+  return text ?? line.text;
+}
+
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
   const longest = cpDigits(data);
   const labelled = cpLabelOf(lines, image);
@@ -269,7 +298,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
   const name = nameLine
-    ? sanitise(nameLine.text)
+    ? sanitise(await unbadged(image, nameLine))
     : hpLine
       ? sanitise((await nameAgain(image, lines, hpLine, labelled)) ?? '')
       : null;

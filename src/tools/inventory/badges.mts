@@ -166,6 +166,23 @@ export function isFavourite(image: Image): boolean {
 }
 
 /**
+ * Where the best-buddy badge ends on the name line, or null where it carries none. The game draws a gold and red rosette
+ * about the name's cap height in front of a best buddy's name, told apart by colour rather than by what Tesseract reads
+ * it as, so a nickname that does start with a `1` keeps it. The name is drawn dark grey on white: no pixel inside the
+ * corpus's 56 other name lines is more saturated than a chroma of 41, nor one inside 501 more from scans' detail
+ * screens as much as `BADGE_CHROMA`, where the badge reaches 166 and carries 88 columns past it. Only a patch starting
+ * within a line-height of the line's left counts, the badge being the first thing on it.
+ */
+export function badgeEnd(image: Image, line: Line): number | null {
+  const { left, width } = extentOf(
+    crop(image, line.left, line.top, line.width, line.height),
+    (r, g, b) => chroma(r, g, b) >= BADGE_CHROMA,
+  );
+
+  return left === -1 || left > line.height ? null : line.left + left + width;
+}
+
+/**
  * Male, female, or `genderunknown` for a species that has no gender. The symbol is the only ink in that corner of the
  * panel, so it is found by where the HP is rather than by a fraction of the screen.
  *
@@ -416,6 +433,9 @@ const SIZE_RISE = 1.9;
 const SIZE_SPAN = 1.6;
 const SIZE_CHROMA = 60;
 const SIZE_FILL = 0.01;
+
+/** How saturated a pixel inside the name line has to be to be the best-buddy badge rather than the name's grey. */
+const BADGE_CHROMA = 80;
 
 /** The four words a badge can spell. */
 const SIZES = ['XXL', 'XXS', 'XL', 'XS'] as const satisfies readonly Size[];
