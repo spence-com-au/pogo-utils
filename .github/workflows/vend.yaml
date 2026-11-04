@@ -42,13 +42,16 @@ jobs:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
+          # The clone and the push are all this token is for, so it holds none of the app's other permissions.
+          permission-contents: 'write'
+
       - uses: 'actions/checkout@v7.0.1'
         with:
           # `git-auto-commit-action` pushes with whatever credentials `checkout` persisted, so this is what makes the
           # commit the app's rather than the default token's.
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e' # v3.1.2
         with:
           cache: true
       - run: 'pnpm vend:events'
@@ -66,7 +69,7 @@ jobs:
 
       - name: 'Commit'
         id: 'commit'
-        uses: 'stefanzweifel/git-auto-commit-action@v7.2.1'
+        uses: 'stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c' # v7.2.1
         with:
           commit_author: '${{ steps.committer.outputs.author }}'
           commit_message: 'Update the Leek Duck feed'
@@ -87,6 +90,7 @@ jobs:
         with:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          permission-contents: 'write'
 
       # `master` rather than the default `github.sha`, which is the commit the run started on: if `events` has just
       # pushed, building on that commit would make this job's push the rejected non-fast-forward `needs` is here to
@@ -96,7 +100,7 @@ jobs:
           ref: 'master'
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e' # v3.1.2
         with:
           cache: true
       - run: 'pnpm vend:pgsharp'
@@ -111,7 +115,7 @@ jobs:
           echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
 
       - name: 'Commit'
-        uses: 'stefanzweifel/git-auto-commit-action@v7.2.1'
+        uses: 'stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c' # v7.2.1
         with:
           commit_author: '${{ steps.committer.outputs.author }}'
           commit_message: 'Update the PGSharp release'
@@ -131,6 +135,7 @@ jobs:
         with:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          permission-contents: 'write'
 
       # `master` rather than `github.sha`, as in `pgsharp`: either job before this one may have just pushed.
       - uses: 'actions/checkout@v7.0.1'
@@ -138,7 +143,7 @@ jobs:
           ref: 'master'
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e' # v3.1.2
         with:
           cache: true
       - run: 'pnpm vend:coin-bag'
@@ -153,7 +158,7 @@ jobs:
           echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
 
       - name: 'Commit'
-        uses: 'stefanzweifel/git-auto-commit-action@v7.2.1'
+        uses: 'stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c' # v7.2.1
         with:
           commit_author: '${{ steps.committer.outputs.author }}'
           commit_message: 'Update the Coin Bag release'
