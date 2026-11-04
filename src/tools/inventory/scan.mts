@@ -8,7 +8,7 @@ import { type Detail } from './detail.mts';
 import { type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
-import { widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
+import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
 import { type Image } from './png.mts';
 
 /** The searches that answer the yes-or-no columns, each column named for the game's own search term. */
@@ -110,7 +110,7 @@ export function agree(a: string, b: string, blank = 1): boolean {
 
 /** The same without the name, so a nickname read differently in two passes still matches. */
 export function looseKeyOf(detail: Detail, overlay: Overlay | null): string {
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : '';
+  const iv = overlay ? ivsOf(overlay) : '';
 
   return [detail.hp, detail.weight, detail.height, iv].join('|');
 }
@@ -320,7 +320,7 @@ export function landmarkOf(detail: Detail, overlay: Overlay | null): Landmark | 
     return null;
   }
 
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : null;
+  const iv = overlay ? ivsOf(overlay) : null;
 
   return { hp: detail.hp, weight: detail.weight, height: detail.height, iv };
 }
@@ -776,8 +776,6 @@ export async function reachMoves<L extends MovesLook>(look: (steps: number) => P
 export function otherPokemon(a: Overlay | null, b: Overlay | null): boolean {
   return a !== null && b !== null && ivsOf(a) !== ivsOf(b);
 }
-
-const ivsOf = ({ iv }: Overlay) => `${iv.attack}/${iv.defense}/${iv.stamina}`;
 
 /** Whether two keys differ in each of the HP, weight and height, every one of them read on both. */
 function elsewhere(a: string, b: string): boolean {

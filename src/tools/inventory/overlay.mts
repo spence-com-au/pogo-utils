@@ -42,6 +42,11 @@ export interface Overlay {
   form: string | null;
 }
 
+/** The IVs as `attack/defense/stamina`, the one spelling every key, landmark and log line compares or shows. */
+export function ivsOf({ iv }: Overlay): string {
+  return `${iv.attack}/${iv.defense}/${iv.stamina}`;
+}
+
 /**
  * Only these survive the whitelist: the level's `L`, the digits, the slashes between the three IVs and the `%` that
  * Tesseract makes of a half level's `½`. The `½` itself is no use here, the model never answering it: whitelisted, a
