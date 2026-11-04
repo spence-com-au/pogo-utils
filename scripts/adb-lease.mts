@@ -2,8 +2,8 @@
  * Makes the Claude sessions sharing a plugged-in phone take turns with it, so that two never tap over each other. Run
  * by `bin/adb` and by the hooks `.claude/settings.json` declares:
  *
- *   node scripts/adb-lease.mts start   as a session starts: put `bin/` first on the PATH of its Bash commands, so
- *                                      that the `adb` they run is the one there
+ *   node scripts/adb-lease.mts start   as a session starts: put `bin/` first on the PATH of its Bash commands and
+ *                                      name `bin/adb` as `ADB`, so that the `adb` they run is the one there
  *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and become the
  *                                      real `adb`, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
@@ -11,8 +11,9 @@
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
- * runs `adb` off the PATH: by hand, from scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm adb` by `execFile`.
- * No command can be written so as to slip past it, short of naming the real `adb` by its path.
+ * runs `adb`: by hand and from `pnpm battle`, `pnpm inventory` and `pnpm adb` by `execFile`, off the PATH, and from
+ * scrcpy, which runs the one `ADB` names, and otherwise the one on the PATH or, in a portable build, its own. No
+ * command can be written so as to slip past it, short of naming the real `adb` by its path.
  *
  * A session is its `claude` process, `CLAUDE_PID`, which Claude Code sets for its Bash commands and its hooks alike: a
  * subagent's commands come from its parent's process, so share its lease, and a lease whose process has gone is one a
@@ -209,7 +210,8 @@ switch (process.argv[2]) {
     const file = process.env.CLAUDE_ENV_FILE;
 
     if (file) {
-      appendFileSync(file, `export PATH='${WRAPPER.replaceAll("'", `'\\''`)}':"$PATH"\n`);
+      const wrapper = `'${WRAPPER.replaceAll("'", `'\\''`)}'`;
+      appendFileSync(file, `export PATH=${wrapper}:"$PATH"\nexport ADB=${wrapper}/adb\n`);
     }
 
     break;

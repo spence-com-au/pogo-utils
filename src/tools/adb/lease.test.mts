@@ -208,14 +208,16 @@ test.each([
   expect(codes.filter((code) => code === 0)).toHaveLength(1);
 });
 
-test('puts the wrapper first on the PATH of a starting session', async () => {
+test('puts the wrapper first on the PATH of a starting session, and names it as `ADB` for scrcpy', async () => {
   const a = await session('pogo-utils-a');
   const file = join(dir, 'env.sh');
   execFileSync('node', [SCRIPT, 'start'], { env: { ...env(a), CLAUDE_ENV_FILE: file } });
 
-  expect(execFileSync('sh', ['-c', `. '${file}'; command -v adb`], { env: { PATH: '/usr/bin:/bin' } }).toString()).toBe(
-    `${WRAPPER}\n`,
-  );
+  const sourced = execFileSync('sh', ['-c', `. '${file}'; command -v adb; echo "$ADB"`], {
+    env: { PATH: '/usr/bin:/bin' },
+  });
+
+  expect(sourced.toString()).toBe(`${WRAPPER}\n${WRAPPER}\n`);
 });
 
 /**
