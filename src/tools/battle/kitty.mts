@@ -29,7 +29,10 @@ export interface Pictures {
   /** The size of one cell in pixels, which says how many columns a picture so many rows tall takes. */
   cell: Size;
 
-  /** `image` drawn `rows` tall from the cursor, which stays where it is, replacing the picture drawn before. */
+  /**
+   * `image` drawn `rows` tall from the cursor, which stays where it is, replacing the picture drawn before, or nothing
+   * where its file cannot be written.
+   */
   picture(image: Image, rows: number): string;
 
   /** The temporary files gone, any the terminal has not yet read among them. */
@@ -96,7 +99,14 @@ export async function pictures(input: NodeJS.ReadStream, output: NodeJS.WriteStr
     cell: { width: Number(width), height: Number(height) },
     picture({ width, height, data }, rows) {
       const path = join(dir, `${sent++}.rgba`);
-      writeFileSync(path, data);
+
+      // A frame that cannot be written — the temporary directory full or gone — leaves the last on the screen rather
+      // than throwing from the panel's timers, where it would be uncaught and skip putting the phone's setting back.
+      try {
+        writeFileSync(path, data);
+      } catch {
+        return '';
+      }
 
       return escape(`a=T,i=${ID},t=t,f=32,s=${width},v=${height},r=${rows},C=1`, path);
     },

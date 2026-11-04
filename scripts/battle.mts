@@ -253,14 +253,27 @@ if (command === 'run') {
   const dir = options['keep-frames'];
   const queued: { frame: Image; at: number; event: string }[] = [];
   let written = 0;
+  let framesFailed: string | undefined;
 
+  // A write that fails — the disk full, or DIR gone — stops keeping frames and nothing else, as the video's does: it
+  // runs from `setImmediate` and from the ways out, where a throw would be uncaught or skip putting the phone's setting
+  // back.
   const write =
     dir === undefined
       ? undefined
       : ({ frame, at, event }: (typeof queued)[number]) => {
+          if (framesFailed !== undefined) {
+            return;
+          }
+
           const name = `${((at - started) / 1000).toFixed(3).padStart(8, '0')}s-${event}.png`;
-          writeFileSync(join(dir, name), encodePng(frame));
-          written++;
+
+          try {
+            writeFileSync(join(dir, name), encodePng(frame));
+            written++;
+          } catch (error) {
+            framesFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
+          }
         };
 
   const writeNext = () => {
@@ -287,6 +300,10 @@ if (command === 'run') {
 
     if (written > 0) {
       console.error(`kept ${written} frames around faints and shield prompts in ${dir}`);
+    }
+
+    if (framesFailed !== undefined) {
+      console.error(`stopped keeping frames in ${dir}: a write failed ${framesFailed}`);
     }
   };
 

@@ -57,6 +57,16 @@ test('draws each frame from a file of its own, the size of a cell as the termina
   expect(existsSync(dirname(pathOf(first)))).toBe(false);
 });
 
+test('draws nothing for a frame whose file cannot be written, rather than throwing', async () => {
+  const { input, output } = terminal(() => GHOSTTY);
+  const drawn = await pictures(input, output);
+
+  // The directory gone, as a full disk or a cleaned `/tmp` leaves it.
+  drawn?.close();
+
+  expect(drawn?.picture({ width: 1, height: 1, data: new Uint8Array(4) }, 24)).toBe('');
+});
+
 test('draws nothing where the terminal answers only its device attributes', async () => {
   const { input, output, written } = terminal(() => '\x1b[?62;22c');
 
