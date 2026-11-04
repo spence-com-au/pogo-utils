@@ -7,7 +7,7 @@
  */
 
 import { type ChildProcess, execFile, execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -216,4 +216,26 @@ test('puts the wrapper first on the PATH of a starting session', async () => {
   expect(execFileSync('sh', ['-c', `. '${file}'; command -v adb`], { env: { PATH: '/usr/bin:/bin' } }).toString()).toBe(
     `${WRAPPER}\n`,
   );
+});
+
+/**
+ * As a session started from another's Bash command has it: its own checkout's `bin/` first on the PATH and the other
+ * checkout's after, which it inherited — or the other way about.
+ */
+test("reaches the real adb past another checkout's wrapper on the PATH", async () => {
+  const other = join(dir, 'other');
+  cpSync(dirname(WRAPPER), join(other, 'bin'), { recursive: true });
+  cpSync(SCRIPT, join(other, 'scripts', 'adb-lease.mts'));
+  const a = await session('pogo-utils-a');
+
+  for (const wrappers of [
+    [dirname(WRAPPER), join(other, 'bin')],
+    [join(other, 'bin'), dirname(WRAPPER)],
+  ]) {
+    await promisify(execFile)('setsid', ['-w', 'adb', 'shell', 'true'], {
+      env: { ...env(a), PATH: [...wrappers, join(dir, 'bin'), process.env.PATH].join(':') },
+    });
+  }
+
+  expect(ran()).toStrictEqual(['shell true', 'shell true']);
 });

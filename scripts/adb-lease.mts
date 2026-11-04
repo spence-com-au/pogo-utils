@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { accessSync, appendFileSync, constants, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -119,17 +119,21 @@ const executable = (path: string) => {
   }
 };
 
-/** The `adb` the wrapper stands in front of: the first on the PATH that is not the wrapper itself. */
+/**
+ * The `adb` the wrapper stands in front of: the first on the PATH in no checkout's `bin/`, which is told by the lease
+ * script beside it. Passing over this checkout's alone would not do: a session started from another's Bash command
+ * inherits that checkout's `bin/` behind its own, and each wrapper would take the other for the real `adb` and run it,
+ * for ever.
+ */
 function realAdb(): string {
-  const wrapper = realpathSync(join(WRAPPER, 'adb'));
-
   const adb = (process.env.PATH ?? '')
     .split(':')
+    .filter((dir) => !existsSync(join(dir, '..', 'scripts', 'adb-lease.mts')))
     .map((dir) => join(dir, 'adb'))
-    .find((adb) => executable(adb) && realpathSync(adb) !== wrapper);
+    .find(executable);
 
   if (!adb) {
-    throw new Error('adb: no adb on the PATH besides this wrapper');
+    throw new Error('adb: no adb on the PATH besides the lease wrappers');
   }
 
   return adb;
