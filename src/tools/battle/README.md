@@ -622,9 +622,24 @@ coming back, about seven times in all, taking a shield or a knockout each time.
   since an opponent just switched in may carry energy banked that the count can't see: live, a Zapdos threw two seconds
   after coming back in. Logged as `staying in against Kyogre: Fly drawn into a shield before Moltres faints`. Live, that
   Fly took Kyogre's last shield, and it had none for the rest of the battle.
+- **Clearing a drop with it.** Stat stages reset as a Pokémon leaves the field, so a Pokémon of ours whose attack or
+  defense has dropped switches to a benched one safe from every move the opponent may hold, as `refugeOf` picks one
+  ([`strategy.mts`](strategy.mts)'s `clearerOf`), banking whatever is lit. Logged as
+  `switching to Mamoswine against Mamoswine, banking Shadow Sneak: clearing −2 attack; Mamoswine is safe from Mamoswine's moves`.
+  Players in three of the four championship finals studied did this: Deoxys Defense left at once after its own Psycho
+  Boost, twice, at Worlds 2023, and a Galarian Moltres that two Rock Tomb had dropped went out at Worlds 2025, keeping
+  Brave Bird. It's decided once the drop has landed: after our throw has played, Psycho Boost's, Brave Bird's or Close
+  Combat's, or after the banner names an opponent's move whose drop always happens, as Chilling Water's, Rock Tomb's or
+  Icy Wind's does. It never switches into a Pokémon the opponent could farm energy off, so with none safe, ours stays
+  in, and it gives way to a lit move that would [finish](#which-charged-move-to-throw) the opponent, to ours being
+  doomed as above, to our last hit, after which a drop no longer matters, and to the other switches.
+- **Chance-based drops** are left out, taken not to have happened. The game says when a stat drops, as
+  `DEFENSE HARSHLY FELL!` after a Xerneas's Close Combat in a recorded GO Battle League set, but for a second or so,
+  drawn without a backdrop over the field, just above the HP bar where `SUPER EFFECTIVE!` shows too. Catching it would
+  take OCR on every frame after every throw, so it isn't read.
 
-Neither switch is tried within 45s of a switch of ours, our switch timer running meanwhile. One refused all the same
-gives the bank back. Refused by the timer, or dropped a second time, neither is tried again for 10s; dropped the first
+None of these switches is tried within 45s of a switch of ours, our switch timer running meanwhile. One refused all the
+same gives the bank back. Refused by the timer, or dropped a second time, none is tried again for 10s; dropped the first
 time, it's tried again at once.
 
 ### Switching the lead

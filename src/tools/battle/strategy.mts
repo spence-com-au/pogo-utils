@@ -15,7 +15,7 @@
  */
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
-import { MOVES_HELD } from './damage.mts';
+import { MOVES_HELD, type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
@@ -368,6 +368,29 @@ export function refugeOf(
     return undefined;
   }
 
+  const best = safest(data, party, out, fainted, opponent, meta);
+
+  return (
+    best && {
+      slot: best.slot,
+      why: `${own.species} is hit super effectively and banks its energy; ${best.species} is safe from ${opponent.species}'s moves`,
+    }
+  );
+}
+
+/**
+ * The benched slot safe from every charged move the opponent is allowed for, as `shouldShield` judges, that hits it
+ * hardest, and between equals the first card; undefined where none is. A card whose species is not known is never
+ * safe, its types unknown.
+ */
+function safest(
+  data: GameData,
+  party: readonly Card[],
+  out: number,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  meta?: Meta | null,
+): { slot: number; species: string } | undefined {
   const [best] = party
     .flatMap((card, slot) => {
       const { species } = card;
@@ -378,10 +401,47 @@ export function refugeOf(
     })
     .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
 
+  return best;
+}
+
+/**
+ * Which slot to switch to, of the bench, to clear a drop in the attack or defense of ours: the stages reset as a
+ * Pokémon leaves the field, so ours comes back whole, and keeps on the bench whatever it has lit. Only to one `refugeOf`
+ * would choose, safe from every charged move the opponent is allowed for, so that the switch hands the opponent nothing
+ * to farm energy off; with none, ours stays in, as it does where nothing has dropped or where either species is not
+ * known. Whether a lit move would finish the opponent first, whether ours is doomed or on its last hit, and whether our
+ * switch timer is free, are the caller's to say.
+ *
+ * Players in three of four championship finals studied switched out to clear a drop, banking energy as they went:
+ * Deoxys Defense left at once after its own Psycho Boost, twice, at Worlds 2023; Stunfisk went to Galarian Corsola after
+ * Chilling Water at Baltimore 2027 "to get rid of that debuff while saving the energy"; and a Galarian Moltres that two
+ * Rock Tomb had dropped went out at Worlds 2025, keeping Brave Bird for later. At Baltimore, too, Corsola stayed in
+ * because the switch "would just give the Sableye potentially more energy": the farm the refuge rule keeps out of.
+ */
+export function clearerOf(
+  data: GameData,
+  party: readonly Card[],
+  out: number,
+  own: Shown,
+  stages: Stages,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  meta?: Meta | null,
+): Switch | undefined {
+  const drops = (['attack', 'defense'] as const).flatMap((stat) =>
+    stages[stat] < 0 ? [`−${-stages[stat]} ${stat}`] : [],
+  );
+
+  if (drops.length === 0 || own.species === null || opponent.species === null) {
+    return undefined;
+  }
+
+  const best = safest(data, party, out, fainted, opponent, meta);
+
   return (
     best && {
       slot: best.slot,
-      why: `${own.species} is hit super effectively and banks its energy; ${best.species} is safe from ${opponent.species}'s moves`,
+      why: `clearing ${drops.join(' and ')}; ${best.species} is safe from ${opponent.species}'s moves`,
     }
   );
 }
