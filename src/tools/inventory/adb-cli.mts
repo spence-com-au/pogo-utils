@@ -5,15 +5,9 @@
  * commands to one `adb shell` held open, a battle's swipes coming too fast to start a process for each.
  */
 
-import { type Transport } from './adb.mts';
+import { NO_ANSWER, TIMEOUT_MS, type Transport } from './adb.mts';
 import { holdShell } from './held-shell.mts';
 import { execFile, spawn } from 'node:child_process';
-
-/**
- * Far longer than any call here takes, so it only fires on a device or `adb` server that has wedged — an `offline`
- * phone, a stalled USB link — which would otherwise hang the scan rather than fail the one call.
- */
-const TIMEOUT_MS = 30_000;
 
 /** The phone `serial` names, or the only one plugged in where it names none. */
 export function adbCli(serial?: string): Transport {
@@ -27,9 +21,7 @@ export function adbCli(serial?: string): Transport {
         { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024, timeout: TIMEOUT_MS },
         (error, stdout, stderr) => {
           if (error) {
-            const detail = error.killed
-              ? `no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`
-              : stderr.toString().trim() || error.message;
+            const detail = error.killed ? NO_ANSWER : stderr.toString().trim() || error.message;
             reject(new Error(`adb ${args.join(' ')}: ${detail}`));
           } else {
             resolve(stdout);
