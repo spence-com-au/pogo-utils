@@ -47,7 +47,12 @@ interface Use {
 /** The directory holding the `adb` that stands in front of the real one. */
 const WRAPPER = fileURLToPath(new URL('../bin', import.meta.url));
 
-/** What `adb` does without reaching a phone, which takes no lease and so is never refused. */
+/**
+ * The commands a session runs to look around, which reach no phone and so take no lease and are never refused. Any
+ * other command leases the phone `get-serialno` names, among them the host commands that reach none — `connect`,
+ * `pair`, `start-server` — which are rare enough here to be held back with the rest, and `kill-server`, which cuts
+ * every session's connection and should be.
+ */
 const HOST = new Set(['devices', 'help', 'version']);
 
 /** The options `adb` takes ahead of its command that take the next argument as their value. */
