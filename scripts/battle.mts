@@ -259,23 +259,32 @@ if (command === 'run') {
   // A write that fails — the disk full, or DIR gone — stops keeping frames and nothing else, as the video's does: it
   // runs from `setImmediate` and from the ways out, where a throw would be uncaught or skip putting the phone's setting
   // back.
-  const write =
+  const save =
     dir === undefined
       ? undefined
-      : ({ frame, at, event }: (typeof queued)[number]) => {
+      : (name: string, frame: Image) => {
           if (framesFailed !== undefined) {
-            return;
+            return false;
           }
-
-          const name = `${((at - started) / 1000).toFixed(3).padStart(8, '0')}s-${event}.png`;
 
           try {
             writeFileSync(join(dir, name), encodePng(frame));
-            written++;
+
+            return true;
           } catch (error) {
             framesFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
+
+            return false;
           }
         };
+
+  const write =
+    save &&
+    (({ frame, at, event }: (typeof queued)[number]) => {
+      if (save(`${((at - started) / 1000).toFixed(3).padStart(8, '0')}s-${event}.png`, frame)) {
+        written++;
+      }
+    });
 
   const writeNext = () => {
     const next = queued.shift();
@@ -446,10 +455,12 @@ if (command === 'run') {
       console.error(error instanceof Error ? error.message : String(error));
     }
 
-    if (error instanceof Lost && dir) {
-      error.frames.forEach((frame, i) =>
-        writeFileSync(join(dir, `${String(i).padStart(2, '0')}.png`), encodePng(frame)),
-      );
+    // A write that fails is told by `flush` with the others rather than thrown over the error that stopped the run.
+    if (
+      error instanceof Lost &&
+      save &&
+      error.frames.every((frame, i) => save(`${String(i).padStart(2, '0')}.png`, frame))
+    ) {
       console.error(`kept the last ${error.frames.length} frames in ${dir}`);
     }
   } finally {
