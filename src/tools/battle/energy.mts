@@ -27,6 +27,7 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
+import { median } from '../inventory/png.mts';
 import {
   buildsOf,
   capped,
@@ -71,12 +72,6 @@ export interface Matchup {
   opponent: Side;
   cap: number | null;
 }
-
-const median = (values: readonly number[]) => {
-  const sorted = [...values].sort((a, b) => a - b);
-
-  return sorted[sorted.length >> 1] ?? 0;
-};
 
 /**
  * One bar's drops as read, outside anything that pauses the fight: how much of it they have taken, and among them the

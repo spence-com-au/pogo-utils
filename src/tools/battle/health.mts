@@ -9,7 +9,7 @@
  * to it, menus among them, every distance below in the frame's width, which is what the game sizes the bars by.
  */
 
-import { luminance, rgb, type Image } from '../inventory/png.mts';
+import { luminance, median, rgb, type Image } from '../inventory/png.mts';
 import { type Area } from './layout.mts';
 
 type Fill = 'green' | 'yellow' | 'red';
@@ -85,7 +85,7 @@ interface Strip {
  * Where a strip ends, as the middle of where its rows do. An effect drawn over the bar can carry a row or two of it on
  * past the fill in its colours: Latias's cyan ring took the longest of six rows 3 pixels past the rest.
  */
-const rightOf = ({ rights }: Strip) => [...rights].sort((a, b) => a - b)[rights.length >> 1] ?? 0;
+const rightOf = ({ rights }: Strip) => median(rights);
 
 /**
  * Every strip of one fill colour a few rows tall. A row's run of a colour carries over a pixel's gap, the encoder's

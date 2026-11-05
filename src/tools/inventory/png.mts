@@ -450,6 +450,9 @@ export function pad(image: Image, size: number, colour: [number, number, number]
   return { width: size, height: size, data };
 }
 
+/** The middle of `values` once sorted, the upper one of a pair, or zero for none. */
+export const median = (values: readonly number[]) => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
+
 /** How bright a pixel looks, by the Rec. 709 weights. */
 export const luminance = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
