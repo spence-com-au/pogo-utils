@@ -4,6 +4,10 @@
  * rather than read back out of this module, a test asserting whatever the writer emits agreeing with a defect as
  * readily as with a fix.
  *
+ * One stream was written by a real JVM, and is the only thing here that can see an error reader and writer share: a
+ * mistyped serialVersionUID, a class descriptor laid out wrongly or a handle numbered from the wrong place would pass
+ * every round trip, both halves agreeing on the same mistake.
+ *
  * The larger shapes go through `loads`, which is the one check that reaches the handle table: back-references are
  * positional, so a value written at the wrong size shifts every handle after it. What a round trip cannot see is
  * anything the reader recomputes rather than reads — the map's capacity — so that one is asserted in the bytes.
@@ -11,18 +15,15 @@
 
 import { expect, test } from 'vitest';
 
-import { JavaSer } from './java-serialization.js';
+import { JavaSer, type JavaValue } from './java-serialization.js';
 
 const { box, dumps, loads } = JavaSer;
 
-/**
- * What `dumps` accepts. Named off the function rather than restated, because the types in that module are declared
- * inside the IIFE that is its body and it therefore exports none of them.
- */
-type JavaValue = Parameters<typeof dumps>[0];
-
 /** A stream as the literal bytes a hand-derived expectation is written as. */
 const stream = (...values: number[]) => Uint8Array.from(values);
+
+/** A stream from the hex a JVM's bytes were pasted as, since `Buffer` is a Node global this tsconfig does not declare. */
+const fromHex = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (pair) => parseInt(pair, 16));
 
 /** The bytes an ASCII string takes up in a stream, modified UTF-8 and ASCII agreeing over that range. */
 const ascii = (text: string) => [...text].map((char) => char.charCodeAt(0));
@@ -78,6 +79,35 @@ test("the stream opens with Java's magic and version, and the whole of `null` is
   // PGSharp refuses however right the rest of it is. These five bytes are the smallest complete stream there is.
   expect(dumps(null)).toEqual(stream(0xac, 0xed, 0x00, 0x05, 0x70));
   expect(loads(stream(0xac, 0xed, 0x00, 0x05, 0x70))).toBe(null);
+});
+
+test('a stream written by a real JVM is read, and written back byte for byte', () => {
+  // Produced by `ObjectOutputStream` on OpenJDK 21 from a `HashMap<String, Object>` holding "s" -> "v", "f" -> 0.5f,
+  // "i" -> -7, "j" -> 1L << 40, "z" -> Boolean.TRUE and "n" -> null, the order the JVM iterates them in. It carries
+  // every class descriptor this module writes (`HashMap`, `Float`, `Integer`, `Long`, `Boolean` and the `Number`
+  // superclass, in full once and by reference after that), their serialVersionUIDs, the handle each one is numbered
+  // with and HashMap's `loadFactor`, `threshold` and `[capacity, size]` block data.
+  const jvm = fromHex(
+    'aced0005737200116a6176612e7574696c2e486173684d61700507dac1c31660d103000246000a6c6f6164466163746f7249' +
+      '00097468726573686f6c6478703f4000000000000c770800000010000000067400017374000176740001667372000f6a6176' +
+      '612e6c616e672e466c6f6174daedc9a2db3cf0ec02000146000576616c7565787200106a6176612e6c616e672e4e756d6265' +
+      '7286ac951d0b94e08b02000078703f00000074000169737200116a6176612e6c616e672e496e746567657212e2a0a4f78187' +
+      '3802000149000576616c75657871007e0006fffffff97400016a7372000e6a6176612e6c616e672e4c6f6e673b8be490cc8f' +
+      '23df0200014a000576616c75657871007e000600000100000000007400017a737200116a6176612e6c616e672e426f6f6c65' +
+      '616ecd207280d59cfaee0200015a000576616c75657870017400016e7078',
+  );
+
+  const expected = new Map<JavaValue, JavaValue>([
+    ['s', 'v'],
+    ['f', box('F', 0.5)],
+    ['i', box('I', -7)],
+    ['j', box('J', 1n << 40n)],
+    ['z', box('Z', true)],
+    ['n', null],
+  ]);
+
+  expect(rootMap(jvm)).toEqual(expected);
+  expect(dumps(expected)).toEqual(jvm);
 });
 
 test('a stream that is not one is refused rather than read as far as it happens to parse', () => {

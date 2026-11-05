@@ -45,6 +45,27 @@ export function fromHash(hash: string): Route {
   return { page: name, query: cut < 0 ? '' : path.slice(cut + 1) };
 }
 
+/** A route as the shell hands it down, and how many times it has been arrived at again since the page was built. */
+export interface Arrival extends Route {
+  visit: number;
+}
+
+/**
+ * The arrival a `hashchange` to `hash` makes, after `last`.
+ *
+ * A fragment that parses to the route the page was already handed is still a new arrival: the page has written its
+ * state over the address since with `replaceQuery`, or the hash could not have changed, so the page holds something
+ * other than what the reader just asked for. Handed the same `query` again, its effects keyed on it would not run, and
+ * a tab clicked back to its bare fragment would keep the filter typed into it. Counting the visit gives the shell
+ * something to rebuild the page on.
+ */
+export function arrive(last: Arrival, hash: string): Arrival {
+  const next = fromHash(hash);
+  const again = next.page === last.page && next.query === last.query;
+
+  return { ...next, visit: again ? last.visit + 1 : last.visit };
+}
+
 /**
  * Writes a page's own state into the address bar without navigating. `replaceState` rather than assigning
  * `location.hash`, so typing in a filter does not fill the Back button with every keystroke. It also fires no
