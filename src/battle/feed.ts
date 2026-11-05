@@ -101,7 +101,9 @@ export async function* decodeFrames(h264: ReadableStream<Uint8Array>): AsyncGene
   const read = new AbortController();
 
   void (async () => {
-    await h264.pipeTo(new WritableStream({ write: (chunk) => pictures.push(chunk, performance.now()) }), read);
+    await h264.pipeTo(new WritableStream({ write: (chunk) => pictures.push(chunk, performance.now()) }), {
+      signal: read.signal,
+    });
     pictures.end();
 
     if (decoder?.state === 'configured') {
