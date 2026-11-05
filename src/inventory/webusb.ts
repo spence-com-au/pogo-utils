@@ -12,7 +12,7 @@ import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
 import AdbWebCredentialStore from '@yume-chan/adb-credential-web';
 import { AdbDaemonWebUsbDevice, AdbDaemonWebUsbDeviceManager } from '@yume-chan/adb-daemon-webusb';
 
-import { type Transport } from '../tools/inventory/adb.mts';
+import { NO_ANSWER, TIMEOUT_MS, type Transport } from '../tools/inventory/adb.mts';
 
 /** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `open`. */
 const EXIT_MARK = 'pogo-utils-exit:';
@@ -48,9 +48,6 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
   return bytes.subarray(0, at);
 }
 
-/** As long as `adb-cli.mts` waits on `adb`: far longer than any call here takes, so it fires only on a wedged phone. */
-const TIMEOUT_MS = 30_000;
-
 /**
  * A command's output, given up on after `TIMEOUT_MS` as `adb-cli.mts` gives up on `adb`: a phone that stops answering
  * fails the one call loudly rather than leaving the page waiting on it. The command itself cannot be called back, so
@@ -59,11 +56,7 @@ const TIMEOUT_MS = 30_000;
 export function within(command: readonly string[], output: Promise<Uint8Array>): Promise<Uint8Array> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () =>
-        reject(new Error(`${command.join(' ')}: no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`)),
-      TIMEOUT_MS,
-    );
+    timer = setTimeout(() => reject(new Error(`${command.join(' ')}: ${NO_ANSWER}`)), TIMEOUT_MS);
   });
 
   return Promise.race([output, late]).finally(() => clearTimeout(timer));
