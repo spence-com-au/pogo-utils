@@ -246,8 +246,6 @@ class Reader {
     return this.handles.length - 1;
   }
 
-  /**
-   */
   resolveValueHandle(slot: number, value: JavaValue) {
     this.handles[slot] = { kind: 'value', value };
     return value;
