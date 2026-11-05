@@ -483,6 +483,26 @@ test('a 200 that is not JSON is retried at start rather than taken for an answer
   );
 });
 
+test.each([
+  ['/api/config', null],
+  ['/api/config', { success: true, data: null }],
+  ['/api/game_data', null],
+  ['/api/game_data', { success: true, data: null }],
+])('%s answered with %j is a failure to wait out, not an answer', async (path, answer) => {
+  const map = await standIn((_request, response) => json(response, 200, answer));
+  const client = new LivePokeMap(map.url, { username: 'u', password: 'p' });
+  let error: unknown;
+
+  try {
+    await (path === '/api/config' ? client.config() : client.gameData()).catch((thrown: unknown) => (error = thrown));
+  } finally {
+    await map.close();
+  }
+
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error).toMatchObject({ status: 200, message: `GET ${path}: 200 with no object in its body` });
+});
+
 /**
  * A refusal hours in — a password changed while it ran — stops the watcher as one at start does. A 401 on a poll is
  * answered with a login, and that login refused is not sent again: retried at the backoff's pace it would be the same
