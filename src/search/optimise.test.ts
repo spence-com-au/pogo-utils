@@ -64,11 +64,15 @@ test('a name is written as short as it goes, wherever the pill sits', () => {
     lossy: { narrowed: true, widened: false },
   });
 
+  // The same pair is named once however many pills it reached.
+  expect(told(any(all(named('charmander'), yes('shiny')), all(named('charmander'), yes('xxl')))).rewrites).toEqual([
+    ['charmander', '4'],
+  ]);
+
   // The one reduction that needs to know nothing about what is around it, so it reaches a pill at any depth.
   expect(short(any(all(named('charmander'), yes('shiny')), named('bulbasaur')))).toBe('4,1&shiny,1');
 
-  // A name that resolves to nothing is passed through: a nickname, a misspelling, or a fragment landing on a species
-  // the dex cannot spell.
+  // A name that resolves to nothing is passed through: a nickname or a misspelling.
   expect(told(all(named('mr snuggles')))).toEqual({ query: 'mr snuggles', rewrites: [], lossy: EXACT });
 });
 
@@ -114,9 +118,15 @@ test('a family keeps its name, there being no family data here to turn it into n
   });
 });
 
-test('a name the game cannot spell is left alone', () => {
-  // `pokedex.js` drops the apostrophe, so `farfetchd` reads as an ordinary word where the game's name is `Farfetch'd`.
-  expect(told(all(named('farfetch')))).toEqual({ query: 'farfetch', rewrites: [], lossy: EXACT });
+test('a name is matched as the game spells it, punctuation and all', () => {
+  // The game's name is `Farfetch'd`, which is what the name box writes, so `farfetch` reaches it and the constant's
+  // apostrophe-less `farfetchd` reaches nothing.
+  expect(short(all(named('farfetch')))).toBe(`${Number(POKEMON.FARFETCHD)}`);
+  expect(told(all(named('farfetchd')))).toEqual({ query: 'farfetchd', rewrites: [], lossy: EXACT });
+
+  // A fragment never ends on the space inside a name: `sandy ` reaches Sandy Shocks alone, but goes out trimmed to
+  // `sandy`, which takes Sandygast too.
+  expect(short(all(named('+sandy shocks')))).toBe('+sandy s');
 });
 
 test('dex spans AND’d collapse into their overlap, and OR’d into their union', () => {

@@ -24,6 +24,7 @@
  * it does any name: a shorter fragment reaches more nicknames, and a family search takes their families too.
  */
 
+import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
@@ -51,22 +52,13 @@ export interface Lossy {
 }
 
 /**
- * The three species whose English name the dex cannot spell. `pokedex.js` names a species by the constant it is bound
- * to, which is that name uppercased with its punctuation dropped or turned into an underscore. An underscore is honest
- * enough to match against — `MR_MIME` stands in for `Mr. Mime` one character for two, so `mime` reaches it and `mrmime`
- * reaches nothing either way, which is how the game behaves. A dropped apostrophe or accent leaves no such mark:
- * `FARFETCHD` reads as an ordinary word where the game's own name is `Farfetch'd`, and a search for `farfetchd` finds
- * nothing at all. So a fragment that could reach one of these is left alone rather than guessed at.
- *
- * Three entries is what `pokedex.js` not carrying display names costs. A fourth belongs there rather than here.
+ * Every species as the name a search sees and the dex number it answers to. The name is the one the game displays and
+ * the name box writes, lower case, so `farfetch'd` reaches Farfetch'd and the constant's own `farfetchd` reaches
+ * nothing, as it does in the game.
  */
-const UNSPELLABLE = new Set(['FARFETCHD', 'SIRFETCHD', 'FLABEBE']);
-
-/** Every species as the name a search sees and the dex number it answers to. */
-const SPECIES = Object.values(POKEMON).map((species) => ({
+const SPECIES = Object.entries(POKEMON).map(([constant, species]) => ({
   dex: Number(species),
-  name: String(species).toLowerCase(),
-  spellable: !UNSPELLABLE.has(String(species)),
+  name: nameOf(constant).toLowerCase(),
 }));
 
 /** The dex range's own floor and ceiling, which is the span that says nothing and so earns no pill. */
@@ -168,7 +160,7 @@ function dexOf(fragment: string): number[] | null {
     return null;
   }
 
-  return contains.every((species) => species.spellable) ? contains.map((species) => species.dex) : null;
+  return contains.map((species) => species.dex);
 }
 
 /**
@@ -200,6 +192,13 @@ function shortName(token: string, negated: boolean): { text: string; spans: Span
 
   for (let length = 1; length < name.length; length += 1) {
     const fragment = name.slice(0, length);
+
+    // A fragment ends on a letter or a digit. `leafText` trims a trailing space, so `sandy ` would go out as `sandy`
+    // and take Sandygast too; and a trailing `-` or `.` would hand the game punctuation cut loose from the word it
+    // belonged to.
+    if (!/[\p{Letter}\p{Number}]$/u.test(fragment)) {
+      continue;
+    }
 
     if (dexOf(fragment)?.join() === dex.join()) {
       shortest = fragment;
@@ -434,7 +433,11 @@ function short(node: Node, told: Told): Node {
 
     const shortened = shortName(name.text, name.negated);
 
-    if (shortened.text !== name.text) {
+    // Named once however many pills it reached, as `mishandled` is.
+    if (
+      shortened.text !== name.text &&
+      !told.rewrites.some(([from, to]) => from === name.text && to === shortened.text)
+    ) {
       told.rewrites.push([name.text, shortened.text]);
     }
 

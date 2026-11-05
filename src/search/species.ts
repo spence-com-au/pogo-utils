@@ -16,14 +16,26 @@
 import { fold, nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 
+/** One species the list can offer: its name, and the folded form every keystroke is compared against. */
+interface Species {
+  name: string;
+  folded: string;
+}
+
 /**
- * Every species that can be in your boxes, in dex order, so the suggestions for `char` read as a family rather than
- * alphabetically. The folded form is kept beside the name, being what every keystroke is compared against.
+ * Every species of a dex that can be in your boxes, in the dex's order, so the suggestions for `char` read as a family
+ * rather than alphabetically. The folded form is kept beside the name, being what every keystroke is compared against.
+ *
+ * Takes the dex as an argument so a test can offer from one made for the case, rather than from the game's, whose
+ * releases are Niantic's to make.
  */
-const SPECIES = Object.entries(POKEMON)
-  .filter(([, species]) => species.released)
-  .map(([constant]) => nameOf(constant))
-  .map((name) => ({ name, folded: fold(name) }));
+export const offerable = (dex: Record<string, { released: boolean }>): Species[] =>
+  Object.entries(dex)
+    .filter(([, species]) => species.released)
+    .map(([constant]) => nameOf(constant))
+    .map((name) => ({ name, folded: fold(name) }));
+
+const SPECIES = offerable(POKEMON);
 
 /**
  * How many rows are offered at once, the list being a shortcut past spelling a name rather than a way to read the dex.
@@ -55,7 +67,7 @@ export interface Offer {
  * The marker is not part of the name, so `+charm` offers what `charm` offers — as families alone, a reader who typed
  * the marker having already said which of the two they mean.
  */
-export function suggestions(value: string): Offer[] {
+export function suggestions(value: string, species: readonly Species[] = SPECIES): Offer[] {
   const typed = value.trim();
   const family = typed.startsWith(FAMILY);
   const needle = fold(family ? typed.slice(FAMILY.length) : typed);
@@ -67,7 +79,7 @@ export function suggestions(value: string): Offer[] {
   const starting = [];
   const containing = [];
 
-  for (const { name, folded } of SPECIES) {
+  for (const { name, folded } of species) {
     const at = folded.indexOf(needle);
 
     if (at === 0) {
