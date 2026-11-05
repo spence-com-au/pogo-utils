@@ -15,17 +15,13 @@
 import { expect, test } from 'vitest';
 
 import POKEMON from '../pokemon/pokedex.js';
+import { all, any, named, no, yes } from '../testing/search.js';
 import { compose, emptyState, type State } from './query.js';
 import { optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
-import { group, leafText, type Leaf, type Node } from './tree.js';
+import { leafText, type Leaf, type Node } from './tree.js';
 
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
 const span = (from: number | null, to: number | null): Leaf => ({ kind: 'range', id: 'dex', from, to, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
 
 /** What an untouched string, or one rewritten without straying, says about itself. */
 const EXACT = { narrowed: false, widened: false };

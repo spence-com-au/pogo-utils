@@ -7,29 +7,9 @@
 
 import { expect, test } from 'vitest';
 
-import { bounded, RANGES, TERMS_BY_ID } from './terms.js';
-import { emptyTree, group, isGroup, leafLabel, leafText, nodeAt, update, type Leaf, type Node } from './tree.js';
-
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
-
-/** One range from the table, so a test pins the floor and ceiling its literals were derived from. */
-function range(id: string) {
-  const found = RANGES.find((entry) => entry.id === id);
-
-  if (!found) {
-    throw new Error(`\`terms.js\` carries no ${id} range`);
-  }
-
-  return found;
-}
-
-/** A tree said in the shape a failure can be read in: every pill as its text, every group as its junction. */
-function shape(node: Node): unknown {
-  return isGroup(node) ? { [node.junction]: node.parts.map(shape) } : (leafText(node) ?? '…');
-}
+import { all, any, named, range, shape, yes } from '../testing/search.js';
+import { bounded, TERMS_BY_ID } from './terms.js';
+import { emptyTree, isGroup, leafLabel, leafText, nodeAt, update, type Leaf } from './tree.js';
 
 test('a pill writes the term the table gives it, and a name writes itself', () => {
   const shiny = TERMS_BY_ID.get('shiny');
