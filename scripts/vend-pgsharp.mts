@@ -9,7 +9,7 @@
  * released.
  */
 
-import type { VendedRelease } from '../src/release.js';
+import { stampRelease } from '../src/release.ts';
 import { DOWNLOAD_URL, releaseFromApk, VENDED_RELEASE } from '../src/pgsharp/release.ts';
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -31,11 +31,8 @@ for (let hops = 0; !new URL(url).pathname.endsWith('.apk'); hops++) {
 }
 
 const release = releaseFromApk(url);
-const previous: Partial<VendedRelease> = JSON.parse(readFileSync(VENDED_RELEASE, 'utf8'));
-const vended: VendedRelease = {
-  ...release,
-  firstSeen: previous.url === release.url && previous.firstSeen ? previous.firstSeen : new Date().toISOString(),
-};
+const previous = JSON.parse(readFileSync(VENDED_RELEASE, 'utf8'));
+const vended = stampRelease(previous, release, () => new Date().toISOString());
 
 // Two-space and newline-terminated for `prettier --check .`, as `vend-feed.mts` explains.
 writeFileSync(VENDED_RELEASE, `${JSON.stringify(vended, null, 2)}\n`);

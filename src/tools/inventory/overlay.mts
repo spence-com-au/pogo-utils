@@ -6,7 +6,7 @@
  * `OVERLAY_LUMINANCE` and `OVERLAY_CHROMA` are exported because the detail screen's CP is the same near-white text.
  */
 
-import { type IVs } from './game-master.mts';
+import { MAX_LEVEL, type IVs } from './game-master.mts';
 import { ocr, ocrLine } from './ocr.mts';
 import { brighten, crop, isolate, scale, type Image } from './png.mts';
 
@@ -336,9 +336,6 @@ const OVERLAY_SUFFIX_REACH = 0.5;
  */
 const SUFFIX_LUMINANCE = 120;
 const SUFFIX_CHROMA = 40;
-
-/** Level 51 is a best buddy's; nothing the overlay can be saying is higher. */
-const MAX_LEVEL = 51;
 
 /** How far down the screen the overlay can sit, and how tall a band to sweep, as fractions of the screen's height. */
 const OVERLAY_FROM = 0.08;
