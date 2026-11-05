@@ -15,7 +15,17 @@
 import { useEffect, useState } from 'preact/hooks';
 
 import { LOCAL_EVENTS, VENDED_EVENTS } from './event-feed.js';
-import { hiddenFor, loadPrefs, persist, RECURRING, type KEYS, type Prefs, type Seen } from './event-prefs.js';
+import {
+  forgetUnsaved,
+  hiddenFor,
+  loadPrefs,
+  persist,
+  RECURRING,
+  reloadInto,
+  type KEYS,
+  type Prefs,
+  type Seen,
+} from './event-prefs.js';
 import { mergeEvents, statusOf, type ParsedEvent } from './event-schedule.js';
 import { said } from './errors.js';
 
@@ -238,10 +248,11 @@ export class EventStore {
    * Read the preferences back from storage into the same object, rather than swapping it, so a holder of the old
    * reference sees the new values. What an import calls after writing, and what the Events page calls as it opens and
    * closes: it unhides a type in memory to land a `?event=` link, deliberately without saving it, and that must not
-   * outlive the page into the count every other tab shows.
+   * outlive the page into the count every other tab shows. A preference storage refused to save is kept as it is in
+   * memory, storage holding only an older copy of it.
    */
   reloadPrefs(): Prefs {
-    return Object.assign(this.prefs, loadPrefs());
+    return reloadInto(this.prefs);
   }
 
   /** What the cards view is drawing under: the Events page's own while it is open, nothing revealed otherwise. */
@@ -323,6 +334,7 @@ export class EventStore {
    * nothing and a written one marks what it says, so nothing is wrong before then, only not yet folded.
    */
   restored() {
+    forgetUnsaved(this.prefs);
     this.reloadPrefs();
     this.restores += 1;
     this.settle();
