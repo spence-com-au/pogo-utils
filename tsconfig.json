@@ -10,9 +10,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
 
-    // `scripts/bundle.mts` writes the JavaScript, an entry per page and a chunk for each set of modules they share, so
-    // there is nothing for the compiler to emit into `dist/` and no `outDir` here at all. Checking is still this
-    // project's job; the bundler does no type analysis whatever.
+    // `scripts/bundle.mts` writes the JavaScript, an entry for `src/main.tsx` and one for the battle Worker, a chunk
+    // for each page `src/shell.tsx` reaches through `import()` and chunks for the modules they share, so there is
+    // nothing for the compiler to emit into `dist/` and no `outDir` here at all. Checking is still this project's job;
+    // the bundler does no type analysis whatever.
     "emitDeclarationOnly": true,
 
     // `composite` forces declarations, which nothing serves — out of the published tree rather than into it. `rootDir`
