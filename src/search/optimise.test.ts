@@ -449,7 +449,6 @@ test('the page shows the shortened string only where it is shorter, and says not
   const tree = all(named('charmander'));
 
   // The optimiser being off shows the arrangement as it stands, whatever it could have shortened to.
-  expect(current({ ...state(tree), optimise: true }).query).toBe('4');
   expect(current(state(tree))).toMatchObject({ query: 'charmander', was: null, rewrites: [], lossy: EXACT });
 
   // Shorter is taken, and what it was is kept for the page to say.

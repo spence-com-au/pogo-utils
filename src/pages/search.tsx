@@ -680,8 +680,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
         return;
       }
 
-      // One slot more than there are rows, so arrowing off either end lands on what was typed rather than wrapping
-      // straight past it: the reader can always get their own text back the way they came.
+      // Move the active row by `step`, which `stepped` wraps through what was typed.
       setActive(stepped(active, step, offered.length));
       return;
     }
