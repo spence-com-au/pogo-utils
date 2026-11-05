@@ -207,11 +207,12 @@ time. [`scripts/build-ics.mts`](scripts/build-ics.mts) does it, as a step of the
 pnpm build
 ```
 
-The feed is not in version control — it is derived from `data/events-feed.json`, [`data/events.json`](data/events.json)
-and [`data/entries-by-event.json`](data/entries-by-event.json), all three of which are, so there is no second copy to
-keep in step. The generator reads no clock and makes no request, which is why it can sit inside `pnpm build` at all:
-`pnpm lint:types` _is_ `pnpm build`, so a generator that fetched would put somebody else's server in front of every
-lint. A local run therefore produces exactly the bytes a deploy does.
+The feed is not in version control — it is derived from `data/events-feed.json` and
+[`data/events.json`](data/events.json), both of which are, and from `data/entries-by-event.json`, which
+`pnpm build:data` derives from the GPX files earlier in the same build, so there is no second copy to keep in step. The
+generator reads no clock and makes no request, which is why it can sit inside `pnpm build` at all: `pnpm lint:types`
+_is_ `pnpm build`, so a generator that fetched would put somebody else's server in front of every lint. A local run
+therefore produces exactly the bytes a deploy does.
 
 Nothing is on a timer. The [Pages workflow](.github/workflows/pages.yaml) deploys on a push, and the Vend and Prune
 workflows commit with a GitHub App's installation token rather than the default `GITHUB_TOKEN` — which raises no
