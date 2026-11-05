@@ -165,13 +165,24 @@ export async function readBattle(
 
 /**
  * The banner a charged move puts up once it is thrown, `Quaquaval used Aqua Jet!`, in a pill across the sky. Read as one
- * line, the band 0.232 to 0.317 widths below its anchor cropped and scaled up three times: of six banners in the GO
- * Battle League screenshots off a Pixel 4 XL, where the band is 0.30 to 0.34 of the height, four read whole — `a
- * Swampert used Hydro Cannon! at`, `ae Quaquaval used Aqua Jet! .` — and Golem's Stone Edge as `Golem usedlistras`,
- * which names no move; on a Pixel 8 Pro at night, `Groudon used Solar Beam!` whole once fully drawn. OCR of the whole
- * frame read one of them.
+ * line, a band below its anchor cropped and scaled up three times, in either of the two places it has been drawn: the
+ * first band read that names the opponent is the one it is in.
+ *
+ * - 0.04 to 0.125 widths below the anchor, 0.21 to 0.25 of a Pixel 4 XL's height, where GO Battle League drew it on
+ *   2026-11-06: `ee Ursaluna.used Fire Punch! jam`, `|| Gardevoir used Dazzling Gleam! Ras`. The band below held only
+ *   sky there, and read nothing all set.
+ * - 0.232 to 0.317 widths below it, 0.30 to 0.34 of the height, where it was drawn before: of six banners in the GO
+ *   Battle League screenshots off a Pixel 4 XL, four read whole — `a Swampert used Hydro Cannon! at`, `ae Quaquaval
+ *   used Aqua Jet! .` — and Golem's Stone Edge as `Golem usedlistras`, which names no move; on a Pixel 8 Pro at night,
+ *   `Groudon used Solar Beam!` whole once fully drawn.
+ *
+ * One band spanning both read neither, OCR taking it for a single line: `; Ursaluna E ——/`. OCR of the whole frame read
+ * one of the six.
  */
-const BANNER = { top: 0.2322, bottom: 0.3167 } as const;
+const BANNERS = [
+  { top: 0.04, bottom: 0.125 },
+  { top: 0.2322, bottom: 0.3167 },
+] as const;
 
 /**
  * Where the banner is pinned, as `layout.mts` measures anchors: its line centred at 0.323 of a Pixel 4 XL's height and
@@ -197,20 +208,22 @@ export async function readBanner(
     return null;
   }
 
-  const [, who = '', what = ''] = USED.exec((await readLine(band(image, BANNER, BANNER_ANCHOR, 3).image)) ?? '') ?? [];
+  for (const place of BANNERS) {
+    const [, who = '', what = ''] = USED.exec((await readLine(band(image, place, BANNER_ANCHOR, 3).image)) ?? '') ?? [];
 
-  // Whatever the pill's edge read as runs on before the name, so the name is the words at the end, as many as it has.
-  const words = fold(who).split(' ').slice(-fold(opponent).split(' ').length).join(' ');
+    // Whatever the pill's edge read as runs on before the name, so the name is the words at the end, as many as it has.
+    const words = fold(who).split(' ').slice(-fold(opponent).split(' ').length).join(' ');
 
-  if (!closest(words, [opponent], (name) => name)) {
-    return null;
+    if (closest(words, [opponent], (name) => name)) {
+      const charged = data.forms
+        .filter((form) => form.species === opponent)
+        .flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
+
+      return closest(what, [...new Set(charged)], (name) => name);
+    }
   }
 
-  const charged = data.forms
-    .filter((form) => form.species === opponent)
-    .flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
-
-  return closest(what, [...new Set(charged)], (name) => name);
+  return null;
 }
 
 /**
@@ -242,6 +255,9 @@ export function areas(screen: Size): Area[] {
   return [
     { name: "the battle's names and CPs", boxes: [spanning(box(NAMES), TOP, screen)] },
     { name: "the charged moves' names", boxes: [spanning(box(LABELS), BOTTOM, screen)] },
-    { name: "the opponent's charged move banner", boxes: [spanning(box(BANNER), BANNER_ANCHOR, screen)] },
+    {
+      name: "the opponent's charged move banner",
+      boxes: BANNERS.map((place) => spanning(box(place), BANNER_ANCHOR, screen)),
+    },
   ];
 }

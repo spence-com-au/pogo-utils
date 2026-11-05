@@ -101,8 +101,12 @@ const banner = (name: string, sides: { own: string | null; opponent: string | nu
 
 // Swampert against Quaquaval: Quaquaval's banner names its move, Swampert's is our own, and a mirror says nothing of
 // whose it was. Golem's Stone Edge read as `Golem usedlistras`, which is no move of Golem's. Groudon's is on a Pixel 8
-// Pro at night, its band placed by the banner's own anchor: pinned to the top, it missed the lettering.
+// Pro at night, its band placed by the banner's own anchor: pinned to the top, it missed the lettering. Ursaluna's and
+// Gardevoir's are from a GO Battle League set off a Pixel 4 XL on 2026-11-06, where the pill was drawn higher, above
+// the band the others are read in, which held only sky.
 test.each([
+  ['battle-banner-ursaluna', { own: 'Zamazenta', opponent: 'Ursaluna' }, 'Fire Punch'],
+  ['battle-banner-gardevoir', { own: 'Kyogre', opponent: 'Gardevoir' }, 'Dazzling Gleam'],
   ['battle-banner-quaquaval', { own: 'Swampert', opponent: 'Quaquaval' }, 'Aqua Jet'],
   ['battle-banner-swampert', { own: 'Swampert', opponent: 'Quaquaval' }, null],
   ['battle-banner-quaquaval', { own: 'Quaquaval', opponent: 'Quaquaval' }, null],
