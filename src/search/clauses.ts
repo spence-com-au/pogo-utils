@@ -46,30 +46,6 @@ import { group, isGroup, leafText, whole, type Leaf, type Node } from './tree.js
 export const CLAUSES = 1000;
 
 /**
- * The terms whose negation the game gets wrong, as the fullest community reference records them, each written to match
- * however its number was spelled — the game reads `4hp`, `3-defense` and `-1attack` alike, and takes a bare `mega` as
- * `mega0-`.
- *
- * The reference's capture has the game ignoring the negation on an IV term outright: `!1hp` is `1hp`, so the clause
- * asks for the Pokémon it was meant to rule out and looks entirely right doing it. A negated mega level answers only
- * with species that can Mega Evolve, rather than with everything else.
- *
- * The buddy level is the third and the one that is not a quirk of the term itself: the same reference records that a
- * level search "will only return current buddy" where the game has failed to load, citing `https://redd.it/1hdfboq`.
- * That is a state rather than a spelling, so it reaches the positive form too — it is named here because the negative
- * is where it costs something, *Safe to transfer* ruling out the one Pokémon in hand instead of every one ever walked.
- *
- * Which is a choice rather than an oversight, and the asymmetry is in what the reader can see. A positive `buddy2-`
- * under that state answers with the one Pokémon in hand, and a list of one where a reader expected their Good Buddies
- * is a result they can disbelieve. A negated one answers the other way: the transfer list it guards fills up with the
- * Pokémon it was supposed to hold back, and nothing about it looks wrong. `mishandling` reads the negated clauses for
- * that reason rather than for want of the other half.
- *
- * None of the three is this page's doing — nothing between here and the string manufactures a negation. They are named
- * because this page's output ends up in a mass transfer, where a term that means its own opposite is worth a sentence.
- */
-
-/**
  * The four spellings of a level, as a pattern taken from the range's own bounds rather than transcribed from them. A
  * `[0-3]` written here beside a `max: 3` in `terms.js` is the copy of a bound that fails quietly: a `megalevel` raised
  * the day Super Max is confirmed would drop every `mega4` string out of the note below, with nothing failing in a
@@ -108,6 +84,29 @@ function spanOf(id: RangeId, bare: boolean) {
 
 const IGNORES_NEGATION = 'the game ignores a negation on an IV term, so this asks for the Pokémon it means to rule out';
 
+/**
+ * The terms whose negation the game gets wrong, as the fullest community reference records them, each written to match
+ * however its number was spelled — the game reads `4hp`, `3-defense` and `-1attack` alike, and takes a bare `mega` as
+ * `mega0-`.
+ *
+ * The reference's capture has the game ignoring the negation on an IV term outright: `!1hp` is `1hp`, so the clause
+ * asks for the Pokémon it was meant to rule out and looks entirely right doing it. A negated mega level answers only
+ * with species that can Mega Evolve, rather than with everything else.
+ *
+ * The buddy level is the third and the one that is not a quirk of the term itself: the same reference records that a
+ * level search "will only return current buddy" where the game has failed to load, citing `https://redd.it/1hdfboq`.
+ * That is a state rather than a spelling, so it reaches the positive form too — it is named here because the negative
+ * is where it costs something, *Safe to transfer* ruling out the one Pokémon in hand instead of every one ever walked.
+ *
+ * Which is a choice rather than an oversight, and the asymmetry is in what the reader can see. A positive `buddy2-`
+ * under that state answers with the one Pokémon in hand, and a list of one where a reader expected their Good Buddies
+ * is a result they can disbelieve. A negated one answers the other way: the transfer list it guards fills up with the
+ * Pokémon it was supposed to hold back, and nothing about it looks wrong. `mishandling` reads the negated clauses for
+ * that reason rather than for want of the other half.
+ *
+ * None of the three is this page's doing — nothing between here and the string manufactures a negation. They are named
+ * because this page's output ends up in a mass transfer, where a term that means its own opposite is worth a sentence.
+ */
 const MISHANDLED = [
   { pattern: spanOf('ivattack', false), note: IGNORES_NEGATION },
   { pattern: spanOf('ivdefense', false), note: IGNORES_NEGATION },
