@@ -77,17 +77,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "gbl-twilight-trails_master-league_mega-halloween-cup-great-league-edition",
-    "name": "Master League and Mega Halloween Cup: Great League Edition | Twilight Trails",
-    "eventType": "go-battle-league",
-    "heading": "GO Battle League",
-    "link": "https://leekduck.com/events/gbl-twilight-trails_master-league_mega-halloween-cup-great-league-edition/",
-    "image": "https://cdn.leekduck.com/assets/img/events/gobattleleague-master-key.jpg",
-    "start": "2026-10-27T21:00:00.000Z",
-    "end": "2026-11-03T21:00:00.000Z",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "gbl-twilight-trails_ultra-league_master-league-mega-edition_2026-go-laic-cup",
     "name": "Ultra League, Master League: Mega Edition, and 2026 GO LAIC Cup | Twilight Trails",
     "eventType": "go-battle-league",
@@ -110,17 +99,6 @@
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
-    "eventID": "giratina-origin-forme-in-5-star-raid-battles-october-2026",
-    "name": "Giratina (Origin Forme) in 5-star Raid Battles",
-    "eventType": "raid-battles",
-    "heading": "Raid Battles",
-    "link": "https://leekduck.com/events/giratina-origin-forme-in-5-star-raid-battles-october-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/giratinaoriginforme.jpg",
-    "start": "2026-10-28T06:00:00.000",
-    "end": "2026-11-03T22:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "go-pass-november-2026",
     "name": "GO Pass: November",
     "eventType": "go-pass",
@@ -130,17 +108,6 @@
     "start": "2026-11-03T10:00:00.000",
     "end": "2026-12-01T10:00:00.000",
     "added": "2026-10-22T13:29:09.732Z"
-  },
-  {
-    "eventID": "go-pass-october-2026",
-    "name": "GO Pass: October",
-    "eventType": "go-pass",
-    "heading": "GO Pass",
-    "link": "https://leekduck.com/events/go-pass-october-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-10-06-go-pass-october-2026/go-pass-october-2026.jpg",
-    "start": "2026-10-06T10:00:00.000",
-    "end": "2026-11-03T10:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
   },
   {
     "eventID": "halloween-2026-part-2",
@@ -163,17 +130,6 @@
     "start": "2026-11-09T10:00:00.000",
     "end": "2026-11-13T20:00:00.000",
     "added": "2026-10-14T22:33:58.294Z"
-  },
-  {
-    "eventID": "max-mondays-2026-11-02",
-    "name": "Dynamax Machop during Max Monday",
-    "eventType": "max-mondays",
-    "heading": "Max Mondays",
-    "link": "https://leekduck.com/events/max-mondays-2026-11-02/",
-    "image": "https://cdn.leekduck.com/assets/img/events/max-battles-kanto.jpg",
-    "start": "2026-11-02T06:00:00.000",
-    "end": "2026-11-02T21:00:00.000",
-    "added": "2026-10-19T22:36:12.344Z"
   },
   {
     "eventID": "max-mondays-2026-11-16",
@@ -435,8 +391,8 @@
     "heading": "Raid Hour",
     "link": "https://leekduck.com/events/raidhour20261104/",
     "image": "https://cdn.leekduck.com/assets/img/events/raidhour.jpg",
-    "start": "2026-11-04T18:00:00.000",
-    "end": "2026-11-04T19:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
@@ -470,17 +426,6 @@
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-09-08-season-24-twilight-trails/season-24-twilight-trails.jpg",
     "start": "2026-09-08T10:00:00.000",
     "end": "2026-12-01T10:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "shadow-landorus-incarnate-forme-in-shadow-raids-october-2026",
-    "name": "Shadow Landorus (Incarnate Forme) in Shadow Raids",
-    "eventType": "raid-battles",
-    "heading": "Raid Battles",
-    "link": "https://leekduck.com/events/shadow-landorus-incarnate-forme-in-shadow-raids-october-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
-    "start": "2026-10-07T06:00:00.000",
-    "end": "2026-11-03T22:00:00.000",
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
