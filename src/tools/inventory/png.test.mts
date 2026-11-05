@@ -49,13 +49,6 @@ test('an image survives being encoded and decoded byte for byte', () => {
 });
 
 /**
- * A `tEXt` chunk round-trips, which is what `snap` records a stitch's `Viewport` in: a stitch is as many frames tall as
- * the screen took, so the height the phone drew is the one thing the file cannot say with its own `IHDR`.
- *
- * Asserted against `decodePng`'s own reading rather than by looking for the bytes, because what a caller depends on is
- * the keyword coming back — and the bytes are checked anyway, the chunk's CRC being verified like every other.
- */
-/**
  * `screenIn` crops to the `Viewport` a stitch records and hands anything else back untouched, which is what lets one
  * file be committed where a screen and a stitch used to be.
  *
@@ -81,6 +74,13 @@ test('`screenIn` crops to a recorded `Viewport`, and leaves anything else alone'
   }
 });
 
+/**
+ * A `tEXt` chunk round-trips, which is what `snap` records a stitch's `Viewport` in: a stitch is as many frames tall as
+ * the screen took, so the height the phone drew is the one thing the file cannot say with its own `IHDR`.
+ *
+ * Asserted against `decodePng`'s own reading rather than by looking for the bytes, because what a caller depends on is
+ * the keyword coming back — and the bytes are checked anyway, the chunk's CRC being verified like every other.
+ */
 test('a `tEXt` chunk written beside an image comes back as its keyword and value', () => {
   const back = decodePng(encodePng(ramp(3, 2), { Viewport: '1008x2244', Software: 'pogo-utils' }));
 

@@ -34,8 +34,8 @@ node .claude/skills/find-missing-events/scripts/compare-sources.mts
 
 Run it from the checkout root; it takes about half a minute. It walks the **whole** news archive — 223 articles back to
 mid-2025 when this was written, not just the front page — reads the in-person index and the feed, and reports what no
-source accounts for as two lists: events that look missing, and articles that look like they change an event we already
-carry. Each row carries the closest names the sources hold, scored.
+source accounts for as three lists: events that look missing, articles that look like they change an event we already
+carry, and in-person listings no source names. Each article row carries the closest names the sources hold, scored.
 
 Two things about that walk are worth knowing, because both have already cost a run its answer.
 
@@ -52,7 +52,7 @@ slugs from these same announcements.
 
 ## Triage what the script leaves you
 
-The report has two lists, and they are there for opposite reasons.
+The report has three lists. The first two are there for opposite reasons, and the third is a cross-check.
 
 **"Announced, unaccounted for, and not yet over"** is the discovery list. Everything an article's own prose dates into
 the future and no source names. That date filter is what makes a 223-article archive readable — an announcement worth
@@ -70,6 +70,13 @@ for whether the dates we carry still hold. This list is ordered newest first and
 March" note scoring 0.50 against "GO Pass: September" — so it thins out as you go down rather than needing to be read
 entire.
 
+**"In-person index, not yet over, unaccounted for"** is the cross-check, and empty is its expected state. The index
+lists only in-person events, so a row in it is regional by construction and needs no sorting into kinds; what it needs
+is a check that the feed or `data/events.json` does not already carry it under another ID, since the match is on slug
+alone and this list prints no candidates. One that is truly absent is a gap the archive walk should also have surfaced,
+so find its article — in the discovery list, or failing that with `read-article.mts` — and propose it from there. The
+listing's dates are whole days, so take the times from the article.
+
 What reaches you in the discovery list divides two ways, and only the second is worth adding.
 
 **It is not a regional event.** A ticketing update, a "Know Before You GO" venue guide, a "Save the Date", patch notes,
@@ -83,7 +90,7 @@ partnership with a venue or an airline, a city-specific celebration.
 A date the parser failed to read would be filtered out silently, so the counts at the end of the report are printed for
 a reason: before concluding that a specific event you suspected is genuinely absent, check it is not sitting in them.
 
-Neither list is one-article-one-event, so resolve both by reading rather than by counting:
+Neither article list is one-article-one-event, so resolve both by reading rather than by counting:
 
 - **One article, several events.** A City Safari announcement covers three European cities; a "Save the Date" covers
   three GO Tour stops; a mall tour lists eleven venue windows across three countries. Some of those may already be
@@ -154,23 +161,27 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 ### Choosing between a floating time and a UTC instant
 
 This distinction is load-bearing: it decides what a subscriber's calendar shows, and the wrong one shifts an event by
-hours. **What settles it is how many time zones the event spans, not whether the announcement gives clock times** — and
-not the phrase "local time", which appears in single-city announcements too and so distinguishes nothing.
+hours. **What settles it is how many time zones the event spans and whether the announcement gives clock times** — not
+the phrase "local time", which appears in single-city announcements too and so distinguishes nothing.
 
-- **An event in one place is one worldwide instant**, so convert its local wall clock to UTC and write a trailing `Z`.
-  Brisbane, Marseille, Munich, Lisbon, Rio and Boston all start at `10:00` local on the same day and are stored as six
-  different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00` — which is the rule visible in the
-  data.
+- **An event in one place with stated hours is one worldwide instant**, so convert its local wall clock to UTC and write
+  a trailing `Z`. Brisbane, Marseille, Munich, Lisbon, Rio and Boston City Safari all started at `10:00` local on the
+  same day and were stored as six different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00`.
+  `gowa-global-meetup-karlsruhe-2026` and `pokemon-center-bangkok-2026` are like this.
 - **An event running in several zones at once is a floating time**, so write the wall clock with no zone and no `Z`:
   `2026-10-02T10:00:00.000`. 10am wherever the reader is, which is what such an announcement means and what an iCalendar
-  floating time expresses. Three entries are like this and all three are multi-country.
+  floating time expresses. `european-space-agency-2026` and `30th-anniversary-stamp-rally-2026` are like this.
+- **An event given only as whole days is a floating time too, even in one place**, starting at `T00:00:00.000` on its
+  first day. With no clock to convert, writing the venue's midnight as UTC would make a calendar west of it draw the
+  event starting a day early, inventing precision the announcement never gave. Many entries are like this, among them
+  every `mall-exploration-*` and `pokemon-run-30-*` venue and the UK-only `national-trust-2026`.
 
-So a mall tour across three countries takes floating times even though it names exact hours, and a one-city festival
-takes instants even though it says "local time".
+So a mall tour across three countries takes floating times even though it names exact hours, a one-city festival takes
+instants even though it says "local time", and one mall's window given as dates takes floating times although it is in
+one place.
 
 **For an event given as whole days, end at the last moment of the final day rather than midnight of the next**, or a
-calendar draws an extra day. The file writes this two ways — `2026-09-27T23:59:00.000` and `2027-04-30T23:59:59.000` —
-so either passes; prefer `23:59:59.000` as the more exact of the two.
+calendar draws an extra day: `2027-04-30T23:59:59.000`.
 
 ## Writing and landing the change
 

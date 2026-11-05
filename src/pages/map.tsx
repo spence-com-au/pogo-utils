@@ -906,10 +906,10 @@ export default function MapPage({ query: fragment }: { query: string }) {
                 Could not read <code>{GPX_PATHS}</code> — {fatal}.
               </b>
               <br />
-              This page reads the route list and the <code>.gpx</code> files over HTTP, so it needs to be served rather
-              than opened directly from disk. Try:
+              This page reads the route list and the <code>.gpx</code> files over HTTP from a build of the site. To run
+              it locally, try:
               <br />
-              <code>python3 -m http.server</code> then open <code>http://localhost:8000/</code> — or view it via GitHub
+              <code>pnpm build &amp;&amp; pnpm serve</code> then open the address it prints — or view it via GitHub
               Pages.
             </>
           )}
