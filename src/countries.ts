@@ -29,7 +29,8 @@ export interface Country {
 
 /**
  * Bound to a name rather than exported as a literal, because an `export default` takes an expression and there is
- * nowhere on one to write the annotation that makes the table `Record<string, Country>` rather than its own 25 keys.
+ * nowhere on one to write the annotation that makes the table `Record<string, Country>` rather than only the keys it
+ * happens to hold.
  */
 const COUNTRIES: Record<string, Country> = {
   'Australia': { code: 'AU', continent: 'Oceania' },
