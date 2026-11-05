@@ -1,23 +1,29 @@
 /**
- * What `rescue` takes off a treated CP band and what it turns down — the rule every pass of `wholeCp` is run through,
- * asserted on its own because the corpus cannot isolate it. `screens.test.mts` states the CP each capture ends with,
- * and this rule against three different band readings can all arrive at the same one.
+ * The pieces of the detail reader that the corpus cannot isolate, asserted on their own: chiefly what `rescue` takes
+ * off a treated CP band and what it turns down — the rule every pass of `wholeCp` is run through.
+ * `screens.test.mts` states the CP each capture ends with, and this rule against three different band readings can all
+ * arrive at the same one. The rest (`pills`, `figureIn`, `joined`, `nameLineOf`, `cpOn` and `readingsOf`) are held to
+ * their contracts below.
  *
- * The readings quoted below are dumped off the real loop over every fixture, except in the last test, which constructs
- * its inputs: that one is a claim about the rule's whole domain rather than about a capture.
+ * The readings quoted in the `rescue` tests are dumped off the real loop over every fixture, except in the one that
+ * constructs its inputs: that one is a claim about the rule's whole domain rather than about a capture.
  *
  * What this still cannot pin is *which* treatment earned a rescue. The readings are quoted, so a change that had a
  * cheaper pass start reading `738` would leave this file and every row green with the third treatment dead. Only a
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
-import { cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
+import { cpDigits, cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
 import { type Line } from './ocr.mts';
+import { type GameData } from './game-master.mts';
 import { type Image } from './png.mts';
 import { expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
 
-/** How many digits the longest CP any form can show runs to, which is what `cpDigits` answers off the vended master. */
-const LONGEST = 4;
+/** How many digits the longest CP any form can show runs to, read off the game master vended beside the captures. */
+const LONGEST = cpDigits(
+  JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData,
+);
 
 /**
  * `growlithe-nickname.png` is the capture brightness exists for, and its band's three readings at pad 0.35 are the

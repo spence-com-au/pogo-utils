@@ -1,9 +1,9 @@
 /**
- * The events calendar page. Loads Leek Duck's event list from `data/events-feed.json` — the copy of ScrapedDuck's JSON
- * mirror that `scripts/vend-feed.mts` refreshes hourly — and merges it with `data/events.json`, a repo-defined list in
- * the same shape whose entries override a feed event of the same `eventID` or add one the feed does not carry. Either
- * source failing still renders the other. `data/entries-by-event.json` says which events have routes here, so a card
- * can link through to them on the map.
+ * The events calendar page. Draws Leek Duck's event list from `data/events-feed.json` — the copy of ScrapedDuck's JSON
+ * mirror that `scripts/vend-feed.mts` refreshes hourly — merged with `data/events.json`, a repo-defined list in the
+ * same shape whose entries override a feed event of the same `eventID` or add one the feed does not carry. `EventStore`
+ * in `src/event-store.ts` loads and merges the two, and either source failing still renders the other.
+ * `data/entries-by-event.json` says which events have routes here, so a card can link through to them on the map.
  *
  * Three views over the same data: a card list grouped by status, a month grid where every event is a bar spanning the
  * days it covers within each week, and a Tracks timeline laying events out as horizontal bars in fixed category rows.
@@ -17,18 +17,19 @@ import { routeSummary } from '../event-feed.js';
 import { hiddenFor, type Prefs } from '../event-prefs.js';
 import {
   addDays,
+  continuations,
   DAY_MS,
+  layoutTracks,
   overlaps,
-  packLanes,
   relativeUnit,
   startOfDay,
   statusOf,
+  trackBar,
   typeClass,
   weekColumns,
   windowOf,
   type ParsedEvent,
   type StatusKind,
-  type TrackItem,
 } from '../event-schedule.js';
 import {
   admits,
@@ -109,6 +110,7 @@ const TRACKS = [
   { type: 'choose-your-path', label: 'Choose Your Path' },
   { type: 'community-day', label: 'Community Day' },
   { type: 'event', label: 'Events' },
+  { type: 'pokemon-go-tour', label: 'GO Tour' },
   { type: 'max-battles', label: 'Max Battles' },
   { type: 'max-mondays', label: 'Max Mondays' },
   { type: 'raid-battles', label: 'Raid Battles' },
@@ -135,14 +137,11 @@ const REVEALS = [
 // Tracks view geometry. TRACK_DAY_PX is the single source for a day column's width: the bars are positioned in pixels
 // from it, and the same value is handed to CSS as the --track-day custom property for the gridline background, so the
 // two cannot drift. The timeline runs from a couple of days before today to the latest event end, clamped to a sane
-// span.
+// span (see `layoutTracks`).
 const TRACK_DAY_PX = 40;
 const TRACK_BAR_H = 22;
 const TRACK_LANE_GAP = 4;
 const TRACK_LABEL_PX = 132;
-const TRACK_LEAD_DAYS = 2;
-const TRACK_MIN_DAYS = 30;
-const TRACK_MAX_DAYS = 120;
 
 /**
  * A card's picture, which takes itself off the card when it fails to load rather than leaving the browser's
@@ -228,8 +227,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /**
    * The reader's saved choices, held as the one mutable object the store hands out: `hiddenFor` answers a set the
    * caller adds to and deletes from, and the dismissals and seen set are read and written the same way. So this is a
-   * reference rather than state, and `commit` is the one way it changes. Re-read from storage as the page
-   * opens, so nothing a previous visit changed in memory alone is carried in.
+   * reference rather than state, and `commit` is the one way it changes. Re-read from storage as the page opens:
+   * another browser tab may have saved a change since this document loaded, and a chip or a dismissal writes its whole
+   * set back over it.
    */
   const [prefs] = useState(() => store.reloadPrefs());
 
@@ -264,6 +264,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const [reveals, setReveals] = useState<Reveals>(NOTHING_REVEALED);
 
   /**
+   * The type an `?event=` link unhid to land on its event, let through on every view while storage goes on hiding it.
+   * Held here rather than taken out of the stored set, which every chip writes back whole, so no click can save it.
+   */
+  const [unhidden, setUnhidden] = useState<string>();
+
+  /**
    * Whether the reader has narrowed the page to the events the header reports as new, by pressing that count. Read
    * live rather than as a snapshot of the IDs, so a card opened or marked as seen drops out as its mark does.
    */
@@ -279,7 +285,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const pending = useRef<string | null>(null);
 
   /** What the cards view is drawing under beyond the saved filters, which the top bar's count reads too. */
-  const filter = { reveals, search, now };
+  const filter = { reveals, search, now, unhidden };
 
   /**
    * Whether an event survives the type-filter, dismissal and search-term filters of the view that is open, and the new
@@ -322,8 +328,18 @@ export default function EventsPage({ query: fragment }: { query: string }) {
      * this is for the one arrival. A card dismissed individually stays dismissed, that being a decision about the
      * event rather than a blanket rule.
      */
-    hiddenFor(prefs, view).delete(match.eventType);
+    setUnhidden(match.eventType);
     setSearch(match.name);
+
+    // Reveal its status bucket for the same reason: the Routes page keeps linking an event for up to a day after it
+    // ends here. The clock rather than `now`, which can lag it, so an event that has just ended is not missed.
+    const kind = statusOf(match, new Date()).kind;
+
+    setReveals((was) => ({
+      ...was,
+      showPast: was.showPast || kind === 'ended',
+      showUndated: was.showUndated || kind === 'tbd',
+    }));
 
     // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to.
     setOnlyNew(false);
@@ -360,26 +376,20 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /**
    * Hand the cards view's filters to the store while the page is open, so the top bar counts under the same ones, and
-   * take them back as it closes. Closing also re-reads the saved choices, dropping a type `applyPending` unhid for one
-   * arrival without saving: every other tab counts under what is stored.
+   * take them back as it closes. A type `applyPending` unhid goes with them, so every other tab counts under what is
+   * stored.
    */
   useEffect(() => {
     store.publish(filter);
-  }, [reveals, search, now]);
+  }, [reveals, search, now, unhidden]);
 
-  useEffect(
-    () => () => {
-      store.reloadPrefs();
-      store.publish(null);
-    },
-    [],
-  );
+  useEffect(() => () => store.publish(null), []);
 
   /**
    * An import from the top bar's settings has written over storage, which the store has re-read already. What is left
-   * is the page's own: a change this wholesale cannot leave a session reveal widening the page. Skipped on the first
-   * render, so opening the page after an import keeps the defaults it opened with rather than resetting them for an
-   * import it never saw.
+   * is the page's own: a change this wholesale cannot leave a session reveal or an unhidden type widening the page.
+   * Skipped on the first render, so opening the page after an import keeps the defaults it opened with rather than
+   * resetting them for an import it never saw.
    */
   const restores = useRef(store.restores);
 
@@ -387,6 +397,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     if (store.restores !== restores.current) {
       restores.current = store.restores;
       setReveals(NOTHING_REVEALED);
+      setUnhidden(undefined);
     }
   }, [store.restores]);
 
@@ -434,6 +445,16 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   function toggleType(eventType: string) {
     const hidden = hiddenFor(prefs, view);
+
+    // The unhidden type's chip shows as on whatever storage says, so a click on it turns it off. Where storage hides
+    // the type already, dropping the un-hide is all that takes.
+    if (eventType === unhidden) {
+      setUnhidden(undefined);
+
+      if (hidden.has(eventType)) {
+        return;
+      }
+    }
 
     if (!hidden.delete(eventType)) {
       hidden.add(eventType);
@@ -487,7 +508,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   }
 
   const types = [...labels].sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
-  const hidden = hiddenFor(prefs, view);
+
+  /** The types the chips draw as off and the tracks drop a row for: the stored set, less the one a link unhid. */
+  const hidden = new Set([...hiddenFor(prefs, view)].filter((eventType) => eventType !== unhidden));
+
   const newly = newlyVisible().length;
 
   /**
@@ -620,8 +644,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           {/*
            * What this repository added for the event, linking through to it on the map. Last, so that the absolute
            * dates and the relative ones stay together above it. The query is what lands the link on the entry rather
-           * than on a page of 81 rows. The stylesheet puts the Map tab's own glyph in front, so the destination is
-           * named the same way twice; the accessible name says it in words instead.
+           * than on the whole list of routes. The stylesheet puts the Map tab's own glyph in front, so the destination
+           * is named the same way twice; the accessible name says it in words instead.
            */}
           {summary !== null && (
             <a
@@ -699,8 +723,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       parts.push(`${buckets.active.length} happening now`);
     }
 
-    if (prefs.dismissed.size) {
-      parts.push(`${prefs.dismissed.size} dismissed`);
+    // Counted over the feed rather than the stored set, which keeps the ID of every event ever dismissed: one that has
+    // since left the feed is nothing "Hidden" could bring back.
+    const dismissed = events.filter((ev) => prefs.dismissed.has(ev.eventID)).length;
+
+    if (dismissed) {
+      parts.push(`${dismissed} dismissed`);
     }
 
     return {
@@ -814,7 +842,6 @@ export default function EventsPage({ query: fragment }: { query: string }) {
             {Array.from({ length: weeks }, (_, week) => {
               const weekStart = addDays(gridStart, week * 7);
               const weekStartMs = weekStart.getTime();
-              const weekEndMs = addDays(weekStart, 7).getTime();
 
               return (
                 <div key={weekStartMs} class="cal-week">
@@ -848,19 +875,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                     {placed.flatMap(({ ev, win }) => {
                       const columns = weekColumns(win, weekStart);
 
-                      /**
-                       * A segment continues past the week only where the week's own edge is what stopped it. Reaching
-                       * column 0 while having begun earlier means it ran in from the row above; anything starting later
-                       * than column 0 began inside this week, because it misses the column before.
-                       */
                       return columns === null
                         ? []
-                        : [
-                            renderCalBar(ev, columns, {
-                              contLeft: columns[0] === 0 && win[0] < weekStartMs,
-                              contRight: columns[1] === 6 && win[1] > weekEndMs,
-                            }),
-                          ];
+                        : [renderCalBar(ev, columns, continuations(win, columns, weekStart))];
                     })}
                   </div>
                 </div>
@@ -874,77 +891,19 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /** The Tracks view: a Gantt chart, one fixed row per event type. */
   function tracks() {
-    const rangeStart = addDays(startOfDay(now), -TRACK_LEAD_DAYS);
-    const rangeStartMs = rangeStart.getTime();
+    const { rangeStart, rangeStartMs, rangeEndMs, span, rows } = layoutTracks(events, TRACKS, {
+      now,
+      hidden,
+      carried: new Set(labels.keys()),
+      isVisible,
+    });
 
-    /**
-     * The rows this render will draw, one per TRACKS entry, each carrying the events that landed on it. A type with no
-     * track (GO Battle League, GO Pass) has no row, so it is dropped; an event ending before the window's left edge is
-     * skipped.
-     */
-    const byType = new Map<string, { type: string; label: string; items: TrackItem[] }>(
-      TRACKS.map((track) => [track.type, { ...track, items: [] }]),
-    );
-
-    let latestEnd = rangeStartMs + TRACK_MIN_DAYS * DAY_MS;
-
-    // Track types whose filter chip is off, so the whole row can be dropped rather than left as an empty ghost. Keyed
-    // by the chip's state alone — a track emptied by dismissals or a search term keeps its row.
-    const filteredTypes = new Set<string>();
-
-    for (const ev of events) {
-      const row = byType.get(ev.eventType);
-
-      if (!row) {
-        continue;
-      }
-
-      if (hidden.has(ev.eventType)) {
-        filteredTypes.add(ev.eventType);
-      }
-
-      if (!isVisible(ev)) {
-        continue;
-      }
-
-      const win = windowOf(ev);
-
-      if (win === null || win[1] <= rangeStartMs) {
-        continue;
-      }
-
-      latestEnd = Math.max(latestEnd, win[1]);
-      row.items.push({ ev, startMs: win[0], endMs: win[1], lane: 0 });
-    }
-
-    const span = Math.min(TRACK_MAX_DAYS, Math.max(TRACK_MIN_DAYS, Math.ceil((latestEnd - rangeStartMs) / DAY_MS)));
-    const rangeEndMs = rangeStartMs + span * DAY_MS;
     const width = span * TRACK_DAY_PX;
     const todayX = ((startOfDay(now).getTime() - rangeStartMs) / DAY_MS) * TRACK_DAY_PX;
+    const shown = rows.reduce((sum, row) => sum + row.items.length, 0);
 
-    let shown = 0;
-
-    const rows = [...byType.values()].flatMap((track) => {
-      /**
-       * The right edge needs a guard of its own, mirroring the `win[1] <= rangeStartMs` one above: `span` is clamped
-       * to `TRACK_MAX_DAYS` where `latestEnd` is not, so an event starting past `rangeEndMs` clips to a negative width
-       * and draws at the 20px minimum past the lane's right edge, counted in the tally. Dropped before `packLanes` so
-       * it cannot claim a lane and raise the row's height for a bar nobody can see.
-       */
-      const items = track.items.filter((item) => item.startMs < rangeEndMs).sort((a, b) => a.startMs - b.startMs);
-
-      // A track the filter has switched off drops out entirely. A row is one `eventType`, which is what the chips
-      // switch, so there is no still-visible part of it to keep. A track the feed carries no event of drops out too:
-      // `labels` holds every type the feed carries, whatever the filters, so a row exists only where a chip can switch
-      // it off, rather than an empty one for a type `TRACKS` names but the feed has stopped using.
-      if (filteredTypes.has(track.type) || !labels.has(track.type)) {
-        return [];
-      }
-
-      const lanes = packLanes(items);
+    const drawn = rows.flatMap(({ track, items, lanes }) => {
       const height = Math.max(1, lanes) * (TRACK_BAR_H + TRACK_LANE_GAP) + TRACK_LANE_GAP;
-
-      shown += items.length;
 
       return [
         <div key={`l-${track.type}`} class="track-label" style={{ height: `${height}px` }}>
@@ -952,8 +911,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
         </div>,
         <div key={`r-${track.type}`} class="track-lane" style={{ width: `${width}px`, height: `${height}px` }}>
           {items.map((item) => {
-            const left = Math.max(item.startMs, rangeStartMs);
-            const right = Math.min(item.endMs, rangeEndMs);
+            const bar = trackBar(item, rangeStartMs, rangeEndMs, TRACK_DAY_PX);
             const status = statusOf(item.ev, now).kind;
 
             return eventBar(
@@ -962,8 +920,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 class: `bar ${status}${isNew(item.ev) ? ' new' : ''}${typeClass(item.ev.eventType)}`,
                 title: `${item.ev.name} — ${timeRange(item.ev)}`,
                 style: {
-                  left: `${((left - rangeStartMs) / DAY_MS) * TRACK_DAY_PX}px`,
-                  width: `${Math.max(TRACK_DAY_PX / 2, ((right - left) / DAY_MS) * TRACK_DAY_PX)}px`,
+                  left: `${bar.left}px`,
+                  width: `${bar.width}px`,
                   top: `${TRACK_LANE_GAP + item.lane * (TRACK_BAR_H + TRACK_LANE_GAP)}px`,
                   height: `${TRACK_BAR_H}px`,
                 },
@@ -993,7 +951,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                   </span>
                 ))}
               </div>
-              {rows}
+              {drawn}
               <div class="track-today" style={{ left: `${TRACK_LABEL_PX + todayX}px` }} />
             </div>
           </div>

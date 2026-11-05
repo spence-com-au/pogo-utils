@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBackup } from './backup.js';
+import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, restoreBackup, writeBackup } from './backup.js';
 import { KEYS, loadPrefs, persist, type Prefs } from './event-prefs.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
@@ -396,4 +396,68 @@ test('a write that fails partway puts back what it found', () => {
   );
 
   expect(storage.snapshot()).toEqual(before);
+});
+
+/**
+ * The order a restore runs in, recorded as it happens: the copy has to be taken before the keys are written, since
+ * taken after it would be a copy of the file just imported.
+ */
+function runRestore(text: string) {
+  const calls: string[] = [];
+  const copies: string[] = [];
+  const result = restoreBackup(
+    text,
+    new Date(2026, 9, 10),
+    (copy, name) => {
+      calls.push(`download ${name}`);
+      copies.push(copy);
+    },
+    () => calls.push('restored'),
+  );
+
+  return { calls, copies, result };
+}
+
+test('a restore takes its copy of what is stored before writing the file over it, then runs the corrections', () => {
+  storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
+
+  const { calls, copies, result } = runRestore(backupOf({ dismissed: ['new'] }));
+
+  expect(calls).toEqual([`download ${rescueName(new Date(2026, 9, 10))}`, 'restored']);
+  expect(copies.map((copy) => (JSON.parse(copy) as { values: object }).values)).toEqual([{ dismissed: ['old'] }]);
+  expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['new']));
+  expect(result).toEqual({ written: 1, rescued: true });
+});
+
+test('a restore into empty storage takes no copy of nothing', () => {
+  const { calls, result } = runRestore(backupOf({ dismissed: ['new'] }));
+
+  expect(calls).toEqual(['restored']);
+  expect(result).toEqual({ written: 1, rescued: false });
+});
+
+test('an empty file changes nothing, takes no copy and runs no corrections', () => {
+  storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
+
+  const { calls, result } = runRestore(backupOf({}));
+
+  expect(calls).toEqual([]);
+  expect(result).toBeNull();
+  expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['old']));
+});
+
+test('a refused file takes no copy and runs no corrections', () => {
+  storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
+
+  const calls: string[] = [];
+
+  expect(() =>
+    restoreBackup(
+      'not json',
+      new Date(),
+      () => calls.push('download'),
+      () => calls.push('restored'),
+    ),
+  ).toThrow('not readable JSON');
+  expect(calls).toEqual([]);
 });
