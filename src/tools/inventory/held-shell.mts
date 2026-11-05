@@ -11,6 +11,7 @@
  * it. `close` ends the shell once nothing more is to be sent, and anything sent after fails at once.
  */
 
+import { said } from '../../errors.ts';
 import { NO_ANSWER, TIMEOUT_MS } from './adb.mts';
 
 /** How the shell's stdin is reached: written to, ended once nothing more is to be sent, and stopped outright. */
@@ -125,7 +126,7 @@ export function holdShell(pipe: Pipe, name: string): HeldShell {
     const shown = command.length > 60 ? `${command.slice(0, 60)}…` : command;
 
     return run.catch((error: unknown) => {
-      throw new Error(`${name} ${shown}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`${name} ${shown}: ${said(error)}`);
     });
   };
 

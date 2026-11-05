@@ -7,6 +7,7 @@
  * to discover the network is down.
  */
 
+import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
 import { signaturesFor, signatureOfIcon, type Signature } from './artwork.mts';
@@ -209,7 +210,7 @@ async function iconIndex(dir: string, refresh: boolean): Promise<ReadonlySet<str
 
     return new Set((listing.tree ?? []).map((entry) => entry.path));
   } catch (error) {
-    console.error(`  ${error instanceof Error ? error.message : String(error)}; no form is narrowed by its artwork`);
+    console.error(`  ${said(error)}; no form is narrowed by its artwork`);
 
     return new Set();
   }
@@ -494,7 +495,7 @@ export async function cached(dir: string, file: string, url: string, refresh: bo
 
     bytes = Buffer.from(await response.arrayBuffer());
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
 
     // Naming the URL rather than leaning on the line above it. `iconsFor` keeps 16 downloads in flight, so the
     // `Downloading` this reads as a continuation of is rarely the line printed before it, and a bare `fetch failed;
@@ -545,7 +546,7 @@ export async function cachedAs<T>(
   } catch (error) {
     rmSync(join(dir, file), { force: true });
 
-    throw new Error(`${url}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    throw new Error(`${url}: ${said(error)}`, { cause: error });
   }
 }
 
