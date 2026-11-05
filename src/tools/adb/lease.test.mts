@@ -144,10 +144,8 @@ test.each([
 });
 
 test('fails where no adb is on the PATH besides the wrapper', async () => {
-  const a = await session('pogo-utils-a');
-
   const { code, stderr } = await promisify(execFile)(process.execPath, [SCRIPT, 'adb', 'shell', 'true'], {
-    env: { ...env(a), PATH: join(dir, 'nowhere') },
+    env: { ...env(), PATH: dirname(WRAPPER) },
   }).then(
     () => ({ code: 0, stderr: '' }),
     (error: { code: number; stderr: string }) => error,
