@@ -325,6 +325,16 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     hiddenFor(prefs, view).delete(match.eventType);
     setSearch(match.name);
 
+    // Reveal its status bucket for the same reason: the Routes page keeps linking an event for up to a day after it
+    // ends here. The clock rather than `now`, which can lag it, so an event that has just ended is not missed.
+    const kind = statusOf(match, new Date()).kind;
+
+    setReveals((was) => ({
+      ...was,
+      showPast: was.showPast || kind === 'ended',
+      showUndated: was.showUndated || kind === 'tbd',
+    }));
+
     // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to.
     setOnlyNew(false);
 
