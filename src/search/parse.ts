@@ -21,6 +21,7 @@
  * the cards can draw.
  */
 
+import { said } from '../errors.js';
 import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, SPAN, type Range } from './terms.js';
 import { group, NESTING, type Junction, type Leaf, type Node } from './tree.js';
 
@@ -288,6 +289,6 @@ export function read(text: string): Read {
 
     return { tree: node.kind === 'group' ? node : group('all', [node]), error: null };
   } catch (cause) {
-    return { tree: null, error: cause instanceof Error ? cause.message : String(cause) };
+    return { tree: null, error: said(cause) };
   }
 }

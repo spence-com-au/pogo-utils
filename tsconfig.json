@@ -125,6 +125,7 @@
   "exclude": [
     "src/coin-bag/release.ts",
     "src/countries.ts",
+    "src/errors.ts",
     "src/event-feed.ts",
     "src/generated.ts",
     "src/gpx-dialect.ts",

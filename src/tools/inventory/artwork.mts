@@ -15,6 +15,7 @@
  * margin is what stands between the match and being confidently wrong ten times.
  */
 
+import { said } from '../../errors.ts';
 import { type Form, type GameData } from './game-master.mts';
 import { rgb, type Image } from './png.mts';
 import { progress } from './progress.mts';
@@ -451,7 +452,7 @@ export async function signaturesFor(
       //
       // `read` is what leaves every one of them naming the icon. This line is written as a continuation, and the
       // batches below keep 16 downloads in flight, so the `Downloading` above it is rarely its own.
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = said(error);
       console.error(`  ${reason}; forms sharing its numbers stay ambiguous`);
 
       return null;

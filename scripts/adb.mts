@@ -13,6 +13,7 @@
  *   `help`, or `--help` beside any command, prints this.
  */
 
+import { said } from '../src/errors.ts';
 import { screenPower } from '../src/tools/adb/screen-power.mts';
 import { adbCli } from '../src/tools/inventory/adb-cli.mts';
 import { readFileSync } from 'node:fs';
@@ -41,7 +42,7 @@ if (power && rest.length === 0) {
   try {
     await screenPower(adbCli(options.serial), dex, power);
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(said(error));
     process.exitCode = 1;
   }
 } else {

@@ -11,6 +11,7 @@
  */
 
 import { unzlibSync, zlibSync } from 'fflate';
+import { said } from '../../errors.ts';
 
 /**
  * An image as four bytes a pixel, red, green, blue and alpha, row after row.
@@ -185,7 +186,7 @@ export function decodePng(bytes: Uint8Array): Image {
     // inflates further than that stops there rather than allocating for the rest.
     raw = unzlibSync(compressed, { out: new Uint8Array(needed) });
   } catch (error) {
-    throw refuse(`corrupt PNG: its pixels do not inflate (${error instanceof Error ? error.message : String(error)})`);
+    throw refuse(`corrupt PNG: its pixels do not inflate (${said(error)})`);
   }
 
   if (raw.length < needed) {

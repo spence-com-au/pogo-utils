@@ -58,6 +58,7 @@
  * the account is the user's to weigh.
  */
 
+import { said } from '../src/errors.ts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
@@ -465,7 +466,7 @@ async function scan(held: Transport) {
   // — Unown B and Unown ! by 0.48%, against 0.54%. Where the phone will not have it, `input swipe` it is, with the
   // game's counts below for `walk` to tell its drops from the end by, and to catch a pass they still cut short.
   const touch = await touchscreen(held).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
     console.error(`${reason}; swiping with \`input swipe\` instead, which can drop a swipe and cut a pass short`);
 
     return null;

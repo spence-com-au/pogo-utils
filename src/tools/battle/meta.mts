@@ -12,6 +12,7 @@
  * the game's `Lock-On`, and every `Hidden Power (…)` the one Hidden Power the screen prints.
  */
 
+import { said } from '../../errors.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { fold } from '../inventory/ocr.mts';
 import { type Download } from './assets.mts';
@@ -212,7 +213,7 @@ export async function loadMeta(download: Download, data: GameData, league: strin
 
     return { cup, cap: cp >= NO_CAP ? null : cp, movesets: movesetsOf(data, rankings, pvpoke) };
   } catch (error) {
-    console.error(`  ${error instanceof Error ? error.message : String(error)}; every move is allowed for`);
+    console.error(`  ${said(error)}; every move is allowed for`);
 
     return null;
   }

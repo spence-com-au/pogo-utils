@@ -10,6 +10,7 @@
  * shell holds `/dev/uhid` open: a shell gone with the connection takes it with it, along with any touch still down.
  */
 
+import { said } from '../../errors.ts';
 import { type Transport } from './adb.mts';
 
 /** A pause, by the global timer rather than `node:timers/promises`, so a page can make the touchscreen too. */
@@ -198,7 +199,7 @@ export async function touchscreen(transport: Transport): Promise<Touchscreen> {
   // Behind `command`, so that a refused open leaves the shell to answer with why: a special builtin's failed
   // redirection ends a shell that isn't interactive, which would blame the cable.
   await send(`command exec ${FD}<>/dev/uhid ${IDLE_FD}<>/dev/uhid`).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
 
     throw new Error(`the phone's shell could not open /dev/uhid for a touchscreen: ${reason}`);
   });
