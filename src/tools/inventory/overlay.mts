@@ -43,6 +43,14 @@ export interface Overlay {
 }
 
 /**
+ * The IVs as `attack/defense/stamina`, the one spelling every key, landmark and log line compares or shows, whether
+ * they were read off the overlay or back out of a CSV.
+ */
+export function ivsOf(iv: IVs): string {
+  return `${iv.attack}/${iv.defense}/${iv.stamina}`;
+}
+
+/**
  * Only these survive the whitelist: the level's `L`, the digits, the slashes between the three IVs and the `%` that
  * Tesseract makes of a half level's `½`. The `½` itself is no use here, the model never answering it: whitelisted, a
  * Luxray's `L21½ IV100` still reads `L211`, its `½` a stray `1` that leaves 21.5 offered by nothing. With `%` allowed
@@ -215,9 +223,7 @@ export function fuller(readings: readonly { iv: IVs }[]): IVs | null {
     .map((reading) => reading.iv)
     .filter((iv) => digits(iv) > digits(first.iv) && fields(iv).every((field, i) => holds(field, base[i] ?? '')));
   const most = Math.max(...extending.map(digits));
-  const best = [
-    ...new Map(extending.filter((iv) => digits(iv) === most).map((iv) => [fields(iv).join('/'), iv])).values(),
-  ];
+  const best = [...new Map(extending.filter((iv) => digits(iv) === most).map((iv) => [ivsOf(iv), iv])).values()];
 
   return best.length === 1 ? (best[0] ?? null) : null;
 }
