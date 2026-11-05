@@ -18,14 +18,14 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
-import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
+import { ambiguous, nearest, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT, parseDetail, powerUpOn, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
-import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
+import { artworkIn, readScreen } from './report.mts';
 import { useTestEngine } from './test-engine.mts';
 
 /**
@@ -1020,36 +1020,11 @@ const FIXTURES: readonly Fixture[] = [
 const read = async (file: string) => {
   const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
   const image = screenIn(stitch);
-  const lines = await readLines(image);
-  const parsed = await parseDetail(lines, DATA, image);
+  const { lines, detail, moves, box, overlay, identity } = await readScreen(stitch, DATA, ICONS);
 
-  // Off the whole stitch where the screen draws no `POWER UP` row, as `readScreen` does.
-  const detail = { ...parsed, powerUp: parsed.powerUp ?? (await powerUpOn(stitch)) };
-  const found = await findOverlay(image);
-
-  // The artwork's own signature, which is the only thing that separates forms identical in every number. Floored on the
-  // overlay's box where one was found, PGSharp drawing over the artwork, so no fraction of one phone's screen is
-  // written down here. Memoised with the reading because the segmentation walks the pixels and the assertions are meant
-  // to be free.
-  const box = found?.box ?? null;
-  const signature = signatureOf(image, box ? box.y + box.height : undefined);
-
-  const overlay = found?.overlay ?? null;
-  const artwork = signature ? { signature, icons: ICONS } : undefined;
-
-  return {
-    image,
-    lines,
-    detail,
-    box,
-    overlay,
-    artwork,
-
-    // The end of the pipeline, memoised with the readings it is derived from. It is pure and cheap, but each of a
-    // capture's eighteen attributes is a test of its own, and caching it says outright that the eighteen are asserting
-    // one answer rather than eighteen separately-derived ones.
-    identity: identify(DATA, detail, overlay, artwork),
-  };
+  // `image` is the screen `readScreen` read, handed on for the tests that run a reader of their own over it, and
+  // `artwork` is rebuilt the way `readScreen` builds it for the same reason: the ones that call `identify` themselves.
+  return { image, lines, detail, moves, box, overlay, artwork: artworkIn(image, box, ICONS), identity };
 };
 
 const readings = new Map<string, ReturnType<typeof read>>();
@@ -2484,10 +2459,7 @@ test(
         continue;
       }
 
-      // Floored on the overlay's box where one was found, PGSharp drawing over the artwork, so no fraction of one
-      // phone's screen is written down here.
-      const { image, box } = await readingOf(fixture.file);
-      const signature = signatureOf(image, box ? box.y + box.height : undefined);
+      const signature = (await readingOf(fixture.file)).artwork?.signature;
       assert.ok(signature, `${fixture.file} yields no artwork signature at all`);
 
       const icons = new Map(
@@ -2526,8 +2498,8 @@ test(
  * `WEATHER BONUS` under a move and carry Weather Ball in their pool, so a reader taking the caption for a move would
  * answer one that is not there.
  *
- * The form comes off `readingOf`, which is the crop, every reader that could answer one being anchored on a height the
- * whole stitch does not have.
+ * The moves are `readScreen`'s own, off `readingOf`: read off the whole stitch, with the form off the crop, every
+ * reader that could answer one being anchored on a height the whole stitch does not have.
  */
 test(
   'the moves read off every committed capture are the ones on it',
@@ -2535,10 +2507,7 @@ test(
     const read: Record<string, Moves> = {};
 
     for (const file of COMMITTED) {
-      const { identity } = await readingOf(file);
-      const image = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
-
-      read[file] = await parseMoves(await readLines(image), DATA, identity.form, image);
+      read[file] = (await readingOf(file)).moves;
     }
 
     expect(read).toStrictEqual({
@@ -2609,7 +2578,7 @@ test(
 
     // And that no stitch reads *less* than the screen inside it, which is the relation rather than the map: a stitch
     // assembled at the wrong offset could hold a plausible pair of moves and still have lost one its own first frame
-    // shows. One file on either side of it — `readingOf` is the crop `screenIn` takes, `read` above is the whole.
+    // shows. One file on either side of it — `lines` is read off the crop `screenIn` takes, `read` above off the whole.
     for (const file of STITCHES) {
       const { lines, image, identity } = await readingOf(file);
       const shown = await parseMoves(lines, DATA, identity.form, image);
