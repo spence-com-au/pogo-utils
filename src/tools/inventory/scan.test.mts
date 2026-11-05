@@ -462,7 +462,7 @@ test.for([
 });
 
 test('a walk skipped into storage counts its retries against the whole of storage', async () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   expect(await walked(['a', 'b', 'c', 'd'], Infinity, 1, [], [1], 4)).toEqual([
     ['b', 1],
