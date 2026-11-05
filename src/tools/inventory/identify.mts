@@ -11,7 +11,7 @@
 
 import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
 import { fold } from './ocr.mts';
-import { nearest, type Signature } from './artwork.mts';
+import { nearest, numbersOf, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
 
@@ -417,15 +417,6 @@ function sameTypes(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((t) => b.includes(t));
 }
 
-/**
- * Whether two forms are the same Pokémon to everything but the artwork: one dex, one set of types and one stat line.
- */
 function sameNumbers(a: Form, b: Form): boolean {
-  return (
-    a.dex === b.dex &&
-    sameTypes(a.types, b.types) &&
-    a.attack === b.attack &&
-    a.defense === b.defense &&
-    a.stamina === b.stamina
-  );
+  return numbersOf(a) === numbersOf(b);
 }
