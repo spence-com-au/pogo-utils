@@ -9,9 +9,10 @@
 
 import { expect, test } from 'vitest';
 
-import POKEMON from '../pokemon/pokedex.js';
 import { fold, nameOf } from '../pokemon/names.js';
-import { suggestions, written } from './species.js';
+import POKEMON from '../pokemon/pokedex.js';
+import Pokemon from '../pokemon/pokemon.js';
+import { offerable, suggestions, written } from './species.js';
 
 /** Every released species as the name a row would offer, in dex order — the whole of what the list draws from. */
 const OFFERABLE = Object.entries(POKEMON)
@@ -29,31 +30,20 @@ const reach = (needle: string) => ({
 });
 
 test("only a species the game has put out is offered, the search running over a reader's own storage", () => {
-  const man = Object.entries(POKEMON).filter(([constant]) => fold(nameOf(constant)).startsWith('man'));
+  // A dex made for the case, so a species the game releases later cannot break a test of code that is still right. The
+  // third of nine is not in the game and the cap is eight rows, so the gate is not just a shorter list here: letting it
+  // in partway up takes the last released species off the end — a species nobody can catch displacing one they can.
+  const dex = Object.fromEntries(
+    ['MANAA', 'MANAB', 'MANAC', 'MANAD', 'MANAE', 'MANAF', 'MANAG', 'MANAH', 'MANAI'].map((constant, index) => {
+      const species = new Pokemon(index + 1);
 
-  // Manaphy is a Mythical that is not in the game, and it is fifth of the six species whose name begins `man`. So the
-  // gate is not just a shorter list here: nine released species reach `man` and there are eight rows, so letting
-  // Manaphy in partway up takes Darmanitan off the end — a species nobody can catch displacing one they can.
-  expect(man.map(([constant, species]) => [nameOf(constant), species.released])).toEqual([
-    ['Mankey', true],
-    ['Mantine', true],
-    ['Manectric', true],
-    ['Mantyke', true],
-    ['Manaphy', false],
-    ['Mandibuzz', true],
-  ]);
-  expect(reach('man')).toEqual({ begins: 5, carries: 4 });
+      return [constant, constant === 'MANAC' ? species.isNotReleased() : species];
+    }),
+  );
+  const released = ['Manaa', 'Manab', 'Manad', 'Manae', 'Manaf', 'Manag', 'Manah', 'Manai'];
 
-  expect(suggestions('+man').map((offer) => offer.name)).toEqual([
-    'Mankey',
-    'Mantine',
-    'Manectric',
-    'Mantyke',
-    'Mandibuzz',
-    'Charmander',
-    'Omanyte',
-    'Darmanitan',
-  ]);
+  expect(suggestions('+man', offerable(dex)).map((offer) => offer.name)).toEqual(released);
+  expect([...new Set(suggestions('man', offerable(dex)).map((offer) => offer.name))]).toEqual(released.slice(0, 4));
 });
 
 test('a name a species begins is offered ahead of one that merely carries it, whatever the dex says', () => {

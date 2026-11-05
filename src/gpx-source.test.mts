@@ -155,11 +155,9 @@ test('a position that does not hold a start tag is refused rather than cut at', 
 
 test('cutting every reference in the corpus removes whole lines and touches nothing else', () => {
   const sources = gpxSources();
-  let cut = 0;
 
   for (const { fileName, contents } of sources) {
     const refs = eventRefs(parseGpx(contents));
-    cut += refs.length;
 
     const before = contents.split('\n');
     const after = cutAll(contents).split('\n');
@@ -177,8 +175,7 @@ test('cutting every reference in the corpus removes whole lines and touches noth
     expect(after, fileName).toEqual(before.filter((line) => !line.includes('<pgr:event>')));
   }
 
-  // Without this the loop above passes on a corpus with no references at all, which is the shape it would silently
-  // degrade to as events are pruned.
+  // Only that the corpus was read: the Prune workflow deletes these references as their events end, so a count of them
+  // is not something `master` can be held to. The cases above are what pin a cut when none is left in `data/`.
   expect(sources.length).toBeGreaterThan(0);
-  expect(cut).toBeGreaterThan(0);
 });
