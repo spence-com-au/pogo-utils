@@ -115,26 +115,38 @@ const metaOf = (species: string, chargedMoves: string[]): Meta => ({
 
 test('in a league PvPoke ranks, only the charged moves the opponent’s players run are allowed for', () => {
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, metaOf('Magmar', ['Fire Punch'])).faints,
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { meta: metaOf('Magmar', ['Fire Punch']) }).faints,
     'not Fire Blast',
   ).toBe(false);
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.2, ULTRA, metaOf('Magmar', ['Fire Punch'])).faints, 'Fire Punch').toBe(
-    true,
-  );
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.6, ULTRA, metaOf('Magmar', ['Return'])).faints, 'Return, run').toBe(
-    true,
-  );
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, metaOf('Charizard', [])).faints, 'Magmar unranked').toBe(true);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.2, ULTRA, { meta: metaOf('Magmar', ['Fire Punch']) }).faints,
+    'Fire Punch',
+  ).toBe(true);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.6, ULTRA, { meta: metaOf('Magmar', ['Return']) }).faints,
+    'Return, run',
+  ).toBe(true);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { meta: metaOf('Charizard', []) }).faints,
+    'Magmar unranked',
+  ).toBe(true);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, {
+      meta: metaOf('Magmar', ['Fire Punch']),
+      seen: new Set(['Fire Blast']),
+    }).faints,
+    'Fire Blast seen, however few run it',
+  ).toBe(true);
 });
 
 test('only the charged moves the opponent can afford are allowed for, where its energy is counted', () => {
   // At 50%, Fire Blast's 71 of the 74 left faints; Flamethrower, Scorching Sands and Fire Punch do not.
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 60).faints, 'short of Fire Blast’s 80').toBe(
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 60 }).faints, 'short of Fire Blast’s 80').toBe(
     false,
   );
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 80).faints).toBe(true);
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 80 }).faints).toBe(true);
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 10).faints,
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 10 }).faints,
     'too little for anything: the count is short',
   ).toBe(true);
 
@@ -142,31 +154,31 @@ test('only the charged moves the opponent can afford are allowed for, where its 
   const both = new Set(['Fire Blast', 'Fire Punch']);
 
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, both, 60).faints,
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { seen: both, affordable: 60 }).faints,
     'the moves seen, then what it can afford',
   ).toBe(false);
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, both, 80).faints).toBe(true);
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { seen: both, affordable: 80 }).faints).toBe(true);
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 60).why,
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 60 }).why,
     'says the energy narrowed it',
   ).toMatch(/^Flamethrower would take ~\d+%, with 50% left, the hardest 60 energy affords$/);
 });
 
 test('the hardest move is named as afforded only where the counted energy affords it', () => {
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 80)).toMatchObject({
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 80 })).toMatchObject({
     faints: true,
     afforded: 'Fire Blast',
   });
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 60),
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 60 }),
     'Flamethrower, short of faint',
   ).toMatchObject({ faints: false, afforded: 'Flamethrower' });
   expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA).afforded, 'no energy counted').toBe(undefined);
   expect(
-    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, undefined, 10).afforded,
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { affordable: 10 }).afforded,
     'too little for anything, every move feared',
   ).toBe(undefined);
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, null, ULTRA, null, undefined, 80).afforded, 'our HP unread').toBe(
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, null, ULTRA, { affordable: 80 }).afforded, 'our HP unread').toBe(
     undefined,
   );
 });
@@ -224,7 +236,7 @@ test('names what it did not know, where that is why it shields', () => {
   expect(why(CHARIZARD, { species: 'Not A Pokémon', cp: 1826 })).toBe('no Not A Pokémon at CP 1826');
 
   // Two seen are all it has, which the game data must know to weigh.
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, null, new Set(['Not A Move', 'Nor This'])).why).toBe(
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { seen: new Set(['Not A Move', 'Nor This']) }).why).toBe(
     'no charged move known for Magmar',
   );
 });
@@ -243,7 +255,7 @@ test.each<[string[], boolean]>([
   const own = { species: 'Dialga', cp: 2289 };
   const opponent = { species: 'Tyranitar', cp: 2256 };
 
-  expect(wouldFaint(DATA, own, opponent, 0.58, 2500, null, new Set(seen)).faints).toBe(faints);
+  expect(wouldFaint(DATA, own, opponent, 0.58, 2500, { seen: new Set(seen) }).faints).toBe(faints);
 });
 
 test('a stage up on the attacker’s attack or down on the defender’s defense moves the hit by `stage`', () => {
@@ -300,7 +312,7 @@ test.each<[string, number, ReturnType<typeof staged>, boolean, string, number]>(
     71,
   ],
 ])('with %s, at %s HP a CP 2495 Charizard would faint: %s', (_, hp, stages, faints, why, taken) => {
-  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, hp, ULTRA, null, new Set(), undefined, stages)).toEqual({
+  expect(wouldFaint(DATA, CHARIZARD, MAGMAR, hp, ULTRA, { stages })).toEqual({
     faints,
     why,
     hardest: 'Fire Blast',
@@ -321,7 +333,7 @@ const THUNDER_SHOCK = { step: 0.02, estimate: { energy: 32, gain: 9 } };
 const DRILL_PECK = metaOf('Zapdos', ['Drill Peck']);
 
 const palkia = (hp: number | null, shields = 2, cycle: Cycle = THUNDER_SHOCK, meta = DRILL_PECK) =>
-  wouldShield(DATA, wouldFaint(DATA, PALKIA, ZAPDOS, hp, null, meta, new Set(), 41), hp, shields, cycle);
+  wouldShield(DATA, wouldFaint(DATA, PALKIA, ZAPDOS, hp, null, { meta, affordable: 41 }), hp, shields, cycle);
 
 test.each<[string, number, number, Shielding]>([
   [
