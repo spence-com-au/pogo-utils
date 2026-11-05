@@ -10,7 +10,7 @@
  * released.
  */
 
-import type { VendedRelease } from '../src/release.js';
+import { stampRelease } from '../src/release.ts';
 import { LATEST_URL, releaseFromTagPage, VENDED_RELEASE } from '../src/coin-bag/release.ts';
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -22,11 +22,8 @@ if (res.status < 300 || res.status >= 400 || location === null) {
 }
 
 const release = releaseFromTagPage(new URL(location, LATEST_URL).href);
-const previous: Partial<VendedRelease> = JSON.parse(readFileSync(VENDED_RELEASE, 'utf8'));
-const vended: VendedRelease = {
-  ...release,
-  firstSeen: previous.url === release.url && previous.firstSeen ? previous.firstSeen : new Date().toISOString(),
-};
+const previous = JSON.parse(readFileSync(VENDED_RELEASE, 'utf8'));
+const vended = stampRelease(previous, release, () => new Date().toISOString());
 
 // Two-space and newline-terminated for `prettier --check .`, as `vend-feed.mts` explains.
 writeFileSync(VENDED_RELEASE, `${JSON.stringify(vended, null, 2)}\n`);

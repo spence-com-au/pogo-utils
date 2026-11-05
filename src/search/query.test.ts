@@ -9,25 +9,16 @@
 
 import { expect, test } from 'vitest';
 
+import { all, any, named, no, shape, yes } from '../testing/search.js';
 import { compose, emptyState, fromFragment, nameFragment, names, presetTree, toFragment, type State } from './query.js';
-import { group, isGroup, leafText, NESTING, nodeAt, type Leaf, type Node } from './tree.js';
+import { group, isGroup, leafText, NESTING, type Node } from './tree.js';
 import { PRESETS, RANGES, TERMS_BY_ID } from './terms.js';
-
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
 
 /** A state as the page would have it, with only the part a test is about spelled out. */
 const state = (tree: Node, optimise = false): State => ({ ...emptyState(), tree, optimise });
 
 /** The round trip as the page makes it: write the link, then read it back the way the router hands it over. */
 const roundTrip = (chosen: State) => fromFragment(toFragment(chosen));
-
-/** A tree said in the shape a failure can be read in. */
-const shape = (node: Node): unknown =>
-  isGroup(node) ? { [node.junction]: node.parts.map(shape) } : (leafText(node) ?? '…');
 
 test('the clauses of the tree, joined, are the string', () => {
   // One `&` between clauses and nothing else: the game's search is a conjunction, and an arrangement in this form is
@@ -195,11 +186,17 @@ test('a bound from a stranger is clamped to the pill that could have produced it
   const dex = RANGES.find((range) => range.id === 'dex');
   const year = RANGES.find((range) => range.id === 'year');
 
+  const first = (fragment: string) => {
+    const { tree } = fromFragment(fragment);
+
+    return isGroup(tree) ? tree.parts[0] : undefined;
+  };
+
   expect([dex?.min, dex?.max]).toEqual([1, 1025]);
   expect([year?.min, year?.max]).toEqual([2016, 2030]);
 
   // An unclamped bound hands the game a span no pill could have made — `0-9999` out of a dex box that stops at 1025.
-  expect(nodeAt(fromFragment('q=A1_Rdex.0.9999').tree, [0])).toEqual({
+  expect(first('q=A1_Rdex.0.9999')).toEqual({
     kind: 'range',
     id: 'dex',
     from: 1,
@@ -207,7 +204,7 @@ test('a bound from a stranger is clamped to the pill that could have produced it
     negated: false,
   });
 
-  expect(nodeAt(fromFragment('q=A1_Ryear.1999.2020').tree, [0])).toEqual({
+  expect(first('q=A1_Ryear.1999.2020')).toEqual({
     kind: 'range',
     id: 'year',
     from: 2016,
