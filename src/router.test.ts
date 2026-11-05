@@ -12,7 +12,7 @@
 
 import { expect, test } from 'vitest';
 
-import { HOME, PAGES, fromHash, isPage, pageOf, toHash, type Page } from './router.js';
+import { HOME, PAGES, arrive, fromHash, isPage, pageOf, toHash, type Page } from './router.js';
 
 /**
  * The shapes the pages actually produce, rather than invented ones: a `.`-joined set, a `-` range, a `?` inside a
@@ -82,4 +82,17 @@ test('the tab table names distinct pages, since a duplicate silently hides one o
   // not one fails to compile — but a `PAGES` edit that removed the home row leaves this file compiling and the site
   // falling back to a page that no longer exists.
   expect(names).toContain(HOME satisfies Page);
+});
+
+test('an arrival at the route the page was handed counts as a new visit, and any other keeps the count', () => {
+  // The Pokédex opened from its tab and `pika` typed into it: the address reads `?q=pika` by `replaceQuery`, the shell
+  // still holds `''`, and clicking the tab again changes the hash back to a route equal to the one held. Without the
+  // count the page is handed the same `query`, keeps its filter and leaves the address disagreeing with the screen.
+  const opened = { page: 'pokedex' as const, query: '', visit: 0 };
+
+  expect(arrive(opened, toHash('pokedex'))).toEqual({ page: 'pokedex', query: '', visit: 1 });
+
+  // A different query reaches the page as a new prop, and a different page as a new key, so neither needs the count.
+  expect(arrive(opened, toHash('pokedex', 'q=char'))).toEqual({ page: 'pokedex', query: 'q=char', visit: 0 });
+  expect(arrive(opened, toHash('map'))).toEqual({ page: 'map', query: '', visit: 0 });
 });
