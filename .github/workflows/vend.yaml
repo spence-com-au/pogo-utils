@@ -5,6 +5,7 @@ on:
   push:
     branches: ['master']
     paths:
+      - '.github/actions/committer/action.yaml'
       - '.github/workflows/vend.yaml'
       - 'data/events.json'
       - 'scripts/vend-coin-bag.mts'
@@ -57,16 +58,12 @@ jobs:
           cache: true
       - run: 'pnpm vend:events'
 
-      # Derived from the token rather than written down, so it cannot disagree with whichever app minted it. The
-      # `<id>+<login>@users.noreply.github.com` form is what links a commit to the account that made it.
       - name: 'Name the committer after the app'
         id: 'committer'
-        env:
-          GH_TOKEN: '${{ steps.token.outputs.token }}'
-          SLUG: '${{ steps.token.outputs.app-slug }}'
-        run: |
-          id="$(gh api "/users/${SLUG}%5Bbot%5D" --jq '.id')"
-          echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
+        uses: './.github/actions/committer'
+        with:
+          token: '${{ steps.token.outputs.token }}'
+          slug: '${{ steps.token.outputs.app-slug }}'
 
       - name: 'Commit'
         id: 'commit'
@@ -106,12 +103,10 @@ jobs:
 
       - name: 'Name the committer after the app'
         id: 'committer'
-        env:
-          GH_TOKEN: '${{ steps.token.outputs.token }}'
-          SLUG: '${{ steps.token.outputs.app-slug }}'
-        run: |
-          id="$(gh api "/users/${SLUG}%5Bbot%5D" --jq '.id')"
-          echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
+        uses: './.github/actions/committer'
+        with:
+          token: '${{ steps.token.outputs.token }}'
+          slug: '${{ steps.token.outputs.app-slug }}'
 
       - name: 'Commit'
         uses: 'stefanzweifel/git-auto-commit-action@v7.2.1'
@@ -148,12 +143,10 @@ jobs:
 
       - name: 'Name the committer after the app'
         id: 'committer'
-        env:
-          GH_TOKEN: '${{ steps.token.outputs.token }}'
-          SLUG: '${{ steps.token.outputs.app-slug }}'
-        run: |
-          id="$(gh api "/users/${SLUG}%5Bbot%5D" --jq '.id')"
-          echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
+        uses: './.github/actions/committer'
+        with:
+          token: '${{ steps.token.outputs.token }}'
+          slug: '${{ steps.token.outputs.app-slug }}'
 
       - name: 'Commit'
         uses: 'stefanzweifel/git-auto-commit-action@v7.2.1'

@@ -1,0 +1,30 @@
+---
+name: 'Name the committer after the app'
+description: "Format an installation token's app as a commit author, for `commit_author` in `git-auto-commit-action`."
+
+inputs:
+  token:
+    description: 'The installation token, which looks the bot account up.'
+    required: true
+  slug:
+    description: "The app's slug, which `actions/create-github-app-token` outputs as `app-slug`."
+    required: true
+
+outputs:
+  author:
+    description: 'The author, as `Name <email>`.'
+    value: '${{ steps.author.outputs.author }}'
+
+runs:
+  using: 'composite'
+  steps:
+    # Derived from the token rather than written down, so it cannot disagree with whichever app minted it. The
+    # `<id>+<login>@users.noreply.github.com` form is what links a commit to the account that made it.
+    - id: 'author'
+      shell: 'bash'
+      env:
+        GH_TOKEN: '${{ inputs.token }}'
+        SLUG: '${{ inputs.slug }}'
+      run: |
+        id="$(gh api "/users/${SLUG}%5Bbot%5D" --jq '.id')"
+        echo "author=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "${GITHUB_OUTPUT}"
