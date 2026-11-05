@@ -14,7 +14,7 @@ import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { routeSummary } from '../event-feed.js';
-import { hiddenFor, type Prefs } from '../event-prefs.js';
+import { hiddenFor, loadPrefs, persist, type Prefs } from '../event-prefs.js';
 import {
   addDays,
   DAY_MS,
@@ -228,8 +228,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /**
    * The reader's saved choices, held as the one mutable object the store hands out: `hiddenFor` answers a set the
    * caller adds to and deletes from, and the dismissals and seen set are read and written the same way. So this is a
-   * reference rather than state, and `commit` is the one way it changes. Re-read from storage as the page
-   * opens, so nothing a previous visit changed in memory alone is carried in.
+   * reference rather than state, and `commit` is the one way it changes bar the type chips, which `toggleType` saves.
+   * Re-read from storage as the page opens, so nothing a previous visit changed in memory alone is carried in.
    */
   const [prefs] = useState(() => store.reloadPrefs());
 
@@ -369,6 +369,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   useEffect(
     () => () => {
+      // A load still in flight finds nothing to apply, or it would unhide the type after the re-read below has run.
+      pending.current = null;
       store.reloadPrefs();
       store.publish(null);
     },
@@ -432,16 +434,27 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     commit('filterScope');
   }
 
+  /**
+   * Flip one chip in the live set and save the stored set with that chip alone changed. Saving the live set would also
+   * save a type `applyPending` unhid for one arrival, which the page undertakes never to keep.
+   */
   function toggleType(eventType: string) {
     const hidden = hiddenFor(prefs, view);
+    const hide = !hidden.delete(eventType);
+    const saved = loadPrefs();
+    const savedHidden = hiddenFor(saved, view);
 
-    if (!hidden.delete(eventType)) {
+    if (hide) {
       hidden.add(eventType);
+      savedHidden.add(eventType);
+    } else {
+      savedHidden.delete(eventType);
     }
 
     // Named from the scope rather than the set, so the two cannot disagree about where a click just went — the one way
     // a chip could take effect and then not survive a reload.
-    commit(prefs.filterScope === 'view' ? 'hiddenByView' : 'hiddenTypes');
+    persist(saved, prefs.filterScope === 'view' ? 'hiddenByView' : 'hiddenTypes');
+    store.emit();
   }
 
   function toggleGroup(kind: StatusKind) {
