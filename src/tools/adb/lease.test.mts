@@ -16,6 +16,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest';
 
 const WRAPPER = fileURLToPath(new URL('../../../bin/adb', import.meta.url));
 const SCRIPT = fileURLToPath(new URL('../../../scripts/adb-lease.mts', import.meta.url));
+const SETTINGS = fileURLToPath(new URL('../../../.claude/settings.json', import.meta.url));
 
 let dir: string;
 const running: ChildProcess[] = [];
@@ -179,6 +180,52 @@ test('keeps the phone past the end of a turn while a background subagent runs', 
   const b = await session('pogo-utils-b');
   await adb(a, 'shell', 'true');
   hook(a, 'stop', { background_tasks: [{ type: 'subagent', status: 'running' }] });
+
+  expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
+});
+
+/**
+ * Runs the hooks `.claude/settings.json` gives `event` as Claude Code runs them, for those whose matcher, a regular
+ * expression, matches `type`: the error or notification type the event fired for. `input` is what the event is given,
+ * which for any but `Stop` carries no `background_tasks`.
+ */
+function settingsHooks(pid: number, event: string, type = '', input: object = {}) {
+  const { hooks } = JSON.parse(readFileSync(SETTINGS, 'utf8')) as {
+    hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]>;
+  };
+
+  const matching = (hooks[event] ?? []).filter(({ matcher }) => !matcher || new RegExp(`^(?:${matcher})$`).test(type));
+
+  for (const { command } of matching.flatMap((entry) => entry.hooks)) {
+    execFileSync('sh', ['-c', command], {
+      env: { ...env(pid), CLAUDE_PROJECT_DIR: dirname(dirname(SETTINGS)) },
+      input: JSON.stringify({ hook_event_name: event, ...input }),
+    });
+  }
+}
+
+test.each([
+  ['a turn ends', 'Stop', '', { background_tasks: [] }],
+  ['a session sits idle after an interrupted or failed turn', 'Notification', 'idle_prompt', {}],
+])('lets go as %s', async (_, event, type, input) => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, 'shell', 'true');
+  settingsHooks(a, event, type, input);
+
+  expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 0 });
+});
+
+// `StopFailure` is not told whether a background subagent still runs, and a permission prompt comes mid-turn, so
+// letting go on either could hand the phone over between commands that are still using it.
+test.each([
+  ['an API error ends a turn', 'StopFailure', 'rate_limit'],
+  ['a session waits on a permission prompt mid-turn', 'Notification', 'permission_prompt'],
+])('keeps the phone as %s', async (_, event, type) => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, 'shell', 'true');
+  settingsHooks(a, event, type);
 
   expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
 });
