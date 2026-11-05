@@ -258,6 +258,47 @@ test('the close button is not tapped while a dialog is open, nor on a screen tha
   expect(sent).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
 });
 
+/** A detail screen as OCR reads it: the HP line `parseDetail` takes as the mark of one. */
+const DETAIL = word(1, '80 / 80 HP', 30, 100, 40, 8);
+
+test('the close button is tapped on a detail screen', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, DETAIL);
+  const { at, closeDetail } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await closeDetail();
+
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]]);
+});
+
+/** The grid with a Pokémon in it, as OCR reads it: what the box shows once the suggestions panel is closed. */
+const GRID = [STORAGE, word(3, 'CP415', 10, 50, 20, 8)].join('\n');
+
+test('clearing the box over the suggestions panel closes it with Back, which leaves the grid', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, STORAGE, STORAGE, GRID);
+  const { search, tileLabel } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  expect(tileLabel(await search(''))).toBeDefined();
+  expect(sent.slice(-3)).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '35']]);
+});
+
+test('a screen Back leaves that is not storage is walked back to storage from', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, STORAGE, STORAGE, '', STORAGE);
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await search('');
+
+  expect(sent.slice(-4)).toStrictEqual([
+    ['screencap'],
+    ['input', 'keyevent', String(KEY.BACK)],
+    ['screencap'],
+    ['screencap'],
+  ]);
+});
+
 test.for([
   ['the tabs on lines of their own', [word(1, '12800 / 12825', 40, 10, 20, 8), word(2, '12/12', 70, 10, 10, 8)]],
   ['the eggs read first', [word(1, '12/12', 70, 10, 10, 8), word(2, '12800/12825', 40, 10, 20, 8)]],
