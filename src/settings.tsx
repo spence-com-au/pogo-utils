@@ -9,26 +9,10 @@
 import { useRef, useState } from 'preact/hooks';
 
 import { backupName, restoreBackup, writeBackup } from './backup.js';
+import { download } from './dom.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
 import { useDismiss } from './popover.js';
-
-/**
- * Hand text over as a download, a synthetic click on an `<a download>` being the only way a page can name a file.
- * `downloadBytes` in `src/pages/integrations.tsx` is the same shape for bytes, and the two are worth collapsing into
- * `dom.ts` as their own change — one that reaches a page this one does not touch.
- */
-function downloadText(text: string, name: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  const a = document.createElement('a');
-
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -55,7 +39,7 @@ export function Settings() {
     try {
       const name = backupName(new Date());
 
-      downloadText(writeBackup(), name);
+      download(writeBackup(), name, 'application/json');
       setStatus(`Saved ${name}.`);
     } catch (e) {
       setStatus(`Could not save a backup: ${said(e)}`);
@@ -69,7 +53,12 @@ export function Settings() {
    */
   async function importPrefs(file: File) {
     try {
-      const restored = restoreBackup(await file.text(), new Date(), downloadText, () => eventStore.restored());
+      const restored = restoreBackup(
+        await file.text(),
+        new Date(),
+        (text, name) => download(text, name, 'application/json'),
+        () => eventStore.restored(),
+      );
 
       if (restored === null) {
         setStatus('That backup held no saved preferences, so nothing changed.');
