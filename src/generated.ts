@@ -71,7 +71,7 @@ export const SILHOUETTES = 'data/silhouettes.json';
 
 /**
  * The artifact each step of `pnpm build` writes its part of the site into, and the one tree `pnpm serve` serves.
- * `package.json`'s scripts and the ignore lists in `.gitignore`, `.prettierignore` and `eslint.config.mjs` spell it as
- * well, being configuration rather than modules.
+ * `package.json`'s scripts and the ignore lists in `.gitignore`, `.htmlvalidateignore`, `.prettierignore`,
+ * `eslint.config.mjs` and `stylelint.config.mjs` spell it as well, being configuration rather than modules.
  */
 export const DIST = 'dist';

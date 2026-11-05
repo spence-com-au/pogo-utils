@@ -1,6 +1,6 @@
 /**
- * The colour tokens and the base reset every page shares, each of the five loading this before its own stylesheet. Kept
- * in one place so the palettes and the body defaults cannot drift between them.
+ * The colour tokens and the base reset every page shares, loaded ahead of the page sheets. Kept in one place so the
+ * palettes and the body defaults cannot drift between pages.
  */
 
 :root {

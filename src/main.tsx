@@ -23,7 +23,7 @@ import './chrome.css';
  */
 import 'leaflet/dist/leaflet.css';
 
-// The pages', in the tab bar's order. Each is scoped to its own page and inert on the other four.
+// The pages', in the tab bar's order. Each is scoped to its own page and inert on the others.
 import './events.css';
 import './map.css';
 import './search.css';
