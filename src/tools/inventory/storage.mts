@@ -208,6 +208,16 @@ export function storage(
   };
 
   /**
+   * Whether a search matched any Pokémon: the counter `matches` reads where it read, and `tileLabel` in its place only
+   * where it did not, a label lost to a shiny tile's sparkles being no sign that the search matched nothing.
+   */
+  const matched = (lines: readonly Line[]): boolean => {
+    const found = matches(lines);
+
+    return found !== 0 && (found !== null || tileLabel(lines) !== undefined);
+  };
+
+  /**
    * How many Pokémon storage holds, off the `12800 / 12825` under the POKÉMON tab of a grid nothing was searched for,
    * or null where it did not read. A searched grid has the `(N)` `matches` reads in its place.
    *
@@ -377,5 +387,5 @@ export function storage(
     return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
   };
 
-  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, matched, stored, firstTile };
 }

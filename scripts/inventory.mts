@@ -452,7 +452,7 @@ async function scan(held: Transport) {
 
   const screens = options['keep-screens'];
   const shot = await device.screenshot();
-  const { tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile } = storage(
+  const { tap, swipe, dismiss, closeDetail, search, matches, matched, stored, firstTile } = storage(
     device,
     config,
     data,
@@ -699,9 +699,10 @@ async function scan(held: Transport) {
       if (short) {
         throw new Error(`${short}; marking only those would write \`no\` against the rest`);
       }
-    } else if (tileLabel(grid)) {
-      // The grid showed a Pokémon and it would not read, which is not the answer a search matching nothing gives:
-      // marking nothing would write `no` against every Pokémon the search holds. So the column is left blank instead.
+    } else if (matched(grid)) {
+      // The search matched Pokémon and the first would not read, which is not the answer a search matching nothing
+      // gives: marking nothing would write `no` against every Pokémon the search holds. So the column is left blank
+      // instead.
       console.error(`${flag}: the first Pokémon would not read, so this column is left blank`);
       continue;
     }
@@ -1180,7 +1181,7 @@ async function snap() {
   // Driven to the Pokémon rather than taking what is showing, which is what makes a capture reproducible: the search
   // names what it wanted, where a screen set up by hand records nothing about which Pokémon that was.
   if (options.search !== undefined) {
-    const { tap, search, tileLabel, matches, firstTile } = storage(
+    const { tap, search, matches, matched, firstTile } = storage(
       device,
       config,
       await gameData(),
@@ -1200,7 +1201,7 @@ async function snap() {
     // first label misread still carries the counter, so only a search that really matched nothing is refused here.
     const found = matches(grid);
 
-    if (found === 0 || (found === null && !tileLabel(grid))) {
+    if (!matched(grid)) {
       refuse(
         found === 0
           ? `--search ${JSON.stringify(options.search)} matched nothing, which the grid's own counter says`

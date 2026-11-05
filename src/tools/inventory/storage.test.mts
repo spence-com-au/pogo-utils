@@ -311,6 +311,29 @@ test.for([
   expect(stored(await search(''))).toBe(12800);
 });
 
+test.for([
+  ['a counter of some and a label', '(12)', true, true],
+  ['a counter of some and no label, as sparkles leave a shiny tile', '(12)', false, true],
+  ['a counter of none, whatever reads as a label', '(0)', true, false],
+  ['a counter of none and no label', '(0)', false, false],
+  ['no counter but a label', '', true, true],
+  ['neither', '', false, false],
+] as const)(
+  'a search has matched by its counter, and by a label only without one: %s',
+  async ([, counter, label, is]) => {
+    const { sent, device } = phone(DEFAULTS.package);
+    const grid = [
+      ...(counter ? [word(1, counter, 70, 10, 20, 8)] : []),
+      word(2, 'SEARCH', 40, 30, 20, 10),
+      ...(label ? [word(3, 'CP415', 10, 50, 20, 8)] : []),
+    ];
+    reads(sent, STORAGE, grid.join('\n'));
+    const { search, matched } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+    expect(matched(await search('shiny'))).toBe(is);
+  },
+);
+
 test('a grid whose storage count did not read answers null', () => {
   const { device } = phone(DEFAULTS.package);
   const { stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
