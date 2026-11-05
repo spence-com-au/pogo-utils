@@ -4,7 +4,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { GAME_MASTER, SILHOUETTES } from '../../generated.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng } from '../inventory/png.mts';
@@ -42,7 +42,9 @@ test('a silhouette packed for another grid is refused rather than laid over the 
   );
 });
 
-test('each type is read off its icon, and one whose icon cannot be had is left out', async () => {
+test('each type is read off its icon, and one whose icon cannot be had is left out and said why', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
   const download: Download = async (file, url, decode) => {
     if (file.includes('FAIRY')) {
       throw new Error(`${url}: 404 Not Found`);
@@ -55,4 +57,5 @@ test('each type is read off its icon, and one whose icon cannot be had is left o
 
   expect(Object.keys(icons).sort()).toStrictEqual(DATA.types.filter((type) => type !== 'Fairy').sort());
   expect(icons.Water?.width).toBeGreaterThan(0);
+  expect(console.error).toHaveBeenCalledWith(expect.stringContaining('FAIRY.png: 404 Not Found'));
 });

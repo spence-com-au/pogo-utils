@@ -16,9 +16,9 @@
  * considering `,`s nested inside `&`s", with `meowth,alola&vulpix,galar` as the example. Niantic's own list never
  * combines the two operators, so the community one is what settles it.
  *
- * That reference also notes that searches "do not take priority over each other", which is about its *Pokédex* table —
- * a different box with its own phrase list. This file read that as doubt about the line above for a while: a claim from
- * a three-table reference is worth nothing until you know which search it is a claim about.
+ * That reference also notes that searches "do not take priority over each other". That note is about its *Pokédex*
+ * table, a different box with its own phrase list, so it says nothing about the line above: a claim from a three-table
+ * reference is worth nothing until you know which search it is a claim about.
  *
  * What the form costs is characters, an `any` multiplying where an `all` adds, which is its nature rather than a
  * shortcoming: `(a&b),(c&d)` really is four clauses in a language with no brackets.
@@ -44,30 +44,6 @@ import { group, isGroup, leafText, whole, type Leaf, type Node } from './tree.js
  * Exported so the test can work out the smallest tree that reaches it rather than carrying a copy of the number.
  */
 export const CLAUSES = 1000;
-
-/**
- * The terms whose negation the game gets wrong, as the fullest community reference records them, each written to match
- * however its number was spelled — the game reads `4hp`, `3-defense` and `-1attack` alike, and takes a bare `mega` as
- * `mega0-`.
- *
- * The reference's capture has the game ignoring the negation on an IV term outright: `!1hp` is `1hp`, so the clause
- * asks for the Pokémon it was meant to rule out and looks entirely right doing it. A negated mega level answers only
- * with species that can Mega Evolve, rather than with everything else.
- *
- * The buddy level is the third and the one that is not a quirk of the term itself: the same reference records that a
- * level search "will only return current buddy" where the game has failed to load, citing `https://redd.it/1hdfboq`.
- * That is a state rather than a spelling, so it reaches the positive form too — it is named here because the negative
- * is where it costs something, *Safe to transfer* ruling out the one Pokémon in hand instead of every one ever walked.
- *
- * Which is a choice rather than an oversight, and the asymmetry is in what the reader can see. A positive `buddy2-`
- * under that state answers with the one Pokémon in hand, and a list of one where a reader expected their Good Buddies
- * is a result they can disbelieve. A negated one answers the other way: the transfer list it guards fills up with the
- * Pokémon it was supposed to hold back, and nothing about it looks wrong. `mishandling` reads the negated clauses for
- * that reason rather than for want of the other half.
- *
- * None of the three is this page's doing — nothing between here and the string manufactures a negation. They are named
- * because this page's output ends up in a mass transfer, where a term that means its own opposite is worth a sentence.
- */
 
 /**
  * The four spellings of a level, as a pattern taken from the range's own bounds rather than transcribed from them. A
@@ -108,6 +84,29 @@ function spanOf(id: RangeId, bare: boolean) {
 
 const IGNORES_NEGATION = 'the game ignores a negation on an IV term, so this asks for the Pokémon it means to rule out';
 
+/**
+ * The terms whose negation the game gets wrong, as the fullest community reference records them, each written to match
+ * however its number was spelled — the game reads `4hp`, `3-defense` and `-1attack` alike, and takes a bare `mega` as
+ * `mega0-`.
+ *
+ * The reference's capture has the game ignoring the negation on an IV term outright: `!1hp` is `1hp`, so the clause
+ * asks for the Pokémon it was meant to rule out and looks entirely right doing it. A negated mega level answers only
+ * with species that can Mega Evolve, rather than with everything else.
+ *
+ * The buddy level is the third and the one that is not a quirk of the term itself: the same reference records that a
+ * level search "will only return current buddy" where the game has failed to load, citing `https://redd.it/1hdfboq`.
+ * That is a state rather than a spelling, so it reaches the positive form too — it is named here because the negative
+ * is where it costs something, *Safe to transfer* ruling out the one Pokémon in hand instead of every one ever walked.
+ *
+ * Which is a choice rather than an oversight, and the asymmetry is in what the reader can see. A positive `buddy2-`
+ * under that state answers with the one Pokémon in hand, and a list of one where a reader expected their Good Buddies
+ * is a result they can disbelieve. A negated one answers the other way: the transfer list it guards fills up with the
+ * Pokémon it was supposed to hold back, and nothing about it looks wrong. `mishandling` reads the negated clauses for
+ * that reason rather than for want of the other half.
+ *
+ * None of the three is this page's doing — nothing between here and the string manufactures a negation. They are named
+ * because this page's output ends up in a mass transfer, where a term that means its own opposite is worth a sentence.
+ */
 const MISHANDLED = [
   { pattern: spanOf('ivattack', false), note: IGNORES_NEGATION },
   { pattern: spanOf('ivdefense', false), note: IGNORES_NEGATION },
@@ -144,9 +143,9 @@ export interface Written {
 
 /**
  * A node said as one string, so two parts of a junction can be compared for asking the same thing. Structural rather
- * than canonical: the parts are not sorted, so `all(a, b)` and `all(b, a)` are two keys. Sorting them was in the first
- * draft and bought only recognising two differently-ordered subgroups as one shared part — which, measured, writes the
- * same clauses one intermediate clause later, and which no mutation could be made to fail a test over.
+ * than canonical: the parts are not sorted, so `all(a, b)` and `all(b, a)` are two keys. Sorting them would only
+ * recognise two differently-ordered subgroups as one shared part, which writes the same clauses one intermediate
+ * clause later.
  *
  * The junction is in the key and has to be: without it `all(a, b)` and `any(a, b)` read as one shared part, and the
  * search narrows from `s and (a or b)` to `s and a and b`.

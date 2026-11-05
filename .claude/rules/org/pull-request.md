@@ -13,10 +13,10 @@
   moment the checks pass and the review approves — with nobody looking at it again. That is the user's call rather than
   a default to assume either way, so when they have not said, ask before opening it, and leave auto-merge off until they
   answer.
-- **Show a change to a user interface in screenshots.** A pull request that changes anything a UI draws — a web page,
-  an app, a game — carries screenshots of it, so a reviewer can judge it without checking the branch out. One with no UI
-  to draw, such as a change to workflows or configuration, has nothing to show and carries none. The branch's come from
-  a real build of it, served locally the way the repository's own instructions say, and `master`'s from wherever it is
+- **Show a change to a user interface in screenshots.** A pull request that changes anything a UI draws — a web page, an
+  app, a game — carries screenshots of it, so a reviewer can judge it without checking the branch out. One with no UI to
+  draw, such as a change to workflows or configuration, has nothing to show and carries none. The branch's come from a
+  real build of it, served locally the way the repository's own instructions say, and `master`'s from wherever it is
   deployed, or a build of `master` where nothing serves it. Show each state the change adds, and at phone width where
   the layout differs there. A bug fix shows the UI before and after, the broken state beside the fixed one, so a
   reviewer sees both what was wrong and that it no longer is. Upload each image through the undocumented endpoint
@@ -24,8 +24,8 @@
   [described here](https://island94.org/2026/08/programmatically-upload-attachments-to-github-issues-pull-requests-comments),
   and embed the URL it returns in the PR body, so nothing lands on the branch. The body rather than a comment, because
   the body is what a reviewer reads first and the one place that can always show the current state: when a later push
-  changes what the UI draws, take the screenshots again and replace them there, rather than leaving the old set in
-  place or posting a new set in a comment.
+  changes what the UI draws, take the screenshots again and replace them there, rather than leaving the old set in place
+  or posting a new set in a comment.
 
   ```bash
   curl \
