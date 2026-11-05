@@ -130,6 +130,13 @@ test('in a league PvPoke ranks, only the charged moves the opponent’s players 
     wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, { meta: metaOf('Charizard', []) }).faints,
     'Magmar unranked',
   ).toBe(true);
+  expect(
+    wouldFaint(DATA, CHARIZARD, MAGMAR, 0.5, ULTRA, {
+      meta: metaOf('Magmar', ['Fire Punch']),
+      seen: new Set(['Fire Blast']),
+    }).faints,
+    'Fire Blast seen, however few run it',
+  ).toBe(true);
 });
 
 test('only the charged moves the opponent can afford are allowed for, where its energy is counted', () => {
