@@ -1,9 +1,9 @@
 /**
- * The event feed, shared by the six parts that read it: `scripts/vend-feed.mts` copies upstream into `VENDED_EVENTS`,
+ * The event feed, shared by the parts that read it: `scripts/vend-feed.mts` copies upstream into `VENDED_EVENTS`,
  * `src/event-store.ts` and `scripts/build-ics.mts` each merge that copy with this repository's own list,
  * `scripts/prune-events.mts` drops the entries `prunable` says are over, `src/pages/map.tsx` reads that list for the
- * names of the events its routes belong to, and the `find-missing-events` skill audits upstream and that list against
- * pokemongo.com's announcements.
+ * names of the events its routes belong to and `scripts/validate-gpx.mts` for the IDs they may name, and the
+ * `find-missing-events` skill audits upstream and that list against pokemongo.com's announcements.
  */
 
 import type { FeedEvent, RouteCounts } from './types.js';

@@ -12,6 +12,7 @@
  */
 
 import COUNTRIES from '../src/countries.ts';
+import { LOCAL_EVENTS } from '../src/event-feed.ts';
 import { ENTRIES_BY_EVENT, GPX_PATHS } from '../src/generated.ts';
 import { gpxSources } from '../src/gpx-source.mts';
 import type { FeedEvent } from '../src/types.js';
@@ -35,9 +36,9 @@ if (problems.length === 0) {
   console.log(`${files.length} files validate against GPX 1.1.`);
 }
 
-const EVENTS: FeedEvent[] = JSON.parse(readFileSync('data/events.json', 'utf8'));
+const EVENTS: FeedEvent[] = JSON.parse(readFileSync(LOCAL_EVENTS, 'utf8'));
 
-/** The events a `<pgr:event>` may point at, by `eventID` (data/events.json). */
+/** The events a `<pgr:event>` may point at, by `eventID` (`LOCAL_EVENTS`). */
 const eventIds = new Set(EVENTS.map((event) => event.eventID));
 
 const entries = entryProblems(sources, { eventIds, countries: COUNTRIES });
