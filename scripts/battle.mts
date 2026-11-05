@@ -42,6 +42,7 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
+import { said } from '../src/errors.ts';
 import { formIcons, silhouettesFor, typeIcons, type Download } from '../src/tools/battle/assets.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
 import { readOptions } from '../src/tools/battle/options.mts';
@@ -159,7 +160,7 @@ if (command === 'run') {
   try {
     asked = readOptions(options);
   } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
+    fail(said(error));
   }
 
   const { mode, count } = asked;
@@ -209,10 +210,7 @@ if (command === 'run') {
   const restore = () =>
     transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
       () => undefined,
-      (error: unknown) =>
-        console.error(
-          `stay_on_while_plugged_in not put back to ${before}: ${error instanceof Error ? error.message : String(error)}`,
-        ),
+      (error: unknown) => console.error(`stay_on_while_plugged_in not put back to ${before}: ${said(error)}`),
     );
   let screen: Screen | undefined;
 
@@ -266,7 +264,7 @@ if (command === 'run') {
       mkdirSync(dirname(videoFile), { recursive: true });
       fd = openSync(videoFile, 'w');
     } catch (error) {
-      console.error(`could not write ${videoFile}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`could not write ${videoFile}: ${said(error)}`);
       process.exit(1);
     }
 
@@ -283,7 +281,7 @@ if (command === 'run') {
         try {
           videoWritten += writeSync(fd, bytes);
         } catch (error) {
-          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
+          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${said(error)}`;
         }
       },
       started,
@@ -302,7 +300,7 @@ if (command === 'run') {
       try {
         closeSync(fd);
       } catch (error) {
-        closeFailed = error instanceof Error ? error.message : String(error);
+        closeFailed = said(error);
       }
 
       fd = undefined;
@@ -387,7 +385,7 @@ if (command === 'run') {
     process.exitCode = 1;
 
     if (!interrupted) {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(said(error));
     }
 
     if (error instanceof Lost && dir) {
@@ -424,7 +422,7 @@ if (command === 'run') {
   try {
     sizes = new TextDecoder().decode(await adbCli(options.serial).shell(['wm', 'size']));
   } catch (error) {
-    console.error(`could not read the screen's size: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`could not read the screen's size: ${said(error)}`);
     process.exit(1);
   }
 
@@ -456,7 +454,7 @@ if (command === 'run') {
     await pipeline(recording.stdout, createWriteStream(out));
   } catch (error) {
     recording.kill();
-    console.error(`could not write ${out}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`could not write ${out}: ${said(error)}`);
     process.exit(1);
   }
 
