@@ -45,7 +45,8 @@ Take from the session what the session already holds. Ask only for what is not t
 
 A failure in a `pnpm inventory` command is Page `Pokémon inventory`, and one in a `pnpm battle` command is Page
 `Trainer battles`, with Link and Browser left empty. The command and the Node version it ran under go in
-`What happened instead`, and what it printed goes in Console.
+`What happened instead`, and what it printed goes in Console. The site's own `#/inventory` and `#/battle` tabs are Page
+`Inventory` and `Battle`, filled like any other tab.
 
 Invoked cold, with no failure in scope, interview for each section in one round rather than one question at a time.
 
