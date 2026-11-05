@@ -205,6 +205,13 @@ export async function loadMeta(download: Download, data: GameData, league: strin
     }
 
     const { cup, cp } = format;
+
+    // Both go into a cache file's name and a URL's path, so a `..` from a tampered game master would write outside
+    // the cache.
+    if (!/^[a-z0-9_-]+$/.test(cup) || !Number.isInteger(cp)) {
+      throw new Error(`PvPoke ranks ${league} as ${JSON.stringify({ cup, cp })}, which names no rankings file`);
+    }
+
     const rankings = (await download(
       `pvpoke-${cup}-${cp}.json`,
       `${PVPOKE}/rankings/${cup}/overall/rankings-${cp}.json`,

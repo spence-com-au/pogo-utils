@@ -369,6 +369,14 @@ export function nearest<T>(signature: Signature, references: ReadonlyMap<T, Sign
 export type Drawn = Form & { icon: string };
 
 /**
+ * Whether two forms are the same Pokémon to everything but the artwork, as one string: one dex, one set of types and
+ * one stat line. The one definition of "the same numbers", so the groups `ambiguous` fetches icons for are the groups
+ * `identify` lets the artwork narrow.
+ */
+export const numbersOf = (form: Form): string =>
+  `${form.dex}|${[...form.types].sort().join('+')}|${form.attack}|${form.defense}|${form.stamina}`;
+
+/**
  * What the numbers leave ambiguous, split by whether the artwork can reach it: the groups of two or more forms
  * identical in dex, types and all three stats, partitioned on whether **every** member has an icon. A group short of
  * one can never be narrowed — `identify` declines to choose between forms it cannot all see — so its icons would be
@@ -386,7 +394,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
       continue;
     }
 
-    const key = `${form.dex}|${[...form.types].sort().join('+')}|${form.attack}|${form.defense}|${form.stamina}`;
+    const key = numbersOf(form);
     const group = groups.get(key) ?? [];
     group.push(form);
     groups.set(key, group);
@@ -415,7 +423,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 }
 
 /** How many icons to fetch at once. Each is some 24 KB, so the time goes on round trips rather than bytes. */
-const FETCH_BATCH = 16;
+export const FETCH_BATCH = 16;
 
 /**
  * A signature per form for every form the artwork could settle, each one's icon fetched and read by `read`, which is

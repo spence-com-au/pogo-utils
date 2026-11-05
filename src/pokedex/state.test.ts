@@ -253,11 +253,10 @@ test.for([
 /**
  * Every mode but the plain one reads a hunt list, and a mode's tile is filled only for a species the game could have
  * registered: one released, and in the shiny dex one whose shiny is. A species no list names at all is held in every
- * hunt's dex it could be. A tile fills once any form of the species is off the list, as the game fills it once any
- * form is registered — where the shiny list names a regional variant apart, and the other three hold one entry per
- * species, which stands for its regional variants too.
+ * hunt's dex it could be. Which forms of a species a list leaves held is `heldIn`'s, and is tested there against species
+ * built for the case, since the lists themselves change with every catch.
  */
-test('a mode fills the tiles of what its hunt list no longer wants, a form at a time', () => {
+test('a mode fills the tiles of what its hunt list no longer wants', () => {
   for (const { id } of MODES) {
     for (const entry of ENTRIES) {
       const possible = entry.released && (id !== 'shiny' || entry.shiny);
@@ -270,25 +269,12 @@ test('a mode fills the tiles of what its hunt list no longer wants, a form at a 
     }
   }
 
-  // The shiny list wants only Galarian Weezing, so the Kantonian one leaves the species held.
-  expect(registered(entryAt(110), 'shiny')).toBe(true);
+  // In the game with no shiny, so the shiny dex leaves it empty however the lists read.
+  const shinyless = ENTRIES.find((entry) => entry.released && !entry.shiny);
 
-  // It names Keldeo bare, which carries both its forms with it, so neither leaves the species held.
-  expect(registered(entryAt(647), 'shiny')).toBe(false);
-
-  // And Unown a letter at a time, leaving a released letter off it, so the species is held.
-  expect(registered(entryAt(201), 'shiny')).toBe(true);
-
-  // Hoopa is in the game with no shiny, so the shiny dex leaves it empty however the lists read.
-  expect(entryAt(720).released).toBe(true);
-  expect(registered(entryAt(720), 'shiny')).toBe(false);
-  expect(registered(entryAt(720), 'pokemon')).toBe(true);
-
-  // Meowth, Vulpix and Tauros are listed bare by the per-species hunts, which carries their regional variants with
-  // them, so none of those leaves the species held — where the shiny list's Galarian Weezing above does.
-  expect(registered(entryAt(52), 'xxl')).toBe(false);
-  expect(registered(entryAt(37), 'xxl')).toBe(false);
-  expect(registered(entryAt(128), 'xxs')).toBe(false);
+  expect(shinyless).toBeDefined();
+  expect(shinyless && registered(shinyless, 'shiny')).toBe(false);
+  expect(shinyless && registered(shinyless, 'pokemon')).toBe(true);
 
   // A species the XXL list still wants is empty in the XXL dex and filled in the plain one.
   const wantedXxl = ENTRIES.find((entry) => entry.released && entry.hunts.some(({ id }) => id === 'xxl'));

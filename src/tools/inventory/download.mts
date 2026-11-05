@@ -11,7 +11,7 @@ import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
 import { signaturesFor, signatureOfIcon, type Signature } from './artwork.mts';
-import { type Form, type GameData, type Move } from './game-master.mts';
+import { MAX_LEVEL, type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,9 +57,6 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
 
 /** Where the downloads are kept between runs. */
 export const CACHE = '.cache/inventory';
-
-/** Level 51 is a best buddy's; nothing is ever higher. */
-const MAX_LEVEL = 51;
 
 interface Template {
   templateId: string;
