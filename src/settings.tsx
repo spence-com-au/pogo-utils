@@ -8,7 +8,7 @@
 
 import { useRef, useState } from 'preact/hooks';
 
-import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, writeBackup } from './backup.js';
+import { backupName, restoreBackup, writeBackup } from './backup.js';
 import { download } from './dom.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
@@ -53,37 +53,23 @@ export function Settings() {
    */
   async function importPrefs(file: File) {
     try {
-      const incoming = parseBackup(await file.text());
+      const restored = restoreBackup(
+        await file.text(),
+        new Date(),
+        (text, name) => download(text, name, 'application/json'),
+        () => eventStore.restored(),
+      );
 
-      // Nothing in the file is nothing to change, and leaving before the copy and the corrections is what makes the
-      // message below true: the copy would put a file in the reader's Downloads for an import that touched nothing,
-      // and the corrections are not free — the Events page closes a reveal the reader had opened — so running them
-      // anyway would say nothing changed on the one render where *Ended* had just emptied itself.
-      if (incoming.length === 0) {
+      if (restored === null) {
         setStatus('That backup held no saved preferences, so nothing changed.');
         return;
       }
 
-      // Judged before anything is saved and saved before anything is written, so a copy is taken only for a file that
-      // is about to be applied. This is the undo: a reader who picks the wrong file has nothing else to go back to,
-      // and the keys it replaces are the ones nothing can reconstruct.
-      //
-      // The skip is not a formality. `settleSeen` writes `seen` as soon as the feed lands, so a loaded page nearly
-      // always has something stored — except in the one flow this exists for, a reader who has just cleared their
-      // browser and imports before the feed arrives, where a copy of nothing would be the first thing they saw.
-      const rescued = ownedKeys().length > 0;
-
-      if (rescued) {
-        download(writeBackup(), rescueName(new Date()), 'application/json');
-      }
-
-      const written = applyBackup(incoming);
-
-      eventStore.restored();
+      const { written, rescued } = restored;
 
       // The one place the copy is explained, said only when it was taken, so the file in Downloads is not a mystery.
       setStatus(
-        `Restored ${written.length} saved preference${written.length === 1 ? '' : 's'}.` +
+        `Restored ${written} saved preference${written === 1 ? '' : 's'}.` +
           (rescued ? ' What it replaced was downloaded first.' : ''),
       );
     } catch (e) {

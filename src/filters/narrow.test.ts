@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
 
-import POKEMON from '../pokemon/pokedex.js';
+import POKEMON, { ALOLA, GALAR } from '../pokemon/pokedex.js';
 import type Pokemon from '../pokemon/pokemon.js';
-import { species, SHINY_HUNTING_FILTERS, WILD_SPAWN_FILTERS } from './narrow.js';
+import { filterRegion, species, SHINY_HUNTING_FILTERS, WILD_SPAWN_FILTERS } from './narrow.js';
 
 /**
  * A name `pokedex.js` does not define reads as `undefined`, which is the whole reason `species` looks before it filters
@@ -57,4 +57,16 @@ test('each shared list applies the predicate it adds', () => {
   expect(species(entries)).toHaveLength(3);
   expect(species(entries, ...WILD_SPAWN_FILTERS)).toHaveLength(2);
   expect(species(entries, ...SHINY_HUNTING_FILTERS)).toHaveLength(1);
+});
+
+test("a region's filter keeps that region's variants and drops the base species and other regions", () => {
+  // The Hisuian feed is empty while every Hisuian shiny fails a hunting predicate, so `filters.test.ts` cannot see this
+  // function work; a regional variant that exists whatever the hunt list holds can.
+  const galarian = POKEMON.WEEZING.region(GALAR);
+  const entries = new Set([POKEMON.WEEZING, galarian, POKEMON.MEOWTH.region(ALOLA), POKEMON.PIKACHU]);
+
+  expect(species(entries, filterRegion(GALAR))).toEqual([galarian]);
+  expect(filterRegion(GALAR)(galarian)).toBe(true);
+  expect(filterRegion(ALOLA)(galarian)).toBe(false);
+  expect(filterRegion(GALAR)(POKEMON.WEEZING)).toBe(false);
 });
