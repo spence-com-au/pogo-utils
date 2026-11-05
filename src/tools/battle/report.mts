@@ -270,11 +270,26 @@ export function live(
     // the run's events leave. Each is already its column's width, so is not cut again.
     const logged = Math.max(1, rows - (2 + 3 + PANEL_ROWS + 1 + RUN_ROWS));
     const column = columnOf(width);
-    const done = sides.flatMap(({ line, side, why }) =>
-      side === 'own'
-        ? told(line, why, column).map((row) => `${row}${DIVIDER.trimEnd()}`)
-        : told(line, why, width - column - DIVIDER.length, false).map((row) => `${' '.repeat(column)}${DIVIDER}${row}`),
-    );
+    const done: string[] = [];
+
+    // From the newest event back, and only until `logged` rows are in hand, as the older ones would be dropped unseen.
+    for (let back = 1; done.length < logged; back++) {
+      const event = sides.at(-back);
+
+      if (!event) {
+        break;
+      }
+
+      const { line, side, why } = event;
+
+      done.unshift(
+        ...(side === 'own'
+          ? told(line, why, column).map((row) => `${row}${DIVIDER.trimEnd()}`)
+          : told(line, why, width - column - DIVIDER.length, false).map(
+              (row) => `${' '.repeat(column)}${DIVIDER}${row}`,
+            )),
+      );
+    }
 
     return [
       faded(cut(summary(latest))),
