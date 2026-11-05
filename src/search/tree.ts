@@ -131,8 +131,8 @@ function text(leaf: Leaf): string | null {
 
   if (from == null) {
     /*
-     * Two spans open at the bottom need no dash, and they are two tests rather than one because the two ranges whose
-     * floor is not nought separate them — six of the eight make these the same test.
+     * Two spans open at the bottom need no dash, and they are two tests rather than one because the ranges whose floor
+     * is not nought separate them — a range with no `min` makes these the same test.
      *
      * A span open below the range's *own floor* is the single value sitting on it, `min` being the whole of what a
      * bound can be and `bounded` enforcing that on every builder — so `-1` is the dex number 1, and `year-2016` is
