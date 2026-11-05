@@ -13,7 +13,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import postcss, { type Declaration } from 'postcss';
+import postcss, { type AtRule, type Declaration } from 'postcss';
 import { expect, test } from 'vitest';
 
 import { PAGES } from './page-table.ts';
@@ -523,4 +523,89 @@ test('the import check reads relative sheets and nothing else', () => {
   );
 
   expect(imported).toEqual(new Set([join(STYLES, 'theme.css'), join(STYLES, 'nested/page.css')]));
+});
+
+/** `#rgb` or `#rrggbb` as lower-case `#rrggbb`, so `#fff` in one file and `#ffffff` in another compare equal. */
+function hex(colour: string) {
+  const digits = colour.trim().toLowerCase().replace(/^#/, '');
+
+  return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`;
+}
+
+/**
+ * The custom properties `theme.css` sets on `:root`, in the light palette and in the dark one: a `:root` rule at the
+ * top level is light, one under the `prefers-color-scheme: dark` query is dark, and one anywhere else is neither.
+ */
+function palettes(css: string) {
+  const light = new Map<string, string>();
+  const dark = new Map<string, string>();
+
+  postcss.parse(css).walkRules(':root', (rule) => {
+    const parent = rule.parent;
+    const query = parent?.type === 'atrule' ? (parent as AtRule).params : undefined;
+    const into =
+      parent?.type === 'root' ? light : query !== undefined && /prefers-color-scheme:\s*dark/.test(query) ? dark : null;
+
+    for (const node of rule.nodes) {
+      if (into !== null && node.type === 'decl' && node.prop.startsWith('--')) {
+        into.set(node.prop, node.value.trim());
+      }
+    }
+  });
+
+  return { light, dark };
+}
+
+test('every copy of a theme colour outside the stylesheets matches the token it copies', () => {
+  /*
+   * The browser chrome, the installed app and the tab icon are painted from files that cannot read a custom property —
+   * a `<meta>`, a JSON manifest and an SVG a browser renders on its own — so each carries the colour by hand. Retuning
+   * `theme.css` would leave every one of them on the old value with the build green, and `scripts/build-icons.mts`
+   * paints the maskable icon's plate from `background_color`, so the installed icon would drift with it.
+   */
+  const { light, dark } = palettes(readFileSync(join(STYLES, 'theme.css'), 'utf8'));
+  const token = (palette: Map<string, string>, name: string) => hex(palette.get(name) ?? `missing ${name}`);
+
+  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const themeColor = (scheme: string) =>
+    new RegExp(`<meta name="theme-color" content="([^"]+)" media="\\(prefers-color-scheme: ${scheme}\\)"`).exec(
+      html,
+    )?.[1];
+
+  expect({ light: themeColor('light'), dark: themeColor('dark') }).toEqual({
+    light: token(light, '--panel'),
+    dark: token(dark, '--panel'),
+  });
+
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')) as Record<string, string>;
+
+  expect({ background: manifest['background_color'], theme: manifest['theme_color'] }).toEqual({
+    background: token(light, '--bg'),
+    theme: token(light, '--panel'),
+  });
+
+  /*
+   * The favicon's colours as a set rather than element by element: the red half is `--accent`, the band, the button's
+   * outline and the light rim are `--text`, and the dark rim is the dark `--text`. The ball's white is the ball's own
+   * rather than a token's, so it is named as a literal.
+   */
+  const svg = readFileSync(join(ROOT, 'favicon.svg'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const painted = new Set([...svg.matchAll(/#(?:[\da-f]{6}|[\da-f]{3})\b/gi)].map(([colour]) => hex(colour)));
+
+  expect(painted).toEqual(
+    new Set([token(light, '--accent'), token(light, '--text'), token(dark, '--text'), '#ffffff']),
+  );
+});
+
+test('the palette reader keeps the light and dark tokens apart', () => {
+  // The same reason the others have one: a reader that found nothing would hold every copy against nothing.
+  const both =
+    ':root { --a: #fff; color-scheme: light dark } @media (prefers-color-scheme: dark) { :root { --a: #000 } }';
+
+  expect(palettes(both)).toEqual({ light: new Map([['--a', '#fff']]), dark: new Map([['--a', '#000']]) });
+
+  // A `:root` under some other query is neither palette.
+  expect(palettes('@media print { :root { --a: #fff } }')).toEqual({ light: new Map(), dark: new Map() });
+
+  expect([hex('#FFF'), hex('#1a1d25')]).toEqual(['#ffffff', '#1a1d25']);
 });
