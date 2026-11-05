@@ -559,6 +559,16 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   function pressChip(leaf: Leaf) {
     if (adding !== null) {
       edit((tree) => toggled(tree, adding, leaf));
+
+      /*
+       * A press that takes a card's last pill takes the card, and every card after it moves up a place. The sheet then
+       * aims past the end, at a new card, rather than at whichever card has moved into the index it held.
+       */
+      const left = toggled(root, adding, leaf).parts.length;
+
+      if (left < root.parts.length) {
+        setAdding(left);
+      }
     }
   }
 
@@ -1087,7 +1097,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
           <p class="help rewritten" hidden={rewrites.length === 0}>
             {rewrites.map(([from, to], index) => (
-              <span key={from} class="rewrite">
+              <span key={`${from} ${to}`} class="rewrite">
                 <code>{from}</code> → <code>{to}</code>
                 {index < rewrites.length - 1 ? ', ' : ''}
               </span>
