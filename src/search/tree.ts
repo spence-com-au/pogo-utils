@@ -199,21 +199,6 @@ export function leafLabel(leaf: Leaf): string {
   return RANGES_BY_ID.get(leaf.id)?.label ?? leaf.id;
 }
 
-/** The node a path names, or null where the path leads nowhere. */
-export function nodeAt(root: Node, path: Path): Node | null {
-  let node: Node | null = root;
-
-  for (const index of path) {
-    if (node === null || !isGroup(node)) {
-      return null;
-    }
-
-    node = node.parts[index] ?? null;
-  }
-
-  return node;
-}
-
 /**
  * The tree with one node changed, or taken out where `change` answers null. The spine down to it is rebuilt and
  * everything else is the node it already was, which is what lets a render decide what to redraw by identity.

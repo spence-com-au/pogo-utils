@@ -104,13 +104,16 @@ export interface Buffs {
   theirDefense?: number;
 }
 
+/** Level 51 is a best buddy's; nothing is ever higher. */
+export const MAX_LEVEL = 51;
+
 export interface GameData {
   forms: Form[];
   moves: Move[];
   species: string[];
   types: string[];
 
-  /** Every level from 1 to 51 in half steps, against its CP multiplier. */
+  /** Every level from 1 to `MAX_LEVEL` in half steps, against its CP multiplier. */
   cpm: [number, number][];
 
   /**

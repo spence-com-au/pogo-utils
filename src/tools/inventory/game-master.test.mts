@@ -103,9 +103,9 @@ test('a move is read with its trainer-battle power, energy and turns', () => {
  *
  * What this can and cannot say is worth being exact about, because it is not what it looks like. It reads the **vended
  * table**, where the half steps are already computed, so it asserts that the file is self-consistent and not that the
- * code which built it is right — measured by replacing that root mean square with an arithmetic one and watching
- * every assertion here pass. Only `pnpm vend:game-master` runs the interpolation, so only a re-vend can move it, and
- * the diff of that re-vend is where it would be seen.
+ * code which built it is right — measured by replacing that root mean square with an arithmetic one and watching every
+ * assertion here pass. The code is checked in `download.test.mts` instead, by "a half level holds the root mean square
+ * of the whole levels either side", which runs `loadGameData` over a game master of its own.
  */
 test('the multiplier table runs from 1 to 51 in half steps', () => {
   expect(DATA.cpm[0]?.[0], 'the table no longer starts at level 1').toBe(1);
