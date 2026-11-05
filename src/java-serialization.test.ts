@@ -296,9 +296,10 @@ test('a character between U+0080 and U+07FF takes two bytes rather than one or t
 });
 
 /**
- * A stream that stops mid-object, which is what a half-written file looks like. Both readers that can run off the end
- * say so rather than reading `undefined` as a byte: `u1` reads the slot and tests it, and `raw` compares the length it
- * got against the length it asked for — a `subarray` past the end is short rather than an error.
+ * A stream that stops mid-object, which is what a half-written file looks like. Every reader that can run off the end
+ * says so rather than reading `undefined` as a byte or letting `DataView` throw a bare `RangeError`: `u1` reads the slot
+ * and tests it, `raw` compares the length it got against the length it asked for — a `subarray` past the end is short
+ * rather than an error — and the fixed-width readers check the room first.
  */
 test('a stream that stops short is refused at the byte that is missing', () => {
   const whole = twoStrings();
@@ -311,6 +312,38 @@ test('a stream that stops short is refused at the byte that is missing', () => {
   const found = positions(whole, [TC_BLOCKDATA, 0x08]);
   expect(found).toHaveLength(1);
   expect(() => loads(whole.subarray(0, (found[0] ?? 0) + 2 + 3))).toThrow(/^truncated stream/);
+
+  // Cut inside the two-byte version that follows the magic number, which `u2` reads.
+  expect(() => loads(Uint8Array.of(0xac, 0xed, 0x00))).toThrow(/^truncated stream/);
+});
+
+test.for([
+  { reader: 'i4', tcode: 'I', payload: [0x41, 0x42, 0x43, 0x44] },
+  { reader: 'i8', tcode: 'J', payload: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { reader: 'f4', tcode: 'F', payload: [0x3f, 0x80, 0x00, 0x00] },
+  { reader: 'f8', tcode: 'D', payload: [0x3f, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] },
+  { reader: 'i2', tcode: 'S', payload: [0xff, 0xfe] },
+  { reader: 'u2', tcode: 'C', payload: [0x00, 0x41] },
+])('a $tcode field cut one byte short is refused by $reader', ({ tcode, payload }) => {
+  // An Integer's `value` is the last thing in its stream, so a field redeclared at another width and given a payload
+  // one byte short of it ends the stream inside that read.
+  const bytes = dumps(box('I', 0x41424344));
+  const declared = splice(bytes, [ascii('I')[0] ?? 0, ...named('value')], [ascii(tcode)[0] ?? 0, ...named('value')]);
+  const cut = splice(declared, [0x41, 0x42, 0x43, 0x44], payload.slice(0, -1));
+
+  expect(() => loads(cut)).toThrow(/^truncated stream/);
+});
+
+test('a HashMap whose block data is too short to hold its size is refused', () => {
+  const whole = twoStrings();
+  const found = positions(whole, [TC_BLOCKDATA, 0x08]);
+  expect(found).toHaveLength(1);
+
+  // Rewrite the block's length byte to 4, so the payload ends before the size field, and drop the bytes it no longer
+  // owns.
+  const at = (found[0] ?? 0) + 1;
+  const short = Uint8Array.from([...whole.subarray(0, at), 0x04, ...whole.subarray(at + 1 + 4)]);
+  expect(() => loads(short)).toThrow(/^HashMap block data too short/);
 });
 
 /**

@@ -180,6 +180,13 @@ export const JavaSer = (() => {
       this.b = bytes;
       this.dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     }
+
+    /** Refuses a fixed-width read that would run past the end, which `DataView` reports as a bare `RangeError`. */
+    need(n: number) {
+      if (this.p + n > this.b.length) {
+        throw err('truncated stream');
+      }
+    }
     u1() {
       const v = this.b[this.p];
 
@@ -190,27 +197,44 @@ export const JavaSer = (() => {
       this.p += 1;
       return v;
     }
+    i2() {
+      this.need(2);
+
+      const v = this.dv.getInt16(this.p);
+      this.p += 2;
+      return v;
+    }
     u2() {
+      this.need(2);
+
       const v = this.dv.getUint16(this.p);
       this.p += 2;
       return v;
     }
     i4() {
+      this.need(4);
+
       const v = this.dv.getInt32(this.p);
       this.p += 4;
       return v;
     }
     i8() {
+      this.need(8);
+
       const v = this.dv.getBigInt64(this.p);
       this.p += 8;
       return v;
     }
     f4() {
+      this.need(4);
+
       const v = this.dv.getFloat32(this.p);
       this.p += 4;
       return v;
     }
     f8() {
+      this.need(8);
+
       const v = this.dv.getFloat64(this.p);
       this.p += 8;
       return v;
@@ -372,17 +396,10 @@ export const JavaSer = (() => {
         case 'B':
           return this.u1();
 
-        case 'S': {
-          const v = this.dv.getInt16(this.p);
-          this.p += 2;
-          return v;
-        }
-
-        case 'C': {
-          const v = this.dv.getUint16(this.p);
-          this.p += 2;
-          return String.fromCharCode(v);
-        }
+        case 'S':
+          return this.i2();
+        case 'C':
+          return String.fromCharCode(this.u2());
 
         default:
           throw err(`unsupported field type '${tcode}'`);
@@ -501,6 +518,11 @@ export const JavaSer = (() => {
       }
 
       const payload = this.raw(this.u1());
+
+      if (payload.length < 8) {
+        throw err('HashMap block data too short');
+      }
+
       const pdv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
       const size = pdv.getInt32(4); // [capacity, size]; capacity is recomputed on write
       const m: JavaMap = new Map();
