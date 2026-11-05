@@ -33,15 +33,14 @@ import {
   withoutFavourite,
   type Favourite,
 } from '../search/favourites.js';
-import { optimise, type Lossy } from '../search/optimise.js';
+import { current } from '../search/optimise.js';
 import { read } from '../search/parse.js';
 import { replaceQuery } from '../router.js';
-import { suggestions, written as speciesTerm, type Offer } from '../search/species.js';
+import { stepped, suggestions, written as speciesTerm, type Offer } from '../search/species.js';
 import { bounded, GROUPS, PRESETS, RANGES, RANGES_BY_ID, type Range } from '../search/terms.js';
-import { added, asCards, holds, pillsOf, toggled } from '../search/cards.js';
+import { added, asCards, cardsOf, holds, pillsOf, toggled } from '../search/cards.js';
 import { clausesOf } from '../search/clauses.js';
 import {
-  emptyTree,
   isGroup,
   leafLabel,
   leafText,
@@ -348,34 +347,6 @@ export function boxText(typed: Typed | null, path: Path, edge: Edge, bound: numb
   return bound === null ? '' : String(bound);
 }
 
-/** What a string nobody shortened says about itself: it is the search arranged, in neither direction. */
-const EXACT: Lossy = { narrowed: false, widened: false };
-
-/**
- * The string the page is showing, which is the string the Copy button writes — one answer rather than two compositions
- * that could disagree about which of them the reader is looking at.
- *
- * The optimiser is offered the state and its answer taken only where it is genuinely shorter, so the toggle can never
- * cost characters. Empty does not count as shorter: every star rating at once really does reduce to no clause at all,
- * but a blank output box beside cards full of pills reads as a page that has broken rather than as a search for
- * everything.
- */
-function current(state: State) {
-  const plain = compose(state);
-
-  if (!state.optimise) {
-    return { ...plain, was: null, rewrites: [] as readonly [string, string][], lossy: EXACT };
-  }
-
-  const { state: shortened, rewrites, lossy } = optimise(state);
-  const short = compose(shortened);
-  const worth = short.query.length > 0 && short.query.length < plain.query.length;
-
-  return worth
-    ? { ...short, was: plain.query.length, rewrites, lossy }
-    : { ...plain, was: null, rewrites: [] as readonly [string, string][], lossy: EXACT };
-}
-
 /**
  * Where the last string sent to the phone has got to, and which string that was: an answer is about the string sent, so
  * it is shown only while that is still the string on the page.
@@ -389,17 +360,11 @@ interface Sent {
   message: string;
 }
 
-/**
- * A tree as the cards the Builder draws. One spreading past what a search box takes has none: only a hand-made link
- * can arrive like that, the Advanced pane refusing such a query before it reaches here.
- */
-const cards = (tree: Node): Group => asCards(tree) ?? emptyTree();
-
 /** The state a link describes, laid out as cards. */
 function arrived(fragment: string): State {
   const state = fromFragment(fragment);
 
-  return { ...state, tree: cards(state.tree) };
+  return { ...state, tree: cardsOf(state.tree) };
 }
 
 export default function SearchPage({ query: fragment }: { query: string }) {
@@ -460,7 +425,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { query, was, rewrites, lossy, error, mishandled } = current(state);
-  const root = cards(state.tree);
+  const root = cardsOf(state.tree);
 
   /**
    * The fragment this state would be linked as, which is both what goes in the address bar and when to put it there.
@@ -514,7 +479,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    * replaced.
    */
   function arrange(tree: Node) {
-    setState((was) => ({ ...was, tree: cards(tree) }));
+    setState((was) => ({ ...was, tree: cardsOf(tree) }));
     setTypedBound(null);
   }
 
@@ -532,10 +497,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   }
 
   /**
-   * The cards with one edit made to them. Every change to the arrangement comes through here, and through `cards` on
+   * The cards with one edit made to them. Every change to the arrangement comes through here, and through `cardsOf` on
    * the way out, so a card a removal has left with one pill or none is tidied whichever edit it was.
    */
-  const edit = (change: (tree: Group) => Node) => setState((was) => ({ ...was, tree: cards(change(cards(was.tree))) }));
+  const edit = (change: (tree: Group) => Node) =>
+    setState((was) => ({ ...was, tree: cardsOf(change(cardsOf(was.tree))) }));
 
   /** A term from the catalogue, as the pill it will become. */
   const termLeaf = (id: string): Leaf => ({ kind: 'term', id, negated: false });
@@ -800,7 +766,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
       // One slot more than there are rows, so arrowing off either end lands on what was typed rather than wrapping
       // straight past it: the reader can always get their own text back the way they came.
-      setActive(((active + step + offered.length + 2) % (offered.length + 1)) - 1);
+      setActive(stepped(active, step, offered.length));
       return;
     }
 

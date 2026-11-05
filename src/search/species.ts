@@ -98,3 +98,11 @@ export function suggestions(value: string): Offer[] {
  * that is lower case throughout reads as one thing rather than as two pasted together.
  */
 export const written = (offer: Offer) => (offer.family ? FAMILY : '') + offer.name.toLowerCase();
+
+/**
+ * The row the arrow keys land on, from the one now active and a step of one either way. `-1` is no row: what was typed.
+ *
+ * One slot more than there are rows, so arrowing off either end lands on what was typed rather than wrapping straight
+ * past it: the reader can always get their own text back the way they came.
+ */
+export const stepped = (active: number, step: -1 | 1, rows: number) => ((active + step + rows + 2) % (rows + 1)) - 1;

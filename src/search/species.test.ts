@@ -11,7 +11,7 @@ import { expect, test } from 'vitest';
 
 import POKEMON from '../pokemon/pokedex.js';
 import { fold, nameOf } from '../pokemon/names.js';
-import { suggestions, written } from './species.js';
+import { stepped, suggestions, written } from './species.js';
 
 /** Every released species as the name a row would offer, in dex order — the whole of what the list draws from. */
 const OFFERABLE = Object.entries(POKEMON)
@@ -152,4 +152,13 @@ test('a form or a regional variant is not a row, because the game searches the s
   // answers to — a row offering it would look like the more precise of the two and match nothing at all.
   expect(POKEMON.RATTATA.variants).toHaveLength(1);
   expect(suggestions('rattata').map(written)).toEqual(['rattata', '+rattata']);
+});
+
+test('arrowing past either end of the rows lands on what was typed before wrapping to the other end', () => {
+  // Three rows, and the slot of the typed text at -1.
+  expect([-1, 0, 1, 2].map((active) => stepped(active, 1, 3))).toEqual([0, 1, 2, -1]);
+  expect([-1, 0, 1, 2].map((active) => stepped(active, -1, 3))).toEqual([2, -1, 0, 1]);
+
+  // One row is two slots, and a step either way is the other one.
+  expect([stepped(-1, 1, 1), stepped(0, 1, 1), stepped(-1, -1, 1), stepped(0, -1, 1)]).toEqual([0, -1, 0, -1]);
 });
