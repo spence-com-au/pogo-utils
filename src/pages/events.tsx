@@ -14,7 +14,7 @@ import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { routeSummary } from '../event-feed.js';
-import { hiddenFor, loadPrefs, persist, type Prefs } from '../event-prefs.js';
+import { hiddenFor, type Prefs } from '../event-prefs.js';
 import {
   addDays,
   DAY_MS,
@@ -228,8 +228,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /**
    * The reader's saved choices, held as the one mutable object the store hands out: `hiddenFor` answers a set the
    * caller adds to and deletes from, and the dismissals and seen set are read and written the same way. So this is a
-   * reference rather than state, and `commit` is the one way it changes bar the type chips, which `toggleType` saves.
-   * Re-read from storage as the page opens, so nothing a previous visit changed in memory alone is carried in.
+   * reference rather than state, and `commit` is the one way it changes. Re-read from storage as the page opens:
+   * another browser tab may have saved a change since this document loaded, and a chip or a dismissal writes its whole
+   * set back over it.
    */
   const [prefs] = useState(() => store.reloadPrefs());
 
@@ -264,6 +265,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const [reveals, setReveals] = useState<Reveals>(NOTHING_REVEALED);
 
   /**
+   * The type an `?event=` link unhid to land on its event, let through on every view while storage goes on hiding it.
+   * Held here rather than taken out of the stored set, which every chip writes back whole, so no click can save it.
+   */
+  const [unhidden, setUnhidden] = useState<string>();
+
+  /**
    * Whether the reader has narrowed the page to the events the header reports as new, by pressing that count. Read
    * live rather than as a snapshot of the IDs, so a card opened or marked as seen drops out as its mark does.
    */
@@ -279,7 +286,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const pending = useRef<string | null>(null);
 
   /** What the cards view is drawing under beyond the saved filters, which the top bar's count reads too. */
-  const filter = { reveals, search, now };
+  const filter = { reveals, search, now, unhidden };
 
   /**
    * Whether an event survives the type-filter, dismissal and search-term filters of the view that is open, and the new
@@ -322,7 +329,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
      * this is for the one arrival. A card dismissed individually stays dismissed, that being a decision about the
      * event rather than a blanket rule.
      */
-    hiddenFor(prefs, view).delete(match.eventType);
+    setUnhidden(match.eventType);
     setSearch(match.name);
 
     // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to.
@@ -360,28 +367,20 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /**
    * Hand the cards view's filters to the store while the page is open, so the top bar counts under the same ones, and
-   * take them back as it closes. Closing also re-reads the saved choices, dropping a type `applyPending` unhid for one
-   * arrival without saving: every other tab counts under what is stored.
+   * take them back as it closes. A type `applyPending` unhid goes with them, so every other tab counts under what is
+   * stored.
    */
   useEffect(() => {
     store.publish(filter);
-  }, [reveals, search, now]);
+  }, [reveals, search, now, unhidden]);
 
-  useEffect(
-    () => () => {
-      // A load still in flight finds nothing to apply, or it would unhide the type after the re-read below has run.
-      pending.current = null;
-      store.reloadPrefs();
-      store.publish(null);
-    },
-    [],
-  );
+  useEffect(() => () => store.publish(null), []);
 
   /**
    * An import from the top bar's settings has written over storage, which the store has re-read already. What is left
-   * is the page's own: a change this wholesale cannot leave a session reveal widening the page. Skipped on the first
-   * render, so opening the page after an import keeps the defaults it opened with rather than resetting them for an
-   * import it never saw.
+   * is the page's own: a change this wholesale cannot leave a session reveal or an unhidden type widening the page.
+   * Skipped on the first render, so opening the page after an import keeps the defaults it opened with rather than
+   * resetting them for an import it never saw.
    */
   const restores = useRef(store.restores);
 
@@ -389,6 +388,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     if (store.restores !== restores.current) {
       restores.current = store.restores;
       setReveals(NOTHING_REVEALED);
+      setUnhidden(undefined);
     }
   }, [store.restores]);
 
@@ -434,27 +434,26 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     commit('filterScope');
   }
 
-  /**
-   * Flip one chip in the live set and save the stored set with that chip alone changed. Saving the live set would also
-   * save a type `applyPending` unhid for one arrival, which the page undertakes never to keep.
-   */
   function toggleType(eventType: string) {
     const hidden = hiddenFor(prefs, view);
-    const hide = !hidden.delete(eventType);
-    const saved = loadPrefs();
-    const savedHidden = hiddenFor(saved, view);
 
-    if (hide) {
+    // The unhidden type's chip shows as on whatever storage says, so a click on it turns it off. Where storage hides
+    // the type already, dropping the un-hide is all that takes.
+    if (eventType === unhidden) {
+      setUnhidden(undefined);
+
+      if (hidden.has(eventType)) {
+        return;
+      }
+    }
+
+    if (!hidden.delete(eventType)) {
       hidden.add(eventType);
-      savedHidden.add(eventType);
-    } else {
-      savedHidden.delete(eventType);
     }
 
     // Named from the scope rather than the set, so the two cannot disagree about where a click just went — the one way
     // a chip could take effect and then not survive a reload.
-    persist(saved, prefs.filterScope === 'view' ? 'hiddenByView' : 'hiddenTypes');
-    store.emit();
+    commit(prefs.filterScope === 'view' ? 'hiddenByView' : 'hiddenTypes');
   }
 
   function toggleGroup(kind: StatusKind) {
@@ -500,7 +499,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   }
 
   const types = [...labels].sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
-  const hidden = hiddenFor(prefs, view);
+
+  /** The types the chips draw as off and the tracks drop a row for: the stored set, less the one a link unhid. */
+  const hidden = new Set([...hiddenFor(prefs, view)].filter((eventType) => eventType !== unhidden));
+
   const newly = newlyVisible().length;
 
   /**

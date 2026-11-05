@@ -1,7 +1,8 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
-import { KEYS } from './event-prefs.js';
-import { EventStore, NOTHING_REVEALED } from './event-store.js';
+import { KEYS, loadPrefs } from './event-prefs.js';
+import { mergeEvents } from './event-schedule.js';
+import { admits, EventStore, NOTHING_REVEALED, type CardsFilter } from './event-store.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 import type { StampedEvent } from './event-feed.js';
@@ -238,6 +239,56 @@ test('a hidden type is matched by its slug, whatever its heading says', async ()
   store.prefs.hiddenTypes = new Set(['raid-battles', 'research']);
 
   expect(ids(store)).toEqual(['kept']);
+});
+
+/**
+ * The type an `?event=` link unhid passes the type filters and nothing else: an event of it the reader dismissed stays
+ * out, as does one the search does not match, and every other hidden type stays hidden.
+ */
+test("a filter's unhidden type passes the type filters alone", () => {
+  const prefs = loadPrefs();
+  const hidden = new Set(['go-pass', 'go-battle-league']);
+  const events = mergeEvents(
+    [
+      feedEvent('pass', { eventType: 'go-pass' }),
+      feedEvent('dismissed', { eventType: 'go-pass' }),
+      feedEvent('league', { eventType: 'go-battle-league' }),
+    ],
+    [],
+  );
+
+  prefs.dismissed.add('dismissed');
+
+  const admitted = (filter: Pick<CardsFilter, 'search' | 'unhidden'>) =>
+    events.filter((ev) => admits(ev, prefs, hidden, { reveals: NOTHING_REVEALED, ...filter })).map((ev) => ev.eventID);
+
+  expect(admitted({ search: '' })).toEqual([]);
+  expect(admitted({ search: '', unhidden: 'go-pass' })).toEqual(['pass']);
+  expect(admitted({ search: 'Event league', unhidden: 'go-pass' })).toEqual([]);
+});
+
+/**
+ * The type a link unhid lives in the filter the Events page publishes rather than in the stored set, which every chip
+ * writes back whole: the top bar counts it while the page is open, a chip saving the set keeps it hidden, and closing
+ * the page puts the count back on what is stored.
+ */
+test('a type a link unhid is counted while the Events page is open, and a chip keeps it hidden', async () => {
+  const { store, source } = storeOver([feedEvent('a')]);
+
+  await store.load();
+  source.feed = [feedEvent('a'), feedEvent('pass', { heading: 'GO Pass', eventType: 'go-pass' })];
+  await store.load();
+
+  store.publish({ reveals: NOTHING_REVEALED, search: '', now: new Date(), unhidden: 'go-pass' });
+  expect(ids(store)).toEqual(['pass']);
+
+  // Another chip: one more type hidden, and the set written back.
+  store.prefs.hiddenTypes.add('season');
+  store.commit('hiddenTypes');
+  expect(JSON.parse(storage.getItem(KEYS.hiddenTypes) ?? '[]')).toEqual(expect.arrayContaining(['go-pass', 'season']));
+
+  store.publish(null);
+  expect(ids(store)).toEqual([]);
 });
 
 test('the Events page search narrows the list while it is open, and closing the page lifts it', async () => {
