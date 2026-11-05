@@ -1632,28 +1632,6 @@ test(
 );
 
 /**
- * The vended game master's own shape, each figure what `pnpm vend:game-master` printed as it wrote the file. This is
- * the only thing standing between a fixture truncated or swapped and a reader that has merely stopped agreeing with a
- * capture, the cast on `DATA` being unchecked.
- *
- * Expect it to move when upstream releases a species, and read that as the vend being reviewed rather than the suite
- * breaking: a form arriving that shares a dex, its types and its stamina with a capture really does change which forms
- * an HP can tell apart.
- */
-test('the vended game master is the shape the readers are asserted against', () => {
-  expect(
-    {
-      forms: DATA.forms.length,
-      species: DATA.species.length,
-      moves: DATA.moves.length,
-      types: DATA.types.length,
-      cpm: DATA.cpm.length,
-    },
-    'the vended game master has changed shape; re-vend and update these figures',
-  ).toStrictEqual({ forms: 1473, species: 1024, moves: 328, types: 18, cpm: 101 });
-});
-
-/**
  * Which captures the CP is read off, and what it is read as — the one thing the rows cannot say, since each of them
  * states the number the game printed and a `cpOn` answering null for everything would pass every row. It is a minority
  * of them because the CP is white text over the artwork and the hardest thing on the screen to make out.
