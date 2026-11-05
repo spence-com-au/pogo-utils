@@ -7,21 +7,11 @@
 
 import { expect, test } from 'vitest';
 
+import { all, any, named, no, shape, yes } from '../testing/search.js';
 import { added, asCards, holds, pillsOf, toggled } from './cards.js';
 import { compose, fromFragment } from './query.js';
 import { read } from './parse.js';
-import { emptyTree, group, isGroup, leafText, type Group, type Leaf, type Node } from './tree.js';
-
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
-
-/** A tree said in the shape a failure can be read in: every pill as its text, every group as its junction. */
-function shape(node: Node): unknown {
-  return isGroup(node) ? { [node.junction]: node.parts.map(shape) } : (leafText(node) ?? '…');
-}
+import { emptyTree, type Group, type Leaf, type Node } from './tree.js';
 
 /** The cards a tree is laid out as, which every test here expects to exist. */
 function cards(tree: Node): Group {

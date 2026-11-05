@@ -181,7 +181,7 @@ function Detail({
 }) {
   /**
    * The shiny is offered only where the game has one, and this flag is what says so rather than a missing file:
-   * PokeAPI draws a shiny for every species, so each of the 64 falling back to it would offer one. The game's own
+   * PokeAPI draws a shiny for every species, so each species falling back to it would offer one. The game's own
    * assets are stricter and agree — Hoopa, Volcanion, Cosmog, Kubfu, Urshifu and Zarude have no shiny render, and are
    * exactly the six `pokedex.ts` marks `isNotShinyEligible`.
    *
