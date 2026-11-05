@@ -217,6 +217,22 @@ test('once both of its moves have been seen, a throw is the cheaper of them', ()
   expect(energy.estimate(MATCHUP)?.energy, '90 less Ice Punch’s 40').toBe(50);
 });
 
+test('one move seen is the cheapest where it is cheaper than those its players run', () => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([
+      ['Medicham', { fast: 'Psycho Cut', fastMoves: ['Psycho Cut'], chargedMoves: ['Ice Punch', 'Dynamic Punch'] }],
+    ]),
+  };
+  const energy = new Energy(DATA, meta);
+
+  fight(energy, { step: PSYCHO_CUT, hits: 10 });
+  energy.threw(MATCHUP, new Set(['Power-Up Punch']));
+
+  expect(energy.estimate(MATCHUP)?.energy, '90 less Power-Up Punch’s 35, not Ice Punch’s 40').toBe(55);
+});
+
 test('an opponent CP unread is counted as the cap', () => {
   const unread: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: null } };
   const atCap: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: 1500 } };

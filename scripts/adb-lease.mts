@@ -7,7 +7,11 @@
  *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and become the
  *                                      real `adb`, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
- *                                      the phone is still running or a background subagent is
+ *                                      the phone is still running or a background agent is. `Stop` runs it, and the
+ *                                      `idle_prompt` notification about a minute later for a turn that fires no `Stop`:
+ *                                      one interrupted with `Esc` or ended by an API error. Not `StopFailure`, which is
+ *                                      given no `background_tasks`, while `idle_prompt` never comes as long as a
+ *                                      background subagent runs
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
@@ -20,6 +24,9 @@
  * crash left behind, free for the next session to take. The leases are rows of one database outside the checkout, where
  * every worktree finds them, and each change to them is a transaction, which is what lets sessions racing for a phone,
  * or for one a crash left behind, settle on exactly one holder.
+ *
+ * A session and its commands are told apart by what `/proc` says of them, so the lease holds on Linux alone. Elsewhere,
+ * macOS among them, `adb` takes no lease and runs the real one unchecked, and the hooks have nothing to let go of.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -185,7 +192,8 @@ function refusal(held: Use): string {
     `adb: the phone ${held.serial} is in use by ${name ? `the Claude session ${name}` : 'another Claude session'}`,
     `(session ${held.session}, pid ${held.pid}, working in ${held.cwd}),`,
     `which last ran \`adb ${held.args}\` on it at ${held.since}.`,
-    'That session lets go of it when it ends a turn with nothing it started still on the phone, or exits.',
+    'That session lets go of it when it ends a turn with nothing it started still on the phone,',
+    'or about a minute after an interrupted or failed one, or exits.',
     `Wait for it in the background with \`until adb -s ${held.serial} get-state >/dev/null 2>&1; do sleep 30; done\`,`,
     'which takes the phone the moment it is free,',
     name
@@ -199,7 +207,11 @@ function refusal(held: Use): string {
 function running(commands: number[]): boolean {
   const sessions = new Set(commands.map(String));
 
-  return readdirSync('/proc').some((pid) => /^\d+$/.test(pid) && sessions.has(stat(pid)?.[SESSION] ?? ''));
+  // Where there is no `/proc`, no lease was taken to leave a command for, so it is not read for an empty list.
+  return (
+    sessions.size > 0 &&
+    readdirSync('/proc').some((pid) => /^\d+$/.test(pid) && sessions.has(stat(pid)?.[SESSION] ?? ''))
+  );
 }
 
 // Not a number outside a Claude session, which has no lease to take or let go.
@@ -269,9 +281,12 @@ switch (process.argv[2]) {
       background_tasks?: { type: string; status: string }[];
     };
 
-    // A background subagent goes on using the phone for the session after its turn, and between its commands nothing
-    // of it is left running to be seen.
-    if (!pid || tasks?.some((task) => task.type === 'subagent' && task.status === 'running')) {
+    // A background agent goes on using the phone for the session after its turn, and between its commands nothing of it
+    // is left running to be seen. The hooks reference labels each task by the feature that made it, and these are the
+    // ones that run agents.
+    const agents = new Set(['subagent', 'workflow', 'teammate']);
+
+    if (!pid || tasks?.some((task) => agents.has(task.type) && task.status === 'running')) {
       break;
     }
 

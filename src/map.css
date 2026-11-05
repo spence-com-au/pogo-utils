@@ -12,12 +12,12 @@ body {
  * Everything below is scoped to the open page.
  *
  * Each of these sheets was the only one in its document and could style `.name`, `.meta` and `.copy` as it liked. One
- * document loads all seven, and between them they give nineteen class names a different meaning per page. The wrapper
- * is what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the same table
- * the router validates a fragment against.
+ * document loads every page's sheet, and between them the same class names mean something different per page. The
+ * wrapper is what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the
+ * same table the router validates a fragment against.
  *
  * This is the sheet that needed it most. The three declarations here were a bare `body` rule, and an unscoped
- * `overflow: hidden` would have reached all seven pages — the Pokédex grid of 1025 species with a scrollbar and no way
+ * `overflow: hidden` would have reached every page — the Pokédex grid of 1025 species with a scrollbar and no way
  * to use it. The bare `header` and `footer` rules below would likewise have drawn a border under every other page's
  * heading.
  */
@@ -303,7 +303,7 @@ body[data-page='map'] {
   /**
    * Only a row carrying an event wraps, and the name is given a basis of zero within it so that it cannot push the
    * distance and the Copy button down as well — the second line is for the event alone. Asking for the wrap on every
-   * row moved that pair onto its own line on 29 of the 80 rows here, none of which have an event.
+   * row moved that pair onto its own line on rows that have no event.
    */
 
   .route:has(.eventline) {

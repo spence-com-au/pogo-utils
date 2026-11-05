@@ -18,10 +18,10 @@
  * Everything below is scoped to the open page.
  *
  * Each of these sheets was the only one in its document and could style `.card`, `.grid` and `.chip` as it liked. One
- * document loads all seven, and between them they give nineteen class names a different meaning per page — this sheet
- * and the Pokédex's disagreed about all four of `.card`, `.grid`, `.chip` and `.controls`. The wrapper is what keeps
- * each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the same table the router
- * validates a fragment against.
+ * document loads every page's sheet, and between them the same class names mean something different per page —
+ * this sheet and the Pokédex's disagreed about all four of `.card`, `.grid`, `.chip` and `.controls`. The wrapper is
+ * what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the same table
+ * the router validates a fragment against.
  */
 body[data-page='events'] {
   /**
@@ -30,7 +30,7 @@ body[data-page='events'] {
    * because the sticky controls bar has to reproduce it as padding rather than as a max-width.
    *
    * On the wrapper rather than on `:root`, where it was while this sheet was alone in its document: the Pokédex wants
-   * the same 1100px, the search builder 880px and Integrations 640px, so on `:root` the four would be one declaration
+   * the same 1100px, the search builder 880px and Integrations 640px, so on `:root` they would be one declaration
    * and whichever the bundler wrote last would set the column for every page.
    */
   --content-w: 1100px;
@@ -589,6 +589,10 @@ body[data-page='events'] {
     --type-color: #0891b2;
   }
 
+  .type-pokemon-go-tour {
+    --type-color: #ca8a04;
+  }
+
   .type-max-battles {
     --type-color: #4f46e5;
   }
@@ -648,6 +652,10 @@ body[data-page='events'] {
 
     .type-go-pass {
       --type-color: #22d3ee;
+    }
+
+    .type-pokemon-go-tour {
+      --type-color: #facc15;
     }
 
     .type-max-battles {
