@@ -188,13 +188,15 @@ export function heldIn(species: Pokemon, hunt: Hunt) {
 }
 
 /**
- * One row per species, in dex order.
+ * One row for a species.
  *
  * The species-level answers ask the species and its variants together: an entry is in the game if any of it is, and
  * has a shiny if any released part of it does — Galarian Darumaka's shiny is still a Darumaka shiny to hunt. `spawns`
  * reads the same way, so Paldean Tauros not spawning does not stop Tauros from counting as a wild spawn.
+ *
+ * Exported so a test can hand it a species built for the case rather than one the dex happens to carry.
  */
-export const ENTRIES: readonly Entry[] = Object.entries(POKEMON).map(([constant, species]) => {
+export function entryOf(constant: string, species: Pokemon): Entry {
   const name = nameOf(constant);
   const variants = variantsOf(species, name);
   const all = [species, ...variants.map(({ pokemon }) => pokemon)];
@@ -215,7 +217,12 @@ export const ENTRIES: readonly Entry[] = Object.entries(POKEMON).map(([constant,
     hunts: huntsOf(all),
     held: Object.fromEntries(HUNTS.map((hunt) => [hunt.id, heldIn(species, hunt)])) as Record<HuntId, boolean>,
   };
-});
+}
+
+/** One row per species, in dex order. */
+export const ENTRIES: readonly Entry[] = Object.entries(POKEMON).map(([constant, species]) =>
+  entryOf(constant, species),
+);
 
 /** The dex number zero-padded to four places, the way the games print it: bare, as under a tile in the GO Pokédex. */
 export const tileNumber = (dex: number) => String(dex).padStart(4, '0');
