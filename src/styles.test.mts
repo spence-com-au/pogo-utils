@@ -326,6 +326,74 @@ test('every page a stylesheet scopes itself to is one the router has', () => {
   expect(orphaned.sort()).toEqual([]);
 });
 
+/**
+ * The top-level nodes of a page sheet that sit outside its `body[data-page='…']` wrapper, as the selector or at-rule
+ * they open with. A `@keyframes` is let through because its name is global wherever it sits, so scoping it would change
+ * nothing and a style rule cannot hold one; `GLOBAL` names the rest, which are global on purpose.
+ */
+function unwrapped(css: string, page: string) {
+  const wrapper = `body[data-page='${page}']`;
+  const stray: string[] = [];
+
+  postcss.parse(css).each((node) => {
+    if (node.type === 'comment' || (node.type === 'atrule' && node.name === 'keyframes')) {
+      return;
+    }
+
+    const opens =
+      node.type === 'rule'
+        ? node.selector.replace(/\s+/g, ' ').trim()
+        : node.type === 'atrule'
+          ? `@${node.name} ${node.params}`
+          : node.type;
+
+    if (opens !== wrapper && !GLOBAL.has(`${page}: ${opens}`)) {
+      stray.push(opens);
+    }
+  });
+
+  return stray;
+}
+
+/** The rules a page sheet keeps outside its wrapper on purpose, each as `<page>: <selector>`. */
+const GLOBAL = new Set(['map: html, body']);
+
+test('every top-level rule in a page sheet sits inside its own wrapper', () => {
+  /*
+   * `main.tsx` bundles every page sheet into the one `main.css`, which is safe only because each is wrapped in
+   * `body[data-page='…']` and so inert on the other pages. The check above covers a wrapper that names a page the
+   * router lacks; this covers a wrapper that is missing or names another page, and a rule written after it at the top
+   * level. Any of them restyles every other tab and passes everything else here, since the collision checks compare
+   * class names only within one sheet or against the bar's.
+   *
+   * `theme.css`, `nav.css` and `chrome.css` are the shell's own and global by design, so only the sheets named for a
+   * page are read.
+   */
+  const stray = PAGES.flatMap(({ name }) =>
+    unwrapped(readFileSync(join(STYLES, `${name}.css`), 'utf8'), name).map(
+      (opens) => `${name}.css has \`${opens}\` outside its wrapper`,
+    ),
+  );
+
+  // Named rather than counted, so a failure says which sheet leaks and through which rule.
+  expect(stray).toEqual([]);
+});
+
+test('the wrapper check can tell a wrapped rule from a stray one', () => {
+  // The same reason the others have one: a walk that visited nothing would report no strays however many there were.
+  expect(unwrapped("body[data-page='map'] { .a { color: red } }", 'map')).toEqual([]);
+  expect(unwrapped("body[data-page='map'] { color: red } .a { color: red }", 'map')).toEqual(['.a']);
+
+  // Another page's wrapper is not this page's, and a media query at the top level has escaped the wrapper too.
+  expect(unwrapped("body[data-page='search'] { color: red }", 'map')).toEqual(["body[data-page='search']"]);
+  expect(unwrapped('@media (width <= 560px) { .a { color: red } }', 'map')).toEqual(['@media (width <= 560px)']);
+
+  // The two ways through: a keyframe set, and a rule `GLOBAL` names for that page alone.
+  expect(unwrapped('@keyframes spin { from { opacity: 0 } }', 'map')).toEqual([]);
+  expect(unwrapped('html,\nbody { height: 100% }', 'map')).toEqual([]);
+  expect(unwrapped('html, body { height: 100% }', 'events')).toEqual(['html, body']);
+});
+
 test('the page check can tell a scoped sheet from an unscoped one', () => {
   // The same reason the other two have one: a selector regex that matched nothing would report no orphans however many
   // there were.
