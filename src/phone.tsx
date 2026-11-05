@@ -56,7 +56,8 @@ export function Phone() {
       const { connect } = await loadChunk(() => import('./inventory/webusb.js'));
       const picked = await connect();
 
-      // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
+      // The chooser dismissed, or the phone already held picked in it, which keeps whatever phone is already connected
+      // rather than letting it go for nothing.
       if (picked === null) {
         setStatus(null);
         return;
