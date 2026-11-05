@@ -110,6 +110,9 @@ export function refusals({ detail, box, overlay }: Pick<Reading, 'detail' | 'box
 export const NO_BOX = 'not found; is PGSharp running, and is a Pokémon open?';
 export const NO_OVERLAY = 'nothing read';
 
+/** One line OCR found as `--verbose` prints it and the page lists it: its box, padded to a column, then its text. */
+export const dumped = (l: Line) => `${`${l.left},${l.top} ${l.width}×${l.height}`.padEnd(22)} ${l.text}`;
+
 /**
  * The identity as `report` prints it. Every form carries its whole move pool, which prints as a column of `[Object]`
  * and buries everything worth reading; the names are what a person tuning this wants to see anyway. The forms in
