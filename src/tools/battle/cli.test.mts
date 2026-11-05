@@ -4,7 +4,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,25 +104,50 @@ test('reports an adb it cannot find rather than throwing', async () => {
   expect(stderr).toContain("could not read the screen's size: adb shell wm size: spawn adb ENOENT");
 });
 
-test('reports an OUT it cannot write and stops recording', async () => {
-  // An `adb` that answers `wm size` and records for a minute, so a script that left it running would outlast the test's
-  // timeout.
+// `/dev/full` is Linux only, and `ubuntu-latest` is every runner in `.github/workflows/`.
+test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and stops recording', async () => {
+  // An `adb` that answers `wm size`, then writes its pid and a byte before it records for a minute. A script that left
+  // it running would leave that pid alive, which is what is checked: the child's piped stdio lets the script exit
+  // whether or not it stopped the child. `/dev/full` takes the byte only to fail it, so the failure comes after the pid
+  // is written.
   const bin = mkdtempSync(join(tmpdir(), 'battle-adb-'));
-  const adb = '#!/bin/sh\n[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\nexec sleep 60\n';
+  const pidFile = join(bin, 'pid');
+  const adb = `#!/bin/sh\n[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\necho $$ > ${pidFile}\necho x\nexec sleep 60\n`;
   writeFileSync(join(bin, 'adb'), adb, { mode: 0o755 });
 
-  const { code, stderr } = await promisify(execFile)(
-    'node',
-    [SCRIPT, 'record', '--seconds', '1', join(bin, 'missing', 'out.h264')],
-    { env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}` }, timeout: 10_000 },
-  ).then(
-    () => ({ code: 0, stderr: '' }),
-    (error: { code: number; stderr: string }) => error,
-  );
+  try {
+    const { code, stderr } = await promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', '/dev/full'], {
+      env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
+      timeout: 10_000,
+    }).then(
+      () => ({ code: 0, stderr: '' }),
+      (error: { code: number; stderr: string }) => error,
+    );
 
-  expect(code).toBe(1);
-  expect(stderr).toContain('could not write');
-  expect(stderr).toContain('ENOENT');
+    expect(code).toBe(1);
+    expect(stderr).toContain('could not write /dev/full');
+    expect(stderr).toContain('ENOSPC');
+
+    const pid = Number(readFileSync(pidFile, 'utf8'));
+
+    await expect
+      .poll(() => {
+        try {
+          process.kill(pid, 0);
+
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .toBe(false);
+  } finally {
+    try {
+      process.kill(Number(readFileSync(pidFile, 'utf8')));
+    } catch {
+      // Stopped already, which is the point.
+    }
+  }
 });
 
 test('refuses a recording with nowhere to go', async () => {

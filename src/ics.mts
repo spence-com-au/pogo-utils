@@ -190,7 +190,7 @@ export function calendar({ name, description }: typeof FEED, events: FeedEvent[]
  * The events the calendar carries, in the order it carries them.
  *
  * Keyed by eventID with the local pass last, so a repo entry overrides a feed event of the same ID rather than
- * duplicating it — the merge `src/pages/events.tsx` does, in the same order.
+ * duplicating it — the merge `mergeEvents` in `src/event-schedule.ts` does for the page, in the same order.
  *
  * An event with no date at all has nothing to put on a calendar. Sorted by start so the file reads in order and a diff
  * between two runs stays local to what moved, over the raw strings rather than through a `Date` — a zoned time and a

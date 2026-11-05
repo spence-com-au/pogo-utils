@@ -49,6 +49,32 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
 }
 
 /**
+ * A command's output, given up on after `TIMEOUT_MS` as `adb-cli.mts` gives up on `adb`: a phone that stops answering
+ * fails the one call loudly rather than leaving the page waiting on it. The command itself cannot be called back, so
+ * what is given up on is the wait, and a phone that wedged is one to reconnect.
+ */
+export function within(command: readonly string[], output: Promise<Uint8Array>): Promise<Uint8Array> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${command.join(' ')}: ${NO_ANSWER}`)), TIMEOUT_MS);
+  });
+
+  return Promise.race([output, late]).finally(() => clearTimeout(timer));
+}
+
+/** What the shell protocol answered: the output where the command exited zero, and a throw with its stderr where not. */
+export function answered(
+  command: readonly string[],
+  { stdout, stderr, exitCode }: { stdout: Uint8Array; stderr: Uint8Array; exitCode: number },
+): Uint8Array {
+  if (exitCode !== 0) {
+    throw new Error(`${command.join(' ')} exited ${exitCode}: ${new TextDecoder().decode(stderr).trim()}`);
+  }
+
+  return stdout;
+}
+
+/**
  * Why this context, a page or its Worker, cannot reach a phone, or null where it can. WebUSB needs a secure context,
  * which is `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so
  * Firefox and Safari have none.
@@ -126,11 +152,19 @@ function usb(): AdbDaemonWebUsbDeviceManager {
 /**
  * Offers the browser's device chooser and connects to whatever is picked, or answers null where the chooser was
  * dismissed. Only ADB interfaces are offered, Tango's default filter being the class ADB declares.
+ *
+ * Null too where the phone picked is one this context already has an interface of claimed, which is the phone held:
+ * the browser hands back the same `USBDevice`, which Tango connects to again without claiming it, so a second
+ * connection would contend with the first for its packets, and closing either closes the device under both.
  */
 export async function connect(): Promise<Phone | null> {
   const device = await usb().requestDevice();
 
-  return device === undefined ? null : open(device);
+  if (device === undefined || device.raw.configuration?.interfaces.some((candidate) => candidate.claimed)) {
+    return null;
+  }
+
+  return open(device);
 }
 
 /**
@@ -187,19 +221,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
 
   const adb = new Adb(transport);
 
-  /**
-   * A command's output, given up on after `TIMEOUT_MS` as `adb-cli.mts` gives up on `adb`: a phone that stops answering
-   * fails the one call loudly rather than leaving the page waiting on it. The command itself cannot be called back, so
-   * what is given up on is the wait, and a phone that wedged is one to reconnect.
-   */
-  const run = (command: readonly string[]): Promise<Uint8Array> => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`${command.join(' ')}: ${NO_ANSWER}`)), TIMEOUT_MS);
-    });
-
-    return Promise.race([output(command), late]).finally(() => clearTimeout(timer));
-  };
+  const run = (command: readonly string[]): Promise<Uint8Array> => within(command, output(command));
 
   /**
    * A command's output over the protocol older phones have, which carries one stream and no exit status. So stderr is
@@ -226,13 +248,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
       return legacy(command);
     }
 
-    const { stdout, stderr, exitCode } = await shell.spawnWait(command);
-
-    if (exitCode !== 0) {
-      throw new Error(`${command.join(' ')} exited ${exitCode}: ${new TextDecoder().decode(stderr).trim()}`);
-    }
-
-    return stdout;
+    return answered(command, await shell.spawnWait(command));
   };
 
   // Tango types its streams as its own polyfill's, which are the platform's at run time.

@@ -43,7 +43,7 @@
   `adb` is one bundled with scrcpy needs one there too. The refusal names the holder and says how to wait for it or ask
   it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is the one way past the lease
   and taps over the other session's run. A session lets go of the phone when a turn ends with no command that reached it
-  still running and no background subagent, or when it exits, and a crashed one holds nothing. Settings are read as a
+  still running and no background agent, or when it exits, and a crashed one holds nothing. Settings are read as a
   session starts, so one started before these hooks were in its checkout runs the bare `adb` until it restarts.
 - **Cover the account in every capture of the phone.** A fixture, a PR screenshot or a recording hides each of the
   account's trainer names — on the VS screen, under the avatar on the map and as the partner under "OBTAINED IN A TRADE"

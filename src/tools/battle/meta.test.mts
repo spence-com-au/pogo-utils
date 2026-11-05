@@ -133,3 +133,22 @@ test('rankings that cannot be had allow for every move rather than stopping the 
   expect(await loadMeta(download, DATA, 'great')).toBe(null);
   expect(console.error).toHaveBeenCalledWith(expect.stringContaining('rankings-1500.json: 404 Not Found'));
 });
+
+test.each([
+  { cup: '../../x', cp: 1500 },
+  { cup: 'fantasy', cp: '../1500' },
+])('a format naming a path outside the cache, $cup and $cp, is never downloaded', async (format) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  const pvpoke = { ...PVPOKE, formats: [{ title: 'Fantasy Cup', ...format }] };
+  const files: string[] = [];
+
+  const tampered: Download = async (file, url, decode) => {
+    files.push(file);
+
+    return decode(new TextEncoder().encode(JSON.stringify(file === 'pvpoke-gamemaster.json' ? pvpoke : [])));
+  };
+
+  expect(await loadMeta(tampered, DATA, 'fantasy cup')).toBe(null);
+  expect(files).toStrictEqual(['pvpoke-gamemaster.json']);
+});
