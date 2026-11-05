@@ -620,8 +620,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           {/*
            * What this repository added for the event, linking through to it on the map. Last, so that the absolute
            * dates and the relative ones stay together above it. The query is what lands the link on the entry rather
-           * than on a page of 81 rows. The stylesheet puts the Map tab's own glyph in front, so the destination is
-           * named the same way twice; the accessible name says it in words instead.
+           * than on the whole list of routes. The stylesheet puts the Map tab's own glyph in front, so the destination
+           * is named the same way twice; the accessible name says it in words instead.
            */}
           {summary !== null && (
             <a
