@@ -11,16 +11,17 @@ import {
   ENTRIES,
   GENERATION_NUMBERS,
   HUNTS,
+  entryOf,
   generationOf,
+  heldIn,
   huntsOf,
   numbered,
-  type Entry,
 } from './entries.js';
 import PGSHARP_FILTERS from '../pgsharp/filters.js';
 import { GENERATIONS } from '../pokemon/generations.js';
 import { fold } from '../pokemon/names.js';
 import POKEMON, { PALDEA } from '../pokemon/pokedex.js';
-import type Pokemon from '../pokemon/pokemon.js';
+import Pokemon from '../pokemon/pokemon.js';
 
 /** One row by the name the page shows. It throws rather than narrowing: a species gone is a precondition gone. */
 function entry(name: string) {
@@ -32,11 +33,6 @@ function entry(name: string) {
 
   return found;
 }
-
-/** Every Pokémon one row holds, the species and its forms alike, which is what the species-level answers read. */
-const held = (row: Entry) => [row.species, ...row.variants.map(({ pokemon }) => pokemon)];
-
-const parts = (name: string) => held(entry(name));
 
 test('a dex number belongs to the generation whose last number it reaches, both ends included', () => {
   const lasts = GENERATIONS.map(({ last }) => last);
@@ -85,43 +81,60 @@ test("the categories are a list in the table's order, and a species in none of t
   expect(entry('Bulbasaur').categories).toEqual([]);
 });
 
+/**
+ * The species here are built for the case rather than read from the dex: whether Phione or Rotom's Fan form is in the
+ * game is Niantic's to change, and a release would otherwise break a test of code that is still right.
+ */
 test('a shiny that exists only on a part of the dex nobody can catch is not a shiny the page offers', () => {
-  // Phione is in the game master with a shiny and is not released. Weighing every part rather than the released ones
-  // would put a shiny chip on a card for a species that cannot be caught at all, shiny or otherwise.
-  expect(parts('Phione').map((part) => [part.released, part.shinyEligible])).toEqual([[false, true]]);
-  expect([entry('Phione').released, entry('Phione').shiny]).toEqual([false, false]);
+  // A part with a shiny that is not released: weighing every part rather than the released ones would put a shiny chip
+  // on a card for a species that cannot be caught at all, shiny or otherwise.
+  const unreleased = new Pokemon(900).isNotReleased();
 
-  // The same gate over `spawns`, where ignoring it is the louder error: Pyukumuku is not in the game and the table
-  // still carries the spawn flag it would have, so weighing every part would promise a wild encounter with something
-  // that cannot be met at all. Most of the unreleased half of the dex reads this way, Phione and Pyukumuku included.
-  expect(parts('Pyukumuku').map((part) => [part.released, part.spawns])).toEqual([[false, true]]);
-  expect(entry('Pyukumuku').spawns).toBe(false);
+  expect([unreleased.released, unreleased.shinyEligible]).toEqual([false, true]);
+  expect(entryOf('UNRELEASED', unreleased)).toMatchObject({ released: false, shiny: false });
+
+  // The same gate over `spawns`, where ignoring it is the louder error: the table still carries the spawn flag the
+  // species would have, so weighing every part would promise a wild encounter with something that cannot be met.
+  expect(unreleased.spawns).toBe(true);
+  expect(entryOf('UNRELEASED', unreleased).spawns).toBe(false);
 
   // The same reading from the other side: a species is in the game, and has a shiny, if any one part of it does.
-  expect([entry('Articuno').released, entry('Articuno').shiny]).toEqual([true, true]);
+  expect(entryOf('RELEASED', new Pokemon(901))).toMatchObject({ released: true, shiny: true, spawns: true });
 });
 
 test('a species is in the game if any part of it is, rather than only if all of it is', () => {
-  // Six of Rotom's seven forms are out and the Fan Rotom is not, so asking for every part would take Rotom off the
-  // released filter altogether — a card hidden for a species a reader already has in their bag.
-  expect(parts('Rotom').map((part) => part.released)).toEqual([true, true, true, true, true, true, false]);
-  expect(entry('Rotom').released).toBe(true);
+  // The species itself is out and so is one form while another is in, so asking for every part would leave the row off
+  // the released filter altogether — a card hidden for a species a reader already has in their bag.
+  const species = new Pokemon(902).isNotReleased().addForms('OUT', 'IN');
+
+  species.form('IN').isReleased();
+
+  expect([species, ...species.forms('OUT', 'IN')].map((part) => part.released)).toEqual([false, false, true]);
+  expect(entryOf('MIXED', species).released).toBe(true);
 });
 
 test('a hunt can want a species the feed will never turn up, and the row says which', () => {
-  const articuno = entry('Articuno');
+  // A hunt wanting a species nothing of which spawns, so the feed PGSharp is handed cannot alert on one. A page that
+  // cannot tell this from a live hunt shows a checklist as something it is still watching for.
+  const silent = new Pokemon(903).isLegendary();
+  const live = new Pokemon(904);
+  const hunt = {
+    id: 'wanted',
+    label: 'Wanted',
+    members: new Set([silent, live]),
+    watched: (p: Pokemon) => p.spawns,
+    fillable: (p: Pokemon) => p.released,
+    perForm: false,
+  };
 
-  // Articuno is on the XXL list and nothing it holds spawns, so the feed PGSharp is handed cannot alert on one. A page
-  // that cannot tell this from a live hunt shows a checklist as something it is still watching for.
-  expect(HUNTS.find(({ id }) => id === 'xxl')?.members.has(articuno.species)).toBe(true);
-  expect(parts('Articuno').map((part) => part.spawns)).toEqual([false, false]);
-
-  expect(articuno.hunts).toEqual([{ id: 'xxl', watched: false }]);
+  expect(silent.spawns).toBe(false);
+  expect(huntsOf([silent], [hunt])).toEqual([{ id: 'wanted', watched: false }]);
+  expect(huntsOf([live], [hunt])).toEqual([{ id: 'wanted', watched: true }]);
 
   // A hunt the row is not on is left out rather than carried as `false`, because the page reads the array itself —
   // carrying all four would file every species under every list with nothing to say it was not wanted.
+  expect(huntsOf([new Pokemon(905)], [hunt])).toEqual([]);
   expect(HUNTS.map(({ id }) => id)).toEqual(['shiny', 'xxl', 'xxs', 'perfect']);
-  expect(entry('Bulbasaur').hunts).toEqual([{ id: 'xxl', watched: true }]);
 });
 
 test('a hunt is watched where any member it wants is, not where every one of them is', () => {
@@ -141,6 +154,56 @@ test('a hunt is watched where any member it wants is, not where every one of the
   };
 
   expect(huntsOf([species, variant], [hunt])).toEqual([{ id: 'split', watched: true }]);
+});
+
+/** A hunt over exactly these members, filled by whatever is in the game. */
+const huntOf = (members: Pokemon[], over: { perForm?: boolean; fillable?: (p: Pokemon) => boolean } = {}) => ({
+  id: 'held',
+  label: 'Held',
+  members: new Set(members),
+  watched: () => true,
+  fillable: (p: Pokemon) => p.released,
+  perForm: false,
+  ...over,
+});
+
+test('a hunt that lists a species bare wants every form of it, and one form listed leaves the rest held', () => {
+  const species = new Pokemon(910).addForms('RED', 'BLUE');
+  const [red] = species.forms('RED', 'BLUE');
+
+  expect(heldIn(species, huntOf([species]))).toBe(false);
+  expect(heldIn(species, huntOf([red as Pokemon]))).toBe(true);
+  expect(heldIn(species, huntOf([]))).toBe(true);
+});
+
+test('a regional variant carries its species’ answer unless the hunt is written a form at a time', () => {
+  const species = new Pokemon(911).addRegion('GALARIAN');
+  const regional = species.region('GALARIAN');
+
+  // One entry per species: the bare species stands for the regional variant too, so nothing of it is left held.
+  expect(heldIn(species, huntOf([species]))).toBe(false);
+
+  // Per form: the variant is a slot of its own and the list did not name it, so the species is held through it.
+  expect(heldIn(species, huntOf([species], { perForm: true }))).toBe(true);
+  expect(heldIn(species, huntOf([species, regional], { perForm: true }))).toBe(false);
+  expect(heldIn(species, huntOf([regional], { perForm: true }))).toBe(true);
+});
+
+test('a slot the hunt cannot fill does not hold the species, however the list reads', () => {
+  const species = new Pokemon(912).addForms('OUT', 'IN');
+  const [out, inGame] = species.forms('OUT', 'IN');
+
+  out?.isNotReleased();
+
+  // Only the form that is out is unwanted, and an unreleased form cannot be registered, so the species is not held.
+  expect(heldIn(species, huntOf([inGame as Pokemon]))).toBe(false);
+  expect(heldIn(species, huntOf([out as Pokemon]))).toBe(true);
+
+  // A fillable that asks for more than being released, as the shiny hunt's does.
+  const plain = new Pokemon(913).isNotShinyEligible();
+
+  expect(heldIn(plain, huntOf([], { fillable: (p) => p.released && p.shinyEligible }))).toBe(false);
+  expect(heldIn(plain, huntOf([]))).toBe(true);
 });
 
 test('a hunt is watched for exactly the species the PGSharp feed built from its list carries', () => {

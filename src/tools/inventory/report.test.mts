@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { type Form } from './game-master.mts';
-import { answer, type Reading } from './report.mts';
+import { answer, isDetail, printable, refusals, type Reading } from './report.mts';
 
 const APPLIN: Form = {
   dex: 840,
@@ -119,5 +119,43 @@ test('a screen that read nothing answers unknown, from nowhere', () => {
     identity: { ...READING.identity, form: null, cp: null, levels: [] },
   });
 
+  expect(facts).not.toHaveLength(0);
   expect(facts.every((f) => f.value === 'unknown' && f.source === null)).toBe(true);
+});
+
+const BOX = { x: 0, y: 0, width: 10, height: 10 };
+
+test('a screen is a detail screen when its HP read', () => {
+  expect(isDetail(READING.detail)).toBe(true);
+  expect(isDetail({ ...READING.detail, hp: null })).toBe(false);
+});
+
+/** A configured box is taken on trust, so the box can be known while nothing reads inside it. */
+test('a capture is refused for each of the three reasons, and for none where all three hold', () => {
+  const found = { ...READING, box: BOX };
+
+  expect(refusals(found)).toStrictEqual([]);
+  expect(refusals({ ...found, detail: { ...READING.detail, hp: null } })).toStrictEqual([
+    'its HP did not read, so a scan could not have used this screen',
+  ]);
+  expect(refusals(READING)).toStrictEqual(["PGSharp's overlay was not found on it"]);
+  expect(refusals({ ...found, overlay: null })).toStrictEqual([
+    "PGSharp's overlay was found but nothing read inside it",
+  ]);
+});
+
+test('an identity prints its forms with their moves as names', () => {
+  const move = { name: 'Vine Whip' } as Form['moves'][number];
+  const withMoves = { ...APPLIN, moves: [move, { ...move, name: 'Dragon Breath' }] };
+  const printed = printable({
+    ...READING.identity,
+    form: withMoves,
+    alternatives: [withMoves],
+    unseparated: [withMoves],
+  });
+
+  expect(printed.form?.moves).toBe('Vine Whip, Dragon Breath');
+  expect(printed.alternatives[0]?.moves).toBe('Vine Whip, Dragon Breath');
+  expect(printed.unseparated[0]?.moves).toBe('Vine Whip, Dragon Breath');
+  expect(printable({ ...READING.identity, form: null }).form).toBeNull();
 });
