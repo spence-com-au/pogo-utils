@@ -504,7 +504,7 @@ export function stripperOf(
   return (
     best && {
       slot: best.slot,
-      why: `${party[best.slot]?.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
+      why: `${best.card.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
     }
   );
 }
