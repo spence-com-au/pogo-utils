@@ -11,13 +11,15 @@ body:
       label: 'Page'
       description:
         'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, or `Trainer battles` for a `pnpm
-        battle` command.'
+        battle` command. The Inventory and Battle tabs on the site are `Inventory` and `Battle`.'
       options:
         - 'Events'
         - 'Map'
         - 'Search'
         - 'Pokédex'
         - 'Integrations'
+        - 'Inventory'
+        - 'Battle'
         - 'The whole site'
         - 'Pokémon inventory'
         - 'Trainer battles'
@@ -29,9 +31,9 @@ body:
     attributes:
       label: 'Link'
       description:
-        'The address bar, copied. The fragment carries the state a page was left in, so this is what reproduces it. The
-        inventory and battle tools have no address, so leave this empty for them and give the command under What
-        happened instead.'
+        'The address bar, copied. The fragment carries the state a page was left in, so this is what reproduces it. A
+        `pnpm inventory` or `pnpm battle` command has no address, so leave this empty for one and give the command under
+        What happened instead.'
       placeholder: 'https://spence.com.au/pogo-utils/#/pokedex?q=pika&n=25'
 
   - type: 'textarea'
