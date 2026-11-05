@@ -13,7 +13,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import postcss, { type Declaration } from 'postcss';
+import postcss, { type AtRule, type Declaration } from 'postcss';
 import { expect, test } from 'vitest';
 
 import { PAGES } from './page-table.ts';
@@ -29,19 +29,19 @@ const sources = (ext: string) =>
 
 /**
  * The ids a stylesheet selects on, read out of selector text rather than out of the file whole: `#fff` is a colour and
- * `#1a1d25` is another, and both live in declarations. Taking only what sits before a `{` leaves the selectors.
+ * `#1a1d25` is another, and both live in declarations. Walking the parsed rules leaves the selectors, including a rule
+ * nested right after a `{`: the first under a page's wrapper, or in an `@media` block.
  */
 function selectedIds(css: string) {
   const ids = new Set<string>();
-  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-  for (const [, , selector] of bare.matchAll(/(^|[}])\s*([^{}@][^{}]*?)\s*[{]/g)) {
-    for (const [, id] of (selector ?? '').matchAll(/#([A-Za-z_][\w-]*)/g)) {
+  postcss.parse(css).walkRules((rule) => {
+    for (const [, id] of rule.selector.matchAll(/#([A-Za-z_][\w-]*)/g)) {
       if (id !== undefined) {
         ids.add(id);
       }
     }
-  }
+  });
 
   return ids;
 }
@@ -277,8 +277,8 @@ test('every rule that hides an element by its `hidden` attribute outranks the sh
 });
 
 /**
- * The page names a sheet scopes itself to, out of its `body[data-page='…']` wrappers. Comments are stripped first, as
- * `selectedIds` does, because the wrapper is discussed in prose in most of these sheets.
+ * The page names a sheet scopes itself to, out of its `body[data-page='…']` wrappers. Comments are stripped first,
+ * because the wrapper is discussed in prose in most of these sheets.
  */
 function scopedPages(css: string) {
   const pages = new Set<string>();
@@ -324,6 +324,74 @@ test('every page a stylesheet scopes itself to is one the router has', () => {
 
   // Named rather than counted, so a failure says which sheet has stopped reaching its page, and which page it wanted.
   expect(orphaned.sort()).toEqual([]);
+});
+
+/**
+ * The top-level nodes of a page sheet that sit outside its `body[data-page='…']` wrapper, as the selector or at-rule
+ * they open with. A `@keyframes` is let through because its name is global wherever it sits, so scoping it would change
+ * nothing and a style rule cannot hold one; `GLOBAL` names the rest, which are global on purpose.
+ */
+function unwrapped(css: string, page: string) {
+  const wrapper = `body[data-page='${page}']`;
+  const stray: string[] = [];
+
+  postcss.parse(css).each((node) => {
+    if (node.type === 'comment' || (node.type === 'atrule' && node.name === 'keyframes')) {
+      return;
+    }
+
+    const opens =
+      node.type === 'rule'
+        ? node.selector.replace(/\s+/g, ' ').trim()
+        : node.type === 'atrule'
+          ? `@${node.name} ${node.params}`
+          : node.type;
+
+    if (opens !== wrapper && !GLOBAL.has(`${page}: ${opens}`)) {
+      stray.push(opens);
+    }
+  });
+
+  return stray;
+}
+
+/** The rules a page sheet keeps outside its wrapper on purpose, each as `<page>: <selector>`. */
+const GLOBAL = new Set(['map: html, body']);
+
+test('every top-level rule in a page sheet sits inside its own wrapper', () => {
+  /*
+   * `main.tsx` bundles every page sheet into the one `main.css`, which is safe only because each is wrapped in
+   * `body[data-page='…']` and so inert on the other pages. The check above covers a wrapper that names a page the
+   * router lacks; this covers a wrapper that is missing or names another page, and a rule written after it at the top
+   * level. Any of them restyles every other tab and passes everything else here, since the collision checks compare
+   * class names only within one sheet or against the bar's.
+   *
+   * `theme.css`, `nav.css` and `chrome.css` are the shell's own and global by design, so only the sheets named for a
+   * page are read.
+   */
+  const stray = PAGES.flatMap(({ name }) =>
+    unwrapped(readFileSync(join(STYLES, `${name}.css`), 'utf8'), name).map(
+      (opens) => `${name}.css has \`${opens}\` outside its wrapper`,
+    ),
+  );
+
+  // Named rather than counted, so a failure says which sheet leaks and through which rule.
+  expect(stray).toEqual([]);
+});
+
+test('the wrapper check can tell a wrapped rule from a stray one', () => {
+  // The same reason the others have one: a walk that visited nothing would report no strays however many there were.
+  expect(unwrapped("body[data-page='map'] { .a { color: red } }", 'map')).toEqual([]);
+  expect(unwrapped("body[data-page='map'] { color: red } .a { color: red }", 'map')).toEqual(['.a']);
+
+  // Another page's wrapper is not this page's, and a media query at the top level has escaped the wrapper too.
+  expect(unwrapped("body[data-page='search'] { color: red }", 'map')).toEqual(["body[data-page='search']"]);
+  expect(unwrapped('@media (width <= 560px) { .a { color: red } }', 'map')).toEqual(['@media (width <= 560px)']);
+
+  // The two ways through: a keyframe set, and a rule `GLOBAL` names for that page alone.
+  expect(unwrapped('@keyframes spin { from { opacity: 0 } }', 'map')).toEqual([]);
+  expect(unwrapped('html,\nbody { height: 100% }', 'map')).toEqual([]);
+  expect(unwrapped('html, body { height: 100% }', 'events')).toEqual(['html, body']);
 });
 
 test('the page check can tell a scoped sheet from an unscoped one', () => {
@@ -386,6 +454,10 @@ test('the check can tell a missing id from a present one', () => {
 
   // More than one in a list, and more than one in a selector.
   expect(selectedIds('#a .x, #b .y { color: red }')).toEqual(new Set(['a', 'b']));
+
+  // Nested under a page's wrapper or an at-rule, where the first rule follows a `{` rather than a `}`.
+  expect(selectedIds("body[data-page='map'] { #root { color: red } }")).toEqual(new Set(['root']));
+  expect(selectedIds('@media (width < 600px) { #a { color: red } }')).toEqual(new Set(['a']));
 });
 
 test('the hiding check can tell an outranked rule from an unconditional one', () => {
@@ -523,4 +595,89 @@ test('the import check reads relative sheets and nothing else', () => {
   );
 
   expect(imported).toEqual(new Set([join(STYLES, 'theme.css'), join(STYLES, 'nested/page.css')]));
+});
+
+/** `#rgb` or `#rrggbb` as lower-case `#rrggbb`, so `#fff` in one file and `#ffffff` in another compare equal. */
+function hex(colour: string) {
+  const digits = colour.trim().toLowerCase().replace(/^#/, '');
+
+  return `#${digits.length === 3 ? [...digits].map((digit) => digit + digit).join('') : digits}`;
+}
+
+/**
+ * The custom properties `theme.css` sets on `:root`, in the light palette and in the dark one: a `:root` rule at the
+ * top level is light, one under the `prefers-color-scheme: dark` query is dark, and one anywhere else is neither.
+ */
+function palettes(css: string) {
+  const light = new Map<string, string>();
+  const dark = new Map<string, string>();
+
+  postcss.parse(css).walkRules(':root', (rule) => {
+    const parent = rule.parent;
+    const query = parent?.type === 'atrule' ? (parent as AtRule).params : undefined;
+    const into =
+      parent?.type === 'root' ? light : query !== undefined && /prefers-color-scheme:\s*dark/.test(query) ? dark : null;
+
+    for (const node of rule.nodes) {
+      if (into !== null && node.type === 'decl' && node.prop.startsWith('--')) {
+        into.set(node.prop, node.value.trim());
+      }
+    }
+  });
+
+  return { light, dark };
+}
+
+test('every copy of a theme colour outside the stylesheets matches the token it copies', () => {
+  /*
+   * The browser chrome, the installed app and the tab icon are painted from files that cannot read a custom property —
+   * a `<meta>`, a JSON manifest and an SVG a browser renders on its own — so each carries the colour by hand. Retuning
+   * `theme.css` would leave every one of them on the old value with the build green, and `scripts/build-icons.mts`
+   * paints the maskable icon's plate from `background_color`, so the installed icon would drift with it.
+   */
+  const { light, dark } = palettes(readFileSync(join(STYLES, 'theme.css'), 'utf8'));
+  const token = (palette: Map<string, string>, name: string) => hex(palette.get(name) ?? `missing ${name}`);
+
+  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const themeColor = (scheme: string) =>
+    new RegExp(`<meta name="theme-color" content="([^"]+)" media="\\(prefers-color-scheme: ${scheme}\\)"`).exec(
+      html,
+    )?.[1];
+
+  expect({ light: themeColor('light'), dark: themeColor('dark') }).toEqual({
+    light: token(light, '--panel'),
+    dark: token(dark, '--panel'),
+  });
+
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')) as Record<string, string>;
+
+  expect({ background: manifest['background_color'], theme: manifest['theme_color'] }).toEqual({
+    background: token(light, '--bg'),
+    theme: token(light, '--panel'),
+  });
+
+  /*
+   * The favicon's colours as a set rather than element by element: the red half is `--accent`, the band, the button's
+   * outline and the light rim are `--text`, and the dark rim is the dark `--text`. The ball's white is the ball's own
+   * rather than a token's, so it is named as a literal.
+   */
+  const svg = readFileSync(join(ROOT, 'favicon.svg'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const painted = new Set([...svg.matchAll(/#(?:[\da-f]{6}|[\da-f]{3})\b/gi)].map(([colour]) => hex(colour)));
+
+  expect(painted).toEqual(
+    new Set([token(light, '--accent'), token(light, '--text'), token(dark, '--text'), '#ffffff']),
+  );
+});
+
+test('the palette reader keeps the light and dark tokens apart', () => {
+  // The same reason the others have one: a reader that found nothing would hold every copy against nothing.
+  const both =
+    ':root { --a: #fff; color-scheme: light dark } @media (prefers-color-scheme: dark) { :root { --a: #000 } }';
+
+  expect(palettes(both)).toEqual({ light: new Map([['--a', '#fff']]), dark: new Map([['--a', '#000']]) });
+
+  // A `:root` under some other query is neither palette.
+  expect(palettes('@media print { :root { --a: #fff } }')).toEqual({ light: new Map(), dark: new Map() });
+
+  expect([hex('#FFF'), hex('#1a1d25')]).toEqual(['#ffffff', '#1a1d25']);
 });

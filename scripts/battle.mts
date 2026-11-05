@@ -66,6 +66,7 @@ import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-w
 import { encodePng } from '../src/tools/inventory/png.mts';
 import { createHash } from 'node:crypto';
 import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { constants } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -196,7 +197,7 @@ if (command === 'run') {
   const meta = mode.mode === 'gbl' ? await loadMeta(cache(CACHE), data, mode.league) : null;
 
   // Awake for as long as it runs: a screen gone dark mid-battle reads as nothing recognised and ends the run. The
-  // setting is read first and put back as found on every way out, `restore` and the Ctrl-C handler in place before it
+  // setting is read first and put back as found on every way out, `restore` and the signal handler in place before it
   // is changed, and checked to be the number Android stores, since it goes back through the shell.
   const awake = new TextDecoder().decode(
     await transport.shell(['settings', 'get', 'global', 'stay_on_while_plugged_in']),
@@ -328,10 +329,13 @@ if (command === 'run') {
   };
 
   // Ctrl-C closes the held shell while the run is still sending to it: what then fails is no error of the run's, and
-  // the setting is put back by the handler alone.
+  // the setting is put back by the handler alone. A `kill`, a `timeout` or the terminal closed stops it the same way,
+  // since nothing else would put the setting back, and the next run would take the one left behind as the one found.
+  // The first signal alone is handled, so a second still stops a run whose way out hangs.
   let interrupted = false;
+  const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
 
-  // What both the ways out let go of, the Ctrl-C handler and `finally`, which an interrupted run reaches both of.
+  // What both the ways out let go of, the signal handler and `finally`, which an interrupted run reaches both of.
   const release = () => {
     frames?.flush();
     screen?.close();
@@ -339,12 +343,15 @@ if (command === 'run') {
     held.close();
   };
 
-  process.once('SIGINT', () => {
+  const stop = (signal: (typeof signals)[number]) => {
+    signals.forEach((other) => process.off(other, stop));
     interrupted = true;
     panel?.done();
     release();
-    void restore().finally(() => process.exit(130));
-  });
+    void restore().finally(() => process.exit(128 + constants.signals[signal]));
+  };
+
+  signals.forEach((signal) => process.on(signal, stop));
 
   try {
     await transport.shell(['svc', 'power', 'stayon', 'usb']);

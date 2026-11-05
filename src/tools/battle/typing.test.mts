@@ -8,7 +8,9 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
-import { decodePng } from '../inventory/png.mts';
+import { decodePng, type Image } from '../inventory/png.mts';
+import { down, TOP } from './layout.mts';
+import { type Colour } from './minigame.mts';
 import { iconColour, readTypes } from './typing.mts';
 
 const DATA = JSON.parse(
@@ -85,4 +87,52 @@ test('a screen without the HUD reads neither side', () => {
   for (const name of ['shield-glaceon', 'shield-sneasel', 'other-win', 'other-vs-fade', 'menu-main']) {
     expect(readTypes(png(name), COLOURS), name).toEqual({ own: null, opponent: null });
   }
+});
+
+/**
+ * `frame` with the icon at `x` across redrawn as a disc of `colour` under a white emblem covering a seventh of it, at
+ * the height and radius `typing.mts` reads.
+ */
+function redraw(frame: Image, x: number, colour: Colour): Image {
+  const data = frame.data.slice();
+  const [cx, cy, r] = [x * frame.width, down(0.098, TOP, frame) * frame.height, 0.019 * frame.width];
+
+  for (let y = Math.floor(cy - r) - 1; y <= cy + r + 1; y++) {
+    for (let px = Math.floor(cx - r) - 1; px <= cx + r + 1; px++) {
+      const from = Math.hypot(px - cx, y - cy);
+
+      if (from <= r + 1) {
+        data.set(from <= r * Math.sqrt(1 / 7) ? [255, 255, 255, 255] : [...colour, 255], (y * frame.width + px) * 4);
+      }
+    }
+  }
+
+  return { ...frame, data };
+}
+
+test('an icon neither clearly a type nor clearly absent leaves its whole side unread', () => {
+  const frame = png('battle-crunch-entei');
+  const dark = iconColour(png('types/POKEMON_TYPE_DARK'));
+  const nearest = ([r, g, b]: Colour) =>
+    Math.min(...Object.values(COLOURS).map((type) => Math.hypot(type[0] - r, type[1] - g, type[2] - b)));
+
+  // Dark, shifted a little over `NEAR` from itself, and so from every other type too: between `NEAR` and `FAR` of all.
+  const between = [
+    [42, 0, 0],
+    [-42, 0, 0],
+    [0, 42, 0],
+    [0, -42, 0],
+    [0, 0, 42],
+    [0, 0, -42],
+  ]
+    .map(([r = 0, g = 0, b = 0]): Colour => [dark[0] + r, dark[1] + g, dark[2] + b])
+    .find((colour) => nearest(colour) > 38 && nearest(colour) < 47);
+
+  expect(between).toBeDefined();
+  expect(readTypes(redraw(frame, 0.094, dark), COLOURS).own).toEqual(TYRANITAR);
+
+  // Far from every type is an empty place, which a two-type side leaves out; in between is a guess that it does not
+  // make.
+  expect(readTypes(redraw(frame, 0.094, [0, 0, 0]), COLOURS).own).toEqual(['Rock']);
+  expect(readTypes(redraw(frame, 0.094, between ?? dark), COLOURS)).toEqual({ own: null, opponent: ENTEI });
 });

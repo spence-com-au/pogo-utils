@@ -256,7 +256,7 @@ function along(xs: readonly number[], ys: readonly number[], width: number, heig
 
   const angle = Math.atan2(2 * sxy, sxx - syy) / 2;
   const [ux, uy] = [Math.cos(angle), Math.sin(angle)];
-  const along = xs.map((x, i) => (x - mx) * ux + ((ys[i] ?? 0) - my) * uy);
+  const offsets = xs.map((x, i) => (x - mx) * ux + ((ys[i] ?? 0) - my) * uy);
   const overrun = OVERRUN * width;
   const clamp = (v: number, least: number, most: number) => Math.min(Math.max(v, least), most);
   const end = (t: number): Point => [
@@ -264,5 +264,5 @@ function along(xs: readonly number[], ys: readonly number[], width: number, heig
     clamp((my + uy * t) / height, REACH.top, REACH.bottom),
   ];
 
-  return [end(Math.min(...along) - overrun), end(Math.max(...along) + overrun)];
+  return [end(Math.min(...offsets) - overrun), end(Math.max(...offsets) + overrun)];
 }
