@@ -8,7 +8,7 @@ import { rgb } from '../inventory/png.mts';
 import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { streamSize } from './record-command.mts';
 import { Screen } from './screen.mts';
 import { decodeFrames, feed, type Recording } from './stream.mts';
@@ -48,17 +48,8 @@ const clip = (colour: string, seconds: number): Recording =>
 /** The screen out of each process `record` starts, decoded by `ffmpeg` as a battle's are. */
 const watched = (record: () => Recording, segmentMs?: number) => new Screen(() => feed(record(), size), segmentMs);
 
-/**
- * Waits until `done`, or `ms`, for the assertion that follows to say which. A fixed pause is a guess at how long `ffmpeg`
- * takes to start, and a busy machine takes longer.
- */
-async function until(done: () => boolean, ms = 10_000): Promise<void> {
-  const deadline = performance.now() + ms;
-
-  while (!done() && performance.now() < deadline) {
-    await sleep(10);
-  }
-}
+/** How long `vi.waitUntil` gives a second `ffmpeg` to start and send a frame, which a busy machine is slow to do. */
+const starting = { timeout: 10_000, interval: 10 };
 
 /** Whether the screen's latest frame is the second recording's blue, rather than the first's red. */
 const blue = (screen: Screen): boolean => {
@@ -190,8 +181,7 @@ test('hands the screen to the next recording without going back to the last', as
   try {
     expect(rgb((await screen.first()).image, 10, 10)[0]).toBeGreaterThan(200);
 
-    await until(() => blue(screen));
-    expect(blue(screen)).toBe(true);
+    await vi.waitUntil(() => blue(screen), starting);
 
     // The first recording goes on sending frames for as long as its stop takes, and none of them may hand the screen
     // back. Looking for a while after the take-over is what catches one; looking only at the moment of it cannot.
@@ -225,7 +215,7 @@ test('keeps the whole screen as video across the hand-over, the first recording 
     await screen.first();
 
     // The next recording's bytes are written before they are decoded, so its frame on the screen is in the video.
-    await until(() => blue(screen));
+    await vi.waitUntil(() => blue(screen), starting);
   } finally {
     screen.close();
     video.close();
@@ -307,7 +297,7 @@ test('stops a recording that has started but not yet taken over when closed', as
   }, 500);
 
   await screen.first();
-  await until(() => recordings.length >= 2);
+  await vi.waitUntil(() => recordings.length >= 2, starting);
   screen.close();
 
   // At least the one that never took over, and as many more as a slow first frame let start: a fixed count failed every
