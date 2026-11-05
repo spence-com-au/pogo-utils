@@ -419,9 +419,10 @@ patterns being numbered where that table names them, and the build says so when 
 The **Integrations** page ([`src/pages/integrations.tsx`](src/pages/integrations.tsx), reached from the top tab bar)
 builds a _partial_ `PGSData.dat` containing only every route and waypoint here — plus, if ticked, a fixed control layout
 (floating control, fast-snipe buttons, cooldown indicator, nearby radar) and the nearby feed's filter list
-(`Shiny Hunting` and `100%`). No existing backup is needed: click **Generate & download**, then import the file into
-PGSharp to add them as favourites. Because the file holds only those keys, importing it leaves the rest of your PGSharp
-profile as it was. Everything runs in the browser. The favourite encoding is a client-side port of
+(`Shiny Hunting`, `Shiny Hunting (Hisuian)`, `Regional Shiny Hunting`, `100%`, `XXL` and `XXS`, less any with no species
+left to watch). No existing backup is needed: click **Generate & download**, then import the file into PGSharp to add
+them as favourites. Because the file holds only those keys, importing it leaves the rest of your PGSharp profile as it
+was. Everything runs in the browser. The favourite encoding is a client-side port of
 [`pgsedit`](https://github.com/joshuaspence/pgsedit).
 
 Every favourite is named with its country's flag in front — `🇳🇱 Amsterdam, Netherlands`, `🇯🇵 Ueno Park, Tokyo, Japan` —
@@ -431,12 +432,12 @@ build rather than importing unflagged. Both lists still sort by the name itself,
 
 Each waypoint also carries the IANA timezone its coordinates fall in (`Europe/Madrid`), read from the boundary data in
 [`tz-lookup`](https://github.com/darkskyapp/tz-lookup) — a zone name belongs to a polygon, so no offset calculation can
-stand in for it. Routes have no timezone field, matching PGSharp. If that script does not load, the backup is written
-without timezones and the page says how many were left out; PGSharp accepts entries either way.
+stand in for it. Routes have no timezone field, matching PGSharp. A waypoint outside ±90/±180, which `tz-lookup` will
+not name, is written without a timezone and the page says how many were left out; PGSharp accepts entries either way.
 
 ## Import into Live PokeMap
 
-The second panel on the **Integrations** page writes a [Live PokeMap](https://livepokemap.com) _display filter_: an
+The third panel on the **Integrations** page writes a [Live PokeMap](https://livepokemap.com) _display filter_: an
 allowlist of every species still wanted for a shiny, as the dex numbers its filter stores. Click **Copy to clipboard**,
 then press **Import** under Live PokeMap's own display filters. A copy rather than a download because its importer takes
 neither a file nor a pasted field — it calls `navigator.clipboard.readText()` and reads whatever is on the clipboard, so
