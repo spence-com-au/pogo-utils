@@ -168,7 +168,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
     fact('hp', detail.hp, 'read'),
     fact('level', identity.levels.join(' or '), 'worked out'),
-    fact('ivs', overlay && ivsOf(overlay), 'read'),
+    fact('ivs', overlay && ivsOf(overlay.iv), 'read'),
     fact('fast move', moves.fast, 'read'),
     fact('charged', moves.charged.join(', '), 'read'),
   ];

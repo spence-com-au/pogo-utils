@@ -961,7 +961,7 @@ async function scan(held: Transport) {
       written++;
 
       const each = (Date.now() - started) / written / 1000;
-      const ivText = overlay ? ivsOf(overlay) : '?';
+      const ivText = iv ? ivsOf(iv) : '?';
       console.error(
         `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.level || '?'}` +
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,

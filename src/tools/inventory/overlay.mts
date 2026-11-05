@@ -42,8 +42,11 @@ export interface Overlay {
   form: string | null;
 }
 
-/** The IVs as `attack/defense/stamina`, the one spelling every key, landmark and log line compares or shows. */
-export function ivsOf({ iv }: Overlay): string {
+/**
+ * The IVs as `attack/defense/stamina`, the one spelling every key, landmark and log line compares or shows, whether
+ * they were read off the overlay or back out of a CSV.
+ */
+export function ivsOf(iv: IVs): string {
   return `${iv.attack}/${iv.defense}/${iv.stamina}`;
 }
 
@@ -220,9 +223,7 @@ export function fuller(readings: readonly { iv: IVs }[]): IVs | null {
     .map((reading) => reading.iv)
     .filter((iv) => digits(iv) > digits(first.iv) && fields(iv).every((field, i) => holds(field, base[i] ?? '')));
   const most = Math.max(...extending.map(digits));
-  const best = [
-    ...new Map(extending.filter((iv) => digits(iv) === most).map((iv) => [fields(iv).join('/'), iv])).values(),
-  ];
+  const best = [...new Map(extending.filter((iv) => digits(iv) === most).map((iv) => [ivsOf(iv), iv])).values()];
 
   return best.length === 1 ? (best[0] ?? null) : null;
 }
