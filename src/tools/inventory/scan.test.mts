@@ -327,6 +327,42 @@ test('a miss just before a run that ends storage does not visit the last Pokémo
   expect(error).not.toHaveBeenCalled();
 });
 
+test('a third unreadable screen in a row stops the pass, and two do not', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2])).toEqual([
+    ['a', 0],
+    [null, 1],
+    [null, 2],
+    ['d', 3],
+    ['e', 4],
+  ]);
+  expect(error).not.toHaveBeenCalledWith(expect.stringContaining('three unreadable screens'));
+
+  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2, 3])).toEqual([
+    ['a', 0],
+    [null, 1],
+    [null, 2],
+  ]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('three unreadable screens in a row; stopping this pass'));
+  error.mockRestore();
+});
+
+test('a screen read two different ways, leaving no end to storage it fits, stops the pass', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  // The second Pokémon goes unread, and the look back that tells the third from it read again reads it `q`. At the end
+  // the look back reads it `b` all three times, which fits neither storage going on, with `c` there, nor storage
+  // ending, with `q` there, so the pass stops on the look back, each Pokémon visited once and none past the end.
+  expect(await walked(['a', 'b', 'c'], Infinity, 0, [1], [], null, { 1: 'q' })).toEqual([
+    ['a', 0],
+    [null, 1],
+    ['c', 2],
+  ]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('one screen read two different ways'));
+  error.mockRestore();
+});
+
 test('a miss on the last Pokémon in storage ends the walk there', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
