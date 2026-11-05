@@ -89,8 +89,10 @@ const near = (colour: Colour, target: Colour, within: number) =>
  *
  * The sky between the panels is the rest of the test, and is what two near misses fail. The map's notifications are a
  * bar straight across the top, and `96% found a Candy!` measured 249/253/243 in the right strip and 204/214/209 in the
- * gap — no sky there, its blue under its green. The fade into a battle failed the same way, 211/231/227 in the gap.
- * Sky, and the grey countdown that sits on it during a prompt, never has less blue than green.
+ * gap — no sky there, its green over both its red and its blue. The fade into a battle failed the same way, 211/231/227
+ * in the gap. Sky, and the grey countdown that sits on it during a prompt, is never greener than it is either red or
+ * blue: a clear sky is bluest, and overcast cloud over the autumn map, 201/198/183 in a GO Battle League run on a
+ * Pixel 4 XL, reddest. Held to blue at least as strong as green, that run read its battle as `other` and stopped.
  *
  * The panels' colours are each channel's median along a strip rather than its mean, because the strips clip the tops of
  * each side's Poké Balls, and the right one the opponent's shields. A mean takes their colour in — three red balls drew
@@ -124,10 +126,10 @@ function darkIn(image: Image, box: Box): number {
 }
 
 function showsHud(image: Image): boolean {
-  const [, green, blue] = mean(image, HUD_GAP, TOP);
+  const [red, green, blue] = mean(image, HUD_GAP, TOP);
 
   return (
-    blue >= green &&
+    green <= Math.max(red, blue) &&
     HUD.every((box) => panel(medianColour(image, box, TOP))) &&
     HUD_NAMES.every((box) => {
       const text = darkIn(image, box);
