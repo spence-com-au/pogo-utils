@@ -9,7 +9,7 @@ const frame = { width: 2, height: 2, data: new Uint8Array(2 * 2 * 4) };
 test('names a frame by when it was seen and says how many it kept once, however often it is flushed', () => {
   const dir = join(mkdtempSync(join(tmpdir(), 'keep-frames-')), 'frames');
   const told = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  const { keep, flush } = keepFrames(dir, 1000);
+  const { keep, flush } = keepFrames(dir, 1000, () => 15000);
 
   keep(frame, 13437, 'shield');
   keep(frame, 14000, 'faint');

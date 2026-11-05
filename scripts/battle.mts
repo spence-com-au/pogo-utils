@@ -64,9 +64,8 @@ import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.m
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-wasm.mts';
-import { encodePng } from '../src/tools/inventory/png.mts';
 import { createHash } from 'node:crypto';
-import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { constants } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -247,7 +246,7 @@ if (command === 'run') {
       : undefined);
 
   const dir = options['keep-frames'];
-  const frames = dir === undefined ? undefined : keepFrames(dir, started);
+  const frames = dir === undefined ? undefined : keepFrames(dir, started, clock.now);
 
   // The whole of the screen, written a picture at a time once each is known whole and `HELD_MS` have gone by since it
   // came, or a cut is known: synchronously, at about 8 KB a picture, so that a run stopped by Ctrl-C, which exits
@@ -388,10 +387,12 @@ if (command === 'run') {
       console.error(said(error));
     }
 
-    if (error instanceof Lost && dir) {
-      error.frames.forEach((frame, i) =>
-        writeFileSync(join(dir, `${String(i).padStart(2, '0')}.png`), encodePng(frame)),
-      );
+    // A write that fails is told by `flush` with the others rather than thrown over the error that stopped the run.
+    if (
+      error instanceof Lost &&
+      frames &&
+      error.frames.every((frame, i) => frames.save(`${String(i).padStart(2, '0')}.png`, frame))
+    ) {
       console.error(`kept the last ${error.frames.length} frames in ${dir}`);
     }
   } finally {
