@@ -240,6 +240,95 @@ test('polls once per interval, logs in again when refused, writes nothing and no
   expect(output).toContain('First poll: 3 spawns and 2 shinies, with shiny access');
 }, 60_000);
 
+/**
+ * The options the long run above leaves out: `NTFY_TOKEN` reaches the publish as a bearer header, and nowhere else, and
+ * `--verbose` prints each request and a line per poll.
+ */
+test('NTFY_TOKEN is sent to ntfy as a bearer token and --verbose prints every request', async () => {
+  const NTFY_TOKEN = 'tk_ntfy-access-token';
+
+  const map = await standIn((request, response) => {
+    switch (`${request.method} ${request.path}`) {
+      case 'GET /api/config':
+        return json(response, 200, JSON.parse(fixture('config.json')));
+      case 'GET /api/game_data':
+        return json(response, 200, JSON.parse(fixture('game-data.json')));
+      case 'POST /api/auth/login':
+        return json(response, 200, { token: TOKENS[0] });
+      case 'POST /api/map/viewport':
+        return json(response, 200, viewport());
+      default:
+        return json(response, 200, { success: true, data: {} });
+    }
+  });
+  const ntfy = await standIn((_request, response) => json(response, 200, { id: 'x' }));
+
+  const child = run(process.execPath, [SCRIPT, '--verbose', fixturePath('shiny-hunt.json')], {
+    cwd: NO_ENV,
+    env: {
+      ...process.env,
+      LPM_BASE_URL: map.url,
+      LPM_USERNAME: 'watcher',
+      LPM_PASSWORD: PASSWORD,
+      NTFY_SERVER: ntfy.url,
+      NTFY_TOPIC: 'secret-topic-name',
+      NTFY_TOKEN,
+      TZ: 'UTC',
+    },
+  });
+
+  let output = '';
+
+  child.stdout.on('data', (chunk) => (output += chunk));
+  child.stderr.on('data', (chunk) => (output += chunk));
+
+  const exited = new Promise<number | null>((done) => child.on('exit', done));
+
+  try {
+    // The first poll's four spawns are four notifications, and its verbose line comes before the first of them.
+    for (let waited = 0; ntfy.requests.length < 4; waited += 100) {
+      expect(waited, `still waiting on the first poll; it printed:\n${output}`).toBeLessThan(30_000);
+      await new Promise((tick) => setTimeout(tick, 100));
+    }
+
+    child.kill('SIGINT');
+    expect(await exited, output).toBe(0);
+  } finally {
+    child.kill('SIGKILL');
+    await map.close();
+    await ntfy.close();
+  }
+
+  expect(ntfy.requests.map((request) => request.headers.authorization)).toStrictEqual(
+    Array(4).fill(`Bearer ${NTFY_TOKEN}`),
+  );
+
+  // Live PokeMap never hears the ntfy token.
+  expect(map.requests.map((request) => request.headers.authorization)).not.toContain(`Bearer ${NTFY_TOKEN}`);
+
+  expect(output).toContain('POST /api/auth/login');
+  expect(output).toContain('POST /api/map/viewport');
+  expect(output).toMatch(/\d+ spawns, \d+ shinies, \d+ wanted/);
+
+  for (const secret of [PASSWORD, NTFY_TOKEN, ...TOKENS, 'secret-topic-name']) {
+    expect(output).not.toContain(secret);
+  }
+}, 60_000);
+
+test.each([['--help'], ['-h'], ['help']])(
+  '%s prints the usage and exits cleanly, needing no credentials',
+  async (arg) => {
+    const child = run(process.execPath, [SCRIPT, arg], {
+      cwd: NO_ENV,
+      env: { ...process.env, LPM_USERNAME: '', LPM_PASSWORD: '' },
+    });
+    const exited = new Promise<number | null>((done) => child.on('exit', done));
+
+    expect(await text(child.stdout)).toMatch(/^usage: pnpm watch:livepokemap \[--verbose\] FILTER\.json…/);
+    expect(await exited).toBe(0);
+  },
+);
+
 test('a refused or failed poll waits out a growing backoff rather than the interval, and carries on', async () => {
   let viewports = 0;
 
@@ -392,6 +481,26 @@ test('a 200 that is not JSON is retried at start rather than taken for an answer
   expect(lines[0]).toBe(
     'Could not read /api/config: GET /api/config: 200 with a body that is not JSON; trying again in 30s',
   );
+});
+
+test.each([
+  ['/api/config', null],
+  ['/api/config', { success: true, data: null }],
+  ['/api/game_data', null],
+  ['/api/game_data', { success: true, data: null }],
+])('%s answered with %j is a failure to wait out, not an answer', async (path, answer) => {
+  const map = await standIn((_request, response) => json(response, 200, answer));
+  const client = new LivePokeMap(map.url, { username: 'u', password: 'p' });
+  let error: unknown;
+
+  try {
+    await (path === '/api/config' ? client.config() : client.gameData()).catch((thrown: unknown) => (error = thrown));
+  } finally {
+    await map.close();
+  }
+
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error).toMatchObject({ status: 200, message: `GET ${path}: 200 with no object in its body` });
 });
 
 /**
