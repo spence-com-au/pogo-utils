@@ -20,6 +20,17 @@
         ]
       }
     ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/adb-lease.mts\" stop"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

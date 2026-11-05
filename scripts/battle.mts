@@ -42,6 +42,7 @@
  * through battles. Run it on an account whose loss you would accept.
  */
 
+import { said } from '../src/errors.ts';
 import { formIcons, silhouettesFor, typeIcons, type Download } from '../src/tools/battle/assets.mts';
 import { loadMeta } from '../src/tools/battle/meta.mts';
 import { readOptions } from '../src/tools/battle/options.mts';
@@ -50,6 +51,7 @@ import { pictures } from '../src/tools/battle/kitty.mts';
 import { live, plain } from '../src/tools/battle/report.mts';
 import { phoneOf } from '../src/tools/battle/phone.mts';
 import { ending } from '../src/tools/battle/reporter.mts';
+import { keepFrames } from '../src/tools/battle/keep-frames.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
@@ -62,9 +64,8 @@ import { CACHE, cachedAs, loadGameData } from '../src/tools/inventory/download.m
 import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-wasm.mts';
-import { encodePng, type Image } from '../src/tools/inventory/png.mts';
 import { createHash } from 'node:crypto';
-import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { constants } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -158,7 +159,7 @@ if (command === 'run') {
   try {
     asked = readOptions(options);
   } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
+    fail(said(error));
   }
 
   const { mode, count } = asked;
@@ -208,10 +209,7 @@ if (command === 'run') {
   const restore = () =>
     transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
       () => undefined,
-      (error: unknown) =>
-        console.error(
-          `stay_on_while_plugged_in not put back to ${before}: ${error instanceof Error ? error.message : String(error)}`,
-        ),
+      (error: unknown) => console.error(`stay_on_while_plugged_in not put back to ${before}: ${said(error)}`),
     );
   let screen: Screen | undefined;
 
@@ -247,79 +245,8 @@ if (command === 'run') {
         )
       : undefined);
 
-  // The frames `run` keeps around each faint and shield prompt, named by when they were seen on the same clock the
-  // lines are timed by, `0012.437s-shield.png`, so they sort into the log. Written one a turn of the event loop rather
-  // than as they are handed over: an encode takes 10ms to 40ms and a second's frames come at once, which would hold up
-  // the answer to the very prompt they show. Whatever is still queued when the run ends is written then.
   const dir = options['keep-frames'];
-  const queued: { frame: Image; at: number; event: string }[] = [];
-  let written = 0;
-  let framesFailed: string | undefined;
-
-  // A write that fails — the disk full, or DIR gone — stops keeping frames and nothing else, as the video's does: it
-  // runs from `setImmediate` and from the ways out, where a throw would be uncaught or skip putting the phone's setting
-  // back.
-  const save =
-    dir === undefined
-      ? undefined
-      : (name: string, frame: Image) => {
-          if (framesFailed !== undefined) {
-            return false;
-          }
-
-          try {
-            writeFileSync(join(dir, name), encodePng(frame));
-
-            return true;
-          } catch (error) {
-            framesFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
-
-            return false;
-          }
-        };
-
-  const write =
-    save &&
-    (({ frame, at, event }: (typeof queued)[number]) => {
-      if (save(`${((at - started) / 1000).toFixed(3).padStart(8, '0')}s-${event}.png`, frame)) {
-        written++;
-      }
-    });
-
-  const writeNext = () => {
-    const next = queued.shift();
-
-    if (next && write) {
-      write(next);
-      setImmediate(writeNext);
-    }
-  };
-
-  const keep =
-    write &&
-    ((frame: Image, at: number, event: string) => {
-      if (queued.push({ frame, at, event }) === 1) {
-        setImmediate(writeNext);
-      }
-    });
-
-  const flush = () => {
-    if (write) {
-      queued.splice(0).forEach(write);
-    }
-
-    if (written > 0) {
-      console.error(`kept ${written} frames around faints and shield prompts in ${dir}`);
-    }
-
-    if (framesFailed !== undefined) {
-      console.error(`stopped keeping frames in ${dir}: a write failed ${framesFailed}`);
-    }
-  };
-
-  if (dir !== undefined) {
-    mkdirSync(dir, { recursive: true });
-  }
+  const frames = dir === undefined ? undefined : keepFrames(dir, started, clock.now);
 
   // The whole of the screen, written a picture at a time once each is known whole and `HELD_MS` have gone by since it
   // came, or a cut is known: synchronously, at about 8 KB a picture, so that a run stopped by Ctrl-C, which exits
@@ -336,7 +263,7 @@ if (command === 'run') {
       mkdirSync(dirname(videoFile), { recursive: true });
       fd = openSync(videoFile, 'w');
     } catch (error) {
-      console.error(`could not write ${videoFile}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`could not write ${videoFile}: ${said(error)}`);
       process.exit(1);
     }
 
@@ -353,7 +280,7 @@ if (command === 'run') {
         try {
           videoWritten += writeSync(fd, bytes);
         } catch (error) {
-          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${error instanceof Error ? error.message : String(error)}`;
+          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${said(error)}`;
         }
       },
       started,
@@ -372,7 +299,7 @@ if (command === 'run') {
       try {
         closeSync(fd);
       } catch (error) {
-        closeFailed = error instanceof Error ? error.message : String(error);
+        closeFailed = said(error);
       }
 
       fd = undefined;
@@ -405,14 +332,19 @@ if (command === 'run') {
   let interrupted = false;
   const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
 
+  // What both the ways out let go of, the signal handler and `finally`, which an interrupted run reaches both of.
+  const release = () => {
+    frames?.flush();
+    screen?.close();
+    closeVideo();
+    held.close();
+  };
+
   const stop = (signal: (typeof signals)[number]) => {
     signals.forEach((other) => process.off(other, stop));
     interrupted = true;
     panel?.done();
-    flush();
-    screen?.close();
-    closeVideo();
-    held.close();
+    release();
     void restore().finally(() => process.exit(128 + constants.signals[signal]));
   };
 
@@ -439,7 +371,7 @@ if (command === 'run') {
 
     const tally = await run(
       phone,
-      { mode, data, icons, typeIcons: types, meta, count, ...(keep && { keep }) },
+      { mode, data, icons, typeIcons: types, meta, count, ...(frames && { keep: frames.keep }) },
       clock,
       report,
     ).finally(() => panel?.done());
@@ -452,22 +384,19 @@ if (command === 'run') {
     process.exitCode = 1;
 
     if (!interrupted) {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(said(error));
     }
 
     // A write that fails is told by `flush` with the others rather than thrown over the error that stopped the run.
     if (
       error instanceof Lost &&
-      save &&
-      error.frames.every((frame, i) => save(`${String(i).padStart(2, '0')}.png`, frame))
+      frames &&
+      error.frames.every((frame, i) => frames.save(`${String(i).padStart(2, '0')}.png`, frame))
     ) {
       console.error(`kept the last ${error.frames.length} frames in ${dir}`);
     }
   } finally {
-    flush();
-    screen?.close();
-    closeVideo();
-    held.close();
+    release();
     await ocr.terminate();
 
     if (!interrupted) {
@@ -494,7 +423,7 @@ if (command === 'run') {
   try {
     sizes = new TextDecoder().decode(await adbCli(options.serial).shell(['wm', 'size']));
   } catch (error) {
-    console.error(`could not read the screen's size: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`could not read the screen's size: ${said(error)}`);
     process.exit(1);
   }
 
@@ -526,7 +455,7 @@ if (command === 'run') {
     await pipeline(recording.stdout, createWriteStream(out));
   } catch (error) {
     recording.kill();
-    console.error(`could not write ${out}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`could not write ${out}: ${said(error)}`);
     process.exit(1);
   }
 

@@ -9,7 +9,7 @@ import { type Detail } from './detail.mts';
 import { type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
-import { widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
+import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
 import { type Image } from './png.mts';
 
 /** The searches that answer the yes-or-no columns, each column named for the game's own search term. */
@@ -111,7 +111,7 @@ export function agree(a: string, b: string, blank = 1): boolean {
 
 /** The same without the name, so a nickname read differently in two passes still matches. */
 export function looseKeyOf(detail: Detail, overlay: Overlay | null): string {
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : '';
+  const iv = overlay ? ivsOf(overlay.iv) : '';
 
   return [detail.hp, detail.weight, detail.height, iv].join('|');
 }
@@ -321,7 +321,7 @@ export function landmarkOf(detail: Detail, overlay: Overlay | null): Landmark | 
     return null;
   }
 
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : null;
+  const iv = overlay ? ivsOf(overlay.iv) : null;
 
   return { hp: detail.hp, weight: detail.weight, height: detail.height, iv };
 }
@@ -365,7 +365,9 @@ export function landmarksBefore(text: string, skip: number, most = LANDMARKS): L
 
   const landmark = (row: readonly string[]): Landmark | null => {
     const read = number(row, 'hp');
-    const iv = ['attack_iv', 'defense_iv', 'stamina_iv'].map((name) => field(row, name));
+    const attack = number(row, 'attack_iv');
+    const defense = number(row, 'defense_iv');
+    const stamina = number(row, 'stamina_iv');
 
     return read === null
       ? null
@@ -373,7 +375,7 @@ export function landmarksBefore(text: string, skip: number, most = LANDMARKS): L
           hp: read,
           weight: number(row, 'weight_kg'),
           height: number(row, 'height_m'),
-          iv: iv.every(Boolean) ? iv.join('/') : null,
+          iv: attack === null || defense === null || stamina === null ? null : ivsOf({ attack, defense, stamina }),
         };
   };
 
@@ -776,10 +778,8 @@ export async function reachMoves<L extends MovesLook>(look: (steps: number) => P
  * either way. The IVs rather than the level, whose shortlist is a guess that moves between two reads of one screen.
  */
 export function otherPokemon(a: Overlay | null, b: Overlay | null): boolean {
-  return a !== null && b !== null && ivsOf(a) !== ivsOf(b);
+  return a !== null && b !== null && ivsOf(a.iv) !== ivsOf(b.iv);
 }
-
-const ivsOf = ({ iv }: Overlay) => `${iv.attack}/${iv.defense}/${iv.stamina}`;
 
 /** Whether two keys differ in each of the HP, weight and height, every one of them read on both. */
 function elsewhere(a: string, b: string): boolean {
@@ -813,7 +813,7 @@ export async function movesOf<R extends { key: string | null; overlay: Overlay |
     return { look: first, note: null };
   }
 
-  const other = `the moves screen showed another Pokémon, ${ivsOf(first.overlay as Overlay)}`;
+  const other = `the moves screen showed another Pokémon, ${ivsOf((first.overlay as Overlay).iv)}`;
   const lost = { look: null, note: `${other}, and this Pokémon could not be found again` };
   let again = await read();
 

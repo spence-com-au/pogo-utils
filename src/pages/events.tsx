@@ -13,7 +13,7 @@
 import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-import { routeSummary } from '../event-feed.js';
+import { byCodeUnit, routeSummary } from '../event-feed.js';
 import { hiddenFor, type Prefs } from '../event-prefs.js';
 import {
   addDays,
@@ -507,7 +507,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     }
   }
 
-  const types = [...labels].sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const types = [...labels].sort(([, a], [, b]) => byCodeUnit(a, b));
 
   /** The types the chips draw as off and the tracks drop a row for: the stored set, less the one a link unhid. */
   const hidden = new Set([...hiddenFor(prefs, view)].filter((eventType) => eventType !== unhidden));

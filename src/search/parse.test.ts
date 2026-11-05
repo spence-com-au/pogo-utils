@@ -13,20 +13,11 @@
 
 import { expect, test } from 'vitest';
 
+import { all, any, assignments, holds, named, no, shape, yes } from '../testing/search.js';
 import { clausesOf } from './clauses.js';
 import { read } from './parse.js';
 import { GROUPS, RANGES, SHORTCUTS, TERMS_BY_ID } from './terms.js';
-import { group, isGroup, leafText, NESTING, type Leaf, type Node } from './tree.js';
-
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
-
-/** A tree said in the shape a failure can be read in. */
-const shape = (node: Node): unknown =>
-  isGroup(node) ? { [node.junction]: node.parts.map(shape) } : (leafText(node) ?? '…');
+import { group, isGroup, NESTING, type Node } from './tree.js';
 
 /** The tree a query describes, having described none being a failure rather than an answer. */
 function treeFor(text: string): Node {
@@ -56,28 +47,6 @@ function rangeFor(text: string): string | null {
   const pill = onlyPill(text);
 
   return pill !== null && !isGroup(pill) && pill.kind === 'range' ? pill.id : null;
-}
-
-/** The question a tree asks of one Pokémon, for the truth tables below. */
-function holds(node: Node, on: ReadonlySet<string>): boolean {
-  if (!isGroup(node)) {
-    return node.kind === 'term' ? on.has(node.id) !== node.negated : on.has(leafText(node) ?? '') !== node.negated;
-  }
-
-  if (node.parts.length === 0) {
-    return true;
-  }
-
-  return node.junction === 'all'
-    ? node.parts.every((part) => holds(part, on))
-    : node.parts.some((part) => holds(part, on));
-}
-
-/** Every set of terms that could be true of one Pokémon. */
-function* assignments(terms: readonly string[]) {
-  for (let bits = 0; bits < 2 ** terms.length; bits += 1) {
-    yield new Set(terms.filter((_, index) => (bits >> index) % 2 === 1));
-  }
 }
 
 /** The typed query and the arrangement it is meant to describe answer alike for every Pokémon either can tell apart. */

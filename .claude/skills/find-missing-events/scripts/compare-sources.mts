@@ -36,7 +36,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { LOCAL_EVENTS, UPSTREAM_URL } from '../../../../src/event-feed.ts';
+import { byCodeUnit, LOCAL_EVENTS, UPSTREAM_URL } from '../../../../src/event-feed.ts';
 import type { FeedEvent } from '../../../../src/types.js';
 import {
   articleHtml,
@@ -219,12 +219,14 @@ function parseInPerson(html: string): Listing[] {
   }));
 }
 
-/** Ascending by code unit rather than by locale, so that the order does not depend on the machine running this. */
-const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 /** Descending by score, ties broken the same way on the source, ID and name, so that a run reads the same twice. */
 function byScore(a: Scored, b: Scored) {
-  return b.score - a.score || compare(b.source, a.source) || compare(b.eventID, a.eventID) || compare(b.name, a.name);
+  return (
+    b.score - a.score ||
+    byCodeUnit(b.source, a.source) ||
+    byCodeUnit(b.eventID, a.eventID) ||
+    byCodeUnit(b.name, a.name)
+  );
 }
 
 /** The few events a headline most plausibly refers to, best first, or nothing if none is close enough. */
@@ -317,7 +319,7 @@ print(
 
 print(`## Announced, unaccounted for, and not yet over (${live.length}) — decide each one\n`);
 
-for (const article of live.toSorted((a, b) => compare(runsTo(b) ?? '', runsTo(a) ?? ''))) {
+for (const article of live.toSorted((a, b) => byCodeUnit(runsTo(b) ?? '', runsTo(a) ?? ''))) {
   print(
     `  ${article.slug}  (published ${article.published}, prose runs to ${runsTo(article)})\n    ${article.headline}`,
   );
@@ -331,7 +333,7 @@ for (const article of live.toSorted((a, b) => compare(runsTo(b) ?? '', runsTo(a)
 
 print(`## Undated, but naming something we hold (${updates.length}) — has it been changed?\n`);
 
-for (const { article, found } of updates.toSorted((a, b) => compare(b.article.published, a.article.published))) {
+for (const { article, found } of updates.toSorted((a, b) => byCodeUnit(b.article.published, a.article.published))) {
   print(`  ${article.slug}  (published ${article.published}, names no date)\n    ${article.headline}`);
 
   for (const { score, source, eventID, name } of found) {
@@ -349,7 +351,7 @@ const listings = inPerson.filter((listing) => listing.end >= today && !known.has
 
 print(`## In-person index, not yet over, unaccounted for (${listings.length})\n`);
 
-for (const { slug, name, start, end } of listings.toSorted((a, b) => compare(a.start, b.start))) {
+for (const { slug, name, start, end } of listings.toSorted((a, b) => byCodeUnit(a.start, b.start))) {
   print(`  ${slug}  (${start} to ${end})\n    ${name}\n`);
 }
 

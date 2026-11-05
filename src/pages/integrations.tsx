@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'preact/hooks';
 
-import { copyText } from '../dom.js';
+import { copyText, download } from '../dom.js';
 import { said } from '../errors.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
@@ -82,24 +82,6 @@ async function buildRepoFavourites() {
   }
 
   return { points, routes };
-}
-
-/**
- * `Uint8Array` takes a type argument for the buffer behind it and defaults it to the wide `ArrayBufferLike`, so naming
- * the buffer is what lets the view be a `BlobPart` — a `SharedArrayBuffer` cannot be one. `dumps` builds its answer
- * with `Uint8Array.from`, which is an `ArrayBuffer` already, so the bare annotation is weaker than inference rather
- * than stronger.
- */
-function downloadBytes(bytes: Uint8Array<ArrayBuffer>, name: string) {
-  const blob = new Blob([bytes], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
@@ -191,7 +173,7 @@ export default function IntegrationsPage() {
       const repo = await buildRepoFavourites();
       const backup = buildBackup(repo, ticked);
 
-      downloadBytes(backup.bytes, 'PGSData.dat');
+      download(backup.bytes, 'PGSData.dat', 'application/octet-stream');
       setStatus({ message: backupSummary(backup), kind: 'ok' });
     } catch (e) {
       setStatus({ message: `Failed to build backup: ${said(e)}`, kind: 'err' });
