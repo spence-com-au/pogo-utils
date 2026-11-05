@@ -37,9 +37,13 @@ import {
 import { CLEAR_KEYS } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
-import { afterAll, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, expect, test, vi } from 'vitest';
 
 afterAll(useTestEngine());
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /** A detail screen read with a 50 HP Pikachu's measurements, and whatever else a test says. */
 function detail(fields: Partial<Detail> = {}): Detail {
@@ -310,7 +314,6 @@ test.for([
 
   expect(await walked(keys, Infinity, from)).toEqual([[keys[from], from]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 test('a miss just before a run that ends storage does not visit the last Pokémon twice', async () => {
@@ -322,7 +325,6 @@ test('a miss just before a run that ends storage does not visit the last Pokémo
     ['a', 2],
   ]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 test('a miss on the last Pokémon in storage ends the walk there', async () => {
@@ -334,7 +336,6 @@ test('a miss on the last Pokémon in storage ends the walk there', async () => {
     [null, 2],
   ]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 test('a miss on a twin of the Pokémon before a run is settled by the run going on', async () => {
@@ -356,7 +357,6 @@ test.for([
 
   expect((await walked(keys, Infinity, 0, [1])).map(([key]) => key)).toEqual(['x', null, 'a']);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('storage may have ended 1 Pokémon ago'));
-  error.mockRestore();
 });
 
 test.for([
@@ -396,7 +396,6 @@ test('a look back that reads a Pokémon another way, then as before, is a misrea
     ['c', 3],
   ]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 // Nothing then tells the twins from the end, so the walk stops — but on a screen it says it could not settle, not
@@ -423,7 +422,6 @@ test('a look back that reads three ways is taken for a misread rather than the e
   expect(visited).toEqual([['b', 1]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('taking it for a misread'));
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 /**
@@ -461,18 +459,16 @@ test.for([
 
   expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
   expect(error).toHaveBeenCalledWith(expect.stringContaining('went nowhere'));
-  error.mockRestore();
 });
 
 test('a walk skipped into storage counts its retries against the whole of storage', async () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   expect(await walked(['a', 'b', 'c', 'd'], Infinity, 1, [], [1], 4)).toEqual([
     ['b', 1],
     ['c', 2],
     ['d', 3],
   ]);
-  error.mockRestore();
 });
 
 test('a dropped swipe with no count to hold it to still ends the walk, for `shortfall` to report', async () => {
@@ -505,7 +501,6 @@ test('a count read too high costs a few swipes at the real end and visits nothin
   expect(visited).toEqual(keys);
   expect(error).toHaveBeenCalledTimes(DROP_RETRIES);
   expect(swipes).toBeLessThan(keys.length + 3 * (DROP_RETRIES + 1));
-  error.mockRestore();
 });
 
 test('a drop on the first swipe of a pass cannot be told from a twin, so the walk stops there and says so', async () => {
@@ -513,7 +508,6 @@ test('a drop on the first swipe of a pass cannot be told from a twin, so the wal
 
   expect(await walked(['a', 'b', 'c'], Infinity, 0, [], [0], 3)).toEqual([['a', 0]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 test('a walk skipped to the last Pokémon in storage ends there, by a look back that reads the same each time', async () => {
@@ -521,7 +515,6 @@ test('a walk skipped to the last Pokémon in storage ends there, by a look back 
 
   expect(await walked(['a', 'b'], Infinity, 1)).toEqual([['b', 1]]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
@@ -718,7 +711,6 @@ test('a look back that misses the overlay where the worlds differ only in IVs st
 
   expect(visited.map(([, place]) => place)).toEqual([0, 1]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 /**
