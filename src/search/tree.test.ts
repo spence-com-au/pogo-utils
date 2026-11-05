@@ -9,7 +9,7 @@ import { expect, test } from 'vitest';
 
 import { all, any, named, range, shape, yes } from '../testing/search.js';
 import { bounded, TERMS_BY_ID } from './terms.js';
-import { emptyTree, isGroup, leafLabel, leafText, nodeAt, update, type Leaf } from './tree.js';
+import { emptyTree, isGroup, leafLabel, leafText, update, type Leaf } from './tree.js';
 
 test('a pill writes the term the table gives it, and a name writes itself', () => {
   const shiny = TERMS_BY_ID.get('shiny');
@@ -83,7 +83,7 @@ test('a span pill leaves an empty bound open rather than filling it from its own
   // Both unreachable through `bounded`, which is what makes this an invariant held rather than a bug fixed.
   expect([bounded(0, range('dex')), bounded(0, range('year'))]).toEqual([1, 2016]);
 
-  // Where the floor *is* nought the two cases are one, which is six of the eight ranges.
+  // Where the floor *is* nought the two cases are one, which is every range with no `min`.
   expect(range('hp').min).toBeUndefined();
   expect(leafText({ kind: 'range', id: 'hp', from: null, to: 0, negated: false })).toBe('hp0');
   expect(leafText({ kind: 'range', id: 'hp', from: 0, to: null, negated: false })).toBe('hp0-');
@@ -93,18 +93,6 @@ test('a pill says the label its chip said, so a card and the catalogue agree', (
   expect(leafLabel(yes('star4'))).toBe(TERMS_BY_ID.get('star4')?.label);
   expect(leafLabel(named('pikachu'))).toBe('pikachu');
   expect(leafLabel({ kind: 'range', id: 'cp', from: null, to: null, negated: false })).toBe(range('cp').label);
-});
-
-test('a path names the node it leads to, and nothing where it leads nowhere', () => {
-  const tree = all(yes('shiny'), any(yes('fire'), yes('water')));
-
-  expect(nodeAt(tree, [])).toBe(tree);
-  expect(nodeAt(tree, [0])).toEqual(yes('shiny'));
-  expect(nodeAt(tree, [1, 1])).toEqual(yes('water'));
-
-  // A path can lead past the end of a group, or into a pill as though it were one.
-  expect(nodeAt(tree, [9])).toBeNull();
-  expect(nodeAt(tree, [0, 0])).toBeNull();
 });
 
 test('an edit rebuilds only the spine down to what it changed', () => {
