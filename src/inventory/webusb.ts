@@ -12,7 +12,7 @@ import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
 import AdbWebCredentialStore from '@yume-chan/adb-credential-web';
 import { AdbDaemonWebUsbDevice, AdbDaemonWebUsbDeviceManager } from '@yume-chan/adb-daemon-webusb';
 
-import { type Transport } from '../tools/inventory/adb.mts';
+import { NO_ANSWER, TIMEOUT_MS, type Transport } from '../tools/inventory/adb.mts';
 
 /** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `open`. */
 const EXIT_MARK = 'pogo-utils-exit:';
@@ -48,28 +48,30 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
   return bytes.subarray(0, at);
 }
 
-/** As long as `adb-cli.mts` waits on `adb`: far longer than any call here takes, so it fires only on a wedged phone. */
-const TIMEOUT_MS = 30_000;
-
 /**
- * Why this context, a page or its Worker, cannot reach a phone, or null where it can. WebUSB needs a secure context,
- * which is `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so
- * Firefox and Safari have none.
+ * A command's output, given up on after `TIMEOUT_MS` as `adb-cli.mts` gives up on `adb`: a phone that stops answering
+ * fails the one call loudly rather than leaving the page waiting on it. The command itself cannot be called back, so
+ * what is given up on is the wait, and a phone that wedged is one to reconnect.
  */
-function unreachable(): string | null {
-  // The global rather than `window`'s, which a Worker has none of.
-  if (!globalThis.isSecureContext) {
-    return (
-      'WebUSB needs a secure context: ' +
-      'open this page from localhost or the published site rather than a LAN address.'
-    );
+export function within(command: readonly string[], output: Promise<Uint8Array>): Promise<Uint8Array> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${command.join(' ')}: ${NO_ANSWER}`)), TIMEOUT_MS);
+  });
+
+  return Promise.race([output, late]).finally(() => clearTimeout(timer));
+}
+
+/** What the shell protocol answered: the output where the command exited zero, and a throw with its stderr where not. */
+export function answered(
+  command: readonly string[],
+  { stdout, stderr, exitCode }: { stdout: Uint8Array; stderr: Uint8Array; exitCode: number },
+): Uint8Array {
+  if (exitCode !== 0) {
+    throw new Error(`${command.join(' ')} exited ${exitCode}: ${new TextDecoder().decode(stderr).trim()}`);
   }
 
-  if (AdbDaemonWebUsbDeviceManager.BROWSER === undefined) {
-    return 'This browser has no WebUSB. Chrome and Edge do, on a computer or on Android.';
-  }
-
-  return null;
+  return stdout;
 }
 
 /**
@@ -115,12 +117,22 @@ export interface Phone {
   disconnected: Promise<void>;
 }
 
-/** WebUSB, or a throw saying why this context has none. */
+/**
+ * WebUSB, or a throw saying why this context, a page or its Worker, has none. WebUSB needs a secure context, which is
+ * `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so Firefox
+ * and Safari have none.
+ */
 function usb(): AdbDaemonWebUsbDeviceManager {
   const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
 
   if (manager === undefined) {
-    throw new Error(unreachable() ?? 'This browser has no WebUSB.');
+    // The global rather than `window`'s, which a Worker has none of.
+    throw new Error(
+      globalThis.isSecureContext
+        ? 'This browser has no WebUSB. Chrome and Edge do, on a computer or on Android.'
+        : 'WebUSB needs a secure context: ' +
+            'open this page from localhost or the published site rather than a LAN address.',
+    );
   }
 
   return manager;
@@ -129,11 +141,19 @@ function usb(): AdbDaemonWebUsbDeviceManager {
 /**
  * Offers the browser's device chooser and connects to whatever is picked, or answers null where the chooser was
  * dismissed. Only ADB interfaces are offered, Tango's default filter being the class ADB declares.
+ *
+ * Null too where the phone picked is one this context already has an interface of claimed, which is the phone held:
+ * the browser hands back the same `USBDevice`, which Tango connects to again without claiming it, so a second
+ * connection would contend with the first for its packets, and closing either closes the device under both.
  */
 export async function connect(): Promise<Phone | null> {
   const device = await usb().requestDevice();
 
-  return device === undefined ? null : open(device);
+  if (device === undefined || device.raw.configuration?.interfaces.some((candidate) => candidate.claimed)) {
+    return null;
+  }
+
+  return open(device);
 }
 
 /**
@@ -190,25 +210,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
 
   const adb = new Adb(transport);
 
-  /**
-   * A command's output, given up on after `TIMEOUT_MS` as `adb-cli.mts` gives up on `adb`: a phone that stops answering
-   * fails the one call loudly rather than leaving the page waiting on it. The command itself cannot be called back, so
-   * what is given up on is the wait, and a phone that wedged is one to reconnect.
-   */
-  const run = (command: readonly string[]): Promise<Uint8Array> => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () =>
-          reject(
-            new Error(`${command.join(' ')}: no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`),
-          ),
-        TIMEOUT_MS,
-      );
-    });
-
-    return Promise.race([output(command), late]).finally(() => clearTimeout(timer));
-  };
+  const run = (command: readonly string[]): Promise<Uint8Array> => within(command, output(command));
 
   /**
    * A command's output over the protocol older phones have, which carries one stream and no exit status. So stderr is
@@ -235,13 +237,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
       return legacy(command);
     }
 
-    const { stdout, stderr, exitCode } = await shell.spawnWait(command);
-
-    if (exitCode !== 0) {
-      throw new Error(`${command.join(' ')} exited ${exitCode}: ${new TextDecoder().decode(stderr).trim()}`);
-    }
-
-    return stdout;
+    return answered(command, await shell.spawnWait(command));
   };
 
   // Tango types its streams as its own polyfill's, which are the platform's at run time.

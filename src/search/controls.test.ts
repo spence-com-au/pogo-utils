@@ -12,12 +12,13 @@
 
 import { expect, test } from 'vitest';
 
-import { compose, emptyState, presetTree } from '../search/query.js';
-import { leafText, spanned } from '../search/tree.js';
-import { read } from '../search/parse.js';
-import { GROUPS, PRESETS, RANGES, type Range } from '../search/terms.js';
+import { compose, emptyState, presetTree } from './query.js';
+import { leafText, spanned } from './tree.js';
+import { read } from './parse.js';
+import { GROUPS, PRESETS, RANGES, type Range } from './terms.js';
+import { range } from '../testing/search.js';
 import { unsearchable } from '../tools/inventory/storage.mts';
-import { boxText, marked, pickable, rangeTitle, readBound, spans, unmarked } from './search.js';
+import { boxText, marked, pickable, rangeTitle, readBound, spans, unmarked } from './controls.js';
 
 /**
  * Both halves of what `spans` promises, for any message at all: an odd number of pieces, so the last one is prose and
@@ -31,17 +32,6 @@ const faithful = (message: string) => ({
 });
 
 const kept = (message: string) => ({ message, prose: true, joined: message });
-
-/** One range from the table, so a test pins the floor and ceiling its literals were derived from. */
-function range(id: string) {
-  const found = RANGES.find((entry) => entry.id === id);
-
-  if (!found) {
-    throw new Error(`\`terms.js\` carries no ${id} range`);
-  }
-
-  return found;
-}
 
 /**
  * A number typed into one of a span pill's boxes, a digit at a time: what the box shows while the caret is in it, what

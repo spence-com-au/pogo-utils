@@ -1,14 +1,16 @@
 /**
- * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written,
- * whether two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in `scripts/inventory.mts` so the suite can import them,
- * that script parsing `process.argv` and driving a phone at its top level.
+ * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written, whether
+ * two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in
+ * `scripts/inventory.mts` so the suite can import them, that script parsing `process.argv` and driving a phone at its
+ * top level.
  */
 
 import { type Detail } from './detail.mts';
 import { type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
-import { type Overlay } from './overlay.mts';
+import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
+import { type Image } from './png.mts';
 
 /** The searches that answer the yes-or-no columns, each column named for the game's own search term. */
 export const FLAGS = ['shiny', 'lucky', 'costume', 'shadow', 'purified'] as const;
@@ -109,7 +111,7 @@ export function agree(a: string, b: string, blank = 1): boolean {
 
 /** The same without the name, so a nickname read differently in two passes still matches. */
 export function looseKeyOf(detail: Detail, overlay: Overlay | null): string {
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : '';
+  const iv = overlay ? ivsOf(overlay.iv) : '';
 
   return [detail.hp, detail.weight, detail.height, iv].join('|');
 }
@@ -167,6 +169,62 @@ export class Marks {
     }
 
     return false;
+  }
+}
+
+/** How many sweeps may find nothing before the scan stops looking for an overlay it has not found. */
+export const SWEEPS = 5;
+
+/**
+ * PGSharp's overlay, with the box it sits in found on the way if it is not known yet. The box does not move between
+ * Pokémon — only between phones — so it is worth finding once and keeping, which is the difference between a sweep
+ * of the upper screen and one crop. Only a box that actually yielded a reading is kept: one that merely looked right
+ * would go on being wrong for every Pokémon after it, where not keeping it costs another sweep.
+ *
+ * `find` and `read` are `findOverlay` and `readOverlay`, taken rather than imported so the suite can count sweeps.
+ */
+export class OverlayBoxes {
+  box: OverlayBox | null;
+  readonly #find: typeof findOverlay;
+  readonly #read: typeof readOverlay;
+
+  /** Spent only by a sweep that finds nothing, a phone with the overlay switched off otherwise sweeping for ever. */
+  #sweepsLeft = SWEEPS;
+
+  constructor(box: OverlayBox | null, find: typeof findOverlay, read: typeof readOverlay) {
+    this.box = box;
+    this.#find = find;
+    this.#read = read;
+  }
+
+  /**
+   * The overlay on `image`. `sweep` is the caller's leave to look for it, which it withholds on a look this Pokémon is
+   * being given for some other reason — the crop is still read, so a box already known still answers.
+   *
+   * A sweep that reads the overlay costs nothing of the ration, because it is proof the overlay is switched on. A box
+   * found on one Pokémon clips another's line for as long as a scan runs — 7 of one scan's first 130 Pokémon, each
+   * read whole by a sweep — so a miss on a phone known to draw the overlay is always worth one.
+   */
+  async overlayOn(image: Image, sweep: boolean): Promise<Overlay | null> {
+    const known = this.box && (await this.#read(image, this.box));
+
+    if (known || !sweep || this.#sweepsLeft <= 0) {
+      return known ?? null;
+    }
+
+    const found = await this.#find(image);
+
+    if (!found) {
+      this.#sweepsLeft--;
+      return null;
+    }
+
+    // A box tightened on one Pokémon clips a longer line on another — a three digit percentage is a character wider,
+    // and two of twenty-five captures missed for exactly that. So the box is widened to cover both rather than
+    // swapped, which converges instead of flipping between the two Pokémon that disagree.
+    this.box = this.box ? widen(this.box, found.box) : found.box;
+
+    return found.overlay;
   }
 }
 
@@ -263,12 +321,12 @@ export function landmarkOf(detail: Detail, overlay: Overlay | null): Landmark | 
     return null;
   }
 
-  const iv = overlay ? `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}` : null;
+  const iv = overlay ? ivsOf(overlay.iv) : null;
 
   return { hp: detail.hp, weight: detail.weight, height: detail.height, iv };
 }
 
-export function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
+function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
   return (
     a !== null &&
     b !== null &&
@@ -280,7 +338,7 @@ export function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
 }
 
 /** How many rows already written a landing is checked against, the last of them being the row before it. */
-export const LANDMARKS = 3;
+const LANDMARKS = 3;
 
 /**
  * The rows of a scan's CSV that a pass resumed with `--skip` lands just past, oldest first: row `skip` itself and the
@@ -307,7 +365,9 @@ export function landmarksBefore(text: string, skip: number, most = LANDMARKS): L
 
   const landmark = (row: readonly string[]): Landmark | null => {
     const read = number(row, 'hp');
-    const iv = ['attack_iv', 'defense_iv', 'stamina_iv'].map((name) => field(row, name));
+    const attack = number(row, 'attack_iv');
+    const defense = number(row, 'defense_iv');
+    const stamina = number(row, 'stamina_iv');
 
     return read === null
       ? null
@@ -315,7 +375,7 @@ export function landmarksBefore(text: string, skip: number, most = LANDMARKS): L
           hp: read,
           weight: number(row, 'weight_kg'),
           height: number(row, 'height_m'),
-          iv: iv.every(Boolean) ? iv.join('/') : null,
+          iv: attack === null || defense === null || stamina === null ? null : ivsOf({ attack, defense, stamina }),
         };
   };
 
@@ -517,13 +577,14 @@ export const DROP_RETRIES = 3;
  *
  * A swipe the phone drops looks like the end too: the look-back finds the Pokémon before the last where storage going
  * on would have put the last, and rules out storage going on. `total`, the count the game shows for what is walked,
- * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the last Pokémon visited, short of `total` — the
- * swipe forward is taken as dropped rather than the end: struck from what the walk has done, as though never sent, and
- * sent again, up to `DROP_RETRIES` times in a row, so that a count read too high costs a few swipes at the real end.
- * Struck rather than the end merely set aside, which would take the screen read again for a twin: one Pokémon written
- * twice and the next one skipped. An end found further back, past an unread screen, is not retried, and is left to
- * `shortfall` to report, as is a drop on the first swipe of a pass: with nothing read before the first Pokémon, the
- * look-back cannot tell a drop from a twin, and the walk stops as it does for twins there.
+ * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the
+ * last Pokémon visited, short of `total` — the swipe forward is taken as dropped rather than the end: struck from what
+ * the walk has done, as though never sent, and sent again, up to `DROP_RETRIES` times in a row, so that a count read
+ * too high costs a few swipes at the real end. Struck rather than the end merely set aside, which would take the screen
+ * read again for a twin: one Pokémon written twice and the next one skipped. An end found further back, past an unread
+ * screen, is not retried, and is left to `shortfall` to report, as is a drop on the first swipe of a pass: with nothing
+ * read before the first Pokémon, the look-back cannot tell a drop from a twin, and the walk stops as it does for twins
+ * there.
  */
 export async function walk<R extends { key: string | null }>(
   { read, next, back }: Steps<R>,
@@ -717,10 +778,8 @@ export async function reachMoves<L extends MovesLook>(look: (steps: number) => P
  * either way. The IVs rather than the level, whose shortlist is a guess that moves between two reads of one screen.
  */
 export function otherPokemon(a: Overlay | null, b: Overlay | null): boolean {
-  return a !== null && b !== null && ivsOf(a) !== ivsOf(b);
+  return a !== null && b !== null && ivsOf(a.iv) !== ivsOf(b.iv);
 }
-
-const ivsOf = ({ iv }: Overlay) => `${iv.attack}/${iv.defense}/${iv.stamina}`;
 
 /** Whether two keys differ in each of the HP, weight and height, every one of them read on both. */
 function elsewhere(a: string, b: string): boolean {
@@ -754,7 +813,7 @@ export async function movesOf<R extends { key: string | null; overlay: Overlay |
     return { look: first, note: null };
   }
 
-  const other = `the moves screen showed another Pokémon, ${ivsOf(first.overlay as Overlay)}`;
+  const other = `the moves screen showed another Pokémon, ${ivsOf((first.overlay as Overlay).iv)}`;
   const lost = { look: null, note: `${other}, and this Pokémon could not be found again` };
   let again = await read();
 

@@ -98,7 +98,7 @@ export const DEFAULTS: Config = {
 };
 
 /** Whether `value` names an Android user, which is a whole number: 0, 10, 11 and on. */
-export const isUser = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
+const isUser = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
 
 /**
  * `DEFAULTS` with a JSON file laid over it one level deep, so a file can change one tap and restate nothing else. A

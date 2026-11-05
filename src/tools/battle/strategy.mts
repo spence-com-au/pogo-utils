@@ -15,13 +15,16 @@
  */
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
-import { MOVES_HELD, type Stages } from './damage.mts';
+import { type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
 
 /** What a move sharing a type with the Pokémon using it multiplies its damage by. */
 export const STAB = 1.2;
+
+/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. */
+export const MOVES_HELD = 2;
 
 /**
  * The charged moves only a shadow (Frustration) or a purified (Return) Pokémon holds, which every species with a shadow
@@ -225,18 +228,10 @@ export function nextOut(
   meta?: Meta | null,
   finishing: ReadonlyMap<number, string> = new Map(),
 ): { slot: number; why: string } | undefined {
-  const scored = party.flatMap((card, slot) =>
-    fainted.has(slot)
-      ? []
-      : [
-          {
-            slot,
-            finishes: finishing.get(slot),
-            safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
-            ...hardest(data, card, opponent),
-          },
-        ],
-  );
+  const scored = benched(data, party, undefined, fainted, opponent, meta).map((card) => ({
+    ...card,
+    finishes: finishing.get(card.slot),
+  }));
 
   scored.sort(
     (a, b) =>
@@ -288,6 +283,42 @@ function hardest(data: GameData, card: Card, opponent: Shown): { hardest: number
   return best;
 }
 
+/** A card not fainted nor out, as `benched` lists it. */
+interface Benched {
+  slot: number;
+  card: Card;
+  safe: boolean;
+  hardest: number;
+  move: string | undefined;
+}
+
+/**
+ * The cards not fainted nor `out`, each with whether it is safe from every charged move the opponent is allowed for, as
+ * `shouldShield` judges, and how hard it hits, as `hardest` does. A card whose species is not known is never safe, its
+ * types unknown.
+ */
+function benched(
+  data: GameData,
+  party: readonly Card[],
+  out: number | undefined,
+  fainted: ReadonlySet<number>,
+  opponent: Shown,
+  meta?: Meta | null,
+): Benched[] {
+  return party.flatMap((card, slot) =>
+    slot === out || fainted.has(slot)
+      ? []
+      : [
+          {
+            slot,
+            card,
+            safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
+            ...hardest(data, card, opponent),
+          },
+        ],
+  );
+}
+
 /**
  * Which slot to switch to, of the bench, once the opponent has switched in a Pokémon that threatens ours: only where one
  * benched counters it outright, safe from every charged move it is allowed for and holding one that hits it super
@@ -312,20 +343,16 @@ export function counterOf(
   }
 
   const types = typesOf(data, opponent);
-  const counters = party.flatMap((card, slot) => {
-    const { species } = card;
+  const counters = benched(data, party, out, fainted, opponent, meta).flatMap((candidate) => {
+    const beats = candidate.safe
+      ? judgedBy(data, candidate.card).find((name) => {
+          const type = data.combat[name]?.type;
 
-    if (species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)) {
-      return [];
-    }
+          return type !== undefined && types.every((typing) => effectiveness(data, type, typing) > 1);
+        })
+      : undefined;
 
-    const beats = judgedBy(data, card).find((name) => {
-      const type = data.combat[name]?.type;
-
-      return type !== undefined && types.every((typing) => effectiveness(data, type, typing) > 1);
-    });
-
-    return beats === undefined ? [] : [{ slot, beats, ...hardest(data, card, opponent) }];
+    return beats === undefined ? [] : [{ ...candidate, beats }];
   });
 
   const [best] = counters.sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
@@ -391,14 +418,10 @@ function safest(
   opponent: Shown,
   meta?: Meta | null,
 ): { slot: number; species: string } | undefined {
-  const [best] = party
-    .flatMap((card, slot) => {
-      const { species } = card;
-
-      return species === null || slot === out || fainted.has(slot) || shouldShield(data, { species }, opponent, meta)
-        ? []
-        : [{ slot, species, ...hardest(data, card, opponent) }];
-    })
+  const [best] = benched(data, party, out, fainted, opponent, meta)
+    .flatMap(({ slot, card, safe, hardest }) =>
+      safe && card.species !== null ? [{ slot, species: card.species, hardest }] : [],
+    )
     .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
 
   return best;
@@ -470,27 +493,18 @@ export function stripperOf(
     return undefined;
   }
 
-  const [best] = [...banked]
-    .flatMap(([slot, moves]) => {
-      const card = party[slot];
+  const [best] = benched(data, party, out, fainted, opponent, meta)
+    .flatMap((candidate) => {
+      const moves = banked.get(candidate.slot) ?? [];
 
-      return card === undefined || slot === out || fainted.has(slot) || moves.length === 0
-        ? []
-        : [
-            {
-              slot,
-              moves,
-              safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
-              ...hardest(data, card, opponent),
-            },
-          ];
+      return moves.length === 0 ? [] : [{ ...candidate, moves }];
     })
     .sort((a, b) => Number(b.safe) - Number(a.safe) || b.hardest - a.hardest || a.slot - b.slot);
 
   return (
     best && {
       slot: best.slot,
-      why: `${party[best.slot]?.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
+      why: `${best.card.species ?? '?'} has ${best.moves.join(' and ')} banked to draw ${opponent.species}'s shield`,
     }
   );
 }
@@ -561,11 +575,11 @@ export function resisterOf(
     return undefined;
   }
 
-  const [best] = party
-    .flatMap((card, slot) => {
-      const { species } = card;
+  const [best] = benched(data, party, out, fainted, opponent, meta)
+    .flatMap((candidate) => {
+      const { species } = candidate.card;
 
-      if (species === null || slot === out || fainted.has(slot)) {
+      if (species === null) {
         return [];
       }
 
@@ -575,7 +589,7 @@ export function resisterOf(
         feared.every((move) => typings.every((types) => effectiveness(data, move.type, types) < 1));
       const hit = moves.some((move) => typings.some((types) => effectiveness(data, move.type, types) > 1));
 
-      return resists && !hit ? [{ slot, species, ...hardest(data, card, opponent) }] : [];
+      return resists && !hit ? [{ ...candidate, species }] : [];
     })
     .sort((a, b) => b.hardest - a.hardest || a.slot - b.slot);
 

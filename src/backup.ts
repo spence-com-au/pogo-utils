@@ -9,9 +9,9 @@
  * two that can come to disagree — and it is what keeps an export off the keys of the other site on this origin,
  * `localStorage` being keyed by origin and not by path. The file names it once, in `namespace`, and keys each value by
  * what follows it, so a value cannot be written outside the namespace however the file is edited. `KEY_PREFIX` comes
- * from the module that builds the keys out of it for the same reason: a sweep spelled here could be shortened to one
- * the keys no longer agree with, and a prefix short enough to reach the neighbouring site is exactly the way this goes
- * wrong.
+ * from `storage-namespace.ts`, which every key is built from, for the same reason: a sweep spelled here could be
+ * shortened to one the keys no longer agree with, and a prefix short enough to reach the neighbouring site is exactly
+ * the way this goes wrong.
  *
  * Version 1 files are still read. They carry each key whole at the top level, beside `version`, and readers exported
  * them for as long as that was the only layout: a backup exists to be read back long after it was taken, so a page that
@@ -20,7 +20,7 @@
  */
 
 import { said } from './errors.js';
-import { KEY_PREFIX, NAMESPACE } from './event-prefs.js';
+import { KEY_PREFIX, NAMESPACE } from './storage-namespace.js';
 
 /**
  * What a file this code writes says it is. `parseBackup` reads this and version 1, and refuses any other rather than
@@ -207,4 +207,49 @@ function putBack(before: readonly (readonly [string, string | null])[]) {
       /* Storage has stopped answering altogether; what is left of the rollback is still worth attempting. */
     }
   }
+}
+
+/**
+ * Read a backup back over whatever is stored now: the orchestration `parseBackup`, `writeBackup` and `applyBackup` are
+ * the parts of, kept here rather than in the settings panel so that its order can be tested without a DOM.
+ *
+ * Nothing in the file is nothing to change, and leaving before the copy and the corrections is what makes the message
+ * a caller shows for it true: the copy would put a file in the reader's Downloads for an import that touched nothing,
+ * and the corrections are not free — the Events page closes a reveal the reader had opened — so running them anyway
+ * would say nothing changed on the one render where *Ended* had just emptied itself. That answers null.
+ *
+ * Judged before anything is saved and saved before anything is written, so a copy is taken only for a file that is
+ * about to be applied. This is the undo: a reader who picks the wrong file has nothing else to go back to, and the keys
+ * it replaces are the ones nothing can reconstruct.
+ *
+ * The skip is not a formality. `settleSeen` writes `seen` as soon as the feed lands, so a loaded page nearly always has
+ * something stored — except in the one flow this exists for, a reader who has just cleared their browser and imports
+ * before the feed arrives, where a copy of nothing would be the first thing they saw.
+ *
+ * `download` hands the copy over and `restored` runs the corrections once the keys are written; both are the caller's,
+ * since a download needs a document and the corrections need the store that owns them.
+ */
+export function restoreBackup(
+  text: string,
+  when: Date,
+  download: (text: string, name: string) => void,
+  restored: () => void,
+): { written: number; rescued: boolean } | null {
+  const incoming = parseBackup(text);
+
+  if (incoming.length === 0) {
+    return null;
+  }
+
+  const rescued = ownedKeys().length > 0;
+
+  if (rescued) {
+    download(writeBackup(), rescueName(when));
+  }
+
+  const written = applyBackup(incoming).length;
+
+  restored();
+
+  return { written, rescued };
 }

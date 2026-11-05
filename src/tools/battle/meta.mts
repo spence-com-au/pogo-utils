@@ -12,6 +12,7 @@
  * the game's `Lock-On`, and every `Hidden Power (…)` the one Hidden Power the screen prints.
  */
 
+import { said } from '../../errors.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { fold } from '../inventory/ocr.mts';
 import { type Download } from './assets.mts';
@@ -204,6 +205,13 @@ export async function loadMeta(download: Download, data: GameData, league: strin
     }
 
     const { cup, cp } = format;
+
+    // Both go into a cache file's name and a URL's path, so a `..` from a tampered game master would write outside
+    // the cache.
+    if (!/^[a-z0-9_-]+$/.test(cup) || !Number.isInteger(cp)) {
+      throw new Error(`PvPoke ranks ${league} as ${JSON.stringify({ cup, cp })}, which names no rankings file`);
+    }
+
     const rankings = (await download(
       `pvpoke-${cup}-${cp}.json`,
       `${PVPOKE}/rankings/${cup}/overall/rankings-${cp}.json`,
@@ -212,7 +220,7 @@ export async function loadMeta(download: Download, data: GameData, league: strin
 
     return { cup, cap: cp >= NO_CAP ? null : cp, movesets: movesetsOf(data, rankings, pvpoke) };
   } catch (error) {
-    console.error(`  ${error instanceof Error ? error.message : String(error)}; every move is allowed for`);
+    console.error(`  ${said(error)}; every move is allowed for`);
 
     return null;
   }

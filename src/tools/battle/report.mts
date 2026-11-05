@@ -165,12 +165,12 @@ const HANGING = '  ';
  * Laid out before anything is drawn faint, so each row's width counts only what shows.
  */
 function told(line: string, why: string | undefined, width: number, pad = true): string[] {
-  const plain = [...line].length;
+  const lineLength = [...line].length;
   const words: { text: string[]; faint: boolean }[] = [];
   let at = 0;
 
   for (const word of (why ? `${line}: ${why}` : line).split(' ')) {
-    words.push({ text: [...word], faint: at >= plain });
+    words.push({ text: [...word], faint: at >= lineLength });
     at += [...word].length + 1;
   }
 
@@ -248,18 +248,18 @@ export function live(
   let pending: NodeJS.Timeout | undefined;
 
   // The frame last drawn, how tall and the columns it took, which is drawn again only once any has changed.
-  let pictured: { image: Image; rows: number; beside: number } | undefined;
+  let pictured: { image: Image; rows: number; taken: number } | undefined;
 
   // The frame to draw down the left edge and the columns it takes with the gap, or none where there is no frame yet or
-  // the table would be narrower than `TABLE_MIN` beside it. The `latest` frame only for a look, and otherwise the one
+  // the table would be narrower than `TABLE_MIN` beside it. The `fresh` frame only for a look, and otherwise the one
   // last drawn while there is one, so that redrawing the rest never draws the phone more often than `PICTURE_MS`. The
-  // latest too for a terminal of another height, which draws the phone again: the one last drawn is a stream's frame,
-  // whose pixels are gone once the next has come.
-  const fit = (columns: number, rows: number, latest = false) => {
-    const image = latest || rows !== pictured?.rows ? phone?.frame() : pictured.image;
-    const beside = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
+  // fresh one too for a terminal of another height, which draws the phone again: the one last drawn is a stream's
+  // frame, whose pixels are gone once the next has come.
+  const framed = (columns: number, rows: number, fresh = false) => {
+    const image = fresh || rows !== pictured?.rows ? phone?.frame() : pictured.image;
+    const taken = phone && image ? columnsFor(image, rows, phone.pictures.cell) + GAP : 0;
 
-    return image && beside > 0 && columns - beside >= TABLE_MIN ? { image, beside } : undefined;
+    return image && taken > 0 && columns - taken >= TABLE_MIN ? { image, taken } : undefined;
   };
 
   // The screen's `rows` lines, `width` wide, each cut to the width and faint where it is outside the table.
@@ -270,11 +270,26 @@ export function live(
     // the run's events leave. Each is already its column's width, so is not cut again.
     const logged = Math.max(1, rows - (2 + 3 + PANEL_ROWS + 1 + RUN_ROWS));
     const column = columnOf(width);
-    const done = sides.flatMap(({ line, side, why }) =>
-      side === 'own'
-        ? told(line, why, column).map((row) => `${row}${DIVIDER.trimEnd()}`)
-        : told(line, why, width - column - DIVIDER.length, false).map((row) => `${' '.repeat(column)}${DIVIDER}${row}`),
-    );
+    const done: string[] = [];
+
+    // From the newest event back, and only until `logged` rows are in hand, as the older ones would be dropped unseen.
+    for (let back = 1; done.length < logged; back++) {
+      const event = sides.at(-back);
+
+      if (!event) {
+        break;
+      }
+
+      const { line, side, why } = event;
+
+      done.unshift(
+        ...(side === 'own'
+          ? told(line, why, column).map((row) => `${row}${DIVIDER.trimEnd()}`)
+          : told(line, why, width - column - DIVIDER.length, false).map(
+              (row) => `${' '.repeat(column)}${DIVIDER}${row}`,
+            )),
+      );
+    }
 
     return [
       faded(cut(summary(latest))),
@@ -289,7 +304,7 @@ export function live(
     ].slice(0, rows);
   };
 
-  const draw = (latest = false) => {
+  const draw = (fresh = false) => {
     clearTimeout(pending);
     pending = undefined;
     drawnAt = Date.now();
@@ -305,24 +320,24 @@ export function live(
     }
 
     const { columns, rows } = stream;
-    const { image: shown, beside } = fit(columns, rows, latest) ?? { beside: 0 };
+    const { image: shown, taken } = framed(columns, rows, fresh) ?? { taken: 0 };
     let picture = '';
 
     if (phone && shown && (shown !== pictured?.image || rows !== pictured.rows)) {
       picture = phone.pictures.picture(shown, rows);
-      pictured = { image: shown, rows, beside };
+      pictured = { image: shown, rows, taken };
     } else if (!shown && pictured) {
       picture = ERASE;
       pictured = undefined;
     }
 
     // Each line set in past the phone by moving the cursor rather than by spaces, which would draw over it.
-    const indent = shown ? `\x1b[${beside + 1}G` : '';
+    const indent = shown ? `\x1b[${taken + 1}G` : '';
 
     stream.write(
       BEGIN +
         picture +
-        screen(rows, shown ? columns - beside : columns)
+        screen(rows, shown ? columns - taken : columns)
           .map((line) => indent + line + CLEAR_LINE)
           .join('\r\n') +
         END,
@@ -346,12 +361,12 @@ export function live(
       return;
     }
 
-    const fitted = fit(stream.columns, stream.rows, true);
+    const fitted = framed(stream.columns, stream.rows, true);
 
-    if (fitted && pictured && stream.rows === pictured.rows && fitted.beside === pictured.beside) {
+    if (fitted && pictured && stream.rows === pictured.rows && fitted.taken === pictured.taken) {
       if (fitted.image !== pictured.image) {
         stream.write(`${SYNC}\x1b[H${phone.pictures.picture(fitted.image, stream.rows)}${UNSYNC}`);
-        pictured = { image: fitted.image, rows: stream.rows, beside: fitted.beside };
+        pictured = { image: fitted.image, rows: stream.rows, taken: fitted.taken };
       }
     } else if (fitted || pictured) {
       draw(true);

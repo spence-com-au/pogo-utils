@@ -1,7 +1,7 @@
 /**
- * Global, and the one rule here that is. A body box as tall as the viewport overflows visibly on the four pages that
- * are longer than one, which is the scrolling they already do, so there is nothing to scope — where the `overflow:
- * hidden` below very much is this page's.
+ * Global, and the one rule here that is. A body box as tall as the viewport overflows visibly on the pages that are
+ * longer than one, which is the scrolling they already do, so there is nothing to scope — where the `overflow: hidden`
+ * below very much is this page's.
  */
 html,
 body {
@@ -12,12 +12,12 @@ body {
  * Everything below is scoped to the open page.
  *
  * Each of these sheets was the only one in its document and could style `.name`, `.meta` and `.copy` as it liked. One
- * document loads all five, and between them they give nineteen class names a different meaning per page. The wrapper is
- * what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the same table the
- * router validates a fragment against.
+ * document loads every page's sheet, and between them the same class names mean something different per page. The
+ * wrapper is what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the
+ * same table the router validates a fragment against.
  *
  * This is the sheet that needed it most. The three declarations here were a bare `body` rule, and an unscoped
- * `overflow: hidden` would have reached all five pages — the Pokédex grid of 1025 species with a scrollbar and no way
+ * `overflow: hidden` would have reached every page — the Pokédex grid of 1025 species with a scrollbar and no way
  * to use it. The bare `header` and `footer` rules below would likewise have drawn a border under every other page's
  * heading.
  */
@@ -151,8 +151,7 @@ body[data-page='map'] {
   /**
    * How many entries the group holds. Every group starts collapsed, so without this the page is five bare continent
    * names and no hint of what is behind them. Right-aligned to line up with the distance each route row already shows
-   * there, and the count follows the filter (see the input handler in app.js) so it never contradicts what is on
-   * screen.
+   * there, and the count follows the filter (see `setFilter` in `map.tsx`) so it never contradicts what is on screen.
    */
 
   .continent .gcount,
@@ -203,7 +202,7 @@ body[data-page='map'] {
   }
 
   /**
-   * The map draws a track as a blue line and a waypoint as an orange dot, and these are the very tokens app.js hands
+   * The map draws a track as a blue line and a waypoint as an orange dot, and these are the very tokens `map.tsx` hands
    * Leaflet for them, so each row wears its own marker instead of leaving the reader to click and find out which it is.
    */
 
@@ -304,7 +303,7 @@ body[data-page='map'] {
   /**
    * Only a row carrying an event wraps, and the name is given a basis of zero within it so that it cannot push the
    * distance and the Copy button down as well — the second line is for the event alone. Asking for the wrap on every
-   * row moved that pair onto its own line on 29 of the 80 rows here, none of which have an event.
+   * row moved that pair onto its own line on rows that have no event.
    */
 
   .route:has(.eventline) {

@@ -76,12 +76,13 @@ function phone(focus: string, { user = 0, installs = [0] }: { user?: number; ins
 const DIALOG = [word(1, 'POWER UP: GEODUDE', 10, 60, 80, 10), word(2, 'CANCEL', 40, 185, 20, 8)].join('\n');
 
 /**
- * OCR answering each screen with the next of `screens`, and the last of them from then on. Two reads to a screen, since
- * `readLines` reads the whole of it and then its top again.
+ * OCR answering each screenshot in `sent` with the next of `screens`, and the last of them from then on. Counted by
+ * screenshot rather than by read, a screen taking as many reads as what is asked of it: `readLines` reads the whole of
+ * it and its top again, and `parseDetail` crops three more out of one that is not a detail screen.
  */
-const reads = (...screens: string[]) => {
-  let read = 0;
-  useEngine({ tsv: () => Promise.resolve(screens[Math.min(Math.floor(read++ / 2), screens.length - 1)] as string) });
+const reads = (sent: readonly string[][], ...screens: string[]) => {
+  const shot = () => sent.filter(([command]) => command === 'screencap').length - 1;
+  useEngine({ tsv: () => Promise.resolve(screens[Math.min(shot(), screens.length - 1)] as string) });
 };
 
 const tapped = (sent: readonly string[][]) =>
@@ -228,7 +229,7 @@ test("a dialog's buttons are what tells it from the detail screen beneath it", (
 
 test('a dialog open over the screen is closed with Back before the walk to storage taps anything', async () => {
   const { sent, device } = phone(DEFAULTS.package);
-  reads(DIALOG, STORAGE);
+  reads(sent, DIALOG, STORAGE);
   const said: string[] = [];
   const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
 
@@ -249,7 +250,7 @@ test('a dialog open over the screen is closed with Back before the walk to stora
 
 test('the close button is not tapped while a dialog is open, nor on a screen that is not a detail screen', async () => {
   const { sent, device } = phone(DEFAULTS.package);
-  reads(DIALOG, '');
+  reads(sent, DIALOG, '');
   const { closeDetail } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   await closeDetail();
@@ -257,17 +258,81 @@ test('the close button is not tapped while a dialog is open, nor on a screen tha
   expect(sent).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
 });
 
+/** A detail screen as OCR reads it: the HP line `parseDetail` takes as the mark of one. */
+const DETAIL = word(1, '80 / 80 HP', 30, 100, 40, 8);
+
+test('the close button is tapped on a detail screen', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, DETAIL);
+  const { at, closeDetail } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await closeDetail();
+
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]]);
+});
+
+/** The grid with a Pokémon in it, as OCR reads it: what the box shows once the suggestions panel is closed. */
+const GRID = [STORAGE, word(3, 'CP415', 10, 50, 20, 8)].join('\n');
+
+test('clearing the box over the suggestions panel closes it with Back, which leaves the grid', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, STORAGE, STORAGE, GRID);
+  const { search, tileLabel } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  expect(tileLabel(await search(''))).toBeDefined();
+  expect(sent.slice(-3)).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '35']]);
+});
+
+test('a screen Back leaves that is not storage is walked back to storage from', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, STORAGE, STORAGE, '', STORAGE);
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await search('');
+
+  expect(sent.slice(-4)).toStrictEqual([
+    ['screencap'],
+    ['input', 'keyevent', String(KEY.BACK)],
+    ['screencap'],
+    ['screencap'],
+  ]);
+});
+
 test.for([
   ['the tabs on lines of their own', [word(1, '12800 / 12825', 40, 10, 20, 8), word(2, '12/12', 70, 10, 10, 8)]],
   ['the eggs read first', [word(1, '12/12', 70, 10, 10, 8), word(2, '12800/12825', 40, 10, 20, 8)]],
   ['both tabs on one line', [word(1, '12800 / 12825   12/12', 40, 10, 40, 8)]],
 ] as const)('an unsearched grid answers how many storage holds, given %s', async ([, counts]) => {
-  const { device } = phone(DEFAULTS.package);
-  reads([...counts, word(3, 'SEARCH', 40, 30, 20, 10), word(4, 'CP415', 10, 50, 20, 8)].join('\n'));
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, [...counts, word(3, 'SEARCH', 40, 30, 20, 10), word(4, 'CP415', 10, 50, 20, 8)].join('\n'));
   const { search, stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   expect(stored(await search(''))).toBe(12800);
 });
+
+test.for([
+  ['a counter of some and a label', '(12)', true, true],
+  ['a counter of some and no label, as sparkles leave a shiny tile', '(12)', false, true],
+  ['a counter of none, whatever reads as a label', '(0)', true, false],
+  ['a counter of none and no label', '(0)', false, false],
+  ['no counter but a label', '', true, true],
+  ['neither', '', false, false],
+] as const)(
+  'a search has matched by its counter, and by a label only without one: %s',
+  async ([, counter, label, is]) => {
+    const { sent, device } = phone(DEFAULTS.package);
+    const grid = [
+      ...(counter ? [word(1, counter, 70, 10, 20, 8)] : []),
+      word(2, 'SEARCH', 40, 30, 20, 10),
+      ...(label ? [word(3, 'CP415', 10, 50, 20, 8)] : []),
+    ];
+    reads(sent, STORAGE, grid.join('\n'));
+    const { search, matched } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+    expect(matched(await search('shiny'))).toBe(is);
+  },
+);
 
 test('a grid whose storage count did not read answers null', () => {
   const { device } = phone(DEFAULTS.package);
@@ -296,4 +361,33 @@ test.for([
   expect(x).toBe(image.width * DEFAULTS.taps.firstTile[0]);
   expect(y).toBeGreaterThan(row);
   expect(y).toBeLessThan(next);
+});
+
+/** The map as OCR reads it, with a quest above the avatar that names Pokémon without being the menu's button. */
+const MAP = word(1, 'Catch 500 Pokémon', 10, 165, 50, 8);
+
+/** The main menu as OCR reads it: the Pokémon button's label, above its icon. */
+const MENU = word(1, 'POKÉMON', 15, 150, 20, 8);
+
+test('the map is walked to storage by the main menu, and the Pokémon button tapped once the menu shows', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, MAP, MENU, STORAGE);
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await search('shiny');
+
+  expect(tapped(sent)).toStrictEqual([
+    ['input', 'tap', '50', '182'],
+    ['input', 'tap', '25', '164'],
+    ['input', 'tap', '50', '35'],
+  ]);
+});
+
+test('a menu tap that opened anything but the menu stops the walk, without tapping where the button would be', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, MAP);
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('the main menu did not open');
+  expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '182']]);
 });

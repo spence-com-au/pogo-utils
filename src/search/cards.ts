@@ -9,7 +9,7 @@
  */
 
 import { spreadOut } from './clauses.js';
-import { group, isGroup, type Group, type Leaf, type Node } from './tree.js';
+import { emptyTree, group, isGroup, type Group, type Leaf, type Node } from './tree.js';
 
 /** The pills one card holds. */
 export const pillsOf = (card: Node): readonly Leaf[] =>
@@ -46,6 +46,12 @@ export function asCards(tree: Node): Group | null {
         cards.map(cardOf).filter((card) => card !== null),
       );
 }
+
+/**
+ * A tree as the cards the Builder draws. One spreading past what a search box takes has none: only a hand-made link
+ * can arrive like that, the Advanced pane refusing such a query before it reaches here.
+ */
+export const cardsOf = (tree: Node): Group => asCards(tree) ?? emptyTree();
 
 /** Which catalogue entry a pill is, which two pills are compared by: a term or a range by id, a name by its text. */
 const entry = (leaf: Leaf) => (leaf.kind === 'name' ? `name:${leaf.text}` : `${leaf.kind}:${leaf.id}`);

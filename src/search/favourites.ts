@@ -9,7 +9,7 @@
  * when the two disagreed.
  */
 
-import { KEY_PREFIX } from '../event-prefs.js';
+import { KEY_PREFIX } from '../storage-namespace.js';
 
 export const FAVOURITES_KEY = `${KEY_PREFIX}search:favourites`;
 

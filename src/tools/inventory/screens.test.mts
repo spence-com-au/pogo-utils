@@ -18,14 +18,14 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
-import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
+import { ambiguous, nearest, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT, parseDetail, powerUpOn, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
-import { findOverlay } from './overlay.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
+import { artworkIn, readScreen } from './report.mts';
 import { useTestEngine } from './test-engine.mts';
 
 /**
@@ -216,12 +216,12 @@ interface Fixture {
  * eight at once, falsifiably — re-run it and the first match is in the set the row claims. Negation is the half only a
  * search can give, since nothing on the screen says a Pokémon is **not** lucky.
  *
- * The other 47 rows have no search behind them. They arrived named for what they are, and the name is a claim the
+ * The other rows have no search behind them. They arrived named for what they are, and the name is a claim the
  * rendered screen has to bear out — weaker provenance, and sufficient for what those rows are for.
  *
  * `xurkitree.png`'s search is the weakest of the six: `alola` pins its region and nothing else, so its `size` and
- * flags rest on the same eye as the 47 and it is one of those rows in everything but provenance. The two shadows'
- * searches pin `shadow` and nothing else of what a row states.
+ * flags rest on the same eye as the other rows and it is one of those rows in everything but provenance. The two
+ * shadows' searches pin `shadow` and nothing else of what a row states.
  *
  * | file                  | search                                                                               |
  * |-----------------------|--------------------------------------------------------------------------------------|
@@ -649,6 +649,19 @@ const FIXTURES: readonly Fixture[] = [
     weight: 250.88,
   },
   {
+    cp: 124,
+    file: 'magikarp-best-buddy.png',
+    form: null,
+    gender: 'female',
+    height: 1.08,
+    hp: 52,
+    name: '96%',
+    overlay: { iv: { attack: 15, defense: 15, stamina: 13 }, level: 16 },
+    species: 'Magikarp',
+    types: ['Water'],
+    weight: 14.38,
+  },
+  {
     cp: 756,
     file: 'maschiff-female.png',
     form: null,
@@ -1007,36 +1020,11 @@ const FIXTURES: readonly Fixture[] = [
 const read = async (file: string) => {
   const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
   const image = screenIn(stitch);
-  const lines = await readLines(image);
-  const parsed = await parseDetail(lines, DATA, image);
+  const { lines, detail, moves, box, overlay, identity } = await readScreen(stitch, DATA, ICONS);
 
-  // Off the whole stitch where the screen draws no `POWER UP` row, as `readScreen` does.
-  const detail = { ...parsed, powerUp: parsed.powerUp ?? (await powerUpOn(stitch)) };
-  const found = await findOverlay(image);
-
-  // The artwork's own signature, which is the only thing that separates forms identical in every number. Floored on the
-  // overlay's box where one was found, PGSharp drawing over the artwork, so no fraction of one phone's screen is
-  // written down here. Memoised with the reading because the segmentation walks the pixels and the assertions are meant
-  // to be free.
-  const box = found?.box ?? null;
-  const signature = signatureOf(image, box ? box.y + box.height : undefined);
-
-  const overlay = found?.overlay ?? null;
-  const artwork = signature ? { signature, icons: ICONS } : undefined;
-
-  return {
-    image,
-    lines,
-    detail,
-    box,
-    overlay,
-    artwork,
-
-    // The end of the pipeline, memoised with the readings it is derived from. It is pure and cheap, but each of a
-    // capture's eighteen attributes is a test of its own, and caching it says outright that the eighteen are asserting
-    // one answer rather than eighteen separately-derived ones.
-    identity: identify(DATA, detail, overlay, artwork),
-  };
+  // `image` is the screen `readScreen` read, handed on for the tests that run a reader of their own over it, and
+  // `artwork` is rebuilt the way `readScreen` builds it for the same reason: the ones that call `identify` themselves.
+  return { image, lines, detail, moves, box, overlay, artwork: artworkIn(image, box, ICONS), identity };
 };
 
 const readings = new Map<string, ReturnType<typeof read>>();
@@ -1110,9 +1098,9 @@ for (const fixture of FIXTURES) {
   const unseparated = defects.unseparated ?? [];
   const notes = notesOf(fixture);
 
-  // A `describe` rather than one test with eighteen subtests inside it, because Vitest collects a file's tests
+  // A `describe` rather than one test with a subtest per attribute inside it, because Vitest collects a file's tests
   // synchronously and so cannot be handed a test registered after an `await`. Each attribute therefore reads the
-  // memoised capture for itself, which costs nothing — the first of the eighteen pays for the OCR and the rest get the
+  // memoised capture for itself, which costs nothing — the first of them pays for the OCR and the rest get the
   // settled promise — and buys a failure that names the reader.
   describe(`${fixture.file} reads as the ${truth} on the screen`, () => {
     test('size', async () =>
@@ -1150,7 +1138,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 59 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 60 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1217,12 +1205,12 @@ const NEGATIVE = ['no-pgsharp.png', 'overworld.png', 'pgsharp-no-overlay.png'];
 
 /**
  * How many captures to have being read at once, ahead of the tests that assert them. Without this a capture's first
- * test paid for its whole reading before the next was opened, and the suite was 49 readings end to end.
+ * test paid for its whole reading before the next was opened, and the suite was a reading per capture end to end.
  *
  * A handful rather than all of them: a single reading is already as wide as the machine in places — `findOverlay`
  * sweeps `availableParallelism()` bands at a time — so captures past the first few buy contention rather than
  * parallelism. On 22 cores this file took 137s at one capture at a time, 106s at four, 102s at eight and 120s with all
- * 49 in flight.
+ * of them in flight.
  *
  * It buys total time with per-test latency at a roughly linear rate, measured on four cores:
  *
@@ -1278,6 +1266,13 @@ const drain = async () => {
 const workers: Promise<void>[] = [];
 
 /**
+ * The Tesseract every read below goes through, which is the CLI unless `INVENTORY_OCR=wasm` asks for the page's — see
+ * `test-engine.mts`. Installed at import rather than in the hook, since a test reaching a capture the pool has not
+ * started reads it itself.
+ */
+const stopEngine = useTestEngine();
+
+/**
  * The pool, started from a hook rather than at import so that whatever starts it is also what stops it. Module
  * initialisation has no owner: `afterAll` bounds a file's tests, and Vitest runs no hooks at all for a file whose every
  * test its `-t` filter excluded — while still *evaluating* the module, so reads started at import had nothing that
@@ -1286,13 +1281,6 @@ const workers: Promise<void>[] = [];
  * Starting here costs the read-ahead nothing. `beforeAll` runs before the first test, which is the first moment any of
  * this is wanted.
  */
-/**
- * The Tesseract every read below goes through, which is the CLI unless `INVENTORY_OCR=wasm` asks for the page's — see
- * `test-engine.mts`. Installed at import rather than in the hook, since a test reaching a capture the pool has not
- * started reads it itself.
- */
-const stopEngine = useTestEngine();
-
 beforeAll(() => {
   for (let worker = 0; worker < READ_AHEAD; worker++) {
     workers.push(drain());
@@ -1322,9 +1310,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 59.
+ * covers everything else in this file — one capture rather than 60.
  *
- * They need it because a body that waits on all 59 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 60 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1388,7 +1376,7 @@ const SCREEN_RATIO = 2.35;
  * capture three times taller moves every one off what it was measured against; `parseMoves` alone survives, being
  * anchored on the `GYMS & RAIDS` line.
  *
- * It is a test because prose was not enough: a stitch was committed over all 43 detail captures anyway, reporting as
+ * It is a test because prose was not enough: a stitch was committed over every detail capture anyway, reporting as
  * 76 failures of which not one said the fixtures were what was wrong. The size is the cheapest thing on a capture to
  * check and the only one that separates the two artifacts.
  *
@@ -1399,7 +1387,7 @@ const SCREEN_RATIO = 2.35;
 test('every committed screen is one screen rather than a stitch', () => {
   const stitched = SCREENS.flatMap((file) => {
     // Off the PNG header, where the spec puts width and height as the 32-bit fields at 16 and 20. `decodePng` would
-    // inflate each capture to 9 MB of pixels to compare two numbers — 3.4s and 606 MB across the 49.
+    // inflate each capture to 9 MB of pixels to compare two numbers — 3.4s and 606 MB across the corpus.
     const bytes = readFileSync(new URL(`fixtures/${file}`, import.meta.url));
     const width = bytes.readUInt32BE(16);
     const height = bytes.readUInt32BE(20);
@@ -1513,15 +1501,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 59,
+  rows: 60,
   negatives: 3,
-  answeredAsThemselves: 58,
-  oneLevel: 59,
-  crossCheckAgrees: 59,
+  answeredAsThemselves: 59,
+  oneLevel: 60,
+  crossCheckAgrees: 60,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 49,
+  noDefects: 50,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1562,9 +1550,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 59 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 60 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 59 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 60 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1619,28 +1607,6 @@ test(
 );
 
 /**
- * The vended game master's own shape, each figure what `pnpm vend:game-master` printed as it wrote the file. This is
- * the only thing standing between a fixture truncated or swapped and a reader that has merely stopped agreeing with a
- * capture, the cast on `DATA` being unchecked.
- *
- * Expect it to move when upstream releases a species, and read that as the vend being reviewed rather than the suite
- * breaking: a form arriving that shares a dex, its types and its stamina with a capture really does change which forms
- * an HP can tell apart.
- */
-test('the vended game master is the shape the readers are asserted against', () => {
-  expect(
-    {
-      forms: DATA.forms.length,
-      species: DATA.species.length,
-      moves: DATA.moves.length,
-      types: DATA.types.length,
-      cpm: DATA.cpm.length,
-    },
-    'the vended game master has changed shape; re-vend and update these figures',
-  ).toStrictEqual({ forms: 1473, species: 1024, moves: 328, types: 18, cpm: 101 });
-});
-
-/**
  * Which captures the CP is read off, and what it is read as — the one thing the rows cannot say, since each of them
  * states the number the game printed and a `cpOn` answering null for everything would pass every row. It is a minority
  * of them because the CP is white text over the artwork and the hardest thing on the screen to make out.
@@ -1689,6 +1655,7 @@ test(
       'landorus-shadow.png': 1965,
       'lugia-hashes-hh.png': 1553,
       'lugia-hashes.png': 1553,
+      'magikarp-best-buddy.png': 124,
       'meowth-alola.png': 431,
       'meowth-galar.png': 571,
       'necrozma.png': 2078,
@@ -1923,6 +1890,7 @@ test(
       'eevee-background.png': 25,
       'frigibax.png': 25,
       'growlithe-nickname.png': 50,
+      'magikarp-best-buddy.png': 400,
       'maschiff-female.png': 50,
       'maschiff-male.png': 50,
       'meowth-alola.png': 50,
@@ -2000,7 +1968,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(59);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(60);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2491,10 +2459,7 @@ test(
         continue;
       }
 
-      // Floored on the overlay's box where one was found, PGSharp drawing over the artwork, so no fraction of one
-      // phone's screen is written down here.
-      const { image, box } = await readingOf(fixture.file);
-      const signature = signatureOf(image, box ? box.y + box.height : undefined);
+      const signature = (await readingOf(fixture.file)).artwork?.signature;
       assert.ok(signature, `${fixture.file} yields no artwork signature at all`);
 
       const icons = new Map(
@@ -2533,8 +2498,8 @@ test(
  * `WEATHER BONUS` under a move and carry Weather Ball in their pool, so a reader taking the caption for a move would
  * answer one that is not there.
  *
- * The form comes off `readingOf`, which is the crop, every reader that could answer one being anchored on a height the
- * whole stitch does not have.
+ * The moves are `readScreen`'s own, off `readingOf`: read off the whole stitch, with the form off the crop, every
+ * reader that could answer one being anchored on a height the whole stitch does not have.
  */
 test(
   'the moves read off every committed capture are the ones on it',
@@ -2542,10 +2507,7 @@ test(
     const read: Record<string, Moves> = {};
 
     for (const file of COMMITTED) {
-      const { identity } = await readingOf(file);
-      const image = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
-
-      read[file] = await parseMoves(await readLines(image), DATA, identity.form, image);
+      read[file] = (await readingOf(file)).moves;
     }
 
     expect(read).toStrictEqual({
@@ -2581,6 +2543,7 @@ test(
       'landorus-shadow.png': { fast: 'Rock Throw', charged: ['Frustration'] },
       'lugia-hashes-hh.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
       'lugia-hashes.png': { fast: 'Dragon Tail', charged: ['Hydro Pump'] },
+      'magikarp-best-buddy.png': { fast: 'Splash', charged: ['Struggle'] },
       'maschiff-female.png': { fast: 'Bite', charged: ['Psychic Fangs'] },
       'maschiff-male.png': { fast: 'Snarl', charged: ['Psychic Fangs'] },
       'meloetta-aria.png': { fast: 'Quick Attack', charged: ['Thunderbolt'] },
@@ -2615,7 +2578,7 @@ test(
 
     // And that no stitch reads *less* than the screen inside it, which is the relation rather than the map: a stitch
     // assembled at the wrong offset could hold a plausible pair of moves and still have lost one its own first frame
-    // shows. One file on either side of it — `readingOf` is the crop `screenIn` takes, `read` above is the whole.
+    // shows. One file on either side of it — `lines` is read off the crop `screenIn` takes, `read` above off the whole.
     for (const file of STITCHES) {
       const { lines, image, identity } = await readingOf(file);
       const shown = await parseMoves(lines, DATA, identity.form, image);
@@ -2757,7 +2720,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 59.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 60.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(

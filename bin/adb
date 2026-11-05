@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# The `adb` a Claude session's Bash commands find first on their `PATH`: the phone's lease is taken, or refused while
+# another session holds it, before the real `adb` runs. See `scripts/adb-lease.mts`.
+
+exec node "${0%/*}/../scripts/adb-lease.mts" adb "$@"

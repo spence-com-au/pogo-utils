@@ -58,6 +58,7 @@
  * the account is the user's to weigh.
  */
 
+import { said } from '../src/errors.ts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
@@ -70,12 +71,13 @@ import { clearable, identify, settledForm, shadowOf, type Identity } from '../sr
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
-import { findOverlay, readOverlay, widen, type Overlay, type OverlayBox } from '../src/tools/inventory/overlay.mts';
+import { findOverlay, ivsOf, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
 import { decodePng, difference, encodePng, type Image } from '../src/tools/inventory/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
   artworkIn,
+  dumped,
   NO_BOX,
   NO_OVERLAY,
   printable,
@@ -92,6 +94,7 @@ import {
   landmarksBefore,
   Marks,
   movesOf,
+  OverlayBoxes,
   parseFlags,
   reachMoves,
   reachOf,
@@ -382,7 +385,7 @@ async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Sig
   if (options.verbose) {
     const dump = (found: readonly Line[]) => {
       for (const l of found) {
-        console.log(`  ${`${l.left},${l.top} ${l.width}×${l.height}`.padEnd(22)} ${l.text}`);
+        console.log(`  ${dumped(l)}`);
       }
     };
 
@@ -450,7 +453,7 @@ async function scan(held: Transport) {
 
   const screens = options['keep-screens'];
   const shot = await device.screenshot();
-  const { tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile } = storage(
+  const { tap, swipe, dismiss, closeDetail, search, matches, matched, stored, firstTile } = storage(
     device,
     config,
     data,
@@ -464,7 +467,7 @@ async function scan(held: Transport) {
   // — Unown B and Unown ! by 0.48%, against 0.54%. Where the phone will not have it, `input swipe` it is, with the
   // game's counts below for `walk` to tell its drops from the end by, and to catch a pass they still cut short.
   const touch = await touchscreen(held).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
     console.error(`${reason}; swiping with \`input swipe\` instead, which can drop a swipe and cut a pass short`);
 
     return null;
@@ -479,10 +482,7 @@ async function scan(held: Transport) {
     }
   };
 
-  let overlayBox: OverlayBox | null = config.overlay ?? null;
-
-  // A phone with PGSharp's overlay switched off would otherwise sweep for it on every Pokémon, for ever.
-  let searchesLeft = 5;
+  const boxes = new OverlayBoxes(config.overlay ?? null, findOverlay, readOverlay);
 
   if (screens) {
     mkdirSync(screens, { recursive: true });
@@ -518,55 +518,21 @@ async function scan(held: Transport) {
 
     /**
      * How much of this reading is in doubt, as a score to be got to zero. Recorded with the reading rather than worked
-     * out again when two are compared: `overlayBox` is found part way through a pass, and a score that moved with it
+     * out again when two are compared: `boxes.box` is found part way through a pass, and a score that moved with it
      * would rank an earlier attempt differently for what a later one went on to learn.
      */
     faults: number;
   }
 
-  /**
-   * PGSharp's overlay, with the box it sits in found on the way if it is not known yet. The box does not move between
-   * Pokémon — only between phones — so it is worth finding once and keeping, which is the difference between a sweep
-   * of the upper screen and one crop. Only a box that actually yielded a reading is kept: one that merely looked
-   * right would go on being wrong for every Pokémon after it, where not keeping it costs another sweep.
-   *
-   * `sweep` is the caller's leave to spend one of the rationed searches, which it withholds on a look this Pokémon is
-   * being given for some other reason — the crop is still read, so a box already known still answers.
-   */
-  const overlayOf = async (image: Image, sweep: boolean): Promise<Overlay | null> => {
-    if (overlayBox) {
-      const overlay = await readOverlay(image, overlayBox);
+  const overlayOf = async (image: Image, sweep: boolean) => {
+    const known = boxes.box;
+    const overlay = await boxes.overlayOn(image, sweep);
 
-      if (overlay || !sweep || searchesLeft <= 0) {
-        return overlay;
-      }
-
-      // A box tightened on one Pokémon clips a longer line on another — a three digit percentage is a character wider,
-      // and two of twenty-five captures missed for exactly that. So a miss earns one sweep, and the box is widened to
-      // cover both rather than swapped, which converges instead of flipping between the two Pokémon that disagree.
-      searchesLeft--;
-      const wider = await findOverlay(image);
-
-      if (wider) {
-        overlayBox = widen(overlayBox, wider.box);
-      }
-
-      return wider?.overlay ?? null;
+    if (!known && boxes.box) {
+      console.error(`  found PGSharp's overlay at ${JSON.stringify(boxes.box)}`);
     }
 
-    if (!sweep || searchesLeft <= 0) {
-      return null;
-    }
-
-    searchesLeft--;
-    const found = await findOverlay(image);
-
-    if (found) {
-      overlayBox = found.box;
-      console.error(`  found PGSharp's overlay at ${JSON.stringify(found.box)}`);
-    }
-
-    return found?.overlay ?? null;
+    return overlay;
   };
 
   /**
@@ -578,24 +544,15 @@ async function scan(held: Transport) {
    *
    * A note `identify` raised is worth another look as well, and it is the only one of them that says the screen read
    * *whole* and wrongly: a CP the settled form and level do not derive, a level shortlist no HP can be, a form the
-   * overlay names that no species has. What says a second read of the same Pokémon is worth taking is the corpus having
-   * been retaken — which captures misread their CP changed with it, three before the retake and two after it, and one
-   * fewer now that the sweep runs every treatment, so a misread is a property of the capture as much as of the reader.
-   * `screens.test.mts` pins which two of its 43 captures a scan reads again, against the nine that raise a note at all,
-   * and that every one of the nine is a row carrying a `defects`.
-   *
-   * The seven in that gap are `unseparated`, which is reported and not chased: those forms share every number the
-   * screen prints, so what would settle them is a field the game never drew. `basculin-blue.png` is the severest —
-   * PGSharp's own box covers the fish's head, the only part of it that differs between the three stripes. Nothing here
-   * can be the check for those; only a second reader of the same thing could be.
+   * overlay names that no species has. Only the notes a second read could clear count (`clearable`): `unseparated` is
+   * reported and not chased, those forms sharing every number the screen prints, so what would settle them is a field
+   * the game never drew. `screens.test.mts` pins that split.
    *
    * `could also be …` is counted with the rest, but only on a reading that has IVs: with none the search narrows on
    * types alone and 21 of the game master's 1,024 species answer it for ever, so counting those would read every
-   * Deoxys, Dialga and Lycanroc three times on every pass for an answer no further look can change. Where there are
-   * IVs it now costs no capture of the 43 — `castform-rainy.png` was the one, answered as **Inteleon** until the CP
-   * sweep read the 832 that settles it — so the cost is unmeasured rather than measured at nothing. It is kept because
-   * the case it was argued on is the case it is for: a nickname sends the search across every species, and a Pokémon
-   * the numbers cannot then separate is exactly the one worth looking at twice.
+   * Deoxys, Dialga and Lycanroc three times on every pass for an answer no further look can change. It is kept because
+   * the case it is for is a nickname, which sends the search across every species, and a Pokémon the numbers cannot
+   * then separate is exactly the one worth looking at twice.
    *
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
    * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
@@ -629,13 +586,14 @@ async function scan(held: Transport) {
           await dismiss();
         }
 
-        // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. The
-        // sweeps are rationed over the whole run, so one granted on every attempt buys three tries of the same
-        // `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is what
-        // varies by phone, its own docblock measuring it at nine of twelve captures from one and none from another.
+        // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. Sweeps
+        // that find nothing are rationed over the whole run, so one granted on every attempt buys three tries of the
+        // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
+        // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from
+        // another.
         const overlay = detail.hp === null ? null : await overlayOf(image, lost === null || lost > 0);
         const key = keyOf(detail, overlay);
-        const id = identify(data, detail, overlay, artworkIn(image, overlayBox, icons));
+        const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));
 
         // The key above the other two, not beside them: a reading with no key is the one `walk` counts as a miss and
         // writes `detail screen not read`, so it must lose to any reading that got the HP however much else that one
@@ -643,12 +601,12 @@ async function scan(held: Transport) {
         // to wait for; a form that fits is the surest of the three, the name, the types, the HP and the IVs agreeing
         // being what a half-read screen cannot fake.
         const keyless = Number(key === null);
-        const fields = Number(overlay === null && overlayBox !== null) + Number(id.form === null);
+        const fields = Number(overlay === null && boxes.box !== null) + Number(id.form === null);
 
         // Notes only where the overlay read, because the ones raised without IVs are the ones no further read can
         // clear: with `iv === null` the search narrows on types alone, and 21 of the game master's 1,024 species then
         // answer `could also be …` for ever. Counting those would read every one of them three times on every pass.
-        // `clearable` is the same argument applied to one note more, and 8 of the 43 committed captures raise it.
+        // `clearable` is the same argument applied to one note more: `unseparated` is reported, never chased.
         const notes = overlay === null ? 0 : clearable(id);
 
         lost = keyless + fields;
@@ -742,9 +700,10 @@ async function scan(held: Transport) {
       if (short) {
         throw new Error(`${short}; marking only those would write \`no\` against the rest`);
       }
-    } else if (tileLabel(grid)) {
-      // The grid showed a Pokémon and it would not read, which is not the answer a search matching nothing gives:
-      // marking nothing would write `no` against every Pokémon the search holds. So the column is left blank instead.
+    } else if (matched(grid)) {
+      // The search matched Pokémon and the first would not read, which is not the answer a search matching nothing
+      // gives: marking nothing would write `no` against every Pokémon the search holds. So the column is left blank
+      // instead.
       console.error(`${flag}: the first Pokémon would not read, so this column is left blank`);
       continue;
     }
@@ -799,7 +758,7 @@ async function scan(held: Transport) {
         const id =
           shade.shadowed === null
             ? read
-            : identify(data, detail, overlay, artworkIn(image, overlayBox, icons), null, shade.shadowed);
+            : identify(data, detail, overlay, artworkIn(image, boxes.box, icons), null, shade.shadowed);
 
         return { ...shade, id };
       };
@@ -816,7 +775,7 @@ async function scan(held: Transport) {
       }
 
       if (overlay === null) {
-        notes.push(overlayBox ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
+        notes.push(boxes.box ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
       }
 
       if (!options['no-moves']) {
@@ -1004,7 +963,7 @@ async function scan(held: Transport) {
       written++;
 
       const each = (Date.now() - started) / written / 1000;
-      const ivText = iv ? `${iv.attack}/${iv.defense}/${iv.stamina}` : '?';
+      const ivText = iv ? ivsOf(iv) : '?';
       console.error(
         `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.level || '?'}` +
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,
@@ -1223,7 +1182,7 @@ async function snap() {
   // Driven to the Pokémon rather than taking what is showing, which is what makes a capture reproducible: the search
   // names what it wanted, where a screen set up by hand records nothing about which Pokémon that was.
   if (options.search !== undefined) {
-    const { tap, search, tileLabel, matches, firstTile } = storage(
+    const { tap, search, matches, matched, firstTile } = storage(
       device,
       config,
       await gameData(),
@@ -1243,7 +1202,7 @@ async function snap() {
     // first label misread still carries the counter, so only a search that really matched nothing is refused here.
     const found = matches(grid);
 
-    if (found === 0 || (found === null && !tileLabel(grid))) {
+    if (!matched(grid)) {
       refuse(
         found === 0
           ? `--search ${JSON.stringify(options.search)} matched nothing, which the grid's own counter says`

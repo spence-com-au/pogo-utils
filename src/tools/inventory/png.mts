@@ -11,6 +11,7 @@
  */
 
 import { unzlibSync, zlibSync } from 'fflate';
+import { said } from '../../errors.ts';
 
 /**
  * An image as four bytes a pixel, red, green, blue and alpha, row after row.
@@ -185,7 +186,7 @@ export function decodePng(bytes: Uint8Array): Image {
     // inflates further than that stops there rather than allocating for the rest.
     raw = unzlibSync(compressed, { out: new Uint8Array(needed) });
   } catch (error) {
-    throw refuse(`corrupt PNG: its pixels do not inflate (${error instanceof Error ? error.message : String(error)})`);
+    throw refuse(`corrupt PNG: its pixels do not inflate (${said(error)})`);
   }
 
   if (raw.length < needed) {
@@ -449,6 +450,9 @@ export function pad(image: Image, size: number, colour: [number, number, number]
 
   return { width: size, height: size, data };
 }
+
+/** The middle of `values` once sorted, the upper one of a pair, or zero for none. */
+export const median = (values: readonly number[]) => [...values].sort((a, b) => a - b)[values.length >> 1] ?? 0;
 
 /** How bright a pixel looks, by the Rec. 709 weights. */
 export const luminance = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;

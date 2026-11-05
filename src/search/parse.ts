@@ -10,10 +10,9 @@
  * composer takes it from there. So a typed query is an import rather than another way to ask the same question — the
  * pills land on the cards and can be edited afterwards like any others.
  *
- * **The operators are the game's own, and both sources agree on them now.** Niantic's list groups `|` with `&` as an
- * AND, and the community phrase list says it outright: "`&` or `|` — AND combination", "`,` or `;` or `:` — OR
- * combination". An earlier text box here refused `|` for want of a second source, `pkgosearch.com` reading it as an
- * OR; two lists against one converter is enough to stop refusing it.
+ * **The operators are the game's own, and both sources agree on them.** Niantic's list groups `|` with `&` as an AND,
+ * and the community phrase list says it outright: "`&` or `|` — AND combination", "`,` or `;` or `:` — OR combination".
+ * `pkgosearch.com` reads `|` as an OR, but two lists against one converter are enough to accept it as an AND.
  *
  * A negation is carried down rather than kept as a node, which is De Morgan's law applied while reading: a negated
  * `all` is an `any` of negated parts. That is not a convenience but the whole of why this fits — `tree.js` keeps
@@ -21,6 +20,7 @@
  * the cards can draw.
  */
 
+import { said } from '../errors.js';
 import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, SPAN, type Range } from './terms.js';
 import { group, NESTING, type Junction, type Leaf, type Node } from './tree.js';
 
@@ -288,6 +288,6 @@ export function read(text: string): Read {
 
     return { tree: node.kind === 'group' ? node : group('all', [node]), error: null };
   } catch (cause) {
-    return { tree: null, error: cause instanceof Error ? cause.message : String(cause) };
+    return { tree: null, error: said(cause) };
   }
 }

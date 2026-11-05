@@ -12,7 +12,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { Nav } from './nav.js';
-import { fromHash, pageOf, type Page, type Route } from './router.js';
+import { arrive, fromHash, pageOf, type Arrival, type Page } from './router.js';
 
 /** What every page exports: a component handed the query string it is to read its own state out of. */
 export type PageComponent = FunctionComponent<{ query: string }>;
@@ -40,11 +40,11 @@ const PAGES: Record<Page, () => Promise<{ default: PageComponent }>> = {
  * it is already in, once per keystroke. What is left to this is arrival: a link followed in, a tab clicked, and the
  * Back button, which are the three ways a reader changes page.
  */
-function useRoute(): Route {
-  const [route, setRoute] = useState(() => fromHash(location.hash));
+function useRoute(): Arrival {
+  const [route, setRoute] = useState<Arrival>(() => ({ ...fromHash(location.hash), visit: 0 }));
 
   useEffect(() => {
-    const reread = () => setRoute(fromHash(location.hash));
+    const reread = () => setRoute((last) => arrive(last, location.hash));
 
     addEventListener('hashchange', reread);
 
@@ -94,7 +94,7 @@ function usePageComponent(page: Page) {
  * Names the open page on the document, for the two things that are the document's rather than a page's.
  *
  * The title is what a bookmark and a tab strip read. The `data-page` attribute is what the stylesheets are scoped by:
- * the Map page's sheet lays out a full viewport that does not scroll, and the five sheets between them define `.grid`,
+ * the Map page's sheet lays out a full viewport that does not scroll, and the page sheets between them define `.grid`,
  * `.card` and `.chip` differently, all of which was free while each page was its own document and none of which is now.
  */
 function useDocument(page: Page) {
@@ -105,7 +105,7 @@ function useDocument(page: Page) {
 }
 
 export function Shell() {
-  const { page, query } = useRoute();
+  const { page, query, visit } = useRoute();
   const { Component, failed } = usePageComponent(page);
 
   useDocument(page);
@@ -117,10 +117,11 @@ export function Shell() {
       {/*
        * `Component` is keyed by page, so switching tabs builds a new component rather than handing the next page the
        * mounted state of the last one. Two pages that both open on a `<dialog>` or hold a Leaflet map are not
-       * interchangeable, however alike their trees look to the reconciler.
+       * interchangeable, however alike their trees look to the reconciler. The visit is in the key for the arrival the
+       * page could not see as a new `query`, which `arrive` counts.
        */}
       {failed === null ? (
-        Component && <Component key={page} query={query} />
+        Component && <Component key={`${page}#${visit}`} query={query} />
       ) : (
         <p class="status err" role="alert">
           Could not load the {pageOf(page).label} page: {failed}

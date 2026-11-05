@@ -70,6 +70,13 @@ function isStorage(lines: readonly Line[]): boolean {
   return findLine(lines, /\beggs?\b/) !== undefined || findLine(lines, /^search\b/) !== undefined;
 }
 
+/**
+ * Whether the main menu is open, by the Pokémon button's label as a line of its own. Whole, because the map can say the
+ * word too — a quest reading `Catch 500 Pokémon` sits above the trainer's avatar — and the button beneath that label
+ * is, on the map, a patch of ground PGSharp's tap-to-walk takes as somewhere to walk to.
+ */
+const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
+
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Replaces what the focused search box holds with `term`: cleared by `CLEAR_KEYS`, typed unless empty, and entered. */
@@ -201,6 +208,16 @@ export function storage(
   };
 
   /**
+   * Whether a search matched any Pokémon: the counter `matches` reads where it read, and `tileLabel` in its place only
+   * where it did not, a label lost to a shiny tile's sparkles being no sign that the search matched nothing.
+   */
+  const matched = (lines: readonly Line[]): boolean => {
+    const found = matches(lines);
+
+    return found !== 0 && (found !== null || tileLabel(lines) !== undefined);
+  };
+
+  /**
    * How many Pokémon storage holds, off the `12800 / 12825` under the POKÉMON tab of a grid nothing was searched for,
    * or null where it did not read. A searched grid has the `(N)` `matches` reads in its place.
    *
@@ -309,6 +326,13 @@ export function storage(
       }
 
       await tap(at(config.taps.mainMenu), config.waits.menu);
+
+      // Thrown rather than tried again: a menu tap that opened something else — the stop a walking avatar carried under
+      // the Poké Ball — leaves a screen nothing here knows the controls of, and every further tap there is a guess.
+      if (!isMainMenu(await readLines(await device.screenshot()))) {
+        throw new Error('the main menu did not open; open Pokémon storage by hand and run again');
+      }
+
       await tap(at(config.taps.pokemonButton), config.waits.search);
     }
 
@@ -320,7 +344,8 @@ export function storage(
   /** Types a search into storage's search box, replacing whatever was there, and answers the grid it leaves. */
   const search = async (term: string) => {
     let lines = await toStorage();
-    searchBox ??= ((l) => (l ? centre(l) : null))(findLine(lines, /\bsearch\b/)) ?? at(config.taps.search);
+    const found = findLine(lines, /\bsearch\b/);
+    searchBox ??= found ? centre(found) : at(config.taps.search);
     await tap(searchBox);
     await replaceSearch(device, term);
     await sleep(config.waits.search);
@@ -362,5 +387,5 @@ export function storage(
     return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
   };
 
-  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, stored, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, matched, stored, firstTile };
 }

@@ -11,7 +11,7 @@ import { type Form, type GameData } from './game-master.mts';
 import { identify, settledForm, type Identity } from './identify.mts';
 import { parseMoves, type Moves } from './moves.mts';
 import { type Line } from './ocr.mts';
-import { findOverlay, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
+import { findOverlay, ivsOf, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
 import { screenIn, type Image } from './png.mts';
 
 /** What every reader made of one screenshot, with the lines OCR handed them for anyone asking why. */
@@ -110,6 +110,9 @@ export function refusals({ detail, box, overlay }: Pick<Reading, 'detail' | 'box
 export const NO_BOX = 'not found; is PGSharp running, and is a Pokémon open?';
 export const NO_OVERLAY = 'nothing read';
 
+/** One line OCR found as `--verbose` prints it and the page lists it: its box, padded to a column, then its text. */
+export const dumped = (l: Line) => `${`${l.left},${l.top} ${l.width}×${l.height}`.padEnd(22)} ${l.text}`;
+
 /**
  * The identity as `report` prints it. Every form carries its whole move pool, which prints as a column of `[Object]`
  * and buries everything worth reading; the names are what a person tuning this wants to see anyway. The forms in
@@ -165,7 +168,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
     fact('hp', detail.hp, 'read'),
     fact('level', identity.levels.join(' or '), 'worked out'),
-    fact('ivs', overlay && `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}`, 'read'),
+    fact('ivs', overlay && ivsOf(overlay.iv), 'read'),
     fact('fast move', moves.fast, 'read'),
     fact('charged', moves.charged.join(', '), 'read'),
   ];

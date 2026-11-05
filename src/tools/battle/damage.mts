@@ -14,7 +14,7 @@
 
 import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, formsOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
+import { chargedOf, effectiveness, formsOf, MOVES_HELD, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's
@@ -55,6 +55,14 @@ export interface Stages {
 }
 
 export const NO_STAGES: Stages = { attack: 0, defense: 0 };
+
+/** Both sides' stages: ours and the opponent's. */
+export interface StagePair {
+  own: Stages;
+  their: Stages;
+}
+
+export const NO_STAGE_PAIR: StagePair = { own: NO_STAGES, their: NO_STAGES };
 
 /** How far a stage can go either way. */
 const MAX_STAGE = 4;
@@ -267,9 +275,6 @@ export function hit(
   );
 }
 
-/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. */
-export const MOVES_HELD = 2;
-
 /** Whether a hit would faint us, and why that is the answer: the hardest hit and how much it takes, or what is unknown. */
 export interface Verdict {
   faints: boolean;
@@ -321,6 +326,14 @@ function staged(attack: number, defense: number): string {
   return moved.length > 0 ? ` (${moved.join(', ')})` : '';
 }
 
+/** What `wouldFaint` is told beyond the two sides, the HP and the cap. */
+export interface WouldFaintOptions {
+  meta?: Meta | null;
+  seen?: ReadonlySet<string>;
+  affordable?: number;
+  stages?: StagePair;
+}
+
 /**
  * Whether the opponent's hardest charged move would take at least `FAINTS` of the HP we have left, `hp` being the
  * fraction of our maximum the bar shows, and why. Hardest of every charged move `chargedOf` allows any of its forms —
@@ -330,8 +343,8 @@ function staged(attack: number, defense: number): string {
  * move of theirs — counts as fainting, a shield being the safe side to err on, and is what `why` names.
  *
  * `seen` is the charged moves this opponent has been seen to use, which outweighs what its players run. Both of them
- * seen, they are all it has, whatever its form. One seen narrows nothing: the other could be any allowed it, the
- * hardest among them.
+ * seen, they are all it has, whatever its form. One seen narrows nothing: it is allowed for however few run it, and
+ * the other could be any allowed it, the hardest among them.
  *
  * Of those, only the ones costing no more than `affordable` where it is given, the energy the opponent is counted as
  * having, unless that leaves none, which says the count is short rather than that nothing was thrown.
@@ -345,10 +358,7 @@ export function wouldFaint(
   opponent: Side,
   hp: number | null,
   cap: number | null,
-  meta?: Meta | null,
-  seen: ReadonlySet<string> = new Set(),
-  affordable?: number,
-  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  { meta, seen = new Set(), affordable, stages = NO_STAGE_PAIR }: WouldFaintOptions = {},
 ): Verdict {
   const ours = buildsOf(data, own, cap);
   const theirs = buildsOf(data, capped(opponent, cap), cap);
@@ -375,7 +385,7 @@ export function wouldFaint(
   let narrowed = false;
 
   for (const attacker of theirs) {
-    const names = seen.size >= MOVES_HELD ? [...seen] : chargedOf(attacker.form, moveset);
+    const names = seen.size >= MOVES_HELD ? [...seen] : [...new Set([...seen, ...chargedOf(attacker.form, moveset)])];
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
     const afforded = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
     const counted = affordable !== undefined && afforded.length > 0;
@@ -423,7 +433,10 @@ export function wouldFaint(
  */
 const HARD = 1.4;
 
-/** How far a steady bar wanders from itself frame to frame: 2 points, as `health.mts`'s `JUMP` measured it. */
+/**
+ * How far a steady bar wanders from itself frame to frame: 2 points, Entei's at 98–100% and Charizard's at 76–78% in a
+ * live Ultra League run.
+ */
 export const WANDER = 0.02;
 
 /** Whether to take a shield against the opponent's charged move, and why. */
@@ -558,11 +571,11 @@ export function wouldShield(
 
 /**
  * How sure a lit move must be to finish the opponent before it is thrown over the one held for: the hit counted at
- * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and 2
- * points more, which a steady bar wanders from itself frame to frame (`health.mts`'s `JUMP`). Too sure costs no more
- * than holding on as before; not sure enough leaves the opponent standing at a sliver with our energy spent.
+ * nine tenths of what the model says, both sides' builds being guesses at rank 1, against the HP the bar shows and the
+ * bar's `WANDER` more. Too sure costs no more than holding on as before; not sure enough leaves the opponent standing
+ * at a sliver with our energy spent.
  */
-const FINISH = { hit: 0.9, slack: 0.02 } as const;
+const FINISH = { hit: 0.9, slack: WANDER } as const;
 
 /**
  * Which lit button would finish the opponent, by its x, and why: one whose move takes at least the HP its bar shows,
@@ -587,7 +600,7 @@ export function finisher(
   hp: number | null,
   shields: number,
   cap: number | null,
-  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  stages: StagePair = NO_STAGE_PAIR,
 ): Pick | undefined {
   const ours = buildsOf(data, own, cap);
   const theirs = buildsOf(data, opponent, cap);

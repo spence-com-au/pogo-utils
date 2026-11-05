@@ -114,8 +114,8 @@ const coloured = (r: number, g: number, b: number) => chroma(r, g, b) >= SIZE_CH
  * **Read with no whitelist.** Held to `XSL`, `smoliv.png`'s pill reads `XS` off an `XXS` badge the game's own `xxs`
  * search confirms; open it reads `XXS,` and `fold` drops the comma. An alphabet earns its place where a stray glyph
  * could split a number in two — why `wholeCp` and the overlay keep theirs — and a badge is two or three of one letter
- * with no number to split; the chips below read open as well. Over the corpus, four of the 43 rows wear a badge and
- * open is right on all four where the whitelist is right on three, the other 39 answering null under both.
+ * with no number to split; the chips below read open as well. Over the corpus, open is right on every row that wears a
+ * badge where the whitelist misses `smoliv.png`'s, the rest answering null under both.
  *
  * **The pill's shape counts the letters, and the text only names the last.** A run of one letter is exactly what OCR
  * merges: the WebAssembly Tesseract the Inventory page reads with answers `XS` off `smoliv.png`'s pill even open, where
@@ -163,6 +163,23 @@ export function isFavourite(image: Image): boolean {
   const star = crop(image, image.width * 0.86, image.height * 0.05, image.width * 0.1, image.height * 0.06);
 
   return patchIn(star, gold).fraction >= FAVOURITE_GOLD && patchIn(star, white).fraction < FAVOURITE_WHITE;
+}
+
+/**
+ * Where the best-buddy badge ends on the name line, or null where it carries none. The game draws a gold and red rosette
+ * about the name's cap height in front of a best buddy's name, told apart by colour rather than by what Tesseract reads
+ * it as, so a nickname that does start with a `1` keeps it. The name is drawn dark grey on white: no pixel inside the
+ * corpus's 56 other name lines is more saturated than a chroma of 41, nor one inside 501 more from scans' detail
+ * screens as much as `BADGE_CHROMA`, where the badge reaches 166 and carries 88 columns past it. Only a patch starting
+ * within a line-height of the line's left counts, the badge being the first thing on it.
+ */
+export function badgeEnd(image: Image, line: Line): number | null {
+  const { left, width } = extentOf(
+    crop(image, line.left, line.top, line.width, line.height),
+    (r, g, b) => chroma(r, g, b) >= BADGE_CHROMA,
+  );
+
+  return left === -1 || left > line.height ? null : line.left + left + width;
 }
 
 /**
@@ -387,7 +404,7 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 }
 
 /**
- * Measured over the 55 committed captures: 47 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
+ * Measured over the 63 committed captures: 53 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
  * because `castform-rainy.png`'s background puts **15.78%** in that corner behind a white-outline star. Gold alone
  * cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's 24.31%,
  * inside the favourites' range, which is what `FAVOURITE_WHITE` is for.
@@ -416,6 +433,9 @@ const SIZE_RISE = 1.9;
 const SIZE_SPAN = 1.6;
 const SIZE_CHROMA = 60;
 const SIZE_FILL = 0.01;
+
+/** How saturated a pixel inside the name line has to be to be the best-buddy badge rather than the name's grey. */
+const BADGE_CHROMA = 80;
 
 /** The four words a badge can spell. */
 const SIZES = ['XXL', 'XXS', 'XL', 'XS'] as const satisfies readonly Size[];

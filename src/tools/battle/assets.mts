@@ -9,7 +9,9 @@
  * writes and `decodeSilhouettes` reads.
  */
 
+import { said } from '../../errors.ts';
 import { ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/icons.ts';
+import { FETCH_BATCH } from '../inventory/artwork.mts';
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
 import { GRID, silhouetteOfIcon, type Icon } from './party.mts';
@@ -30,7 +32,9 @@ export async function typeIcons(data: GameData, download: Download): Promise<Rec
     data.types.map(async (type) => {
       try {
         return [[type, await download(typeIconFile(type), typeIcon(type), decodePng)] as const];
-      } catch {
+      } catch (error) {
+        console.error(`  ${said(error)}; ${type} is read as no type`);
+
         return [];
       }
     }),
@@ -53,20 +57,22 @@ export function formIcons(data: GameData): Map<string, string> {
  * that cannot be had is left out for the caller to answer for, since the two answer differently: `pnpm battle` reads
  * the party without it, and `pnpm vend:silhouettes` asks again and then refuses.
  *
- * Sixteen at a time, and in the order the game master lists the forms rather than the order the downloads finish, so a
- * vend over the same upstream writes the same file.
+ * `FETCH_BATCH` at a time, and in the order the game master lists the forms rather than the order the downloads finish,
+ * so a vend over the same upstream writes the same file.
  */
 export async function silhouettesFor(data: GameData, download: Download): Promise<Map<string, Icon>> {
   const icons = [...formIcons(data)];
   const read: (readonly [string, Icon])[] = [];
 
-  for (let at = 0; at < icons.length; at += 16) {
-    const batch = icons.slice(at, at + 16).map(async ([icon, species]) => {
+  for (let at = 0; at < icons.length; at += FETCH_BATCH) {
+    const batch = icons.slice(at, at + FETCH_BATCH).map(async ([icon, species]) => {
       try {
         const silhouette = await download(icon, ICON_BASE + icon, (bytes) => silhouetteOfIcon(decodePng(bytes)));
 
         return [[icon, { species, silhouette }] as const];
-      } catch {
+      } catch (error) {
+        console.error(`  ${said(error)}; its forms are left out`);
+
         return [];
       }
     });

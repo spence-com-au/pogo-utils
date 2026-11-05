@@ -32,8 +32,8 @@
   padding: 0 10px;
 
   /**
-   * Six tabs do not fit a phone, and a bar that merely overflows drops the last one off the edge with no way to
-   * reach it — the tab was there and simply could not be got to. Scrolling keeps every tab reachable at any width. The
+   * The tabs do not fit a phone, and a bar that merely overflows drops the last one off the edge with no way to reach
+   * it — the tab was there and simply could not be got to. Scrolling keeps every tab reachable at any width. The
    * scrollbar is hidden because the bar is 48px tall and a horizontal one eats a quarter of that; the tabs are wide
    * enough to be an obvious swipe target without it.
    */
@@ -47,8 +47,8 @@
 
 .topnav .tab {
   /**
-   * Without this a tab shrinks to fit rather than overflowing, which trades the one tab that cannot be reached for
-   * five that are squeezed.
+   * Without this a tab shrinks to fit rather than overflowing, which trades the one tab that cannot be reached for all
+   * of them squeezed.
    */
   flex: 0 0 auto;
   display: inline-flex;
@@ -363,7 +363,7 @@
   }
 
   /**
-   * Six labels do not fit a phone, so the icons carry the bar alone there. Hidden visually rather than with `display:
+   * The labels do not fit a phone, so the icons carry the bar alone there. Hidden visually rather than with `display:
    * none`, which would take the label out of the accessible name too, the icon beside it being `aria-hidden`; the
    * `title` on each tab is what names it to a pointer.
    */

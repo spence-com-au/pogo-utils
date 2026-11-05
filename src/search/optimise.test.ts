@@ -15,17 +15,13 @@
 import { expect, test } from 'vitest';
 
 import POKEMON from '../pokemon/pokedex.js';
+import { all, any, named, no, yes } from '../testing/search.js';
 import { compose, emptyState, type State } from './query.js';
-import { optimise } from './optimise.js';
+import { current, optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
-import { group, leafText, type Leaf, type Node } from './tree.js';
+import { leafText, type Leaf, type Node } from './tree.js';
 
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
 const span = (from: number | null, to: number | null): Leaf => ({ kind: 'range', id: 'dex', from, to, negated: false });
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
 
 /** What an untouched string, or one rewritten without straying, says about itself. */
 const EXACT = { narrowed: false, widened: false };
@@ -64,11 +60,15 @@ test('a name is written as short as it goes, wherever the pill sits', () => {
     lossy: { narrowed: true, widened: false },
   });
 
+  // The same pair is named once however many pills it reached.
+  expect(told(any(all(named('charmander'), yes('shiny')), all(named('charmander'), yes('xxl')))).rewrites).toEqual([
+    ['charmander', '4'],
+  ]);
+
   // The one reduction that needs to know nothing about what is around it, so it reaches a pill at any depth.
   expect(short(any(all(named('charmander'), yes('shiny')), named('bulbasaur')))).toBe('4,1&shiny,1');
 
-  // A name that resolves to nothing is passed through: a nickname, a misspelling, or a fragment landing on a species
-  // the dex cannot spell.
+  // A name that resolves to nothing is passed through: a nickname or a misspelling.
   expect(told(all(named('mr snuggles')))).toEqual({ query: 'mr snuggles', rewrites: [], lossy: EXACT });
 });
 
@@ -114,9 +114,15 @@ test('a family keeps its name, there being no family data here to turn it into n
   });
 });
 
-test('a name the game cannot spell is left alone', () => {
-  // `pokedex.js` drops the apostrophe, so `farfetchd` reads as an ordinary word where the game's name is `Farfetch'd`.
-  expect(told(all(named('farfetch')))).toEqual({ query: 'farfetch', rewrites: [], lossy: EXACT });
+test('a name is matched as the game spells it, punctuation and all', () => {
+  // The game's name is `Farfetch'd`, which is what the name box writes, so `farfetch` reaches it and the constant's
+  // apostrophe-less `farfetchd` reaches nothing.
+  expect(short(all(named('farfetch')))).toBe(`${Number(POKEMON.FARFETCHD)}`);
+  expect(told(all(named('farfetchd')))).toEqual({ query: 'farfetchd', rewrites: [], lossy: EXACT });
+
+  // A fragment never ends on the space inside a name: `sandy ` reaches Sandy Shocks alone, but goes out trimmed to
+  // `sandy`, which takes Sandygast too.
+  expect(short(all(named('+sandy shocks')))).toBe('+sandy s');
 });
 
 test('dex spans AND’d collapse into their overlap, and OR’d into their union', () => {
@@ -437,4 +443,40 @@ test('shortening an already shortened arrangement changes nothing further', () =
       again: compose(once).query,
     });
   }
+});
+
+test('the page shows the shortened string only where it is shorter, and says nothing of a rewrite otherwise', () => {
+  const tree = all(named('charmander'));
+
+  // The optimiser being off shows the arrangement as it stands, whatever it could have shortened to.
+  expect(current(state(tree))).toMatchObject({ query: 'charmander', was: null, rewrites: [], lossy: EXACT });
+
+  // Shorter is taken, and what it was is kept for the page to say.
+  expect(current({ ...state(tree), optimise: true })).toMatchObject({
+    query: '4',
+    was: 'charmander'.length,
+    rewrites: [['charmander', '4']],
+    lossy: { narrowed: true, widened: false },
+  });
+
+  // No shorter is the string as arranged, with the lossiness of the rewrite that was not taken left behind.
+  expect(current({ ...state(all(named('mr snuggles'))), optimise: true })).toMatchObject({
+    query: 'mr snuggles',
+    was: null,
+    rewrites: [],
+    lossy: EXACT,
+  });
+});
+
+test('a reduction to nothing is not taken, a blank box beside cards full of pills reading as a broken page', () => {
+  const appraisal = category('appraisal');
+  const everything = any(...appraisal.terms.map((one) => yes(one.id)));
+
+  expect(short(everything)).toBe('');
+  expect(current({ ...state(everything), optimise: true })).toMatchObject({
+    query: compose(state(everything)).query,
+    was: null,
+    rewrites: [],
+    lossy: EXACT,
+  });
 });

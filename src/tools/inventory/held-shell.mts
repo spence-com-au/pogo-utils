@@ -11,11 +11,8 @@
  * it. `close` ends the shell once nothing more is to be sent, and anything sent after fails at once.
  */
 
-/**
- * Far longer than any call here takes, so it only fires on a device or `adb` server that has wedged — an `offline`
- * phone, a stalled USB link — which would otherwise hang the battle rather than fail the one call.
- */
-const TIMEOUT_MS = 30_000;
+import { said } from '../../errors.ts';
+import { NO_ANSWER, TIMEOUT_MS } from './adb.mts';
 
 /** How the shell's stdin is reached: written to, ended once nothing more is to be sent, and stopped outright. */
 export interface Pipe {
@@ -108,7 +105,7 @@ export function holdShell(pipe: Pipe, name: string): HeldShell {
           }
 
           const timer = setTimeout(() => {
-            fail(new Error(`no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`));
+            fail(new Error(NO_ANSWER));
             pipe.kill();
           }, TIMEOUT_MS);
 
@@ -129,7 +126,7 @@ export function holdShell(pipe: Pipe, name: string): HeldShell {
     const shown = command.length > 60 ? `${command.slice(0, 60)}…` : command;
 
     return run.catch((error: unknown) => {
-      throw new Error(`${name} ${shown}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`${name} ${shown}: ${said(error)}`);
     });
   };
 

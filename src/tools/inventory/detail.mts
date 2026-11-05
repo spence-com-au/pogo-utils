@@ -10,7 +10,17 @@
 import { closest, cpOf, type GameData } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
 import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
-import { genderOf, isFavourite, isLucky, isLuckyCaption, sizeOf, tagsOn, type Gender, type Size } from './badges.mts';
+import {
+  badgeEnd,
+  genderOf,
+  isFavourite,
+  isLucky,
+  isLuckyCaption,
+  sizeOf,
+  tagsOn,
+  type Gender,
+  type Size,
+} from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
   name: string | null;
@@ -254,6 +264,25 @@ async function nameAgain(image: Image, lines: readonly Line[], hp: Line, labelle
   return text !== null && NAME_SHAPE.test(text) ? text : null;
 }
 
+/**
+ * The name line's text without the best-buddy badge in front of it, which Tesseract reads as a `1` or an `i`:
+ * `magikarp-best-buddy.png`, called `96%`, read `1 96%`. So the line is read again from past the badge `badgeEnd` finds.
+ */
+async function unbadged(image: Image, line: Line): Promise<string> {
+  const end = badgeEnd(image, line);
+
+  if (end === null) {
+    return line.text;
+  }
+
+  const pad = Math.round(line.height * NAME_PAD);
+  const text = await ocrLine(
+    crop(image, end, line.top - pad, line.left + line.width - end + pad, line.height + pad * 2),
+  );
+
+  return text ?? line.text;
+}
+
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
   const longest = cpDigits(data);
   const labelled = cpLabelOf(lines, image);
@@ -262,6 +291,10 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const readings = read === null ? [] : readingsOf(read, longest);
   const whole = cpLine && read !== null ? wholeCp(image, cpLine, read, longest) : null;
 
+  // The `Promise.all` below is what reports a failed band read, but the name reads are awaited first, and a rejection
+  // with no handler for as long as they take is one Node exits over. This handler only marks it seen.
+  void whole?.catch(() => {});
+
   // `97 / 97 HP` or `HP 97/97`; the second number is the maximum, which is the one CP and level determine.
   const hpPattern = /(?:hp\s*)?(\d{1,4})\s*\/\s*(\d{1,4})(?:\s*hp)?/i;
   const hpLine = lines.find((l) => /hp/i.test(l.text) && hpPattern.test(l.text));
@@ -269,7 +302,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
 
   const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
   const name = nameLine
-    ? sanitise(nameLine.text)
+    ? sanitise(await unbadged(image, nameLine))
     : hpLine
       ? sanitise((await nameAgain(image, lines, hpLine, labelled)) ?? '')
       : null;
@@ -374,28 +407,21 @@ async function cpsIn(image: Image): Promise<number[]> {
 
 /**
  * The CP again, out of a band round the line the whole-screen pass found, where that pass lost a digit or two off one
- * end or drew a 7 as a `/`. White over the artwork is the hardest text on the screen. All 35 captures with a label line
- * reach this and seven are changed by it: `/38` for 738, `48/` for 487 and `48` for 486, and `1/05`, `9/9`, `5/1` and
- * `4/2` for the 1705, 979, 571 and 472 on their screens. The 1569 once named here is still what its row states, with
- * no label line left on the stitch for this to anchor on, and the 746 is left to the arithmetic, no band reading the
- * 7 its `ce/4 : 7` drew as a `/`.
+ * end or drew a 7 as a `/`. White over the artwork is the hardest text on the screen. Examples are `/38` for 738, `48/`
+ * for 487, `48` for 486 and `1/05` for 1705. A screen whose label line was never found has no line to anchor on and is
+ * left to the arithmetic.
  *
  * A line no band can change is not read round at all: one already as long as a CP goes, `rescue` wanting a number
  * longer than the line's and no longer than `longest`, and one with a `/` whose readings are already one, or hold no
- * reading with every `/` a 7 for a band to agree with. That is ten of the 35 and 132 passes for the corpus. Over the
- * 23 label lines it read before the `/` was kept, it cost 84 where three treatments unguarded cost 132 and two cost 90.
+ * reading with every `/` a 7 for a band to agree with.
  *
  * The treatments at a pad go together rather than in turn, being three pure functions of the one band, and what is
- * taken is still the first accepted in array order. What that gives up is stopping early within a pad, which costs
- * three passes over those 23 — 84 against 81 — and what it buys is the latency of a screen read on its own, as
- * `scripts/inventory.mts` reads one. Best of three on 22 cores: `pikachu.png` runs all six passes and accepts none,
- * reading in 246ms against 515ms, where `unown-b.png` accepts on the first treatment and pays 133ms against 114ms. The
- * core count is part of those figures rather than context for them — a pad dispatches three reads where it dispatched
- * one, and how many cores there are decides whether that is parallel or queued. The pads stay in turn, 0.35 having to
- * be refused before 0.6 is tried.
+ * taken is still the first accepted in array order. That gives up stopping early within a pad and buys the latency of
+ * a screen read on its own, as `scripts/inventory.mts` reads one. How many cores there are decides whether the three
+ * reads run in parallel or queue. The pads stay in turn, 0.35 having to be refused before 0.6 is tried.
  *
- * The corpus suite shows none of this. It keeps enough reads in flight to saturate the cores either way, which is the
- * same contention `vitest.config.mjs` raises its timeout for and `ocr.mts` pins `OMP_THREAD_LIMIT=1` against.
+ * The corpus suite keeps enough reads in flight to saturate the cores either way, which is the same contention
+ * `vitest.config.mjs` raises its timeout for and `ocr.mts` pins `OMP_THREAD_LIMIT=1` against.
  */
 async function wholeCp(image: Image, line: Line, read: string, longest: number): Promise<string | null> {
   const readings = readingsOf(read, longest);
@@ -849,7 +875,7 @@ const LABEL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
 const CP_ALPHABET = 'CP0123456789 ';
 
 /** How many digits the highest CP any form can show runs to: perfect IVs at the highest level there is. */
-const cpDigits = (data: GameData) => {
+export const cpDigits = (data: GameData) => {
   const [, top = 0] = data.cpm.at(-1) ?? [];
   const best = { attack: 15, defense: 15, stamina: 15 };
 
@@ -865,14 +891,10 @@ const cpDigits = (data: GameData) => {
 const CP_SWEEP = { x: 0.3, y: 0.055, width: 0.4, height: 0.035 };
 
 /**
- * How far round the line the CP band reaches, in that line's own heights, in the order to try. 0.35 is what six of the
- * seven rescues read at, and 0.6 earns the seventh: `meowth-galar.png`'s `cpe5/1` band reads `51` under every treatment
- * at 0.35 and `571` plain at 0.6, which without it would be left to the arithmetic as 571 or 51. By the floor standard
- * `overlay.mts` sets that is one capture legible at 0.6 and illegible at 0.35, and so the pad's whole case.
- *
- * It was added for `articuno-kanto.png`, which needed it for a digit lost off the back, against `deoxys-defense.png`
- * reading `1569` at 0.35 and losing it at 0.6. Neither is that evidence any more: `articuno-kanto.png`'s `cpe1/05` is
- * rescued at 0.35 now its `/` is kept, and no label line is found on `deoxys-defense.png` at all.
+ * How far round the line the CP band reaches, in that line's own heights, in the order to try. 0.35 reads most
+ * rescues, and 0.6 earns `meowth-galar.png`: its `cpe5/1` band reads `51` under every treatment at 0.35 and `571` plain
+ * at 0.6, which without it would be left to the arithmetic as 571 or 51. By the floor standard `overlay.mts` sets that
+ * is one capture legible at 0.6 and illegible at 0.35, and so the pad's whole case.
  */
 const CP_PADS = [0.35, 0.6];
 
@@ -901,16 +923,13 @@ const CP_ACROSS = 0.5;
  *
  * Brightness is here for `growlithe-nickname.png`, which neither of the others reaches: at pad 0.35 its band reads `38`
  * plain and near-white and `738` brightened. `castform-sunny.png` is the same at 0.35, `99` against a brightened
- * `CP979`, though plain would find its `979` at 0.6. Going last decides nothing the corpus can show, but not because a
- * second is never read — every treatment is read at every pad entered. What the order picks between is acceptances,
- * and where two of them accept at one pad they accept the same number: plain and near-white at `unown-b.png`'s and
- * `articuno-kanto.png`'s 0.35, and all three at `vulpix.png`'s. Nor is going
- * last protection for a line already read right: a pass reading that number back is the same length, so the rule turns
- * it down and the loop carries on. It costs 44 of the corpus's 132 passes, and what bounds its noise is the four-digit
- * cap, which `wholeCp` now applies before any band is read rather than after three.
+ * `CP979`. Where two treatments accept at one pad they accept the same number, so the order picks nothing the corpus
+ * can show. Going last is no protection for a line already read right either: a pass reading that number back is the
+ * same length, so the rule turns it down and the loop carries on. What bounds the noise is the four-digit cap, which
+ * `wholeCp` applies before any band is read.
  *
- * What `cpsIn` has neither of is the guard that skips a band and the acceptance that ends a pad. Reading all three is
- * what both do; `cpsIn` does it on every capture it sweeps, 39 passes over the 13 where reading the band plain cost 13.
+ * What `cpsIn` has neither of is the guard that skips a band and the acceptance that ends a pad, so it reads all three
+ * treatments on every capture it sweeps.
  */
 const CP_TREATMENTS = [
   (band: Image) => band,

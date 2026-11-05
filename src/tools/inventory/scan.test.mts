@@ -6,8 +6,8 @@
 
 import { type Detail } from './detail.mts';
 import { type Moves } from './moves.mts';
-import { findOverlay, readOverlay, type Overlay } from './overlay.mts';
-import { decodePng } from './png.mts';
+import { findOverlay, readOverlay, widen, type Overlay } from './overlay.mts';
+import { decodePng, screenIn } from './png.mts';
 import {
   agree,
   count,
@@ -24,20 +24,26 @@ import {
   MOVE_STEPS,
   movesOf,
   otherPokemon,
+  OverlayBoxes,
   parseCsv,
   parseFlags,
   reachMoves,
   shaded,
   shortfall,
+  SWEEPS,
   walk,
   type Landmark,
 } from './scan.mts';
 import { CLEAR_KEYS } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
-import { afterAll, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, expect, test, vi } from 'vitest';
 
 afterAll(useTestEngine());
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /** A detail screen read with a 50 HP Pikachu's measurements, and whatever else a test says. */
 function detail(fields: Partial<Detail> = {}): Detail {
@@ -308,7 +314,6 @@ test.for([
 
   expect(await walked(keys, Infinity, from)).toEqual([[keys[from], from]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 test('a miss just before a run that ends storage does not visit the last Pokémon twice', async () => {
@@ -320,6 +325,41 @@ test('a miss just before a run that ends storage does not visit the last Pokémo
     ['a', 2],
   ]);
   expect(error).not.toHaveBeenCalled();
+});
+
+test('a third unreadable screen in a row stops the pass, and two do not', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2])).toEqual([
+    ['a', 0],
+    [null, 1],
+    [null, 2],
+    ['d', 3],
+    ['e', 4],
+  ]);
+  expect(error).not.toHaveBeenCalledWith(expect.stringContaining('three unreadable screens'));
+
+  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2, 3])).toEqual([
+    ['a', 0],
+    [null, 1],
+    [null, 2],
+  ]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('three unreadable screens in a row; stopping this pass'));
+  error.mockRestore();
+});
+
+test('a screen read two different ways, leaving no end to storage it fits, stops the pass', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  // The second Pokémon goes unread, and the look back that tells the third from it read again reads it `q`. At the end
+  // the look back reads it `b` all three times, which fits neither storage going on, with `c` there, nor storage
+  // ending, with `q` there, so the pass stops on the look back, each Pokémon visited once and none past the end.
+  expect(await walked(['a', 'b', 'c'], Infinity, 0, [1], [], null, { 1: 'q' })).toEqual([
+    ['a', 0],
+    [null, 1],
+    ['c', 2],
+  ]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('one screen read two different ways'));
   error.mockRestore();
 });
 
@@ -332,7 +372,6 @@ test('a miss on the last Pokémon in storage ends the walk there', async () => {
     [null, 2],
   ]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 test('a miss on a twin of the Pokémon before a run is settled by the run going on', async () => {
@@ -354,7 +393,6 @@ test.for([
 
   expect((await walked(keys, Infinity, 0, [1])).map(([key]) => key)).toEqual(['x', null, 'a']);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('storage may have ended 1 Pokémon ago'));
-  error.mockRestore();
 });
 
 test.for([
@@ -394,7 +432,6 @@ test('a look back that reads a Pokémon another way, then as before, is a misrea
     ['c', 3],
   ]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 // Nothing then tells the twins from the end, so the walk stops — but on a screen it says it could not settle, not
@@ -421,7 +458,6 @@ test('a look back that reads three ways is taken for a misread rather than the e
   expect(visited).toEqual([['b', 1]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('taking it for a misread'));
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 /**
@@ -459,18 +495,16 @@ test.for([
 
   expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
   expect(error).toHaveBeenCalledWith(expect.stringContaining('went nowhere'));
-  error.mockRestore();
 });
 
 test('a walk skipped into storage counts its retries against the whole of storage', async () => {
-  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   expect(await walked(['a', 'b', 'c', 'd'], Infinity, 1, [], [1], 4)).toEqual([
     ['b', 1],
     ['c', 2],
     ['d', 3],
   ]);
-  error.mockRestore();
 });
 
 test('a dropped swipe with no count to hold it to still ends the walk, for `shortfall` to report', async () => {
@@ -503,7 +537,6 @@ test('a count read too high costs a few swipes at the real end and visits nothin
   expect(visited).toEqual(keys);
   expect(error).toHaveBeenCalledTimes(DROP_RETRIES);
   expect(swipes).toBeLessThan(keys.length + 3 * (DROP_RETRIES + 1));
-  error.mockRestore();
 });
 
 test('a drop on the first swipe of a pass cannot be told from a twin, so the walk stops there and says so', async () => {
@@ -511,7 +544,6 @@ test('a drop on the first swipe of a pass cannot be told from a twin, so the wal
 
   expect(await walked(['a', 'b', 'c'], Infinity, 0, [], [0], 3)).toEqual([['a', 0]]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 test('a walk skipped to the last Pokémon in storage ends there, by a look back that reads the same each time', async () => {
@@ -519,7 +551,6 @@ test('a walk skipped to the last Pokémon in storage ends there, by a look back 
 
   expect(await walked(['a', 'b'], Infinity, 1)).toEqual([['b', 1]]);
   expect(error).not.toHaveBeenCalled();
-  error.mockRestore();
 });
 
 test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
@@ -572,6 +603,12 @@ test('a skip is checked against the last rows written up to it, oldest first', (
     { hp: 41, weight: 6.1, height: 0.41, iv: null },
     { hp: 42, weight: 6.2, height: 0.42, iv: '4/5/6' },
   ]);
+});
+
+test('a row written lands as the reading that wrote it, an IV of 0 included', () => {
+  const text = written([[1, '50', '6.1', '0.41', '0/15/0']]);
+
+  expect(landmarksBefore(text, 1)).toStrictEqual([landmarkOf(detail(), overlay(0, 15, 0))]);
 });
 
 test('the rows checked stop at one with no HP, and take the last written under a number', () => {
@@ -716,7 +753,6 @@ test('a look back that misses the overlay where the worlds differ only in IVs st
 
   expect(visited.map(([, place]) => place)).toEqual([0, 1]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('its end cannot be told'));
-  error.mockRestore();
 });
 
 /**
@@ -789,6 +825,66 @@ test('the overlay over a moves screen tells whose moves they are', async () => {
   expect(bounced?.iv).toStrictEqual({ attack: 11, defense: 6, stamina: 10 });
   expect(otherPokemon(roggenrola, bounced), 'the Roggenrola took the Rookidee’s moves screen for its own').toBe(true);
   expect(otherPokemon(rookidee, bounced), 'the Rookidee’s own moves screen is taken for another’s').toBe(false);
+});
+
+const BAND = { x: 0.15, y: 0.198, width: 0.7, height: 0.03 };
+const SCREEN = decodePng(readFileSync(new URL('fixtures/no-pgsharp.png', import.meta.url)));
+
+/**
+ * Issue #587: a box kept from one Pokémon that clips the next one's line, so that only a sweep reads it. Each sweep
+ * succeeds, so the overlay is plainly on, and the scan must go on sweeping long after the first five.
+ */
+test('a sweep that reads the overlay spends none of the ration', async () => {
+  const find = vi.fn(async () => ({ box: BAND, overlay: overlay(12, 11, 14) }));
+  const boxes = new OverlayBoxes(BAND, find, async () => null);
+
+  for (let i = 0; i < SWEEPS * 2; i++) {
+    expect(await boxes.overlayOn(SCREEN, true), `Pokémon ${i + 1} went unread`).toStrictEqual(overlay(12, 11, 14));
+  }
+
+  expect(find).toHaveBeenCalledTimes(SWEEPS * 2);
+});
+
+test('sweeps that find nothing stop at the ration, so a phone without the overlay is not swept for ever', async () => {
+  const find = vi.fn(async () => null);
+  const boxes = new OverlayBoxes(null, find, async () => null);
+
+  for (let i = 0; i < SWEEPS * 2; i++) {
+    expect(await boxes.overlayOn(SCREEN, true)).toBeNull();
+  }
+
+  expect(find).toHaveBeenCalledTimes(SWEEPS);
+});
+
+test('a sweep widens the kept box rather than replacing it, and a look without leave reads the box alone', async () => {
+  const tight = { x: 0.2, y: 0.2, width: 0.5, height: 0.02 };
+  const find = vi.fn(async () => ({ box: BAND, overlay: overlay(1, 2, 3) }));
+  const boxes = new OverlayBoxes(tight, find, async () => null);
+
+  expect(await boxes.overlayOn(SCREEN, false)).toBeNull();
+  expect(find).not.toHaveBeenCalled();
+
+  await boxes.overlayOn(SCREEN, true);
+  expect(boxes.box).toStrictEqual(widen(tight, BAND));
+});
+
+/**
+ * The real readers: the box swept off `gengar-gigantamax.png` clips `audino.png`'s line, which is the miss a scan of
+ * that phone meets, and a sweep reads it all the same and widens the box to read both.
+ */
+test('a kept box that clips another Pokémon’s overlay is widened by a sweep until it reads both', async () => {
+  const screen = (file: string) => screenIn(decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url))));
+  const gengar = screen('gengar-gigantamax.png');
+  const audino = screen('audino.png');
+  const found = (await findOverlay(gengar)) ?? expect.unreachable('no overlay found on the Gengar');
+
+  expect(await readOverlay(audino, found.box), 'the Gengar’s box no longer clips the Audino').toBeNull();
+
+  const boxes = new OverlayBoxes(found.box, findOverlay, readOverlay);
+
+  expect(await boxes.overlayOn(audino, true)).not.toBeNull();
+  expect(await readOverlay(audino, boxes.box ?? expect.unreachable('no box'))).not.toBeNull();
+  expect(await readOverlay(gengar, boxes.box ?? expect.unreachable('no box'))).not.toBeNull();
 });
 
 test('an overlay that went unread says nothing of whose moves they are', () => {

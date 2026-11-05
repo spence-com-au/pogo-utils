@@ -16,7 +16,7 @@
  * was never on the screen.
  */
 
-import { rgb, type Image } from './png.mts';
+import { median, rgb, type Image } from './png.mts';
 
 /** The fractions of a frame's height that scroll, which is the region the game draws its own content in. */
 export interface Band {
@@ -210,10 +210,7 @@ export function offsetBetween(a: Image, b: Image, band: Band): number | null {
   // A band of flat colour is what this refuses: every shift matches it equally well, so the best is the median and
   // nothing stands out. A screen that has not moved at all is the opposite case and answers zero, which is a
   // measurement rather than a refusal — a capture stops on both, but only one of them is a fact about the screen.
-  const sorted = [...scores].sort((x, y) => x - y);
-  const median = sorted[Math.floor(sorted.length / 2)] ?? Infinity;
-
-  if ((scores[best] ?? Infinity) * MARGIN >= median) {
+  if ((scores[best] ?? Infinity) * MARGIN >= median(scores)) {
     return null;
   }
 

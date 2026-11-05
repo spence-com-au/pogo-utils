@@ -7,12 +7,12 @@
  * cut. Its `despawn_ms` are 0 and are set relative to the clock by whatever reads it.
  */
 
-import { FILTER_DEFAULTS } from '../../livepokemap/filter-format.ts';
+import { FILTER_DEFAULTS, type FilterConfig } from '../../livepokemap/filter-format.ts';
 import { Backoff } from './backoff.mts';
 import { LoginRefused } from './client.mts';
 import { namesOf, notificationFor, reasonsFor } from './message.mts';
 import { publishUrl } from './ntfy.mts';
-import { admits, blindSpots, parseQuery, shows, wants, widest } from './query.mts';
+import { admits, blindSpots, parseQuery, shows, wants, widest, type Query } from './query.mts';
 import { Seen } from './seen.mts';
 import { firstAnswer, match, messageOf } from './watcher.mts';
 import {
@@ -199,6 +199,86 @@ test('the filter sent is wide enough for every query', () => {
 
   // Narrowing to sizes survives only where every query narrows.
   expect(widest([XXL_HUNT]).filterXXL).toBe(true);
+});
+
+/** Queries that differ on every field, so a bound from the wrong end or a flag from the wrong quantifier shows. */
+test('the filter sent is the union of queries that differ on every field', () => {
+  const narrow: FilterConfig = {
+    showAll: false,
+    minIV: 50,
+    maxIV: 80,
+    alwaysShowPerfect: false,
+    alwaysShowZero: false,
+    alwaysShowRare: false,
+    alwaysShowSize: false,
+    filterXXS: true,
+    filterXXL: false,
+    minLevel: 10,
+    maxLevel: 30,
+    speciesFilterMode: 'allowlist',
+    speciesFilterList: [3],
+    showPvpGreatLeague: true,
+    showPvpUltraLeague: false,
+    showPvpLittleLeague: false,
+    pvpMaxRank: 5,
+    showMyShinies: true,
+    shinyOnly: true,
+  };
+
+  const other: FilterConfig = {
+    showAll: true,
+    minIV: 20,
+    maxIV: 90,
+    alwaysShowPerfect: true,
+    alwaysShowZero: true,
+    alwaysShowRare: true,
+    alwaysShowSize: true,
+    filterXXS: false,
+    filterXXL: true,
+    minLevel: 5,
+    maxLevel: 40,
+    speciesFilterMode: 'allowlist',
+    speciesFilterList: [1],
+    showPvpGreatLeague: false,
+    showPvpUltraLeague: true,
+    showPvpLittleLeague: true,
+    pvpMaxRank: 25,
+    showMyShinies: false,
+    shinyOnly: false,
+  };
+
+  const queries = [narrow, other].map((config, index) => ({ name: `${index}.json`, config }));
+
+  const union: FilterConfig = {
+    showAll: true,
+    minIV: 20,
+    maxIV: 90,
+    alwaysShowPerfect: true,
+    alwaysShowZero: true,
+    alwaysShowRare: true,
+    alwaysShowSize: true,
+    filterXXS: true,
+    filterXXL: true,
+    minLevel: 5,
+    maxLevel: 40,
+    speciesFilterMode: 'allowlist',
+    speciesFilterList: [1, 3],
+    showPvpGreatLeague: true,
+    showPvpUltraLeague: true,
+    showPvpLittleLeague: true,
+    pvpMaxRank: 25,
+    showMyShinies: true,
+    shinyOnly: false,
+  };
+
+  expect(widest(queries)).toStrictEqual(union);
+  expect(widest([...queries].reverse())).toStrictEqual(union);
+
+  // Narrowing to sizes is dropped by a query that does not narrow to any, and shiny-only by one that is not.
+  const open = { name: 'open.json', config: FILTER_DEFAULTS };
+
+  expect(widest([...queries, open])).toMatchObject({ filterXXS: false, filterXXL: false, shinyOnly: false });
+  expect(widest([queries[0] as Query])).toMatchObject({ filterXXS: true, filterXXL: false, shinyOnly: true });
 });
 
 test('what a query cannot see from the world is said, and nothing is said of one that can see it all', () => {

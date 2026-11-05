@@ -1,7 +1,8 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { KEYS } from './event-prefs.js';
-import { EventStore, NOTHING_REVEALED } from './event-store.js';
+import { KEYS, loadPrefs } from './event-prefs.js';
+import { mergeEvents } from './event-schedule.js';
+import { admits, EventStore, fetchEvents, NOTHING_REVEALED, type CardsFilter } from './event-store.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 import type { StampedEvent } from './event-feed.js';
@@ -240,6 +241,56 @@ test('a hidden type is matched by its slug, whatever its heading says', async ()
   expect(ids(store)).toEqual(['kept']);
 });
 
+/**
+ * The type an `?event=` link unhid passes the type filters and nothing else: an event of it the reader dismissed stays
+ * out, as does one the search does not match, and every other hidden type stays hidden.
+ */
+test("a filter's unhidden type passes the type filters alone", () => {
+  const prefs = loadPrefs();
+  const hidden = new Set(['go-pass', 'go-battle-league']);
+  const events = mergeEvents(
+    [
+      feedEvent('pass', { eventType: 'go-pass' }),
+      feedEvent('dismissed', { eventType: 'go-pass' }),
+      feedEvent('league', { eventType: 'go-battle-league' }),
+    ],
+    [],
+  );
+
+  prefs.dismissed.add('dismissed');
+
+  const admitted = (filter: Pick<CardsFilter, 'search' | 'unhidden'>) =>
+    events.filter((ev) => admits(ev, prefs, hidden, { reveals: NOTHING_REVEALED, ...filter })).map((ev) => ev.eventID);
+
+  expect(admitted({ search: '' })).toEqual([]);
+  expect(admitted({ search: '', unhidden: 'go-pass' })).toEqual(['pass']);
+  expect(admitted({ search: 'Event league', unhidden: 'go-pass' })).toEqual([]);
+});
+
+/**
+ * The type a link unhid lives in the filter the Events page publishes rather than in the stored set, which every chip
+ * writes back whole: the top bar counts it while the page is open, a chip saving the set keeps it hidden, and closing
+ * the page puts the count back on what is stored.
+ */
+test('a type a link unhid is counted while the Events page is open, and a chip keeps it hidden', async () => {
+  const { store, source } = storeOver([feedEvent('a')]);
+
+  await store.load();
+  source.feed = [feedEvent('a'), feedEvent('pass', { heading: 'GO Pass', eventType: 'go-pass' })];
+  await store.load();
+
+  store.publish({ reveals: NOTHING_REVEALED, search: '', now: new Date(), unhidden: 'go-pass' });
+  expect(ids(store)).toEqual(['pass']);
+
+  // Another chip: one more type hidden, and the set written back.
+  store.prefs.hiddenTypes.add('season');
+  store.commit('hiddenTypes');
+  expect(JSON.parse(storage.getItem(KEYS.hiddenTypes) ?? '[]')).toEqual(expect.arrayContaining(['go-pass', 'season']));
+
+  store.publish(null);
+  expect(ids(store)).toEqual([]);
+});
+
 test('the Events page search narrows the list while it is open, and closing the page lifts it', async () => {
   const { store, source } = storeOver([feedEvent('a')]);
 
@@ -328,6 +379,50 @@ test('reloading the preferences keeps the object every reader holds', () => {
   expect(held.hiddenTypes.has('season')).toBe(true);
 });
 
+test('reloading keeps what a full store refused to save, not what was never saved, until a save lands', () => {
+  const store = new EventStore(async () => []);
+
+  storage.refusesWrites = true;
+  store.prefs.dismissed.add('a');
+  store.commit('dismissed');
+  store.prefs.dismissed.add('unsaved');
+  store.reloadPrefs();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['a']));
+
+  storage.refusesWrites = false;
+  store.commit('dismissed');
+  storage.setItem(KEYS.dismissed, JSON.stringify(['b']));
+  store.reloadPrefs();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['b']));
+});
+
+test('blocked storage keeps the seen record through a reload, so the next load marks nothing new', async () => {
+  const { store, source } = storeOver([feedEvent('a')]);
+
+  storage.throws = true;
+  await store.load();
+  store.reloadPrefs();
+  source.feed = [feedEvent('a'), feedEvent('b')];
+  await store.load();
+
+  expect(ids(store)).toEqual(['b']);
+});
+
+test('an import wins over a change storage refused to save', () => {
+  const store = new EventStore(async () => []);
+
+  storage.refusesWrites = true;
+  store.prefs.dismissed.add('a');
+  store.commit('dismissed');
+  storage.refusesWrites = false;
+  storage.setItem(KEYS.dismissed, JSON.stringify(['b']));
+  store.restored();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['b']));
+});
+
 test('an import re-reads storage, settles a seen set the file left out, and tells every reader', async () => {
   const { store } = storeOver([feedEvent('a'), feedEvent('b')]);
 
@@ -402,4 +497,29 @@ test('a first visit that finds only one file seeds nothing, so the other is not 
 
   expect(ids(store)).toEqual([]);
   expect(stored()).toEqual({ through: null, ids: ['a', 'c'] });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+test('fetchEvents answers the list the feed holds', async () => {
+  vi.stubGlobal('fetch', async () => Response.json([feedEvent('a')]));
+  await expect(fetchEvents('events-feed.json')).resolves.toEqual([feedEvent('a')]);
+});
+
+/** A status the server refused on names itself, so a 404 from a missing file reads differently from a 503. */
+test('fetchEvents refuses a response the server would not give', async () => {
+  vi.stubGlobal('fetch', async () => new Response(null, { status: 503, statusText: 'Service Unavailable' }));
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('503 Service Unavailable');
+});
+
+/** `Response#json` answers `any`, so this guard is the whole of what says the feed is a list. */
+test.for([
+  { body: 'a bare string', value: 'events' },
+  { body: 'an object', value: { events: [] } },
+  { body: 'null', value: null },
+])('fetchEvents refuses $body', async ({ value }) => {
+  vi.stubGlobal('fetch', async () => Response.json(value));
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('not a list of events');
 });

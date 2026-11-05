@@ -1,15 +1,17 @@
 /**
- * A touchscreen of `pnpm battle`'s own, made on the phone through `/dev/uhid` from the shell a `Transport` holds open:
- * each touch is a HID report written by the shell's `print` builtin, where `input tap` and `input swipe` start a Java
- * runtime on the phone for every command, about 20ms each. The phone's own touchscreen is no way in: SELinux refuses
- * the shell a write to `/dev/input/event*`, `sendevent`'s included, on a Pixel 4 XL with Android 13, but grants it
- * `/dev/uhid`, which Android's own `hid` command creates its test devices through.
+ * A touchscreen of its caller's own — `pnpm battle`'s, `pnpm inventory scan`'s or the Battle tab's — made on the phone
+ * through `/dev/uhid` from the shell a `Transport` holds open: each touch is a HID report written by the shell's
+ * `print` builtin, where `input tap` and `input swipe` start a Java runtime on the phone for every command, about 20ms
+ * each. The phone's own touchscreen is no way in: SELinux refuses the shell a write to `/dev/input/event*`,
+ * `sendevent`'s included, on a Pixel 4 XL with Android 13, but grants it `/dev/uhid`, which Android's own `hid` command
+ * creates its test devices through.
  *
  * The kernel's `hid-multitouch` driver takes the device as a touchscreen, and Android maps its range over the whole
  * display, so a point is given as fractions of the screen, the same on every phone. The device lasts as long as the
  * shell holds `/dev/uhid` open: a shell gone with the connection takes it with it, along with any touch still down.
  */
 
+import { said } from '../../errors.ts';
 import { type Transport } from './adb.mts';
 
 /** A pause, by the global timer rather than `node:timers/promises`, so a page can make the touchscreen too. */
@@ -198,7 +200,7 @@ export async function touchscreen(transport: Transport): Promise<Touchscreen> {
   // Behind `command`, so that a refused open leaves the shell to answer with why: a special builtin's failed
   // redirection ends a shell that isn't interactive, which would blame the cable.
   await send(`command exec ${FD}<>/dev/uhid ${IDLE_FD}<>/dev/uhid`).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
 
     throw new Error(`the phone's shell could not open /dev/uhid for a touchscreen: ${reason}`);
   });

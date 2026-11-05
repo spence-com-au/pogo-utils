@@ -8,18 +8,19 @@
  * Everything below is scoped to the open page.
  *
  * Each of these sheets was the only one in its document and could style `.body`, `.note` and `.group` as it liked. One
- * document loads all five, and between them they give nineteen class names — `.card`, `.chip`, `.grid`, `.name`,
- * `.meta` among them — a different meaning per page. The wrapper is what keeps each sheet's meaning to its own page;
- * `data-page` is set on the body by the shell, from the same table the router validates a fragment against.
+ * document loads every page's sheet, and between them class names — `.card`, `.chip`, `.grid`, `.name`, `.meta` among
+ * them — mean something different per page. The wrapper is what keeps each sheet's meaning to its own page; `data-page`
+ * is set on the body by the shell, from the same table the router validates a fragment against.
  */
 body[data-page='integrations'] {
   /**
    * The header and the panels below it share one content column, so the title sits over the thing it heads instead of
    * out at the page margin with a thousand pixels between them. `--content-w` holds that width where all of them need.
    *
-   * On the wrapper rather than on `:root`, which is what each sheet used while each was alone. Three of the four want a
-   * different width — 1100px for the Events calendar and the Pokédex grid, 880px for the search builder — so on `:root`
-   * the four would be one declaration and whichever the bundler wrote last would set the column for every page.
+   * On the wrapper rather than on `:root`, which is what each sheet used while each was alone. The pages that set it
+   * want different widths — among them 1100px for the Events calendar and the Pokédex grid and 880px for the search
+   * builder — so on `:root` they would be one declaration and whichever the bundler wrote last would set the column for
+   * every page.
    */
   --content-w: 640px;
 

@@ -12,7 +12,7 @@
  * next type's, Water's 24 against Flying's 39 being the closest. Its emblem was 6% to 23% of the disc.
  */
 
-import { rgb, type Image } from '../inventory/png.mts';
+import { median, rgb, type Image } from '../inventory/png.mts';
 import { type Colour } from './minigame.mts';
 import { around, down, TOP, type Area, type Size } from './layout.mts';
 
@@ -57,7 +57,7 @@ export function iconColour(icon: Image): Colour {
     }
   }
 
-  return channels.map((levels) => levels.sort((a, b) => a - b)[levels.length >> 1] ?? 0) as unknown as Colour;
+  return channels.map(median) as unknown as Colour;
 }
 
 const distance = (a: Colour, b: Colour) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -86,7 +86,7 @@ function iconAt(image: Image, x: number, colours: Readonly<Record<string, Colour
   }
 
   const share = emblem / Math.max(n, 1);
-  const disc = channels.map((levels) => levels.sort((a, b) => a - b)[levels.length >> 1] ?? 0) as unknown as Colour;
+  const disc = channels.map(median) as unknown as Colour;
   const [nearest] = Object.entries(colours)
     .map(([type, colour]) => ({ type, by: distance(disc, colour) }))
     .sort((a, b) => a.by - b.by);

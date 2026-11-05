@@ -10,9 +10,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
 
-    // `scripts/bundle.mts` writes the JavaScript, one file per page rather than one per module, so there is nothing for
-    // the compiler to emit into `dist/` and no `outDir` here at all. Checking is still this project's job; the bundler
-    // does no type analysis whatever.
+    // `scripts/bundle.mts` writes the JavaScript, an entry for `src/main.tsx` and one for the battle Worker, a chunk
+    // for each page `src/shell.tsx` reaches through `import()` and chunks for the modules they share, so there is
+    // nothing for the compiler to emit into `dist/` and no `outDir` here at all. Checking is still this project's job;
+    // the bundler does no type analysis whatever.
     "emitDeclarationOnly": true,
 
     // `composite` forces declarations, which nothing serves — out of the published tree rather than into it. `rootDir`
@@ -63,8 +64,8 @@
 
     // `react-jsx` is the modern transform, which imports what it needs rather than expecting a name in scope, so no
     // module here has to import Preact to write JSX. The source it imports from is the setting that points it at Preact
-    // instead of React; `scripts/bundle.mts` is told the same pair, since it is the half that does the transform and
-    // the compiler only checks it.
+    // instead of React. esbuild, which does the transform, reads this same pair from here, and the compiler only checks
+    // it.
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
   },
@@ -125,6 +126,7 @@
   "exclude": [
     "src/coin-bag/release.ts",
     "src/countries.ts",
+    "src/errors.ts",
     "src/event-feed.ts",
     "src/generated.ts",
     "src/gpx-dialect.ts",

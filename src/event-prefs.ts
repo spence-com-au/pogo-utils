@@ -5,6 +5,7 @@
  */
 
 import RECURRING_TYPES from './recurring-types.js';
+import { KEY_PREFIX } from './storage-namespace.js';
 
 /** The reader's saved choices, keyed the way `KEYS` is so `persist` can take a name alone. */
 export interface Prefs {
@@ -37,18 +38,6 @@ export interface Seen {
   /** An instant in epoch milliseconds, or null before any stamped event has been seen. */
   through: number | null;
 }
-
-/**
- * The namespace every key this app owns sits under: the Pages path segment, since `localStorage` is keyed by origin and
- * `spence.com.au` serves every repository published there — an unqualified name is not this app's to claim.
- *
- * Exported because `src/backup.ts` sweeps the namespace rather than naming keys, and names it once in the file rather
- * than in every key. One spelling is what rules out the disagreement that does harm: a transport sweeping a prefix
- * shorter than the keys carry would carry the neighbouring site's keys along with this app's.
- */
-export const NAMESPACE = 'pogo-utils';
-
-export const KEY_PREFIX = `${NAMESPACE}:`;
 
 /**
  * Types are stored as the *hidden* set rather than the visible one, so a category the feed adds later shows up by
@@ -420,6 +409,14 @@ export function loadPrefs(): Prefs {
 const asArrays = (_key: string, value: unknown) => (value instanceof Set ? [...value] : value);
 
 /**
+ * What each preference was when storage last refused to save it, by the object holding them, so a reload puts back what
+ * the reader chose rather than the older copy storage holds. A full origin quota or blocked storage refuses every
+ * write, and without this each reload would undo every change since the page loaded. A copy rather than the live value,
+ * so a change made in memory alone, as `?event=` unhiding a type, is dropped by a reload as storage would drop it.
+ */
+const unsaved = new WeakMap<Prefs, Partial<Prefs>>();
+
+/**
  * Write one preference back, named rather than keyed so a call site cannot pair a key with the wrong value, and one at
  * a time so toggling a type filter does not rewrite the dismissals beside it. `KEYS` and `Prefs` carry the same
  * names, which makes a name neither of them knows a `TS2345` here rather than an `undefined` key written to storage.
@@ -427,9 +424,25 @@ const asArrays = (_key: string, value: unknown) => (value instanceof Set ? [...v
 export function persist(prefs: Prefs, name: keyof typeof KEYS) {
   try {
     localStorage.setItem(KEYS[name], JSON.stringify(prefs[name], asArrays));
+    delete unsaved.get(prefs)?.[name];
   } catch {
-    /* Storage may be unavailable; the filters still work for the rest of the session. */
+    // Storage may be unavailable; `reloadInto` puts this copy back, so the filters still work for the rest of the
+    // session.
+    unsaved.set(prefs, Object.assign(unsaved.get(prefs) ?? {}, { [name]: structuredClone(prefs[name]) }));
   }
+}
+
+/**
+ * Read storage back into `prefs` in place, so a holder of the reference sees the new values — except a preference
+ * whose last write storage refused, which comes back as it was written instead.
+ */
+export function reloadInto(prefs: Prefs): Prefs {
+  return Object.assign(prefs, loadPrefs(), structuredClone(unsaved.get(prefs)));
+}
+
+/** Let storage win over every unsaved preference, for an import, which has just written over what storage holds. */
+export function forgetUnsaved(prefs: Prefs) {
+  unsaved.delete(prefs);
 }
 
 /**

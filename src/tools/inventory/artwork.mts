@@ -15,6 +15,7 @@
  * margin is what stands between the match and being confidently wrong ten times.
  */
 
+import { said } from '../../errors.ts';
 import { type Form, type GameData } from './game-master.mts';
 import { rgb, type Image } from './png.mts';
 import { progress } from './progress.mts';
@@ -36,7 +37,7 @@ const VALUE = 0.2;
  * What the game's panel is, as the two things that hold whatever it is drawn in: neutral, and brighter than the scene
  * behind the artwork. A level written down instead does not hold — `genderOf` says the same thing about the same panel
  * and for the same reason. Written down as 224 it matched no row of any capture in the corpus, the panel being
- * rgb(255,255,255) on all 43, and `panelTop` then ran on past it to a grey divider 600 rows into the panel.
+ * rgb(255,255,255) on every one, and `panelTop` then ran on past it to a grey divider 600 rows into the panel.
  */
 const PANEL_FLOOR = 200;
 const PANEL_SPREAD = 6;
@@ -368,6 +369,14 @@ export function nearest<T>(signature: Signature, references: ReadonlyMap<T, Sign
 export type Drawn = Form & { icon: string };
 
 /**
+ * Whether two forms are the same Pokémon to everything but the artwork, as one string: one dex, one set of types and
+ * one stat line. The one definition of "the same numbers", so the groups `ambiguous` fetches icons for are the groups
+ * `identify` lets the artwork narrow.
+ */
+export const numbersOf = (form: Form): string =>
+  `${form.dex}|${[...form.types].sort().join('+')}|${form.attack}|${form.defense}|${form.stamina}`;
+
+/**
  * What the numbers leave ambiguous, split by whether the artwork can reach it: the groups of two or more forms
  * identical in dex, types and all three stats, partitioned on whether **every** member has an icon. A group short of
  * one can never be narrowed — `identify` declines to choose between forms it cannot all see — so its icons would be
@@ -385,7 +394,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
       continue;
     }
 
-    const key = `${form.dex}|${[...form.types].sort().join('+')}|${form.attack}|${form.defense}|${form.stamina}`;
+    const key = numbersOf(form);
     const group = groups.get(key) ?? [];
     group.push(form);
     groups.set(key, group);
@@ -414,7 +423,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 }
 
 /** How many icons to fetch at once. Each is some 24 KB, so the time goes on round trips rather than bytes. */
-const FETCH_BATCH = 16;
+export const FETCH_BATCH = 16;
 
 /**
  * A signature per form for every form the artwork could settle, each one's icon fetched and read by `read`, which is
@@ -451,7 +460,7 @@ export async function signaturesFor(
       //
       // `read` is what leaves every one of them naming the icon. This line is written as a continuation, and the
       // batches below keep 16 downloads in flight, so the `Downloading` above it is rarely its own.
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = said(error);
       console.error(`  ${reason}; forms sharing its numbers stay ambiguous`);
 
       return null;
