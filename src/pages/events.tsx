@@ -17,18 +17,19 @@ import { routeSummary } from '../event-feed.js';
 import { hiddenFor, type Prefs } from '../event-prefs.js';
 import {
   addDays,
+  continuations,
   DAY_MS,
+  layoutTracks,
   overlaps,
-  packLanes,
   relativeUnit,
   startOfDay,
   statusOf,
+  trackBar,
   typeClass,
   weekColumns,
   windowOf,
   type ParsedEvent,
   type StatusKind,
-  type TrackItem,
 } from '../event-schedule.js';
 import {
   admits,
@@ -135,14 +136,11 @@ const REVEALS = [
 // Tracks view geometry. TRACK_DAY_PX is the single source for a day column's width: the bars are positioned in pixels
 // from it, and the same value is handed to CSS as the --track-day custom property for the gridline background, so the
 // two cannot drift. The timeline runs from a couple of days before today to the latest event end, clamped to a sane
-// span.
+// span (see `layoutTracks`).
 const TRACK_DAY_PX = 40;
 const TRACK_BAR_H = 22;
 const TRACK_LANE_GAP = 4;
 const TRACK_LABEL_PX = 132;
-const TRACK_LEAD_DAYS = 2;
-const TRACK_MIN_DAYS = 30;
-const TRACK_MAX_DAYS = 120;
 
 /**
  * A card's picture, which takes itself off the card when it fails to load rather than leaving the browser's
@@ -814,7 +812,6 @@ export default function EventsPage({ query: fragment }: { query: string }) {
             {Array.from({ length: weeks }, (_, week) => {
               const weekStart = addDays(gridStart, week * 7);
               const weekStartMs = weekStart.getTime();
-              const weekEndMs = addDays(weekStart, 7).getTime();
 
               return (
                 <div key={weekStartMs} class="cal-week">
@@ -848,19 +845,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                     {placed.flatMap(({ ev, win }) => {
                       const columns = weekColumns(win, weekStart);
 
-                      /**
-                       * A segment continues past the week only where the week's own edge is what stopped it. Reaching
-                       * column 0 while having begun earlier means it ran in from the row above; anything starting later
-                       * than column 0 began inside this week, because it misses the column before.
-                       */
                       return columns === null
                         ? []
-                        : [
-                            renderCalBar(ev, columns, {
-                              contLeft: columns[0] === 0 && win[0] < weekStartMs,
-                              contRight: columns[1] === 6 && win[1] > weekEndMs,
-                            }),
-                          ];
+                        : [renderCalBar(ev, columns, continuations(win, columns, weekStart))];
                     })}
                   </div>
                 </div>
@@ -874,77 +861,19 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /** The Tracks view: a Gantt chart, one fixed row per event type. */
   function tracks() {
-    const rangeStart = addDays(startOfDay(now), -TRACK_LEAD_DAYS);
-    const rangeStartMs = rangeStart.getTime();
+    const { rangeStart, rangeStartMs, rangeEndMs, span, rows } = layoutTracks(events, TRACKS, {
+      now,
+      hidden,
+      carried: new Set(labels.keys()),
+      isVisible,
+    });
 
-    /**
-     * The rows this render will draw, one per TRACKS entry, each carrying the events that landed on it. A type with no
-     * track (GO Battle League, GO Pass) has no row, so it is dropped; an event ending before the window's left edge is
-     * skipped.
-     */
-    const byType = new Map<string, { type: string; label: string; items: TrackItem[] }>(
-      TRACKS.map((track) => [track.type, { ...track, items: [] }]),
-    );
-
-    let latestEnd = rangeStartMs + TRACK_MIN_DAYS * DAY_MS;
-
-    // Track types whose filter chip is off, so the whole row can be dropped rather than left as an empty ghost. Keyed
-    // by the chip's state alone — a track emptied by dismissals or a search term keeps its row.
-    const filteredTypes = new Set<string>();
-
-    for (const ev of events) {
-      const row = byType.get(ev.eventType);
-
-      if (!row) {
-        continue;
-      }
-
-      if (hidden.has(ev.eventType)) {
-        filteredTypes.add(ev.eventType);
-      }
-
-      if (!isVisible(ev)) {
-        continue;
-      }
-
-      const win = windowOf(ev);
-
-      if (win === null || win[1] <= rangeStartMs) {
-        continue;
-      }
-
-      latestEnd = Math.max(latestEnd, win[1]);
-      row.items.push({ ev, startMs: win[0], endMs: win[1], lane: 0 });
-    }
-
-    const span = Math.min(TRACK_MAX_DAYS, Math.max(TRACK_MIN_DAYS, Math.ceil((latestEnd - rangeStartMs) / DAY_MS)));
-    const rangeEndMs = rangeStartMs + span * DAY_MS;
     const width = span * TRACK_DAY_PX;
     const todayX = ((startOfDay(now).getTime() - rangeStartMs) / DAY_MS) * TRACK_DAY_PX;
+    const shown = rows.reduce((sum, row) => sum + row.items.length, 0);
 
-    let shown = 0;
-
-    const rows = [...byType.values()].flatMap((track) => {
-      /**
-       * The right edge needs a guard of its own, mirroring the `win[1] <= rangeStartMs` one above: `span` is clamped
-       * to `TRACK_MAX_DAYS` where `latestEnd` is not, so an event starting past `rangeEndMs` clips to a negative width
-       * and draws at the 20px minimum past the lane's right edge, counted in the tally. Dropped before `packLanes` so
-       * it cannot claim a lane and raise the row's height for a bar nobody can see.
-       */
-      const items = track.items.filter((item) => item.startMs < rangeEndMs).sort((a, b) => a.startMs - b.startMs);
-
-      // A track the filter has switched off drops out entirely. A row is one `eventType`, which is what the chips
-      // switch, so there is no still-visible part of it to keep. A track the feed carries no event of drops out too:
-      // `labels` holds every type the feed carries, whatever the filters, so a row exists only where a chip can switch
-      // it off, rather than an empty one for a type `TRACKS` names but the feed has stopped using.
-      if (filteredTypes.has(track.type) || !labels.has(track.type)) {
-        return [];
-      }
-
-      const lanes = packLanes(items);
+    const drawn = rows.flatMap(({ track, items, lanes }) => {
       const height = Math.max(1, lanes) * (TRACK_BAR_H + TRACK_LANE_GAP) + TRACK_LANE_GAP;
-
-      shown += items.length;
 
       return [
         <div key={`l-${track.type}`} class="track-label" style={{ height: `${height}px` }}>
@@ -952,8 +881,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
         </div>,
         <div key={`r-${track.type}`} class="track-lane" style={{ width: `${width}px`, height: `${height}px` }}>
           {items.map((item) => {
-            const left = Math.max(item.startMs, rangeStartMs);
-            const right = Math.min(item.endMs, rangeEndMs);
+            const bar = trackBar(item, rangeStartMs, rangeEndMs, TRACK_DAY_PX);
             const status = statusOf(item.ev, now).kind;
 
             return eventBar(
@@ -962,8 +890,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 class: `bar ${status}${isNew(item.ev) ? ' new' : ''}${typeClass(item.ev.eventType)}`,
                 title: `${item.ev.name} — ${timeRange(item.ev)}`,
                 style: {
-                  left: `${((left - rangeStartMs) / DAY_MS) * TRACK_DAY_PX}px`,
-                  width: `${Math.max(TRACK_DAY_PX / 2, ((right - left) / DAY_MS) * TRACK_DAY_PX)}px`,
+                  left: `${bar.left}px`,
+                  width: `${bar.width}px`,
                   top: `${TRACK_LANE_GAP + item.lane * (TRACK_BAR_H + TRACK_LANE_GAP)}px`,
                   height: `${TRACK_BAR_H}px`,
                 },
@@ -993,7 +921,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                   </span>
                 ))}
               </div>
-              {rows}
+              {drawn}
               <div class="track-today" style={{ left: `${TRACK_LABEL_PX + todayX}px` }} />
             </div>
           </div>
