@@ -11,7 +11,7 @@
 
 import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
 import { fold } from './ocr.mts';
-import { nearest, type Signature } from './artwork.mts';
+import { nearest, numbersOf, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
 
@@ -162,9 +162,9 @@ export function identify(
   // The floor is a property of the candidate list rather than of the arithmetic, and the two differ by more than an
   // order of magnitude. `castform-rainy.png` is the floor because its nickname leaves no species established, so the
   // list is every form that fits; where a species *is* recognised the list is that species' forms and the nearest
-  // sibling is far — 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an
-  // Espeon reaching 1585 at the level its HP admits, but line 101 is reached only on an empty list and Deoxys' forms
-  // fill it, so that number comes back as one Deoxys with the three the CP did not settle beside it.
+  // sibling is far — 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an Espeon reaching 1585 at the level
+  // its HP admits, but the search across every species is reached only on an empty list and Deoxys' forms fill it, so
+  // that number comes back as one Deoxys with the three the CP did not settle beside it.
   const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
 
   const shows = (f: Form, level: number) => {
@@ -417,15 +417,6 @@ function sameTypes(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((t) => b.includes(t));
 }
 
-/**
- * Whether two forms are the same Pokémon to everything but the artwork: one dex, one set of types and one stat line.
- */
 function sameNumbers(a: Form, b: Form): boolean {
-  return (
-    a.dex === b.dex &&
-    sameTypes(a.types, b.types) &&
-    a.attack === b.attack &&
-    a.defense === b.defense &&
-    a.stamina === b.stamina
-  );
+  return numbersOf(a) === numbersOf(b);
 }
