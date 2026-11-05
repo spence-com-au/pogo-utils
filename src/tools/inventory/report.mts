@@ -11,7 +11,7 @@ import { type Form, type GameData } from './game-master.mts';
 import { identify, settledForm, type Identity } from './identify.mts';
 import { parseMoves, type Moves } from './moves.mts';
 import { type Line } from './ocr.mts';
-import { findOverlay, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
+import { findOverlay, ivsOf, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
 import { screenIn, type Image } from './png.mts';
 
 /** What every reader made of one screenshot, with the lines OCR handed them for anyone asking why. */
@@ -168,7 +168,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
     fact('hp', detail.hp, 'read'),
     fact('level', identity.levels.join(' or '), 'worked out'),
-    fact('ivs', overlay && `${overlay.iv.attack}/${overlay.iv.defense}/${overlay.iv.stamina}`, 'read'),
+    fact('ivs', overlay && ivsOf(overlay.iv), 'read'),
     fact('fast move', moves.fast, 'read'),
     fact('charged', moves.charged.join(', '), 'read'),
   ];
