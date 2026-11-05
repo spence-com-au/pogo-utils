@@ -543,24 +543,15 @@ async function scan(held: Transport) {
    *
    * A note `identify` raised is worth another look as well, and it is the only one of them that says the screen read
    * *whole* and wrongly: a CP the settled form and level do not derive, a level shortlist no HP can be, a form the
-   * overlay names that no species has. What says a second read of the same Pokémon is worth taking is the corpus having
-   * been retaken — which captures misread their CP changed with it, three before the retake and two after it, and one
-   * fewer now that the sweep runs every treatment, so a misread is a property of the capture as much as of the reader.
-   * `screens.test.mts` pins which two of its 43 captures a scan reads again, against the nine that raise a note at all,
-   * and that every one of the nine is a row carrying a `defects`.
-   *
-   * The seven in that gap are `unseparated`, which is reported and not chased: those forms share every number the
-   * screen prints, so what would settle them is a field the game never drew. `basculin-blue.png` is the severest —
-   * PGSharp's own box covers the fish's head, the only part of it that differs between the three stripes. Nothing here
-   * can be the check for those; only a second reader of the same thing could be.
+   * overlay names that no species has. Only the notes a second read could clear count (`clearable`): `unseparated` is
+   * reported and not chased, those forms sharing every number the screen prints, so what would settle them is a field
+   * the game never drew. `screens.test.mts` pins that split.
    *
    * `could also be …` is counted with the rest, but only on a reading that has IVs: with none the search narrows on
    * types alone and 21 of the game master's 1,024 species answer it for ever, so counting those would read every
-   * Deoxys, Dialga and Lycanroc three times on every pass for an answer no further look can change. Where there are
-   * IVs it now costs no capture of the 43 — `castform-rainy.png` was the one, answered as **Inteleon** until the CP
-   * sweep read the 832 that settles it — so the cost is unmeasured rather than measured at nothing. It is kept because
-   * the case it was argued on is the case it is for: a nickname sends the search across every species, and a Pokémon
-   * the numbers cannot then separate is exactly the one worth looking at twice.
+   * Deoxys, Dialga and Lycanroc three times on every pass for an answer no further look can change. It is kept because
+   * the case it is for is a nickname, which sends the search across every species, and a Pokémon the numbers cannot
+   * then separate is exactly the one worth looking at twice.
    *
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
    * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
@@ -614,7 +605,7 @@ async function scan(held: Transport) {
         // Notes only where the overlay read, because the ones raised without IVs are the ones no further read can
         // clear: with `iv === null` the search narrows on types alone, and 21 of the game master's 1,024 species then
         // answer `could also be …` for ever. Counting those would read every one of them three times on every pass.
-        // `clearable` is the same argument applied to one note more, and 8 of the 43 committed captures raise it.
+        // `clearable` is the same argument applied to one note more: `unseparated` is reported, never chased.
         const notes = overlay === null ? 0 : clearable(id);
 
         lost = keyless + fields;
