@@ -1,8 +1,8 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { KEYS, loadPrefs } from './event-prefs.js';
 import { mergeEvents } from './event-schedule.js';
-import { admits, EventStore, NOTHING_REVEALED, type CardsFilter } from './event-store.js';
+import { admits, EventStore, fetchEvents, NOTHING_REVEALED, type CardsFilter } from './event-store.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 import type { StampedEvent } from './event-feed.js';
@@ -497,4 +497,29 @@ test('a first visit that finds only one file seeds nothing, so the other is not 
 
   expect(ids(store)).toEqual([]);
   expect(stored()).toEqual({ through: null, ids: ['a', 'c'] });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+test('fetchEvents answers the list the feed holds', async () => {
+  vi.stubGlobal('fetch', async () => Response.json([feedEvent('a')]));
+  await expect(fetchEvents('events-feed.json')).resolves.toEqual([feedEvent('a')]);
+});
+
+/** A status the server refused on names itself, so a 404 from a missing file reads differently from a 503. */
+test('fetchEvents refuses a response the server would not give', async () => {
+  vi.stubGlobal('fetch', async () => new Response(null, { status: 503, statusText: 'Service Unavailable' }));
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('503 Service Unavailable');
+});
+
+/** `Response#json` answers `any`, so this guard is the whole of what says the feed is a list. */
+test.for([
+  { body: 'a bare string', value: 'events' },
+  { body: 'an object', value: { events: [] } },
+  { body: 'null', value: null },
+])('fetchEvents refuses $body', async ({ value }) => {
+  vi.stubGlobal('fetch', async () => Response.json(value));
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('not a list of events');
 });
