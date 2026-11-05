@@ -64,6 +64,11 @@ test('a name is written as short as it goes, wherever the pill sits', () => {
     lossy: { narrowed: true, widened: false },
   });
 
+  // The same pair is named once however many pills it reached.
+  expect(told(any(all(named('charmander'), yes('shiny')), all(named('charmander'), yes('xxl')))).rewrites).toEqual([
+    ['charmander', '4'],
+  ]);
+
   // The one reduction that needs to know nothing about what is around it, so it reaches a pill at any depth.
   expect(short(any(all(named('charmander'), yes('shiny')), named('bulbasaur')))).toBe('4,1&shiny,1');
 

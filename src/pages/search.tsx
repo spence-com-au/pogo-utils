@@ -1087,7 +1087,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
           <p class="help rewritten" hidden={rewrites.length === 0}>
             {rewrites.map(([from, to], index) => (
-              <span key={from} class="rewrite">
+              <span key={`${from} ${to}`} class="rewrite">
                 <code>{from}</code> → <code>{to}</code>
                 {index < rewrites.length - 1 ? ', ' : ''}
               </span>

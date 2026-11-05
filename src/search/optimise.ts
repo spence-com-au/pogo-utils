@@ -434,7 +434,11 @@ function short(node: Node, told: Told): Node {
 
     const shortened = shortName(name.text, name.negated);
 
-    if (shortened.text !== name.text) {
+    // Named once however many pills it reached, as `mishandled` is.
+    if (
+      shortened.text !== name.text &&
+      !told.rewrites.some(([from, to]) => from === name.text && to === shortened.text)
+    ) {
       told.rewrites.push([name.text, shortened.text]);
     }
 
