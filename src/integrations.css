@@ -18,8 +18,9 @@ body[data-page='integrations'] {
    * out at the page margin with a thousand pixels between them. `--content-w` holds that width where all of them need.
    *
    * On the wrapper rather than on `:root`, which is what each sheet used while each was alone. The pages that set it
-   * want different widths — 1100px for the Events calendar and the Pokédex grid, 880px for the search builder — so on
-   * `:root` they would be one declaration and whichever the bundler wrote last would set the column for every page.
+   * want different widths — among them 1100px for the Events calendar and the Pokédex grid and 880px for the search
+   * builder — so on `:root` they would be one declaration and whichever the bundler wrote last would set the column for
+   * every page.
    */
   --content-w: 640px;
 
