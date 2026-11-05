@@ -291,6 +291,10 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const readings = read === null ? [] : readingsOf(read, longest);
   const whole = cpLine && read !== null ? wholeCp(image, cpLine, read, longest) : null;
 
+  // The `Promise.all` below is what reports a failed band read, but the name reads are awaited first, and a rejection
+  // with no handler for as long as they take is one Node exits over. This handler only marks it seen.
+  void whole?.catch(() => {});
+
   // `97 / 97 HP` or `HP 97/97`; the second number is the maximum, which is the one CP and level determine.
   const hpPattern = /(?:hp\s*)?(\d{1,4})\s*\/\s*(\d{1,4})(?:\s*hp)?/i;
   const hpLine = lines.find((l) => /hp/i.test(l.text) && hpPattern.test(l.text));
@@ -871,7 +875,7 @@ const LABEL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
 const CP_ALPHABET = 'CP0123456789 ';
 
 /** How many digits the highest CP any form can show runs to: perfect IVs at the highest level there is. */
-const cpDigits = (data: GameData) => {
+export const cpDigits = (data: GameData) => {
   const [, top = 0] = data.cpm.at(-1) ?? [];
   const best = { attack: 15, defense: 15, stamina: 15 };
 
