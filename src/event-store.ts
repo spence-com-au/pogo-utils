@@ -41,14 +41,21 @@ export interface Reveals {
 export const NOTHING_REVEALED: Readonly<Reveals> = { showPast: false, showUndated: false, showHidden: false };
 
 /**
- * What the cards view is drawing under beyond the saved type filters: the reveals, the search term and the minute it
- * last read the clock. The Events page publishes its own while it is open; every other tab has none of the three, and
- * reads as nothing revealed, nothing typed and the time it asks.
+ * What the cards view is drawing under beyond the saved type filters: the reveals, the search term, the minute it last
+ * read the clock and a type a link unhid. The Events page publishes its own while it is open; every other tab has none
+ * of these, and reads as nothing revealed, nothing typed, nothing unhidden and the time it asks.
  */
 export interface CardsFilter {
   reveals: Reveals;
   search: string;
   now: Date;
+
+  /**
+   * The type an `?event=` link unhid to land on its event, which the type filters let through while storage goes on
+   * hiding it. A session's rather than saved, like the reveals, because the un-hide is for the one arrival: held in the
+   * stored set instead, it would be saved by the next chip that writes that set back.
+   */
+  unhidden?: string;
 }
 
 /**
@@ -72,16 +79,17 @@ function covers({ through, ids }: Seen, ev: Pick<ParsedEvent, 'eventID' | 'added
 
 /**
  * Whether an event survives the type-filter, dismissal and search-term filters — the ones meaning "I do not want to
- * see this", so every view honours them. "Hidden" reveals a dismissal the way "Ended" reveals a past event: a temporary
- * reveal rather than a change to what was saved. The status reveals are `isRevealed`'s.
+ * see this", so every view honours them. "Hidden" reveals a dismissal the way "Ended" reveals a past event, and
+ * `unhidden` lets a type through the type filters the same way: a temporary reveal rather than a change to what was
+ * saved. The status reveals are `isRevealed`'s.
  */
 export function admits(
   ev: ParsedEvent,
   prefs: Prefs,
   hidden: ReadonlySet<string>,
-  { reveals, search }: Pick<CardsFilter, 'reveals' | 'search'>,
+  { reveals, search, unhidden }: Pick<CardsFilter, 'reveals' | 'search' | 'unhidden'>,
 ) {
-  if (hidden.has(ev.eventType)) {
+  if (hidden.has(ev.eventType) && ev.eventType !== unhidden) {
     return false;
   }
 
@@ -246,10 +254,9 @@ export class EventStore {
 
   /**
    * Read the preferences back from storage into the same object, rather than swapping it, so a holder of the old
-   * reference sees the new values. What an import calls after writing, and what the Events page calls as it opens and
-   * closes: it unhides a type in memory to land a `?event=` link, deliberately without saving it, and that must not
-   * outlive the page into the count every other tab shows. A preference storage refused to save is kept as it is in
-   * memory, storage holding only an older copy of it.
+   * reference sees the new values. What an import calls after writing, and what the Events page calls as it opens, so
+   * it starts from what another browser tab may have saved since this document loaded. A preference storage refused to
+   * save is kept as it is in memory, storage holding only an older copy of it.
    */
   reloadPrefs(): Prefs {
     return reloadInto(this.prefs);
