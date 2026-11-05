@@ -16,9 +16,9 @@
  * considering `,`s nested inside `&`s", with `meowth,alola&vulpix,galar` as the example. Niantic's own list never
  * combines the two operators, so the community one is what settles it.
  *
- * That reference also notes that searches "do not take priority over each other", which is about its *Pokédex* table —
- * a different box with its own phrase list. This file read that as doubt about the line above for a while: a claim from
- * a three-table reference is worth nothing until you know which search it is a claim about.
+ * That reference also notes that searches "do not take priority over each other". That note is about its *Pokédex*
+ * table, a different box with its own phrase list, so it says nothing about the line above: a claim from a three-table
+ * reference is worth nothing until you know which search it is a claim about.
  *
  * What the form costs is characters, an `any` multiplying where an `all` adds, which is its nature rather than a
  * shortcoming: `(a&b),(c&d)` really is four clauses in a language with no brackets.
@@ -144,9 +144,9 @@ export interface Written {
 
 /**
  * A node said as one string, so two parts of a junction can be compared for asking the same thing. Structural rather
- * than canonical: the parts are not sorted, so `all(a, b)` and `all(b, a)` are two keys. Sorting them was in the first
- * draft and bought only recognising two differently-ordered subgroups as one shared part — which, measured, writes the
- * same clauses one intermediate clause later, and which no mutation could be made to fail a test over.
+ * than canonical: the parts are not sorted, so `all(a, b)` and `all(b, a)` are two keys. Sorting them would only
+ * recognise two differently-ordered subgroups as one shared part, which writes the same clauses one intermediate
+ * clause later.
  *
  * The junction is in the key and has to be: without it `all(a, b)` and `any(a, b)` read as one shared part, and the
  * search narrows from `s and (a or b)` to `s and a and b`.
