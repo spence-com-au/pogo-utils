@@ -3,10 +3,10 @@
  *
  * Every stylesheet is imported here rather than by each page, which is esbuild's decision rather than a preference: a
  * page is reached through `import()`, so a stylesheet imported from one lands in that chunk's own CSS file — and
- * esbuild ships no runtime to fetch it, so the five page sheets were emitted and nothing ever loaded them.
+ * esbuild ships no runtime to fetch it, so the page sheets were emitted and nothing ever loaded them.
  *
  * Importing them from the entry puts the lot in the one `main.css` that `index.html` links. What makes that safe is
- * the scoping: each page sheet is wrapped in `body[data-page='…']`, between them giving nineteen class names a
+ * the scoping: each page sheet is wrapped in `body[data-page='…']`, between them giving the same class names a
  * different meaning per page.
  */
 

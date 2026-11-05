@@ -6,6 +6,8 @@
 
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
+import { FakeStorage } from './testing/storage.js';
+
 const gone = () => Promise.reject(new TypeError('Failed to fetch dynamically imported module'));
 
 /** The tab's session storage, which outlives a reload as the module instance does not. */
@@ -120,4 +122,17 @@ test('with storage blocked, the failure is reported rather than risk reloading o
 
   await expect((await load())(gone)).rejects.toThrow();
   expect(reload).not.toHaveBeenCalled();
+});
+
+test('with storage that reads but refuses writes, the failure is reported rather than reload with no mark to stop it', async () => {
+  // The case the probe at load cannot catch: the read answers, so this document is not taken for a reload, and only the
+  // write that marks the reload fails. Reloading anyway would never find the mark, and so reload on every try.
+  const storage = new FakeStorage();
+
+  storage.refusesWrites = true;
+  vi.stubGlobal('sessionStorage', storage);
+
+  await expect((await load())(gone)).rejects.toThrow('Failed to fetch dynamically imported module');
+  expect(reload).not.toHaveBeenCalled();
+  expect(calls).toEqual([]);
 });

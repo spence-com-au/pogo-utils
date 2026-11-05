@@ -80,11 +80,25 @@ export class LivePokeMap {
 
   /** `/api/config` and `/api/game_data` take no token; the page reads both before it has one. */
   config(signal?: AbortSignal): Promise<ClientConfig> {
-    return this.#send('GET', '/api/config', undefined, false, signal) as Promise<ClientConfig>;
+    return this.#object('/api/config', signal) as Promise<ClientConfig>;
   }
 
   gameData(signal?: AbortSignal): Promise<GameData> {
-    return this.#send('GET', '/api/game_data', undefined, false, signal) as Promise<GameData>;
+    return this.#object('/api/game_data', signal) as Promise<GameData>;
+  }
+
+  /**
+   * A tokenless read whose answer its caller takes on trust, refused as a failure when it is no object: a JSON `null`,
+   * bare or as an envelope's `data`, would otherwise be dereferenced outside any retry.
+   */
+  async #object(path: string, signal?: AbortSignal): Promise<unknown> {
+    const answer = await this.#send('GET', path, undefined, false, signal);
+
+    if (typeof answer !== 'object' || answer === null) {
+      throw new ApiError(`GET ${path}: 200 with no object in its body`, 200);
+    }
+
+    return answer;
   }
 
   /**
@@ -175,8 +189,7 @@ export class LivePokeMap {
       parsed = await response.json();
     } catch {
       // A Cloudflare challenge or an error page. Under an error status that status says what there is to say; under a
-      // 200 it is still no answer, and is refused here as a failure rather than handed on as one — `config()` and
-      // `gameData()` take their answer on trust, so a `null` passed through would be dereferenced outside any retry.
+      // 200 it is still no answer, and is refused here as a failure rather than handed on as one.
       if (response.ok) {
         throw new ApiError(`${method} ${path}: ${response.status} with a body that is not JSON`, response.status);
       }
