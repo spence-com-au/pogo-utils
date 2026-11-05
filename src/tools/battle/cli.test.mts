@@ -104,7 +104,8 @@ test('reports an adb it cannot find rather than throwing', async () => {
   expect(stderr).toContain("could not read the screen's size: adb shell wm size: spawn adb ENOENT");
 });
 
-test('reports an OUT it cannot write and stops recording', async () => {
+// `/dev/full` is Linux only, and `ubuntu-latest` is every runner in `.github/workflows/`.
+test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and stops recording', async () => {
   // An `adb` that answers `wm size`, then writes its pid and a byte before it records for a minute. A script that left
   // it running would leave that pid alive, which is what is checked: the child's piped stdio lets the script exit
   // whether or not it stopped the child. `/dev/full` takes the byte only to fail it, so the failure comes after the pid
