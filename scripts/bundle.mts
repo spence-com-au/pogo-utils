@@ -68,12 +68,8 @@ const result = await build({
    */
   splitting: true,
 
-  // esbuild reads neither from `tsconfig.json`, so the pair set there for the checker is named again for the transform.
-  jsx: 'automatic',
-  jsxImportSource: 'preact',
-
   // Kept in step with `target` in `tsconfig.json` by hand: `tsc` emits declarations only, so its own `target` reaches
-  // nothing but the default lib set.
+  // nothing but the default lib set. The JSX pair needs no such copy, since esbuild reads it from that `tsconfig.json`.
   target: 'es2023',
 
   platform: 'browser',

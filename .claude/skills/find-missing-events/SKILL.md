@@ -34,8 +34,8 @@ node .claude/skills/find-missing-events/scripts/compare-sources.mts
 
 Run it from the checkout root; it takes about half a minute. It walks the **whole** news archive — 223 articles back to
 mid-2025 when this was written, not just the front page — reads the in-person index and the feed, and reports what no
-source accounts for as two lists: events that look missing, and articles that look like they change an event we already
-carry. Each row carries the closest names the sources hold, scored.
+source accounts for as three lists: events that look missing, articles that look like they change an event we already
+carry, and in-person listings no source names. Each article row carries the closest names the sources hold, scored.
 
 Two things about that walk are worth knowing, because both have already cost a run its answer.
 
@@ -52,7 +52,7 @@ slugs from these same announcements.
 
 ## Triage what the script leaves you
 
-The report has two lists, and they are there for opposite reasons.
+The report has three lists. The first two are there for opposite reasons, and the third is a cross-check.
 
 **"Announced, unaccounted for, and not yet over"** is the discovery list. Everything an article's own prose dates into
 the future and no source names. That date filter is what makes a 223-article archive readable — an announcement worth
@@ -70,6 +70,13 @@ for whether the dates we carry still hold. This list is ordered newest first and
 March" note scoring 0.50 against "GO Pass: September" — so it thins out as you go down rather than needing to be read
 entire.
 
+**"In-person index, not yet over, unaccounted for"** is the cross-check, and empty is its expected state. The index
+lists only in-person events, so a row in it is regional by construction and needs no sorting into kinds; what it needs
+is a check that the feed or `data/events.json` does not already carry it under another ID, since the match is on slug
+alone and this list prints no candidates. One that is truly absent is a gap the archive walk should also have surfaced,
+so find its article — in the discovery list, or failing that with `read-article.mts` — and propose it from there. The
+listing's dates are whole days, so take the times from the article.
+
 What reaches you in the discovery list divides two ways, and only the second is worth adding.
 
 **It is not a regional event.** A ticketing update, a "Know Before You GO" venue guide, a "Save the Date", patch notes,
@@ -83,7 +90,7 @@ partnership with a venue or an airline, a city-specific celebration.
 A date the parser failed to read would be filtered out silently, so the counts at the end of the report are printed for
 a reason: before concluding that a specific event you suspected is genuinely absent, check it is not sitting in them.
 
-Neither list is one-article-one-event, so resolve both by reading rather than by counting:
+Neither article list is one-article-one-event, so resolve both by reading rather than by counting:
 
 - **One article, several events.** A City Safari announcement covers three European cities; a "Save the Date" covers
   three GO Tour stops; a mall tour lists eleven venue windows across three countries. Some of those may already be

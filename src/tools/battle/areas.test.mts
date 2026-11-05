@@ -75,8 +75,8 @@ function masked(image: Image, areas: readonly Area[]): { image: Image; within: (
   }
 
   const side = Math.max(1, Math.round(BLOCK * width));
-  const across = Math.floor(width / side);
-  const blocks = across * Math.floor(height / side);
+  const across = Math.ceil(width / side);
+  const blocks = across * Math.ceil(height / side);
   const from = Array.from({ length: blocks }, (_, i) => i);
   let seed = 1;
 
@@ -93,12 +93,13 @@ function masked(image: Image, areas: readonly Area[]): { image: Image; within: (
     const [x, y] = [(block % across) * side, Math.floor(block / across) * side];
     const [sx, sy] = [(source % across) * side, Math.floor(source / across) * side];
 
-    for (let row = 0; row < side; row++) {
-      for (let column = 0; column < side; column++) {
+    for (let row = 0; row < Math.min(side, height - y); row++) {
+      for (let column = 0; column < Math.min(side, width - x); column++) {
         const at = (y + row) * width + x + column;
 
         if (!kept[at]) {
-          const was = ((sy + row) * width + sx + column) * 4;
+          // The blocks on the right and bottom edges are cut short, so a pixel taken from past one wraps around.
+          const was = (((sy + row) % height) * width + ((sx + column) % width)) * 4;
           data.set(image.data.subarray(was, was + 4), at * 4);
         }
       }
