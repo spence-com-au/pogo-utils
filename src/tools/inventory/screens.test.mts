@@ -21,7 +21,7 @@ import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-
 import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT, readLines } from './detail.mts';
+import { cpLabelOf, HEIGHT } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
@@ -1020,11 +1020,11 @@ const FIXTURES: readonly Fixture[] = [
 const read = async (file: string) => {
   const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
   const image = screenIn(stitch);
-  const { lines, detail, box, overlay, identity } = await readScreen(stitch, DATA, ICONS);
+  const { lines, detail, moves, box, overlay, identity } = await readScreen(stitch, DATA, ICONS);
 
   // `image` is the screen `readScreen` read, handed on for the tests that run a reader of their own over it, and
   // `artwork` is rebuilt the way `readScreen` builds it for the same reason: the ones that call `identify` themselves.
-  return { image, lines, detail, box, overlay, artwork: artworkIn(image, box, ICONS), identity };
+  return { image, lines, detail, moves, box, overlay, artwork: artworkIn(image, box, ICONS), identity };
 };
 
 const readings = new Map<string, ReturnType<typeof read>>();
@@ -2523,8 +2523,8 @@ test(
  * `WEATHER BONUS` under a move and carry Weather Ball in their pool, so a reader taking the caption for a move would
  * answer one that is not there.
  *
- * The form comes off `readingOf`, which is the crop, every reader that could answer one being anchored on a height the
- * whole stitch does not have.
+ * The moves are `readScreen`'s own, off `readingOf`: read off the whole stitch, with the form off the crop, every
+ * reader that could answer one being anchored on a height the whole stitch does not have.
  */
 test(
   'the moves read off every committed capture are the ones on it',
@@ -2532,10 +2532,7 @@ test(
     const read: Record<string, Moves> = {};
 
     for (const file of COMMITTED) {
-      const { identity } = await readingOf(file);
-      const image = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
-
-      read[file] = await parseMoves(await readLines(image), DATA, identity.form, image);
+      read[file] = (await readingOf(file)).moves;
     }
 
     expect(read).toStrictEqual({
@@ -2606,7 +2603,7 @@ test(
 
     // And that no stitch reads *less* than the screen inside it, which is the relation rather than the map: a stitch
     // assembled at the wrong offset could hold a plausible pair of moves and still have lost one its own first frame
-    // shows. One file on either side of it — `readingOf` is the crop `screenIn` takes, `read` above is the whole.
+    // shows. One file on either side of it — `lines` is read off the crop `screenIn` takes, `read` above off the whole.
     for (const file of STITCHES) {
       const { lines, image, identity } = await readingOf(file);
       const shown = await parseMoves(lines, DATA, identity.form, image);
