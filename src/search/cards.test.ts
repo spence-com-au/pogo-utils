@@ -8,7 +8,7 @@
 import { expect, test } from 'vitest';
 
 import { all, any, named, no, shape, yes } from '../testing/search.js';
-import { added, asCards, holds, pillsOf, toggled } from './cards.js';
+import { added, asCards, cardsOf, holds, pillsOf, toggled } from './cards.js';
 import { compose, fromFragment } from './query.js';
 import { read } from './parse.js';
 import { emptyTree, type Group, type Leaf, type Node } from './tree.js';
@@ -63,6 +63,8 @@ test('a tree spreading past what a search box takes has no cards', () => {
   const pairs = Array.from({ length: 12 }, (_, at) => all(named(`a${at}`), named(`b${at}`)));
 
   expect(asCards(any(...pairs))).toBeNull();
+  expect(shape(cardsOf(any(...pairs)))).toEqual({ all: [] });
+  expect(shape(cardsOf(all(yes('shiny'))))).toEqual({ all: ['shiny'] });
 });
 
 test('a chip pressed for the card past the last starts a card', () => {

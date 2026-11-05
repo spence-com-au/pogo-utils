@@ -17,7 +17,7 @@ import { expect, test } from 'vitest';
 import POKEMON from '../pokemon/pokedex.js';
 import { all, any, named, no, yes } from '../testing/search.js';
 import { compose, emptyState, type State } from './query.js';
-import { optimise } from './optimise.js';
+import { current, optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
 import { leafText, type Leaf, type Node } from './tree.js';
 
@@ -443,4 +443,40 @@ test('shortening an already shortened arrangement changes nothing further', () =
       again: compose(once).query,
     });
   }
+});
+
+test('the page shows the shortened string only where it is shorter, and says nothing of a rewrite otherwise', () => {
+  const tree = all(named('charmander'));
+
+  // The optimiser being off shows the arrangement as it stands, whatever it could have shortened to.
+  expect(current(state(tree))).toMatchObject({ query: 'charmander', was: null, rewrites: [], lossy: EXACT });
+
+  // Shorter is taken, and what it was is kept for the page to say.
+  expect(current({ ...state(tree), optimise: true })).toMatchObject({
+    query: '4',
+    was: 'charmander'.length,
+    rewrites: [['charmander', '4']],
+    lossy: { narrowed: true, widened: false },
+  });
+
+  // No shorter is the string as arranged, with the lossiness of the rewrite that was not taken left behind.
+  expect(current({ ...state(all(named('mr snuggles'))), optimise: true })).toMatchObject({
+    query: 'mr snuggles',
+    was: null,
+    rewrites: [],
+    lossy: EXACT,
+  });
+});
+
+test('a reduction to nothing is not taken, a blank box beside cards full of pills reading as a broken page', () => {
+  const appraisal = category('appraisal');
+  const everything = any(...appraisal.terms.map((one) => yes(one.id)));
+
+  expect(short(everything)).toBe('');
+  expect(current({ ...state(everything), optimise: true })).toMatchObject({
+    query: compose(state(everything)).query,
+    was: null,
+    rewrites: [],
+    lossy: EXACT,
+  });
 });

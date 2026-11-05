@@ -28,7 +28,7 @@ import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
-import type { State } from './query.js';
+import { compose, type State } from './query.js';
 
 /** A run of dex numbers, inclusive at both ends, which is every shape of number the game reads: `4` is `[4, 4]`. */
 type Span = [number, number];
@@ -519,4 +519,31 @@ export function optimise(state: State) {
   const tree = short(state.tree, told);
 
   return { state: { ...state, tree }, rewrites: told.rewrites, lossy: told.lossy };
+}
+
+/** What a string nobody shortened says about itself: it is the search arranged, in neither direction. */
+const EXACT: Lossy = { narrowed: false, widened: false };
+
+/**
+ * The string the page is showing, which is the string the Copy button writes — one answer rather than two compositions
+ * that could disagree about which of them the reader is looking at.
+ *
+ * The optimiser is offered the state and its answer taken only where it is genuinely shorter, so the toggle can never
+ * cost characters. Empty does not count as shorter: every star rating at once really does reduce to no clause at all,
+ * but a blank output box beside cards full of pills reads as a page that has broken rather than as a search for
+ * everything.
+ */
+export function current(state: State) {
+  const plain = compose(state);
+  const unchanged = { ...plain, was: null, rewrites: [] as readonly [string, string][], lossy: EXACT };
+
+  if (!state.optimise) {
+    return unchanged;
+  }
+
+  const { state: shortened, rewrites, lossy } = optimise(state);
+  const short = compose(shortened);
+  const worth = short.query.length > 0 && short.query.length < plain.query.length;
+
+  return worth ? { ...short, was: plain.query.length, rewrites, lossy } : unchanged;
 }
