@@ -116,11 +116,11 @@ export async function readBattle(
   // The names share their line with each side's CP, which matches no species and so drops out of the names here. Each
   // CP is placed by where it starts in its line, a line that runs both together holding ours first.
   for (const line of await read(names.image)) {
-    const species = closest(line.text, data.species, (name) => name);
+    const found = closest(line.text, data.species, (name) => name);
     const side = across(line, names, image) < 0.5 ? 'own' : 'opponent';
 
-    if (species) {
-      sighting[side] ??= species;
+    if (found) {
+      sighting[side] ??= found;
     }
 
     for (const match of line.text.matchAll(CP)) {
@@ -219,9 +219,9 @@ export async function readBanner(
  * once off a frame mid-transition would otherwise hold against the pair for the rest of the Pokémon's turn out.
  */
 export function merge(seen: Sighting, read: Sighting): Sighting {
-  const centre = BUTTON_XS[1];
-  const layout = read.moves.size > 0 ? read.moves.has(centre) : undefined;
-  const kept = [...seen.moves].filter(([x]) => layout === undefined || (x === centre) === layout);
+  const middle = BUTTON_XS[1];
+  const layout = read.moves.size > 0 ? read.moves.has(middle) : undefined;
+  const kept = [...seen.moves].filter(([x]) => layout === undefined || (x === middle) === layout);
 
   return {
     own: read.own ?? seen.own,
@@ -236,21 +236,12 @@ export function merge(seen: Sighting, read: Sighting): Sighting {
 
 /** The bands OCR reads, for `overlay.mts`: each is cropped whole and read as one, so the whole of it is needed. */
 export function areas(screen: Size): Area[] {
-  const across = ({
-    left = 0,
-    right = 1,
-    top,
-    bottom,
-  }: {
-    left?: number;
-    right?: number;
-    top: number;
-    bottom: number;
-  }) => [left, top, right, bottom] as const;
+  const box = ({ left = 0, right = 1, top, bottom }: { left?: number; right?: number; top: number; bottom: number }) =>
+    [left, top, right, bottom] as const;
 
   return [
-    { name: "the battle's names and CPs", boxes: [spanning(across(NAMES), TOP, screen)] },
-    { name: "the charged moves' names", boxes: [spanning(across(LABELS), BOTTOM, screen)] },
-    { name: "the opponent's charged move banner", boxes: [spanning(across(BANNER), BANNER_ANCHOR, screen)] },
+    { name: "the battle's names and CPs", boxes: [spanning(box(NAMES), TOP, screen)] },
+    { name: "the charged moves' names", boxes: [spanning(box(LABELS), BOTTOM, screen)] },
+    { name: "the opponent's charged move banner", boxes: [spanning(box(BANNER), BANNER_ANCHOR, screen)] },
   ];
 }

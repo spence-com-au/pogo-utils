@@ -10,19 +10,19 @@
  * Everything below is scoped to the open page.
  *
  * Each of these sheets was the only one in its document and could style `.chip`, `.name` and `.copy` as it liked. One
- * document loads all five, and between them they give nineteen class names a different meaning per page — `.chip` is a
- * three-state term toggle here, a plain on/off filter on the Pokédex and a type legend on the Events calendar. The
- * wrapper is what keeps each sheet's meaning to its own page; `data-page` is set on the body by the shell, from the
- * same table the router validates a fragment against.
+ * document loads every page's sheet, and between them the same class names mean something different per page —
+ * `.chip` is a three-state term toggle here, a plain on/off filter on the Pokédex and a type legend on the Events
+ * calendar. The wrapper is what keeps each sheet's meaning to its own page; `data-page` is set on the body by the
+ * shell, from the same table the router validates a fragment against.
  */
 body[data-page='search'] {
   /**
    * Wider than Integrations' 640px: the chips are the page, and at that width the type group wraps to five rows of
    * four, which reads as a list rather than as a palette.
    *
-   * On the wrapper rather than on `:root`, where these three were while this sheet was alone in its document: three of
-   * the four pages that set `--content-w` want a different width, so on `:root` they would be one declaration and
-   * whichever the bundler wrote last would set the column for every page.
+   * On the wrapper rather than on `:root`, where these three were while this sheet was alone in its document: the pages
+   * that set `--content-w` want different widths, so on `:root` they would be one declaration and whichever the bundler
+   * wrote last would set the column for every page.
    */
   --content-w: 880px;
 
@@ -891,7 +891,7 @@ body[data-page='search'] {
 
   .chip {
     /**
-     * `--hue` is set per category section, so a chip outside one has none — the eight in the Ranges panel had `--chip`
+     * `--hue` is set per category section, so a chip outside one has none — those in the Ranges panel had `--chip`
      * invalid at computed-value time, and their required state rendered with no tint at all: a `currentcolor` border
      * and a transparent background, the two declarations that use it both thrown away. The fallback is on the hue
      * rather than on each use, so `--chip` is a colour wherever a chip ends up and no future one can be caught by it.
