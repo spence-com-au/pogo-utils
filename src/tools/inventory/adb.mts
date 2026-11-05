@@ -18,6 +18,16 @@ export interface Transport {
 }
 
 /**
+ * How long a transport waits on one call before failing it. Far longer than any call takes, so it only fires on a
+ * device or `adb` server that has wedged — an `offline` phone, a stalled USB link — which would otherwise hang the scan
+ * or the battle rather than fail the one call.
+ */
+export const TIMEOUT_MS = 30_000;
+
+/** What a call given up on after `TIMEOUT_MS` fails with. */
+export const NO_ANSWER = `no answer after ${TIMEOUT_MS / 1000}s; is the phone still connected?`;
+
+/**
  * Whether `type` would send this rather than refuse it: a space, and the characters a storage search is made of —
  * `<` and `>` among them for the type-effectiveness searches, and `.` for Mr. Mime. `type` single-quotes the text, so
  * none of them reaches the shell as anything but itself; a `'` would end the quote, and is refused with the rest.

@@ -9,6 +9,7 @@
  * writes and `decodeSilhouettes` reads.
  */
 
+import { said } from '../../errors.ts';
 import { ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/icons.ts';
 import { FETCH_BATCH } from '../inventory/artwork.mts';
 import { type GameData } from '../inventory/game-master.mts';
@@ -32,7 +33,7 @@ export async function typeIcons(data: GameData, download: Download): Promise<Rec
       try {
         return [[type, await download(typeIconFile(type), typeIcon(type), decodePng)] as const];
       } catch (error) {
-        console.error(`  ${error instanceof Error ? error.message : String(error)}; ${type} is read as no type`);
+        console.error(`  ${said(error)}; ${type} is read as no type`);
 
         return [];
       }
@@ -70,7 +71,7 @@ export async function silhouettesFor(data: GameData, download: Download): Promis
 
         return [[icon, { species, silhouette }] as const];
       } catch (error) {
-        console.error(`  ${error instanceof Error ? error.message : String(error)}; its forms are left out`);
+        console.error(`  ${said(error)}; its forms are left out`);
 
         return [];
       }

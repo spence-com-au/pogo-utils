@@ -114,8 +114,8 @@ const coloured = (r: number, g: number, b: number) => chroma(r, g, b) >= SIZE_CH
  * **Read with no whitelist.** Held to `XSL`, `smoliv.png`'s pill reads `XS` off an `XXS` badge the game's own `xxs`
  * search confirms; open it reads `XXS,` and `fold` drops the comma. An alphabet earns its place where a stray glyph
  * could split a number in two — why `wholeCp` and the overlay keep theirs — and a badge is two or three of one letter
- * with no number to split; the chips below read open as well. Over the corpus, four of the 43 rows wear a badge and
- * open is right on all four where the whitelist is right on three, the other 39 answering null under both.
+ * with no number to split; the chips below read open as well. Over the corpus, open is right on every row that wears a
+ * badge where the whitelist misses `smoliv.png`'s, the rest answering null under both.
  *
  * **The pill's shape counts the letters, and the text only names the last.** A run of one letter is exactly what OCR
  * merges: the WebAssembly Tesseract the Inventory page reads with answers `XS` off `smoliv.png`'s pill even open, where
@@ -404,7 +404,7 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 }
 
 /**
- * Measured over the 55 committed captures: 47 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
+ * Measured over the 63 committed captures: 53 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
  * because `castform-rainy.png`'s background puts **15.78%** in that corner behind a white-outline star. Gold alone
  * cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's 24.31%,
  * inside the favourites' range, which is what `FAVOURITE_WHITE` is for.

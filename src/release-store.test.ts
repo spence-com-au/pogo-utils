@@ -3,7 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { fetchVendedRelease, ReleaseStore } from './release-store.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
-import type { VendedRelease } from './release.js';
+import type { Release, VendedRelease } from './release.js';
 
 const ACKNOWLEDGED_KEY = 'pogo-utils:test:acknowledged';
 
@@ -115,13 +115,19 @@ test('each store keeps its own acknowledgement, so clearing one app leaves the o
   expect(two.unacknowledged()?.version).toBe('1.273.0');
 });
 
-/** `fetchVendedRelease` over a file holding `body`, checked by a `check` that takes any URL. */
-async function fetchFile(body: object) {
-  vi.stubGlobal('fetch', async () => Response.json(body));
+/** `fetchVendedRelease` over a response of `status` holding `body`, `check` taking any URL unless given another. */
+async function fetchFile(
+  body: object,
+  {
+    status = 200,
+    check = (url: string) => ({ version: '1.273.0', url }),
+  }: { status?: number; check?: (url: string) => Release } = {},
+) {
+  vi.stubGlobal('fetch', async () => Response.json(body, { status }));
   vi.spyOn(console, 'error').mockImplementation(() => {});
 
   try {
-    return await fetchVendedRelease('data/test-release.json', (url) => ({ version: '1.273.0', url }));
+    return await fetchVendedRelease('data/test-release.json', check);
   } finally {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -139,4 +145,21 @@ test('a file without a date it can read is refused, rather than failing later wh
 
   expect(await fetchFile({ url })).toBeNull();
   expect(await fetchFile({ url, firstSeen: 'yesterday' })).toBeNull();
+});
+
+test('a file that cannot be fetched or has no url is refused', async () => {
+  const { url, firstSeen } = release('1.273.0');
+
+  expect(await fetchFile({ url, firstSeen }, { status: 404 })).toBeNull();
+  expect(await fetchFile({ firstSeen })).toBeNull();
+});
+
+test('a url the checker refuses is never an install link, the file being refused with it', async () => {
+  const { firstSeen } = release('1.273.0');
+
+  const check = (url: string): Release => {
+    throw new Error(`${url} is not where the app is served`);
+  };
+
+  expect(await fetchFile({ url: 'https://evil.example/pgs.apk', firstSeen }, { check })).toBeNull();
 });

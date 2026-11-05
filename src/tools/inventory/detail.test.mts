@@ -9,7 +9,7 @@
  * constructs its inputs: that one is a claim about the rule's whole domain rather than about a capture.
  *
  * What this still cannot pin is *which* treatment earned a rescue. The readings are quoted, so a change that had a
- * cheaper pass start reading `738` would leave this file and all 48 rows green with the third treatment dead. Only a
+ * cheaper pass start reading `738` would leave this file and every row green with the third treatment dead. Only a
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
