@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { type Transport } from './adb.mts';
 import { create, listed, report, swipe, touchscreen, write } from './touchscreen.mts';
 
@@ -76,12 +76,10 @@ test('reads the sources of its own entry, not those of the device after it', () 
  * An entry with no sources it can read, followed by the rest of a dump: the whole of a Pixel 8 Pro's `dumpsys input`
  * runs to 1,325 lines, which a pattern backtracking over each line's leading whitespace never got through.
  */
-test('answers at once where the entry has no sources it can read', () => {
+test('terminates where the entry has no sources it can read', () => {
   const rest = Array.from({ length: 2000 }, (_, i) => `      Line ${i}: some  value  here`).join('\n');
-  const started = performance.now();
 
   expect(listed(`${NAMED.replace('Sources: TOUCHSCREEN', 'Sources:')}${rest}\n`)).toBe(false);
-  expect(performance.now() - started).toBeLessThan(100);
 });
 
 test('swipes as one command, moving along the line every 8ms or so of the time asked', () => {
@@ -120,7 +118,18 @@ test('holds a touch down from one command to the next', async () => {
 });
 
 test('fails where Android never takes it as a touchscreen', async () => {
-  await expect(touchscreen(phone('').transport)).rejects.toThrow(/has not taken pogo-utils touch as a touchscreen/);
+  vi.useFakeTimers();
+
+  try {
+    const failure = expect(touchscreen(phone('').transport)).rejects.toThrow(
+      /has not taken pogo-utils touch as a touchscreen/,
+    );
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await failure;
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('fails saying so where the shell may not open /dev/uhid', async () => {

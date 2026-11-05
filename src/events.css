@@ -587,6 +587,10 @@ body[data-page='events'] {
     --type-color: #0891b2;
   }
 
+  .type-pokemon-go-tour {
+    --type-color: #ca8a04;
+  }
+
   .type-max-battles {
     --type-color: #4f46e5;
   }
@@ -646,6 +650,10 @@ body[data-page='events'] {
 
     .type-go-pass {
       --type-color: #22d3ee;
+    }
+
+    .type-pokemon-go-tour {
+      --type-color: #facc15;
     }
 
     .type-max-battles {

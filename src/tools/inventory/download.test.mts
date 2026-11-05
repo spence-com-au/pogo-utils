@@ -59,25 +59,34 @@ const POWER_UP = [
   { templateId: 'LUCKY_POKEMON_SETTINGS', data: { luckyPokemonSettings: { powerUpStardustDiscountPercent: 0.5 } } },
 ];
 
-/** The forms `loadGameData` makes of a game master of `templates`, beside the tables it requires and nothing else. */
-async function formsOf(templates: object[]) {
+/** The `playerLevel` template `loadGameData` requires, whose table runs from 0.1 up by 0.01 a level. */
+const PLAYER_LEVEL = {
+  templateId: 'PLAYER_LEVEL_SETTINGS',
+  data: { playerLevel: { cpMultiplier: Array.from({ length: 100 }, (_, i) => 0.1 + i / 100) } },
+};
+
+interface Seed {
+  /** The string table, as alternating names and texts. */
+  strings?: string[];
+
+  /** The artwork listing. */
+  listing?: object;
+}
+
+/** What `loadGameData` makes of a game master of exactly `templates`, with the cache seeded so nothing is downloaded. */
+async function load(templates: object[], { strings = [], listing = { tree: [] } }: Seed = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'download-'));
 
-  writeFileSync(
-    join(dir, GAME_MASTER_CACHE),
-    JSON.stringify([
-      {
-        templateId: 'PLAYER_LEVEL_SETTINGS',
-        data: { playerLevel: { cpMultiplier: Array.from({ length: 100 }, (_, i) => 0.1 + i / 100) } },
-      },
-      ...POWER_UP,
-      ...templates,
-    ]),
-  );
-  writeFileSync(join(dir, 'english.json'), JSON.stringify({ data: [] }));
-  writeFileSync(join(dir, ICON_CACHE), JSON.stringify({ tree: [] }));
+  writeFileSync(join(dir, GAME_MASTER_CACHE), JSON.stringify(templates));
+  writeFileSync(join(dir, 'english.json'), JSON.stringify({ data: strings }));
+  writeFileSync(join(dir, ICON_CACHE), JSON.stringify(listing));
 
-  return (await loadGameData(dir)).forms;
+  return loadGameData(dir);
+}
+
+/** The forms `loadGameData` makes of a game master of `templates`, beside the tables it requires and nothing else. */
+async function formsOf(templates: object[], seed?: Seed) {
+  return (await load([PLAYER_LEVEL, ...POWER_UP, ...templates], seed)).forms;
 }
 
 /**
@@ -158,4 +167,193 @@ test('a form holds the charged moves the change into it hands over', async () =>
     [null, []],
     ['Black', ['Fusion Bolt', 'Freeze Shock']],
   ]);
+});
+
+/** A Pokémon template of `templateId` with `settings` over the few a form needs. */
+function species(templateId: string, settings: object) {
+  return {
+    templateId,
+    data: {
+      pokemonSettings: { pokemonId: 'FOO', form: 'FOO_NORMAL', type: 'POKEMON_TYPE_NORMAL', stats: {}, ...settings },
+    },
+  };
+}
+
+test('a half level holds the root mean square of the whole levels either side', async () => {
+  const table = [0.1, 0.3, ...Array.from({ length: 49 }, () => 0.5)];
+  const { cpm } = await load([
+    { templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: table } } },
+    ...POWER_UP,
+  ]);
+
+  expect(cpm).toHaveLength(101);
+  expect(cpm.slice(0, 3)).toStrictEqual([
+    [1, 0.1],
+    [1.5, Math.sqrt(0.05)],
+    [2, 0.3],
+  ]);
+  expect(cpm.at(-1)).toStrictEqual([51, 0.5]);
+});
+
+test('a level without a multiplier is refused', async () => {
+  await expect(
+    load([{ templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: [0.1, 0.2] } } }, ...POWER_UP]),
+  ).rejects.toThrow('no CP multiplier for level 3');
+});
+
+test('a game master without the power-up costs is refused', async () => {
+  for (const kept of POWER_UP) {
+    await expect(load([PLAYER_LEVEL, kept])).rejects.toThrow('no power-up costs');
+  }
+});
+
+test("the type chart reads the scalars in the order of the game's type enum", async () => {
+  const scalars = Array.from({ length: 18 }, (_, i) => 1 + i / 10);
+  const { effectiveness } = await load([
+    PLAYER_LEVEL,
+    ...POWER_UP,
+    { templateId: 'TYPE_FIRE', data: { typeEffective: { attackType: 'POKEMON_TYPE_FIRE', attackScalar: scalars } } },
+    { templateId: 'TYPE_ICE', data: { typeEffective: { attackType: 'POKEMON_TYPE_ICE', attackScalar: [0.5] } } },
+  ]);
+
+  expect(effectiveness.Fire).toStrictEqual({
+    Normal: scalars[0],
+    Fighting: scalars[1],
+    Flying: scalars[2],
+    Poison: scalars[3],
+    Ground: scalars[4],
+    Rock: scalars[5],
+    Bug: scalars[6],
+    Ghost: scalars[7],
+    Steel: scalars[8],
+    Fire: scalars[9],
+    Water: scalars[10],
+    Grass: scalars[11],
+    Electric: scalars[12],
+    Psychic: scalars[13],
+    Ice: scalars[14],
+    Dragon: scalars[15],
+    Dark: scalars[16],
+    Fairy: scalars[17],
+  });
+  expect(effectiveness.Ice).toMatchObject({ Normal: 0.5, Fighting: 1, Fairy: 1 });
+});
+
+test('a combat move is read from the first template of its name, and its buffs only where it has some', async () => {
+  const combat = (templateId: string, combatMove: object) => ({ templateId, data: { combatMove } });
+  const data = await load(
+    [
+      PLAYER_LEVEL,
+      ...POWER_UP,
+      combat('COMBAT_V0001_MOVE_HYDRO_PUMP', {
+        type: 'POKEMON_TYPE_WATER',
+        power: 90,
+        energyDelta: -75,
+        durationTurns: 2,
+      }),
+      combat('COMBAT_V0001_MOVE_HYDRO_PUMP_BLASTOISE', { type: 'POKEMON_TYPE_WATER', power: 130, durationTurns: 9 }),
+      combat('COMBAT_V0002_MOVE_ICY_WIND', {
+        type: 'POKEMON_TYPE_ICE',
+        power: 60,
+        buffs: { buffActivationChance: 1, targetAttackStatStageChange: -1 },
+      }),
+      combat('COMBAT_V0003_MOVE_SECRET_SWORD', { type: 'POKEMON_TYPE_FIGHTING', power: 85, buffs: {} }),
+      combat('COMBAT_V0004_MOVE_TRANSFORM_FAST', { type: 'POKEMON_TYPE_NORMAL' }),
+    ],
+    { strings: ['move_name_0001', 'Hydro Pump', 'move_name_0003', 'Secret Sword'] },
+  );
+
+  expect(data.combat['Hydro Pump']).toStrictEqual({ type: 'Water', power: 90, energy: -75, turns: 3 });
+  expect(data.combat['Icy Wind']).toStrictEqual({
+    type: 'Ice',
+    power: 60,
+    energy: 0,
+    turns: 1,
+    buffs: { chance: 1, ownAttack: undefined, ownDefense: undefined, theirAttack: -1, theirDefense: undefined },
+  });
+  expect(data.combat['Secret Sword']).not.toHaveProperty('buffs');
+  expect(data.combat.Transform).toStrictEqual({ type: 'Normal', power: 0, energy: 0, turns: 1 });
+});
+
+test('a form carries its size bands, the candy its evolutions cost and whether only a shadow has it', async () => {
+  const bands = {
+    xxsLowerBound: 1,
+    xsLowerBound: 2,
+    mLowerBound: 3,
+    mUpperBound: 4,
+    xlUpperBound: 5,
+    xxlUpperBound: 6,
+  };
+  const forms = await formsOf([
+    { templateId: 'EXTENDED_V0001_POKEMON_FOO_NORMAL', data: { pokemonExtendedSettings: { sizeSettings: bands } } },
+    species('V0001_POKEMON_FOO_NORMAL', {
+      evolutionBranch: [{ candyCost: 25 }, { candyCost: 25 }, {}, { candyCost: 100 }],
+    }),
+    species('V0002_POKEMON_BAR_NORMAL', { pokemonId: 'BAR', form: 'BAR_NORMAL' }),
+    species('V0003_POKEMON_APEX_NORMAL', {
+      pokemonId: 'APEX',
+      form: 'APEX_NORMAL',
+      shadow: { shadowChargeMove: 'AEROBLAST_PLUS' },
+    }),
+    species('V0004_POKEMON_RAIKOU_NORMAL', {
+      pokemonId: 'RAIKOU',
+      form: 'RAIKOU_NORMAL',
+      shadow: { shadowChargeMove: 'FRUSTRATION' },
+    }),
+  ]);
+
+  expect(
+    forms.map(({ dex, heights, evolveCandy, shadowOnly }) => ({ dex, heights, evolveCandy, shadowOnly })),
+  ).toStrictEqual([
+    { dex: 1, heights: [1, 2, 3, 4, 5, 6], evolveCandy: [25, 100], shadowOnly: false },
+    { dex: 2, heights: null, evolveCandy: [], shadowOnly: false },
+    { dex: 3, heights: null, evolveCandy: [], shadowOnly: true },
+    { dex: 4, heights: null, evolveCandy: [], shadowOnly: false },
+  ]);
+});
+
+test('a form takes the artwork the listing names: trimmed, in full or, for the ordinary form only, bare', async () => {
+  const listing = {
+    tree: [
+      'pm1.fALOLA.icon.png',
+      'pm2.fFOO_ALOLA.icon.png',
+      'pm3.icon.png',
+      'pm4.icon.png',
+      'pm5.fNORMAL.icon.png',
+      'pm5.icon.png',
+    ].map((path) => ({ path })),
+  };
+  const form = (dex: number, name: string) => species(`V000${dex}_POKEMON_${name}`, { form: name });
+
+  const forms = await formsOf(
+    [
+      form(1, 'FOO_ALOLA'),
+      form(2, 'FOO_ALOLA'),
+      form(3, 'FOO_NORMAL'),
+      form(4, 'FOO_GALAR'),
+      form(5, 'FOO_NORMAL'),
+      species('V0006_POKEMON_FOO', { form: undefined }),
+    ],
+    { listing },
+  );
+
+  expect(forms.map(({ dex, icon }) => [dex, icon])).toStrictEqual([
+    [1, 'pm1.fALOLA.icon.png'],
+    [2, 'pm2.fFOO_ALOLA.icon.png'],
+    [3, 'pm3.icon.png'],
+    [4, null],
+    [5, 'pm5.fNORMAL.icon.png'],
+    [6, null],
+  ]);
+});
+
+test('a truncated artwork listing narrows no form', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  const forms = await formsOf([species('V0001_POKEMON_FOO_NORMAL', {})], {
+    listing: { tree: [{ path: 'pm1.fNORMAL.icon.png' }], truncated: true },
+  });
+
+  expect(forms.map(({ icon }) => icon)).toStrictEqual([null]);
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('the listing is truncated'));
 });
