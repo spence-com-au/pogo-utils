@@ -3,8 +3,8 @@
  * how a release becomes a notice; this names where PGSharp's is read from and where its acknowledgement is kept.
  */
 
-import { KEY_PREFIX } from '../event-prefs.js';
 import { fetchVendedRelease, ReleaseStore } from '../release-store.js';
+import { KEY_PREFIX } from '../storage-namespace.js';
 import { releaseFromApk, VENDED_RELEASE } from './release.js';
 
 export const ACKNOWLEDGED_KEY = `${KEY_PREFIX}pgsharp:acknowledged`;

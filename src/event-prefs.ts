@@ -5,6 +5,7 @@
  */
 
 import RECURRING_TYPES from './recurring-types.js';
+import { KEY_PREFIX } from './storage-namespace.js';
 
 /** The reader's saved choices, keyed the way `KEYS` is so `persist` can take a name alone. */
 export interface Prefs {
@@ -37,18 +38,6 @@ export interface Seen {
   /** An instant in epoch milliseconds, or null before any stamped event has been seen. */
   through: number | null;
 }
-
-/**
- * The namespace every key this app owns sits under: the Pages path segment, since `localStorage` is keyed by origin and
- * `spence.com.au` serves every repository published there — an unqualified name is not this app's to claim.
- *
- * Exported because `src/backup.ts` sweeps the namespace rather than naming keys, and names it once in the file rather
- * than in every key. One spelling is what rules out the disagreement that does harm: a transport sweeping a prefix
- * shorter than the keys carry would carry the neighbouring site's keys along with this app's.
- */
-export const NAMESPACE = 'pogo-utils';
-
-export const KEY_PREFIX = `${NAMESPACE}:`;
 
 /**
  * Types are stored as the *hidden* set rather than the visible one, so a category the feed adds later shows up by

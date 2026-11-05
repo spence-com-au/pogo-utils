@@ -9,9 +9,9 @@
  * two that can come to disagree — and it is what keeps an export off the keys of the other site on this origin,
  * `localStorage` being keyed by origin and not by path. The file names it once, in `namespace`, and keys each value by
  * what follows it, so a value cannot be written outside the namespace however the file is edited. `KEY_PREFIX` comes
- * from the module that builds the keys out of it for the same reason: a sweep spelled here could be shortened to one
- * the keys no longer agree with, and a prefix short enough to reach the neighbouring site is exactly the way this goes
- * wrong.
+ * from `storage-namespace.ts`, which every key is built from, for the same reason: a sweep spelled here could be
+ * shortened to one the keys no longer agree with, and a prefix short enough to reach the neighbouring site is exactly
+ * the way this goes wrong.
  *
  * Version 1 files are still read. They carry each key whole at the top level, beside `version`, and readers exported
  * them for as long as that was the only layout: a backup exists to be read back long after it was taken, so a page that
@@ -20,7 +20,7 @@
  */
 
 import { said } from './errors.js';
-import { KEY_PREFIX, NAMESPACE } from './event-prefs.js';
+import { KEY_PREFIX, NAMESPACE } from './storage-namespace.js';
 
 /**
  * What a file this code writes says it is. `parseBackup` reads this and version 1, and refuses any other rather than

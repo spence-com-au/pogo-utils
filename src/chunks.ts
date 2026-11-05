@@ -9,8 +9,10 @@
  * new build too from reloading the page on every try is that the document the reload brings reports it instead.
  */
 
+import { KEY_PREFIX } from './storage-namespace.js';
+
 /** Set across the reload, for the document it brings to know it is that reload. */
-const RELOADED = 'chunks:reloaded';
+const RELOADED = `${KEY_PREFIX}chunks:reloaded`;
 
 /**
  * Whether this document is a reload a failed import asked for. Read once as it starts and cleared, so that the document
