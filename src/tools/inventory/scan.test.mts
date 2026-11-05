@@ -605,6 +605,12 @@ test('a skip is checked against the last rows written up to it, oldest first', (
   ]);
 });
 
+test('a row written lands as the reading that wrote it, an IV of 0 included', () => {
+  const text = written([[1, '50', '6.1', '0.41', '0/15/0']]);
+
+  expect(landmarksBefore(text, 1)).toStrictEqual([landmarkOf(detail(), overlay(0, 15, 0))]);
+});
+
 test('the rows checked stop at one with no HP, and take the last written under a number', () => {
   const text = written([
     [1, '40', '6', '0.4', ''],
