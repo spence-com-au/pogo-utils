@@ -1,7 +1,8 @@
 /**
- * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written,
- * whether two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in `scripts/inventory.mts` so the suite can import them,
- * that script parsing `process.argv` and driving a phone at its top level.
+ * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written, whether
+ * two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in
+ * `scripts/inventory.mts` so the suite can import them, that script parsing `process.argv` and driving a phone at its
+ * top level.
  */
 
 import { type Detail } from './detail.mts';
@@ -574,13 +575,14 @@ export const DROP_RETRIES = 3;
  *
  * A swipe the phone drops looks like the end too: the look-back finds the Pokémon before the last where storage going
  * on would have put the last, and rules out storage going on. `total`, the count the game shows for what is walked,
- * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the last Pokémon visited, short of `total` — the
- * swipe forward is taken as dropped rather than the end: struck from what the walk has done, as though never sent, and
- * sent again, up to `DROP_RETRIES` times in a row, so that a count read too high costs a few swipes at the real end.
- * Struck rather than the end merely set aside, which would take the screen read again for a twin: one Pokémon written
- * twice and the next one skipped. An end found further back, past an unread screen, is not retried, and is left to
- * `shortfall` to report, as is a drop on the first swipe of a pass: with nothing read before the first Pokémon, the
- * look-back cannot tell a drop from a twin, and the walk stops as it does for twins there.
+ * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the
+ * last Pokémon visited, short of `total` — the swipe forward is taken as dropped rather than the end: struck from what
+ * the walk has done, as though never sent, and sent again, up to `DROP_RETRIES` times in a row, so that a count read
+ * too high costs a few swipes at the real end. Struck rather than the end merely set aside, which would take the screen
+ * read again for a twin: one Pokémon written twice and the next one skipped. An end found further back, past an unread
+ * screen, is not retried, and is left to `shortfall` to report, as is a drop on the first swipe of a pass: with nothing
+ * read before the first Pokémon, the look-back cannot tell a drop from a twin, and the walk stops as it does for twins
+ * there.
  */
 export async function walk<R extends { key: string | null }>(
   { read, next, back }: Steps<R>,

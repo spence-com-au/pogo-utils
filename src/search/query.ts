@@ -37,11 +37,8 @@ export const names = (text: string) =>
  * The search string, and whatever is worth saying about it.
  *
  * A string mixing `,` and `&` only means what the cards say it means if a comma binds tighter than an ampersand,
- * which the reference `clauses.js` cites states outright for this search box. The page used to warn whenever a string
- * mixed the two and does not now: there is nothing to warn about, and the caveat would in any case have been up for
- * nearly every query worth building, an `any` beside anything else in an `all` mixing them.
- *
- * Nearly rather than always: an `any` on its own composes one clause and no `&` at all, which `query.test.js` asserts.
+ * which the reference `clauses.js` cites states outright for this search box. So the page does not warn when a string
+ * mixes the two: there is nothing to warn about.
  */
 export function compose(state: State) {
   const { clauses, error, mishandled } = clausesOf(state.tree);
