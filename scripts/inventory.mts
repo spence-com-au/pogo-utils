@@ -71,7 +71,7 @@ import { clearable, identify, settledForm, shadowOf, type Identity } from '../sr
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
-import { findOverlay, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
+import { findOverlay, ivsOf, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
 import { decodePng, difference, encodePng, type Image } from '../src/tools/inventory/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
@@ -962,7 +962,7 @@ async function scan(held: Transport) {
       written++;
 
       const each = (Date.now() - started) / written / 1000;
-      const ivText = iv ? `${iv.attack}/${iv.defense}/${iv.stamina}` : '?';
+      const ivText = iv ? ivsOf(iv) : '?';
       console.error(
         `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.level || '?'}` +
           ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,

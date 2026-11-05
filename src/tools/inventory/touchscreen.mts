@@ -1,9 +1,10 @@
 /**
- * A touchscreen of `pnpm battle`'s own, made on the phone through `/dev/uhid` from the shell a `Transport` holds open:
- * each touch is a HID report written by the shell's `print` builtin, where `input tap` and `input swipe` start a Java
- * runtime on the phone for every command, about 20ms each. The phone's own touchscreen is no way in: SELinux refuses
- * the shell a write to `/dev/input/event*`, `sendevent`'s included, on a Pixel 4 XL with Android 13, but grants it
- * `/dev/uhid`, which Android's own `hid` command creates its test devices through.
+ * A touchscreen of its caller's own — `pnpm battle`'s, `pnpm inventory scan`'s or the Battle tab's — made on the phone
+ * through `/dev/uhid` from the shell a `Transport` holds open: each touch is a HID report written by the shell's
+ * `print` builtin, where `input tap` and `input swipe` start a Java runtime on the phone for every command, about 20ms
+ * each. The phone's own touchscreen is no way in: SELinux refuses the shell a write to `/dev/input/event*`,
+ * `sendevent`'s included, on a Pixel 4 XL with Android 13, but grants it `/dev/uhid`, which Android's own `hid` command
+ * creates its test devices through.
  *
  * The kernel's `hid-multitouch` driver takes the device as a touchscreen, and Android maps its range over the whole
  * display, so a point is given as fractions of the screen, the same on every phone. The device lasts as long as the
