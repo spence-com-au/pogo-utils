@@ -328,6 +328,50 @@ test('reloading the preferences keeps the object every reader holds', () => {
   expect(held.hiddenTypes.has('season')).toBe(true);
 });
 
+test('reloading keeps what a full store refused to save, not what was never saved, until a save lands', () => {
+  const store = new EventStore(async () => []);
+
+  storage.refusesWrites = true;
+  store.prefs.dismissed.add('a');
+  store.commit('dismissed');
+  store.prefs.dismissed.add('unsaved');
+  store.reloadPrefs();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['a']));
+
+  storage.refusesWrites = false;
+  store.commit('dismissed');
+  storage.setItem(KEYS.dismissed, JSON.stringify(['b']));
+  store.reloadPrefs();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['b']));
+});
+
+test('blocked storage keeps the seen record through a reload, so the next load marks nothing new', async () => {
+  const { store, source } = storeOver([feedEvent('a')]);
+
+  storage.throws = true;
+  await store.load();
+  store.reloadPrefs();
+  source.feed = [feedEvent('a'), feedEvent('b')];
+  await store.load();
+
+  expect(ids(store)).toEqual(['b']);
+});
+
+test('an import wins over a change storage refused to save', () => {
+  const store = new EventStore(async () => []);
+
+  storage.refusesWrites = true;
+  store.prefs.dismissed.add('a');
+  store.commit('dismissed');
+  storage.refusesWrites = false;
+  storage.setItem(KEYS.dismissed, JSON.stringify(['b']));
+  store.restored();
+
+  expect(store.prefs.dismissed).toEqual(new Set(['b']));
+});
+
 test('an import re-reads storage, settles a seen set the file left out, and tells every reader', async () => {
   const { store } = storeOver([feedEvent('a'), feedEvent('b')]);
 
