@@ -1,9 +1,9 @@
 /**
- * The events calendar page. Loads Leek Duck's event list from `data/events-feed.json` — the copy of ScrapedDuck's JSON
- * mirror that `scripts/vend-feed.mts` refreshes hourly — and merges it with `data/events.json`, a repo-defined list in
- * the same shape whose entries override a feed event of the same `eventID` or add one the feed does not carry. Either
- * source failing still renders the other. `data/entries-by-event.json` says which events have routes here, so a card
- * can link through to them on the map.
+ * The events calendar page. Draws Leek Duck's event list from `data/events-feed.json` — the copy of ScrapedDuck's JSON
+ * mirror that `scripts/vend-feed.mts` refreshes hourly — merged with `data/events.json`, a repo-defined list in the
+ * same shape whose entries override a feed event of the same `eventID` or add one the feed does not carry. `EventStore`
+ * in `src/event-store.ts` loads and merges the two, and either source failing still renders the other.
+ * `data/entries-by-event.json` says which events have routes here, so a card can link through to them on the map.
  *
  * Three views over the same data: a card list grouped by status, a month grid where every event is a bar spanning the
  * days it covers within each week, and a Tracks timeline laying events out as horizontal bars in fixed category rows.
