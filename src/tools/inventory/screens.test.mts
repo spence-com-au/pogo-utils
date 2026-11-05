@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
-import { ambiguous, nearest, signatureOf, type Signature } from './artwork.mts';
+import { ambiguous, nearest, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
 import { cpLabelOf, HEIGHT } from './detail.mts';
@@ -2481,10 +2481,7 @@ test(
         continue;
       }
 
-      // Floored on the overlay's box where one was found, PGSharp drawing over the artwork, so no fraction of one
-      // phone's screen is written down here.
-      const { image, box } = await readingOf(fixture.file);
-      const signature = signatureOf(image, box ? box.y + box.height : undefined);
+      const signature = (await readingOf(fixture.file)).artwork?.signature;
       assert.ok(signature, `${fixture.file} yields no artwork signature at all`);
 
       const icons = new Map(
