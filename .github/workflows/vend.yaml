@@ -42,8 +42,12 @@ jobs:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
+      # `master` rather than the default `github.sha`, which is fixed when the run is created rather than when it
+      # starts: a run that waited in the `master` group behind one that pushed, or whose own commit was overtaken,
+      # would build on a commit behind `master` and have its push rejected as a non-fast-forward.
       - uses: 'actions/checkout@v7.0.1'
         with:
+          ref: 'master'
           # `git-auto-commit-action` pushes with whatever credentials `checkout` persisted, so this is what makes the
           # commit the app's rather than the default token's.
           token: '${{ steps.token.outputs.token }}'
@@ -88,9 +92,8 @@ jobs:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
-      # `master` rather than the default `github.sha`, which is the commit the run started on: if `events` has just
-      # pushed, building on that commit would make this job's push the rejected non-fast-forward `needs` is here to
-      # avoid.
+      # `master` rather than `github.sha`, as in `events`: if `events` has just pushed, building on the run's commit
+      # would make this job's push the rejected non-fast-forward `needs` is here to avoid.
       - uses: 'actions/checkout@v7.0.1'
         with:
           ref: 'master'

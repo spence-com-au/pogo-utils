@@ -32,8 +32,4 @@ export class Backoff {
   succeeded(): void {
     this.#failures = 0;
   }
-
-  get failures(): number {
-    return this.#failures;
-  }
 }

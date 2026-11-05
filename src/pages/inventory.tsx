@@ -21,9 +21,8 @@ import { said } from '../errors.js';
 import { read, unreadable } from '../inventory/reader.js';
 import { usePhone } from '../phone-store.js';
 import { Device } from '../tools/inventory/adb.mts';
-import { type Line } from '../tools/inventory/ocr.mts';
 import { decodePng, encodePng, type Image } from '../tools/inventory/png.mts';
-import { NO_BOX, NO_OVERLAY, printable, refusals, type Reading } from '../tools/inventory/report.mts';
+import { dumped, NO_BOX, NO_OVERLAY, printable, refusals, type Reading } from '../tools/inventory/report.mts';
 
 /** Where a screen came from, which names its download and says what the page is showing. */
 interface Capture {
@@ -44,9 +43,6 @@ type Phase =
 
 /** The view a block is printed in: JSON, which says `null` as `null` where a page of prose would leave a gap. */
 const shown = (value: unknown) => JSON.stringify(value, null, 2);
-
-/** One line as `--verbose` prints it, box first. */
-const dumped = (l: Line) => `${`${l.left},${l.top} ${l.width}×${l.height}`.padEnd(22)} ${l.text}`;
 
 /**
  * `Uint8Array` takes a type argument for the buffer behind it, and only one over an `ArrayBuffer` is a `BlobPart` — a

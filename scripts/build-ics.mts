@@ -6,8 +6,9 @@
  *
  * **Nothing here reads the clock, and nothing touches the network.** Fetching the feed is `vend-feed.mts`'s job, which
  * is what lets this be a step of `pnpm build` and a local run give exactly the file a deploy would. The output is a
- * pure function of three committed files, so a build that finds the event data unmoved publishes the bytes a
- * subscriber already holds — and a `DTSTAMP` is required all the same, so each event's is derived from its own start.
+ * pure function of two committed files and the route index `pnpm build:data` derives from the committed GPX before this
+ * step runs, so a build that finds the event data unmoved publishes the bytes a subscriber already holds — and a
+ * `DTSTAMP` is required all the same, so each event's is derived from its own start.
  */
 
 import { LOCAL_EVENTS, VENDED_EVENTS, type StampedEvent } from '../src/event-feed.ts';
