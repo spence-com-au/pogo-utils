@@ -56,6 +56,14 @@ export interface Stages {
 
 export const NO_STAGES: Stages = { attack: 0, defense: 0 };
 
+/** Both sides' stages: ours and the opponent's. */
+export interface StagePair {
+  own: Stages;
+  their: Stages;
+}
+
+export const NO_STAGE_PAIR: StagePair = { own: NO_STAGES, their: NO_STAGES };
+
 /** How far a stage can go either way. */
 const MAX_STAGE = 4;
 
@@ -321,6 +329,14 @@ function staged(attack: number, defense: number): string {
   return moved.length > 0 ? ` (${moved.join(', ')})` : '';
 }
 
+/** What `wouldFaint` is told beyond the two sides, the HP and the cap. */
+export interface WouldFaintOptions {
+  meta?: Meta | null;
+  seen?: ReadonlySet<string>;
+  affordable?: number;
+  stages?: StagePair;
+}
+
 /**
  * Whether the opponent's hardest charged move would take at least `FAINTS` of the HP we have left, `hp` being the
  * fraction of our maximum the bar shows, and why. Hardest of every charged move `chargedOf` allows any of its forms —
@@ -345,10 +361,7 @@ export function wouldFaint(
   opponent: Side,
   hp: number | null,
   cap: number | null,
-  meta?: Meta | null,
-  seen: ReadonlySet<string> = new Set(),
-  affordable?: number,
-  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  { meta, seen = new Set(), affordable, stages = NO_STAGE_PAIR }: WouldFaintOptions = {},
 ): Verdict {
   const ours = buildsOf(data, own, cap);
   const theirs = buildsOf(data, capped(opponent, cap), cap);
@@ -587,7 +600,7 @@ export function finisher(
   hp: number | null,
   shields: number,
   cap: number | null,
-  stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
+  stages: StagePair = NO_STAGE_PAIR,
 ): Pick | undefined {
   const ours = buildsOf(data, own, cap);
   const theirs = buildsOf(data, opponent, cap);
