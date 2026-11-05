@@ -349,13 +349,13 @@ test('a third unreadable screen in a row stops the pass, and two do not', async 
 test('a screen read two different ways, leaving no end to storage it fits, stops the pass', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-  // The last Pokémon reads `a`, then `q` on the second look, so every place storage could end contradicts itself.
-  const visited = await walked(['b', 'a', 'a'], Infinity, 0, [], [], null, { 2: 'q' });
-
-  expect(visited.slice(0, 3)).toEqual([
-    ['b', 0],
-    ['a', 1],
-    ['a', 2],
+  // The second Pokémon goes unread, and the look back that tells the third from it read again reads it `q`. At the end
+  // the look back reads it `b` all three times, which fits neither storage going on, with `c` there, nor storage
+  // ending, with `q` there, so the pass stops on the look back, each Pokémon visited once and none past the end.
+  expect(await walked(['a', 'b', 'c'], Infinity, 0, [1], [], null, { 1: 'q' })).toEqual([
+    ['a', 0],
+    [null, 1],
+    ['c', 2],
   ]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('one screen read two different ways'));
   error.mockRestore();
