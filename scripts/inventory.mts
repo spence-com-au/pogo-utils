@@ -76,6 +76,7 @@ import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
   artworkIn,
+  dumped,
   NO_BOX,
   NO_OVERLAY,
   printable,
@@ -383,7 +384,7 @@ async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Sig
   if (options.verbose) {
     const dump = (found: readonly Line[]) => {
       for (const l of found) {
-        console.log(`  ${`${l.left},${l.top} ${l.width}×${l.height}`.padEnd(22)} ${l.text}`);
+        console.log(`  ${dumped(l)}`);
       }
     };
 
