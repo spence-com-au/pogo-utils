@@ -52,27 +52,6 @@ export function statusCut(bytes: Uint8Array, command: readonly string[]): Uint8A
 const TIMEOUT_MS = 30_000;
 
 /**
- * Why this context, a page or its Worker, cannot reach a phone, or null where it can. WebUSB needs a secure context,
- * which is `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so
- * Firefox and Safari have none.
- */
-function unreachable(): string | null {
-  // The global rather than `window`'s, which a Worker has none of.
-  if (!globalThis.isSecureContext) {
-    return (
-      'WebUSB needs a secure context: ' +
-      'open this page from localhost or the published site rather than a LAN address.'
-    );
-  }
-
-  if (AdbDaemonWebUsbDeviceManager.BROWSER === undefined) {
-    return 'This browser has no WebUSB. Chrome and Edge do, on a computer or on Android.';
-  }
-
-  return null;
-}
-
-/**
  * Lets go of a connection no transport was built on, as where authentication fails: Tango releases its locks on the
  * streams but closes nothing, which would leave the phone's ADB interface claimed by this context until it is reloaded
  * or ended — and the `adb kill-server` advice for a busy phone useless. Closing either stream closes the device and
@@ -115,12 +94,22 @@ export interface Phone {
   disconnected: Promise<void>;
 }
 
-/** WebUSB, or a throw saying why this context has none. */
+/**
+ * WebUSB, or a throw saying why this context, a page or its Worker, has none. WebUSB needs a secure context, which is
+ * `localhost` and the published site but not the LAN address `pnpm serve` prints; and it is a Chromium API, so Firefox
+ * and Safari have none.
+ */
 function usb(): AdbDaemonWebUsbDeviceManager {
   const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
 
   if (manager === undefined) {
-    throw new Error(unreachable() ?? 'This browser has no WebUSB.');
+    // The global rather than `window`'s, which a Worker has none of.
+    throw new Error(
+      globalThis.isSecureContext
+        ? 'This browser has no WebUSB. Chrome and Edge do, on a computer or on Android.'
+        : 'WebUSB needs a secure context: ' +
+            'open this page from localhost or the published site rather than a LAN address.',
+    );
   }
 
   return manager;

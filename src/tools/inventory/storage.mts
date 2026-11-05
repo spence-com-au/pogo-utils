@@ -334,7 +334,8 @@ export function storage(
   /** Types a search into storage's search box, replacing whatever was there, and answers the grid it leaves. */
   const search = async (term: string) => {
     let lines = await toStorage();
-    searchBox ??= ((l) => (l ? centre(l) : null))(findLine(lines, /\bsearch\b/)) ?? at(config.taps.search);
+    const found = findLine(lines, /\bsearch\b/);
+    searchBox ??= found ? centre(found) : at(config.taps.search);
     await tap(searchBox);
     await replaceSearch(device, term);
     await sleep(config.waits.search);
