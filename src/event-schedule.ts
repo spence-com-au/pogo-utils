@@ -187,6 +187,121 @@ export function packLanes(items: readonly TrackItem[]) {
   return laneEnds.length;
 }
 
+/**
+ * Whether a week row's segment of an event carries on past the row, as the page draws it. A segment continues past the
+ * week only where the week's own edge is what stopped it: reaching column 0 while having begun earlier means it ran in
+ * from the row above, and anything starting later than column 0 began inside this week, because it misses the column
+ * before. The same holds at the right edge against the end of column 6.
+ */
+export function continuations(win: Span, [first, last]: readonly [number, number], weekStart: Date) {
+  return {
+    contLeft: first === 0 && win[0] < weekStart.getTime(),
+    contRight: last === 6 && win[1] > addDays(weekStart, 7).getTime(),
+  };
+}
+
+/**
+ * The Tracks timeline runs from `TRACK_LEAD_DAYS` before today to the latest event end, clamped to between
+ * `TRACK_MIN_DAYS` and `TRACK_MAX_DAYS` long.
+ */
+export const TRACK_LEAD_DAYS = 2;
+export const TRACK_MIN_DAYS = 30;
+export const TRACK_MAX_DAYS = 120;
+
+export interface TrackRow<R extends { type: string }> {
+  track: R;
+  items: TrackItem[];
+  lanes: number;
+}
+
+/**
+ * What the Tracks view draws: its span, and one row per track that survives the filters, each with its events packed
+ * into lanes.
+ *
+ * A type with no track (GO Battle League, GO Pass) has no row, so it is dropped; an event ending before the window's
+ * left edge is skipped. A track whose type is in `hidden` drops out entirely: a row is one `eventType`, which is what
+ * the chips switch, so there is no still-visible part of it to keep. So does a track `carried` does not name, so a row
+ * exists only where a chip can switch it off. A track emptied by dismissals or a search term (`isVisible`) keeps its
+ * row.
+ *
+ * The right edge needs a guard of its own, mirroring the `win[1] <= rangeStartMs` one: `span` is clamped to
+ * `TRACK_MAX_DAYS` where `latestEnd` is not, so an event starting past `rangeEndMs` would clip to a negative width and
+ * draw at the minimum width past the lane's right edge, counted in the tally. It is dropped before `packLanes` so it
+ * cannot claim a lane and raise the row's height for a bar nobody can see.
+ */
+export function layoutTracks<R extends { type: string }>(
+  events: readonly ParsedEvent[],
+  tracks: readonly R[],
+  {
+    now,
+    hidden,
+    carried,
+    isVisible,
+  }: {
+    now: Date;
+    hidden: ReadonlySet<string>;
+    carried: ReadonlySet<string>;
+    isVisible: (ev: ParsedEvent) => boolean;
+  },
+) {
+  const rangeStart = addDays(startOfDay(now), -TRACK_LEAD_DAYS);
+  const rangeStartMs = rangeStart.getTime();
+  const byType = new Map(tracks.map((track) => [track.type, { track, items: [] as TrackItem[] }]));
+  const filteredTypes = new Set<string>();
+  let latestEnd = rangeStartMs + TRACK_MIN_DAYS * DAY_MS;
+
+  for (const ev of events) {
+    const row = byType.get(ev.eventType);
+
+    if (!row) {
+      continue;
+    }
+
+    if (hidden.has(ev.eventType)) {
+      filteredTypes.add(ev.eventType);
+    }
+
+    if (!isVisible(ev)) {
+      continue;
+    }
+
+    const win = windowOf(ev);
+
+    if (win === null || win[1] <= rangeStartMs) {
+      continue;
+    }
+
+    latestEnd = Math.max(latestEnd, win[1]);
+    row.items.push({ ev, startMs: win[0], endMs: win[1], lane: 0 });
+  }
+
+  const span = Math.min(TRACK_MAX_DAYS, Math.max(TRACK_MIN_DAYS, Math.ceil((latestEnd - rangeStartMs) / DAY_MS)));
+  const rangeEndMs = rangeStartMs + span * DAY_MS;
+
+  const rows = [...byType.values()].flatMap(({ track, items }): TrackRow<R>[] => {
+    if (filteredTypes.has(track.type) || !carried.has(track.type)) {
+      return [];
+    }
+
+    const inRange = items.filter((item) => item.startMs < rangeEndMs).sort((a, b) => a.startMs - b.startMs);
+
+    return [{ track, items: inRange, lanes: packLanes(inRange) }];
+  });
+
+  return { rangeStart, rangeStartMs, rangeEndMs, span, rows };
+}
+
+/** A bar's left edge and width in pixels, clipped to the range and never narrower than half a day's column. */
+export function trackBar(item: TrackItem, rangeStartMs: number, rangeEndMs: number, dayPx: number) {
+  const left = Math.max(item.startMs, rangeStartMs);
+  const right = Math.min(item.endMs, rangeEndMs);
+
+  return {
+    left: ((left - rangeStartMs) / DAY_MS) * dayPx,
+    width: Math.max(dayPx / 2, ((right - left) / DAY_MS) * dayPx),
+  };
+}
+
 function normalise(raw: readonly StampedEvent[]): ParsedEvent[] {
   return raw.map((e) => ({
     eventID: e.eventID,

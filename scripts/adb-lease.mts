@@ -7,7 +7,11 @@
  *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and become the
  *                                      real `adb`, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
- *                                      the phone is still running or a background agent is
+ *                                      the phone is still running or a background agent is. `Stop` runs it, and the
+ *                                      `idle_prompt` notification about a minute later for a turn that fires no `Stop`:
+ *                                      one interrupted with `Esc` or ended by an API error. Not `StopFailure`, which is
+ *                                      given no `background_tasks`, while `idle_prompt` never comes as long as a
+ *                                      background subagent runs
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
@@ -188,7 +192,8 @@ function refusal(held: Use): string {
     `adb: the phone ${held.serial} is in use by ${name ? `the Claude session ${name}` : 'another Claude session'}`,
     `(session ${held.session}, pid ${held.pid}, working in ${held.cwd}),`,
     `which last ran \`adb ${held.args}\` on it at ${held.since}.`,
-    'That session lets go of it when it ends a turn with nothing it started still on the phone, or exits.',
+    'That session lets go of it when it ends a turn with nothing it started still on the phone,',
+    'or about a minute after an interrupted or failed one, or exits.',
     `Wait for it in the background with \`until adb -s ${held.serial} get-state >/dev/null 2>&1; do sleep 30; done\`,`,
     'which takes the phone the moment it is free,',
     name
