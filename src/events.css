@@ -216,11 +216,11 @@ body[data-page='events'] {
 
   /**
    * The `display: flex` above is what makes this one necessary: an author `display` beats the UA stylesheet's
-   * `[hidden] {display: none}`, so the `hidden` the markup ships with and the component maintains would lay the panel
-   * out regardless — putting the whole thing on screen on every page load, which is the one thing it must not do.
-   * Keyed on `[hidden]` rather than folded into a `:not([hidden])` above so that it also outranks any later `display`
-   * a media query gives `.filters`, and `!important` because the keying alone only outranks a bare class: a second one
-   * ties it and wins on order, which is the bug `.pane[hidden]` in `search.css` carries the account of.
+   * `[hidden] {display: none}`, so the `hidden` the component sets while the filters are closed would lay the panel out
+   * regardless — putting the whole thing on screen on every page load, which is the one thing it must not do. Keyed on
+   * `[hidden]` rather than folded into a `:not([hidden])` above so that it also outranks any later `display` a media
+   * query gives `.filters`, and `!important` because the keying alone only outranks a bare class: a second one ties it
+   * and wins on order, which is the bug `.pane[hidden]` in `search.css` carries the account of.
    */
 
   .filters[hidden] {
@@ -861,8 +861,8 @@ body[data-page='events'] {
   }
 
   /**
-   * Calendar view: a month toolbar over a stack of week rows. Each week is a band of bars for the events spanning more
-   * than one of its days, over the seven day cells, which carry only the date.
+   * Calendar view: a month toolbar over a stack of week rows. Each week is seven day cells carrying only the date, with
+   * a bar laid across them for every event the week covers, whether it runs one day or several.
    */
 
   .calbar {
