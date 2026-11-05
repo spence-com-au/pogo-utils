@@ -216,12 +216,12 @@ interface Fixture {
  * eight at once, falsifiably — re-run it and the first match is in the set the row claims. Negation is the half only a
  * search can give, since nothing on the screen says a Pokémon is **not** lucky.
  *
- * The other 47 rows have no search behind them. They arrived named for what they are, and the name is a claim the
+ * The other rows have no search behind them. They arrived named for what they are, and the name is a claim the
  * rendered screen has to bear out — weaker provenance, and sufficient for what those rows are for.
  *
  * `xurkitree.png`'s search is the weakest of the six: `alola` pins its region and nothing else, so its `size` and
- * flags rest on the same eye as the 47 and it is one of those rows in everything but provenance. The two shadows'
- * searches pin `shadow` and nothing else of what a row states.
+ * flags rest on the same eye as the other rows and it is one of those rows in everything but provenance. The two
+ * shadows' searches pin `shadow` and nothing else of what a row states.
  *
  * | file                  | search                                                                               |
  * |-----------------------|--------------------------------------------------------------------------------------|
@@ -1098,9 +1098,9 @@ for (const fixture of FIXTURES) {
   const unseparated = defects.unseparated ?? [];
   const notes = notesOf(fixture);
 
-  // A `describe` rather than one test with eighteen subtests inside it, because Vitest collects a file's tests
+  // A `describe` rather than one test with a subtest per attribute inside it, because Vitest collects a file's tests
   // synchronously and so cannot be handed a test registered after an `await`. Each attribute therefore reads the
-  // memoised capture for itself, which costs nothing — the first of the eighteen pays for the OCR and the rest get the
+  // memoised capture for itself, which costs nothing — the first of them pays for the OCR and the rest get the
   // settled promise — and buys a failure that names the reader.
   describe(`${fixture.file} reads as the ${truth} on the screen`, () => {
     test('size', async () =>
@@ -1205,12 +1205,12 @@ const NEGATIVE = ['no-pgsharp.png', 'overworld.png', 'pgsharp-no-overlay.png'];
 
 /**
  * How many captures to have being read at once, ahead of the tests that assert them. Without this a capture's first
- * test paid for its whole reading before the next was opened, and the suite was 49 readings end to end.
+ * test paid for its whole reading before the next was opened, and the suite was a reading per capture end to end.
  *
  * A handful rather than all of them: a single reading is already as wide as the machine in places — `findOverlay`
  * sweeps `availableParallelism()` bands at a time — so captures past the first few buy contention rather than
  * parallelism. On 22 cores this file took 137s at one capture at a time, 106s at four, 102s at eight and 120s with all
- * 49 in flight.
+ * of them in flight.
  *
  * It buys total time with per-test latency at a roughly linear rate, measured on four cores:
  *
@@ -1376,7 +1376,7 @@ const SCREEN_RATIO = 2.35;
  * capture three times taller moves every one off what it was measured against; `parseMoves` alone survives, being
  * anchored on the `GYMS & RAIDS` line.
  *
- * It is a test because prose was not enough: a stitch was committed over all 43 detail captures anyway, reporting as
+ * It is a test because prose was not enough: a stitch was committed over every detail capture anyway, reporting as
  * 76 failures of which not one said the fixtures were what was wrong. The size is the cheapest thing on a capture to
  * check and the only one that separates the two artifacts.
  *
@@ -1387,7 +1387,7 @@ const SCREEN_RATIO = 2.35;
 test('every committed screen is one screen rather than a stitch', () => {
   const stitched = SCREENS.flatMap((file) => {
     // Off the PNG header, where the spec puts width and height as the 32-bit fields at 16 and 20. `decodePng` would
-    // inflate each capture to 9 MB of pixels to compare two numbers — 3.4s and 606 MB across the 49.
+    // inflate each capture to 9 MB of pixels to compare two numbers — 3.4s and 606 MB across the corpus.
     const bytes = readFileSync(new URL(`fixtures/${file}`, import.meta.url));
     const width = bytes.readUInt32BE(16);
     const height = bytes.readUInt32BE(20);
