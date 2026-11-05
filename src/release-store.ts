@@ -59,6 +59,9 @@ export class ReleaseStore {
   /** Null until a load lands, and after one that found nothing it could trust. */
   release: VendedRelease | null = null;
 
+  /** How many times the store has emitted, so a reader that subscribes late can tell it missed one. */
+  emits = 0;
+
   /**
    * Under `KEY_PREFIX`, so `src/backup.ts`'s sweep carries it. Stored as a JSON string rather than the bare version,
    * since a backup carries values it can parse and leaves out the rest.
@@ -110,6 +113,8 @@ export class ReleaseStore {
   }
 
   emit() {
+    this.emits++;
+
     for (const listener of this.#listeners) {
       listener();
     }
@@ -159,8 +164,19 @@ export class ReleaseStore {
 /** `store`, with the calling component redrawn whenever it changes. */
 export function useReleaseStore(store: ReleaseStore) {
   const [, redraw] = useState(0);
+  const rendered = store.emits;
 
-  useEffect(() => store.subscribe(() => redraw((count) => count + 1)), [store]);
+  useEffect(() => {
+    const update = () => redraw((count) => count + 1);
+    const unsubscribe = store.subscribe(update);
+
+    // Preact runs this after paint, so an emit since the render reached no listener here.
+    if (store.emits !== rendered) {
+      update();
+    }
+
+    return unsubscribe;
+  }, [store]);
 
   return store;
 }

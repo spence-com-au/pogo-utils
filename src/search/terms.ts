@@ -6,16 +6,11 @@
  * what the chip says: `4*` is a term no label would spell that way. `id` is what a link carries (`#i=shiny.evolve`),
  * so it is stable in a way a label is not, and defaults to the term where that is already a plain word.
  *
- * A group's `join` defaults to `,`, most of these groups describing one slot on a Pokémon — nothing is two generations
- * or two star ratings. `status` and `moves` are the exceptions, a Pokémon being any number of those at once. Which is
- * why a pair that is one slot gets a group of its own rather than a place among the statuses: grouped there,
- * `legendary&mythical` and `shadow&purified` would match nothing where a reader wanted the comma.
- *
  * `exclusive` and `exhaustive` are the two facts `optimise.js` shortens a clause by: at most one term is ever true, and
- * at least one always is. Neither follows from `join` or from the other — Type is exhaustive and not exclusive, where
- * Appraisal is both and Size only exclusive — and each buys a reduction of its own, which is why they are two fields.
- * Generation carries neither, though a species is in exactly one: its terms are dex spans, which `optimise.js` folds
- * into the one span covering them, and declaring the fact would only let the weaker reduction win.
+ * at least one always is. Neither follows from the other — Type is exhaustive and not exclusive, where Appraisal is
+ * both and Size only exclusive — and each buys a reduction of its own, which is why they are two fields. Generation
+ * carries neither, though a species is in exactly one: its terms are dex spans, which `optimise.js` folds into the one
+ * span covering them, and declaring the fact would only let the weaker reduction win.
  *
  * A term's `covers` names the terms it is the union of, which `background` is of the two backdrops. It costs that group
  * the exclusivity above, `background` overlapping both the terms it covers, so `background&!locationbackground` is the
@@ -44,7 +39,6 @@ export interface Group {
   hue: number;
   help: string;
   terms: readonly Term[];
-  join?: string;
   exclusive?: boolean;
   exhaustive?: boolean;
 }
@@ -141,7 +135,6 @@ export const GROUPS: readonly Group[] = [
     id: 'status',
     label: 'Status',
     hue: 8,
-    join: '&',
     help:
       'What a Pokémon is, or what has been put into it, however it was caught. A lucky shiny is two cards, one ' +
       'apiece: picked on one card, the two ask for either. Two are narrower than they read: `candyxl` passes over a ' +
@@ -223,7 +216,6 @@ export const GROUPS: readonly Group[] = [
     id: 'moves',
     label: 'Moves',
     hue: 120,
-    join: '&',
     help:
       'A move the Pokémon knows, or the weather right now. Picking several on one card asks for any of them. The ' +
       'last of them reads the second charged slot, which the game fills with a placeholder named `move_name_0000` ' +
