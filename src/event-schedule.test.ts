@@ -1,7 +1,10 @@
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import {
   addDays,
+  continuations,
+  DAY_MS,
+  layoutTracks,
   mergeEvents,
   overlaps,
   packLanes,
@@ -9,6 +12,10 @@ import {
   relativeUnit,
   startOfDay,
   statusOf,
+  TRACK_LEAD_DAYS,
+  TRACK_MAX_DAYS,
+  TRACK_MIN_DAYS,
+  trackBar,
   typeClass,
   weekColumns,
   windowOf,
@@ -256,6 +263,148 @@ test('packLanes reuses a lane for an event starting as the last one ends', () =>
 
 test('packLanes needs no lanes for no events', () => {
   expect(packLanes([])).toBe(0);
+});
+
+/**
+ * A segment continues past its week row only where the row's own edge stopped it: touching column 0 having begun
+ * earlier, or column 6 having ended later. One that starts or ends inside the row continues nowhere, even at the edge
+ * column.
+ */
+test.for<{ name: string; from: Date; to: Date; cols: readonly [number, number]; left: boolean; right: boolean }>([
+  { name: 'inside the week', from: at(2026, 1, 6), to: at(2026, 1, 8), cols: [2, 3], left: false, right: false },
+  { name: 'in from the row above', from: at(2025, 12, 30), to: at(2026, 1, 6), cols: [0, 1], left: true, right: false },
+  { name: 'on past the row', from: at(2026, 1, 8), to: at(2026, 1, 20), cols: [4, 6], left: false, right: true },
+  { name: 'across the whole row', from: at(2025, 12, 30), to: at(2026, 1, 20), cols: [0, 6], left: true, right: true },
+  { name: 'from the first column', from: at(2026, 1, 4), to: at(2026, 1, 7), cols: [0, 2], left: false, right: false },
+  { name: 'to the last column', from: at(2026, 1, 8), to: at(2026, 1, 11), cols: [4, 6], left: false, right: false },
+])('a segment $name continues left $left and right $right', ({ from, to, cols, left, right }) => {
+  const win = [from.getTime(), to.getTime()] as const;
+
+  expect(weekColumns(win, WEEK_START)).toEqual(cols);
+  expect(continuations(win, cols, WEEK_START)).toEqual({ contLeft: left, contRight: right });
+});
+
+describe('layoutTracks', () => {
+  const NOW = at(2026, 1, 10, 12);
+
+  const TRACKS = [
+    { type: 'event', label: 'Events' },
+    { type: 'research', label: 'Research' },
+  ];
+
+  const layout = (
+    events: ParsedEvent[],
+    over: Partial<{ hidden: Set<string>; carried: Set<string>; isVisible: (ev: ParsedEvent) => boolean }> = {},
+  ) =>
+    layoutTracks(events, TRACKS, {
+      now: NOW,
+      hidden: new Set(),
+      carried: new Set(['event', 'research', 'go-battle-league']),
+      isVisible: () => true,
+      ...over,
+    });
+
+  /**
+   * An event placed by whole days from the range's start. The range is `DAY_MS` multiples long however many hours the
+   * local days in it have, so calendar arithmetic (`addDays`) would put a boundary an hour off in a zone that changes
+   * its clocks within it.
+   */
+  const RANGE_START_MS = addDays(startOfDay(NOW), -TRACK_LEAD_DAYS).getTime();
+
+  const days = (id: string, from: number, to: number, eventType = 'event') =>
+    parsed({
+      eventID: id,
+      eventType,
+      start: new Date(RANGE_START_MS + from * DAY_MS),
+      end: new Date(RANGE_START_MS + to * DAY_MS),
+    });
+
+  test('the range starts a couple of days before today and spans at least a month', () => {
+    const { rangeStart, span, rangeEndMs } = layout([]);
+
+    expect(rangeStart.getTime()).toBe(addDays(startOfDay(NOW), -TRACK_LEAD_DAYS).getTime());
+    expect(span).toBe(TRACK_MIN_DAYS);
+    expect(rangeEndMs - rangeStart.getTime()).toBe(TRACK_MIN_DAYS * DAY_MS);
+  });
+
+  test('the range grows to the latest end, up to the maximum', () => {
+    expect(layout([days('a', 0, 50)]).span).toBe(50);
+    expect(layout([days('a', 0, 500)]).span).toBe(TRACK_MAX_DAYS);
+  });
+
+  test('an event ending before the range, a dateless one or one of a type without a track is skipped', () => {
+    const { rows } = layout([
+      days('over', -20, -10),
+      parsed({ eventID: 'undated' }),
+      days('league', 0, 1, 'go-battle-league'),
+      days('kept', 0, 1),
+    ]);
+
+    expect(rows.map((row) => row.items.map((item) => item.ev.eventID))).toEqual([['kept'], []]);
+  });
+
+  /** The span is clamped where `latestEnd` is not, so this one starts past the right edge of the lane. */
+  test('an event starting past the range is dropped before it can claim a lane', () => {
+    const { rows } = layout([days('far', 0, 500), days('beyond', TRACK_MAX_DAYS + 5, TRACK_MAX_DAYS + 9)]);
+
+    expect(rows[0]?.items.map((item) => item.ev.eventID)).toEqual(['far']);
+    expect(rows[0]?.lanes).toBe(1);
+  });
+
+  test('an event starting on the last instant of the range is dropped, one before it kept', () => {
+    const edge = TRACK_MAX_DAYS;
+    const { rows } = layout([days('far', 0, 500), days('on', edge, edge + 1), days('before', edge - 1, edge)]);
+
+    expect(rows[0]?.items.map((item) => item.ev.eventID)).toEqual(['far', 'before']);
+  });
+
+  test('a row whose type is filtered off drops out, but one merely emptied by visibility keeps its row', () => {
+    const events = [days('a', 0, 1), days('b', 0, 1, 'research')];
+    const notEvent = (ev: ParsedEvent) => ev.eventType !== 'event';
+
+    expect(layout(events, { hidden: new Set(['event']), isVisible: notEvent }).rows).toMatchObject([
+      { track: { type: 'research' }, items: [{ ev: { eventID: 'b' } }] },
+    ]);
+
+    expect(layout(events, { isVisible: notEvent }).rows).toMatchObject([
+      { track: { type: 'event' }, items: [], lanes: 0 },
+      { track: { type: 'research' }, items: [{ ev: { eventID: 'b' } }] },
+    ]);
+  });
+
+  test('a track the feed carries no event of drops out', () => {
+    const { rows } = layout([days('a', 0, 1)], { carried: new Set(['event']) });
+
+    expect(rows.map((row) => row.track.type)).toEqual(['event']);
+  });
+
+  test('overlapping events in a row are packed into lanes in order of start', () => {
+    const { rows } = layout([days('b', 1, 4), days('a', 0, 3)]);
+
+    expect(rows[0]?.items.map((item) => [item.ev.eventID, item.lane])).toEqual([
+      ['a', 0],
+      ['b', 1],
+    ]);
+    expect(rows[0]?.lanes).toBe(2);
+  });
+});
+
+describe('trackBar', () => {
+  const DAY_PX = 40;
+  const item = (startMs: number, endMs: number) => ({ ev: parsed({}), startMs, endMs, lane: 0 });
+
+  test('a bar sits at its start and runs for its length', () => {
+    expect(trackBar(item(2 * DAY_MS, 5 * DAY_MS), 0, 30 * DAY_MS, DAY_PX)).toEqual({ left: 80, width: 120 });
+  });
+
+  test('a bar is clipped to the range at either end', () => {
+    expect(trackBar(item(-3 * DAY_MS, 5 * DAY_MS), 0, 30 * DAY_MS, DAY_PX)).toEqual({ left: 0, width: 200 });
+    expect(trackBar(item(28 * DAY_MS, 40 * DAY_MS), 0, 30 * DAY_MS, DAY_PX)).toEqual({ left: 1120, width: 80 });
+  });
+
+  test('a bar is never narrower than half a day', () => {
+    expect(trackBar(item(DAY_MS, DAY_MS + 1000), 0, 30 * DAY_MS, DAY_PX).width).toBe(20);
+  });
 });
 
 /**

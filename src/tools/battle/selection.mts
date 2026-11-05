@@ -194,12 +194,14 @@ export async function readPanel(
 
   // The one species whose forms of these types hold every move read, or null.
   const speciesOf = ({ fast, charged }: Moves) => {
-    const read = [fast, ...charged].filter((move) => move !== null);
+    const known = [fast, ...charged].filter((move) => move !== null);
     const fits = new Set(
-      typed.filter((form) => read.every((move) => form.moves.some((m) => m.name === move))).map((form) => form.species),
+      typed
+        .filter((form) => known.every((move) => form.moves.some((m) => m.name === move)))
+        .map((form) => form.species),
     );
 
-    return read.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
+    return known.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
   let moves = await readMoves(rows, data, pool(data.forms.filter((form) => form.species === species)), panel);

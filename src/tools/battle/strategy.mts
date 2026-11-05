@@ -15,13 +15,16 @@
  */
 
 import { type Form, type GameData } from '../inventory/game-master.mts';
-import { MOVES_HELD, type Stages } from './damage.mts';
+import { type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
 import { BUTTON_XS } from './recognise.mts';
 
 /** What a move sharing a type with the Pokémon using it multiplies its damage by. */
 export const STAB = 1.2;
+
+/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. */
+export const MOVES_HELD = 2;
 
 /**
  * The charged moves only a shadow (Frustration) or a purified (Return) Pokémon holds, which every species with a shadow

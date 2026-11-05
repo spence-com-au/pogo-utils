@@ -3,8 +3,6 @@
  * offers the browser's chooser to connect the Android phone held over WebUSB. Not a menu: connecting is the one thing
  * to do with it, so a press does it rather than opening a panel to press again in. It is greyed out while no phone
  * is held, and in colour with a green dot while one is, so the bar says which from any tab.
- * It lived on the Inventory page, then in the settings panel once the Search page used it too, and has a control of
- * its own now that the Battle tab uses it as well.
  *
  * The demo phone, which reads recorded screens in place of a phone, is kept out of the way behind `?demo`: with it in
  * the address, a press holds the demo phone rather than offering the chooser, and a second puts it away.
@@ -56,7 +54,8 @@ export function Phone() {
       const { connect } = await loadChunk(() => import('./inventory/webusb.js'));
       const picked = await connect();
 
-      // The chooser dismissed, which keeps whatever phone is already connected rather than letting it go for nothing.
+      // The chooser dismissed, or the phone already held picked in it, which keeps whatever phone is already connected
+      // rather than letting it go for nothing.
       if (picked === null) {
         setStatus(null);
         return;

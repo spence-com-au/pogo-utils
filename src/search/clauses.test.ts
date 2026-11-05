@@ -18,41 +18,10 @@
 
 import { expect, test } from 'vitest';
 
+import { all, any, assignments, holds, named, no, yes } from '../testing/search.js';
 import { CLAUSES, clausesOf } from './clauses.js';
 import { RANGES_BY_ID } from './terms.js';
-import { group, leafText, spanned, type Leaf, type Node } from './tree.js';
-
-/** A required pill, which is what a chip pressed in the catalogue becomes. */
-const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
-
-/** The same pill turned round, which is one press on its face. */
-const no = (id: string): Leaf => ({ kind: 'term', id, negated: true });
-
-const all = (...parts: Node[]) => group('all', parts);
-const any = (...parts: Node[]) => group('any', parts);
-
-/**
- * The question a tree asks of one Pokémon, which is the set of terms that are true of it. A group with nothing in it
- * asks nothing, and so does a pill with nothing written in it yet — both of which read as true here, since a search
- * for everything is what no constraint means. A name is one of the terms as much as a chip is, the game drawing no
- * distinction between a word the catalogue owns and the same word typed in; a span is the one kind no case here asks
- * about.
- */
-function holds(node: Node, on: ReadonlySet<string>): boolean {
-  if (node.kind !== 'group') {
-    const asked = node.kind === 'term' ? node.id : node.kind === 'name' ? node.text.trim() : '';
-
-    return asked === '' || on.has(asked) !== node.negated;
-  }
-
-  if (node.parts.length === 0) {
-    return true;
-  }
-
-  return node.junction === 'all'
-    ? node.parts.every((part) => holds(part, on))
-    : node.parts.some((part) => holds(part, on));
-}
+import { leafText, spanned, type Leaf, type Node } from './tree.js';
 
 /**
  * The same question asked of the clauses, read the way the game reads them: every clause has to be satisfied, and a
@@ -64,13 +33,6 @@ const matches = (clauses: readonly string[], on: ReadonlySet<string>) =>
     clause.split(',').some((text) => (text.startsWith('!') ? !on.has(text.slice(1)) : on.has(text))),
   );
 
-/** Every set of terms that could be true of one Pokémon, which is every subset of the ones a case mentions. */
-function* assignments(terms: readonly string[]) {
-  for (let bits = 0; bits < 2 ** terms.length; bits += 1) {
-    yield new Set(terms.filter((_, index) => (bits >> index) % 2 === 1));
-  }
-}
-
 /** The clauses a tree comes to, having refused to come to any being a failure rather than an answer. */
 function clausesFor(node: Node) {
   const { clauses, error } = clausesOf(node);
@@ -79,9 +41,6 @@ function clausesFor(node: Node) {
 
   return clauses;
 }
-
-/** A name pill, which writes whatever the reader typed and so needs nothing from the term table. */
-const named = (text: string, negated = true): Leaf => ({ kind: 'name', text, negated });
 
 /** The whole of the comparison: the tree and its clauses answer alike for every Pokémon either can tell apart. */
 function agrees(node: Node, terms: readonly string[]) {
@@ -192,11 +151,7 @@ test('no cards at all is a query for everything rather than a broken one', () =>
  * perfectly good answer to a question it was not asking.
  */
 const pairs = (count: number, at = 0) =>
-  any(
-    ...Array.from({ length: count }, (_, index) =>
-      all(named(`g${at}a${index}`, false), named(`g${at}b${index}`, false)),
-    ),
-  );
+  any(...Array.from({ length: count }, (_, index) => all(named(`g${at}a${index}`), named(`g${at}b${index}`))));
 
 /** The most OR'd pairs that still fit inside the cap, and so the largest building block a test can lay end to end. */
 const UNDER = Math.floor(Math.log2(CLAUSES));
@@ -212,7 +167,7 @@ test('a pill every part of an any asks for is written once rather than in every 
   // *A shiny Fire, or a shiny Water, or a shiny Grass* — one `any` holding an `all` per type. Said as a product this
   // is two to the power of the types named; said as a sum it is `shiny` and one clause of types.
   const shinyTypes = (count: number) =>
-    any(...Array.from({ length: count }, (_, at) => all(yes('shiny'), named(`t${at}`, false))));
+    any(...Array.from({ length: count }, (_, at) => all(yes('shiny'), named(`t${at}`))));
 
   expect(clausesFor(shinyTypes(3))).toEqual(['shiny', 't0,t1,t2']);
   expect(clausesFor(shinyTypes(6))).toEqual(['shiny', 't0,t1,t2,t3,t4,t5']);
@@ -256,7 +211,7 @@ test('a name that spells a group is not that group', () => {
    * being asked at all and the literal text is demanded instead, which is a different search rather than a missed
    * reduction.
    */
-  const spelled = named('all(shiny|lucky)', false);
+  const spelled = named('all(shiny|lucky)');
   const tree = any(all(spelled, yes('fire')), all(all(yes('shiny'), yes('lucky')), yes('water')));
 
   agrees(tree, ['all(shiny|lucky)', 'shiny', 'lucky', 'fire', 'water']);
@@ -276,10 +231,7 @@ test('a name that spells a group is not that group', () => {
    * what the Advanced pane makes of a bracket holding one pill.
    */
   for (const text of ['a|=b', '"a"|"b"']) {
-    const forged = any(
-      all(all(named(text, false)), yes('fire')),
-      all(all(named('a', false), named('b', false)), yes('water')),
-    );
+    const forged = any(all(all(named(text)), yes('fire')), all(all(named('a'), named('b')), yes('water')));
 
     agrees(forged, [text, 'a', 'b', 'fire', 'water']);
     expect({ text, clauses: clausesFor(forged) }).toEqual({
@@ -371,7 +323,7 @@ test('the cap bounds the whole tree rather than the one node it is checked in', 
 
 test('a negation the game ignores is named, however the number was spelled', () => {
   for (const term of ['1hp', '4attack', '3-defense', '-1attack', '0-2hp']) {
-    expect(clausesOf(all(named(term), yes('shiny'))).mishandled).toEqual([
+    expect(clausesOf(all(named(term, true), yes('shiny'))).mishandled).toEqual([
       { term: `!${term}`, note: expect.stringContaining('ignores a negation') },
     ]);
   }
@@ -404,7 +356,7 @@ test('a negated IV span is named, which is the pill a chip now makes', () => {
 });
 
 test('a negated mega level is named for answering with less than it was asked for', () => {
-  expect(clausesOf(all(named('mega2'), yes('shiny'))).mishandled).toEqual([
+  expect(clausesOf(all(named('mega2', true), yes('shiny'))).mishandled).toEqual([
     { term: '!mega2', note: expect.stringContaining('Mega Evolve') },
   ]);
 });
@@ -418,12 +370,12 @@ test('a negated mega level is named for answering with less than it was asked fo
 
 test('a negated buddy level is named, and the bare word is not', () => {
   for (const term of ['buddy1-', 'buddy3', 'buddy2-5', 'buddy-4', 'buddy0']) {
-    expect(clausesOf(all(named(term), yes('shiny'))).mishandled).toEqual([
+    expect(clausesOf(all(named(term, true), yes('shiny'))).mishandled).toEqual([
       { term: `!${term}`, note: expect.stringContaining('the buddy you have out') },
     ]);
   }
 
-  expect(clausesOf(all(named('buddy'), yes('shiny'))).mishandled).toEqual([]);
+  expect(clausesOf(all(named('buddy', true), yes('shiny'))).mishandled).toEqual([]);
 });
 
 /*
@@ -448,7 +400,7 @@ test('a caveat covers the ceiling its range gives', () => {
 
     // Through `spanned`, so the term is composed as the writer composes one: prefix for a level, suffix for an IV.
     for (const term of [spanned(range, `${range.max}`), spanned(range, `${range.min ?? 0}-${range.max}`)]) {
-      expect({ term, mishandled: clausesOf(all(named(term), yes('shiny'))).mishandled }).toEqual({
+      expect({ term, mishandled: clausesOf(all(named(term, true), yes('shiny'))).mishandled }).toEqual({
         term,
         mishandled: [{ term: `!${term}`, note: expect.stringContaining(said) }],
       });
@@ -457,9 +409,9 @@ test('a caveat covers the ceiling its range gives', () => {
 });
 
 test('the same term is named once however many clauses it reached', () => {
-  expect(clausesOf(any(all(named('1hp'), yes('shiny')), all(named('1hp'), yes('lucky')))).mishandled).toEqual([
-    { term: '!1hp', note: expect.stringContaining('ignores a negation') },
-  ]);
+  expect(
+    clausesOf(any(all(named('1hp', true), yes('shiny')), all(named('1hp', true), yes('lucky')))).mishandled,
+  ).toEqual([{ term: '!1hp', note: expect.stringContaining('ignores a negation') }]);
 });
 
 /*
@@ -500,13 +452,13 @@ test('a span over the whole of its range is named for matching every Pokémon', 
 
 test('a term the game reads properly is not named, negated or otherwise', () => {
   const cases: Node[] = [
-    all(named('1hp', false), yes('shiny')),
-    all(no('shiny'), named('1hp', false)),
-    all(named('hp100-500')),
+    all(named('1hp'), yes('shiny')),
+    all(no('shiny'), named('1hp')),
+    all(named('hp100-500', true)),
     all(no('megaevolve')),
-    all(named('attack')),
-    all(named('5hp')),
-    all(named('1spd')),
+    all(named('attack', true)),
+    all(named('5hp', true)),
+    all(named('1spd', true)),
   ];
 
   for (const [at, node] of cases.entries()) {
@@ -529,7 +481,7 @@ test('a word a shortcut phrase swallows is named, with the span the game reads i
     ['dynamax cannon', 'dynamax1-'],
     ['gigantamaximum', 'gigantamax1-'],
   ] as const) {
-    expect(clausesOf(all(named(text, false), yes('shiny'))).mishandled).toEqual([
+    expect(clausesOf(all(named(text), yes('shiny'))).mishandled).toEqual([
       { term: text, note: expect.stringContaining(`\`${span}\``) },
     ]);
   }
@@ -542,7 +494,7 @@ test('a swallowed phrase is named as the reader will see it, negation and all', 
    * carried a caveat pointing at `counter` — a string it does not contain. A negated nickname is also the case where a
    * swallowed phrase is hardest to spot, the reader believing they have ruled something out.
    */
-  expect(clausesOf(all(named('counter'), yes('shiny')))).toEqual({
+  expect(clausesOf(all(named('counter', true), yes('shiny')))).toEqual({
     clauses: ['!counter', 'shiny'],
     error: null,
     mishandled: [{ term: '!counter', note: expect.stringContaining('`count2-`') }],
@@ -550,7 +502,7 @@ test('a swallowed phrase is named as the reader will see it, negation and all', 
 
   // Both polarities of one word are two strings and two caveats, each naming the text that is actually in the query.
   expect(
-    clausesOf(any(all(named('counter', false), yes('shiny')), all(named('counter'), yes('lucky')))).mishandled.map(
+    clausesOf(any(all(named('counter'), yes('shiny')), all(named('counter', true), yes('lucky')))).mishandled.map(
       (one) => one.term,
     ),
   ).toEqual(['counter', '!counter']);
@@ -563,14 +515,14 @@ test('a swallowed phrase is named as the reader will see it, negation and all', 
  */
 
 test('a comma inside one pill is the game’s own or, which is why the boxes split on it', () => {
-  const whole = clausesOf(all(named('@3crunch,bite', false), yes('shiny')));
+  const whole = clausesOf(all(named('@3crunch,bite'), yes('shiny')));
 
   // One pill on a card, two alternatives in the clause the game reads.
   expect(whole.clauses).toEqual(['@3crunch,bite', 'shiny']);
   expect(whole.clauses[0]?.split(',')).toHaveLength(2);
 
   // Split instead, each part carrying the mark, it is the two pills it looks like and each is its own clause.
-  expect(clausesOf(all(named('@3crunch', false), named('@3bite', false), yes('shiny'))).clauses).toEqual([
+  expect(clausesOf(all(named('@3crunch'), named('@3bite'), yes('shiny'))).clauses).toEqual([
     '@3crunch',
     '@3bite',
     'shiny',
@@ -580,17 +532,17 @@ test('a comma inside one pill is the game’s own or, which is why the boxes spl
 test('a phrase the shortcut leaves alone is not named', () => {
   const cases: Node[] = [
     // The `#` is the way out the phrase list names, so a tag written as one is the tag and not the span.
-    all(named('#counter', false)),
+    all(named('#counter')),
 
     // `mega` is the one the list records as patched, so a word beginning with it is a word again.
-    all(named('megalodon', false)),
+    all(named('megalodon')),
 
     // A span the writer produced, rather than a word a reader wrote: `count10-` is the search it looks like.
     all({ kind: 'range', id: 'count', from: 10, to: null, negated: false }),
 
     // And the shortcut itself swallows nothing, which is why `parse.js` reads one as the span it stands for.
-    all(named('count', false)),
-    all(named('dynamax', false)),
+    all(named('count')),
+    all(named('dynamax')),
 
     /*
      * A slot digit between the `@` and the phrase, which is neither of the list's two bullets: both of those put the
@@ -598,7 +550,7 @@ test('a phrase the shortcut leaves alone is not named', () => {
      * recorded reading to name it with — the Move panel's help is where a move called after a shortcut is warned
      * about, that being all there is to say. Pinned so the boundary is a decision rather than something that fell out.
      */
-    all(named('@3counter', false)),
+    all(named('@3counter')),
 
     // A chip whose own word is the shortcut, arriving as the chip.
     all(yes('dynamax'), yes('gigantamax')),
@@ -618,20 +570,20 @@ test('a negation the composed string does not carry is not named', () => {
    */
   // `1hp , (!1hp & legendary)` spreads to `1hp,!1hp` and `1hp,legendary`; the first is true of everything and goes,
   // and with it the only clause that held the negation.
-  expect(clausesOf(any(named('1hp', false), all(named('1hp'), yes('legendary'))))).toEqual({
+  expect(clausesOf(any(named('1hp'), all(named('1hp', true), yes('legendary'))))).toEqual({
     clauses: ['1hp,legendary'],
     error: null,
     mishandled: [],
   });
 
-  expect(clausesOf(all(yes('shiny'), any(yes('shiny'), named('1hp'))))).toEqual({
+  expect(clausesOf(all(yes('shiny'), any(yes('shiny'), named('1hp', true))))).toEqual({
     clauses: ['shiny'],
     error: null,
     mishandled: [],
   });
 
   // The same term in a clause that does survive is still named, so this has not simply turned the warning off.
-  expect(clausesOf(all(yes('shiny'), any(yes('lucky'), named('1hp')))).mishandled).toEqual([
+  expect(clausesOf(all(yes('shiny'), any(yes('lucky'), named('1hp', true)))).mishandled).toEqual([
     { term: '!1hp', note: expect.stringContaining('ignores a negation') },
   ]);
 });
