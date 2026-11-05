@@ -6,7 +6,7 @@
 
 import { expect, test, vi } from 'vitest';
 
-import { release, statusCut } from './webusb.js';
+import { answered, release, statusCut, within } from './webusb.js';
 
 const bytes = (...parts: (string | number[])[]) =>
   Uint8Array.from(parts.flatMap((part) => (typeof part === 'string' ? [...new TextEncoder().encode(part)] : part)));
@@ -48,4 +48,29 @@ test('a connection let go of is closed both ways, though one way fails', async (
   await expect(release(connection)).resolves.toBeUndefined();
   expect(connection.writable.close).toHaveBeenCalledOnce();
   expect(connection.readable.cancel).toHaveBeenCalledOnce();
+});
+
+test('a command the phone never answers fails after 30s, naming it, and a prompt answer clears the timer', async () => {
+  vi.useFakeTimers();
+
+  try {
+    const stuck = expect(within(['screencap', '-p'], new Promise(() => undefined))).rejects.toThrow(
+      /^screencap -p: no answer after 30s; is the phone still connected\?$/,
+    );
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    await stuck;
+
+    await expect(within(['true'], Promise.resolve(bytes('ok')))).resolves.toStrictEqual(bytes('ok'));
+    expect(vi.getTimerCount(), 'no timer left behind').toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a command that exits non-zero fails with its status and stderr, and one that exits zero answers its stdout', () => {
+  const result = (exitCode: number) => ({ stdout: bytes('out'), stderr: bytes('nope\n'), exitCode });
+
+  expect(answered(['ls'], result(0))).toStrictEqual(bytes('out'));
+  expect(() => answered(['ls', '/x'], result(2))).toThrow(/^ls \/x exited 2: nope$/);
 });
