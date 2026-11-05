@@ -174,14 +174,17 @@ test('keeps the phone past the end of a turn while a command that reached it run
   expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 0 });
 });
 
-test('keeps the phone past the end of a turn while a background subagent runs', async () => {
-  const a = await session('pogo-utils-a');
-  const b = await session('pogo-utils-b');
-  await adb(a, 'shell', 'true');
-  hook(a, 'stop', { background_tasks: [{ type: 'subagent', status: 'running' }] });
+test.each(['subagent', 'workflow', 'teammate'])(
+  'keeps the phone past the end of a turn while a background %s runs',
+  async (type) => {
+    const a = await session('pogo-utils-a');
+    const b = await session('pogo-utils-b');
+    await adb(a, 'shell', 'true');
+    hook(a, 'stop', { background_tasks: [{ type, status: 'running' }] });
 
-  expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
-});
+    expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
+  },
+);
 
 test('lets go as the session ends, whatever is still running', async () => {
   const a = await session('pogo-utils-a');

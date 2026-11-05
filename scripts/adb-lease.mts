@@ -7,7 +7,7 @@
  *   node scripts/adb-lease.mts adb …   from that `adb`: take the lease on the phone its arguments reach and become the
  *                                      real `adb`, or refuse while another session holds it, saying which
  *   node scripts/adb-lease.mts stop    as a turn ends: let go of the session's leases, unless a command that reached
- *                                      the phone is still running or a background subagent is
+ *                                      the phone is still running or a background agent is
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
@@ -269,9 +269,12 @@ switch (process.argv[2]) {
       background_tasks?: { type: string; status: string }[];
     };
 
-    // A background subagent goes on using the phone for the session after its turn, and between its commands nothing
-    // of it is left running to be seen.
-    if (!pid || tasks?.some((task) => task.type === 'subagent' && task.status === 'running')) {
+    // A background agent goes on using the phone for the session after its turn, and between its commands nothing of it
+    // is left running to be seen. The hooks reference labels each task by the feature that made it, and these are the
+    // ones that run agents.
+    const agents = new Set(['subagent', 'workflow', 'teammate']);
+
+    if (!pid || tasks?.some((task) => agents.has(task.type) && task.status === 'running')) {
       break;
     }
 
