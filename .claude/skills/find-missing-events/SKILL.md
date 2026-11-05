@@ -161,23 +161,27 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 ### Choosing between a floating time and a UTC instant
 
 This distinction is load-bearing: it decides what a subscriber's calendar shows, and the wrong one shifts an event by
-hours. **What settles it is how many time zones the event spans, not whether the announcement gives clock times** — and
-not the phrase "local time", which appears in single-city announcements too and so distinguishes nothing.
+hours. **What settles it is how many time zones the event spans and whether the announcement gives clock times** — not
+the phrase "local time", which appears in single-city announcements too and so distinguishes nothing.
 
-- **An event in one place is one worldwide instant**, so convert its local wall clock to UTC and write a trailing `Z`.
-  Brisbane, Marseille, Munich, Lisbon, Rio and Boston all start at `10:00` local on the same day and are stored as six
-  different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00` — which is the rule visible in the
-  data.
+- **An event in one place with stated hours is one worldwide instant**, so convert its local wall clock to UTC and write
+  a trailing `Z`. Brisbane, Marseille, Munich, Lisbon, Rio and Boston City Safari all started at `10:00` local on the
+  same day and were stored as six different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00`.
+  `gowa-global-meetup-karlsruhe-2026` and `pokemon-center-bangkok-2026` are like this.
 - **An event running in several zones at once is a floating time**, so write the wall clock with no zone and no `Z`:
   `2026-10-02T10:00:00.000`. 10am wherever the reader is, which is what such an announcement means and what an iCalendar
-  floating time expresses. Three entries are like this and all three are multi-country.
+  floating time expresses. `european-space-agency-2026` and `30th-anniversary-stamp-rally-2026` are like this.
+- **An event given only as whole days is a floating time too, even in one place**, starting at `T00:00:00.000` on its
+  first day. With no clock to convert, writing the venue's midnight as UTC would make a calendar west of it draw the
+  event starting a day early, inventing precision the announcement never gave. Many entries are like this, among them
+  every `mall-exploration-*` and `pokemon-run-30-*` venue and the UK-only `national-trust-2026`.
 
-So a mall tour across three countries takes floating times even though it names exact hours, and a one-city festival
-takes instants even though it says "local time".
+So a mall tour across three countries takes floating times even though it names exact hours, a one-city festival takes
+instants even though it says "local time", and one mall's window given as dates takes floating times although it is in
+one place.
 
 **For an event given as whole days, end at the last moment of the final day rather than midnight of the next**, or a
-calendar draws an extra day. The file writes this two ways — `2026-09-27T23:59:00.000` and `2027-04-30T23:59:59.000` —
-so either passes; prefer `23:59:59.000` as the more exact of the two.
+calendar draws an extra day: `2027-04-30T23:59:59.000`.
 
 ## Writing and landing the change
 

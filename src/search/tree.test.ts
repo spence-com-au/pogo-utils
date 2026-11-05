@@ -103,7 +103,7 @@ test('a span pill leaves an empty bound open rather than filling it from its own
   // Both unreachable through `bounded`, which is what makes this an invariant held rather than a bug fixed.
   expect([bounded(0, range('dex')), bounded(0, range('year'))]).toEqual([1, 2016]);
 
-  // Where the floor *is* nought the two cases are one, which is six of the eight ranges.
+  // Where the floor *is* nought the two cases are one, which is every range with no `min`.
   expect(range('hp').min).toBeUndefined();
   expect(leafText({ kind: 'range', id: 'hp', from: null, to: 0, negated: false })).toBe('hp0');
   expect(leafText({ kind: 'range', id: 'hp', from: 0, to: null, negated: false })).toBe('hp0-');
