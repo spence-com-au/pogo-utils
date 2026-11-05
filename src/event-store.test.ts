@@ -499,28 +499,18 @@ test('a first visit that finds only one file seeds nothing, so the other is not 
   expect(stored()).toEqual({ through: null, ids: ['a', 'c'] });
 });
 
-const respondWith = (body: unknown, init?: { ok?: boolean; status?: number; statusText?: string }) => {
-  globalThis.fetch = () =>
-    Promise.resolve({
-      ok: init?.ok ?? true,
-      status: init?.status ?? 200,
-      statusText: init?.statusText ?? 'OK',
-      json: () => Promise.resolve(body),
-    } as Response);
-};
-
 afterEach(() => {
-  Reflect.deleteProperty(globalThis, 'fetch');
+  vi.unstubAllGlobals();
 });
 
 test('fetchEvents answers the list the feed holds', async () => {
-  respondWith([feedEvent('a')]);
+  vi.stubGlobal('fetch', async () => Response.json([feedEvent('a')]));
   await expect(fetchEvents('events-feed.json')).resolves.toEqual([feedEvent('a')]);
 });
 
 /** A status the server refused on names itself, so a 404 from a missing file reads differently from a 503. */
 test('fetchEvents refuses a response the server would not give', async () => {
-  respondWith(null, { ok: false, status: 503, statusText: 'Service Unavailable' });
+  vi.stubGlobal('fetch', async () => new Response(null, { status: 503, statusText: 'Service Unavailable' }));
   await expect(fetchEvents('events-feed.json')).rejects.toThrow('503 Service Unavailable');
 });
 
@@ -530,6 +520,6 @@ test.for([
   { body: 'an object', value: { events: [] } },
   { body: 'null', value: null },
 ])('fetchEvents refuses $body', async ({ value }) => {
-  respondWith(value);
+  vi.stubGlobal('fetch', async () => Response.json(value));
   await expect(fetchEvents('events-feed.json')).rejects.toThrow('not a list of events');
 });
