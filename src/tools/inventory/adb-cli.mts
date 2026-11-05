@@ -1,7 +1,8 @@
 /**
- * The `adb` binary as a `Transport`. `adbCli`, which is how `pnpm inventory` and `pnpm adb` reach the phone, makes each
- * call a fresh `adb` process, which costs a few tens of milliseconds against animations that take most of a second and
- * means a dropped USB connection fails one call loudly. `adbHeld`, which is how `pnpm battle` reaches it and what
+ * The `adb` binary as a `Transport`. `adbCli` makes each call a fresh `adb` process, which costs a few tens of
+ * milliseconds against animations that take most of a second and means a dropped USB connection fails one call loudly.
+ * It is how `pnpm inventory` and `pnpm adb` reach the phone, and how `pnpm battle` keeps the screen awake, puts the
+ * setting back and reads the screen's size to record. `adbHeld`, which is how `pnpm battle` taps and swipes and what
  * `pnpm inventory scan` makes its touchscreen on, writes its shell commands to one `adb shell` held open, a battle's
  * swipes coming too fast to start a process for each.
  */
@@ -48,10 +49,10 @@ export function adbCli(serial?: string): Transport {
 
 /**
  * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, as `held-shell.mts`
- * holds one, which is how `pnpm battle` reaches the phone and what `pnpm inventory scan` makes its touchscreen on: a
- * fresh `adb` process for each of a battle's six swipes a second cost a median 50ms over a Training battle on a
- * Pixel 4 XL, against a fast move's 80ms swipe. The state, being no shell command, and the screenshot, being binary,
- * stay a process each.
+ * holds one, which is how `pnpm battle` taps and swipes and what `pnpm inventory scan` makes its touchscreen on: a
+ * fresh `adb` process for each of a battle's six swipes a second cost a median 50ms over a Training battle on a Pixel 4
+ * XL, against a fast move's 80ms swipe. The state, being no shell command, and the screenshot, being binary, stay a
+ * process each.
  */
 export function adbHeld(serial?: string): Transport & { close(): void } {
   const prefix = serial ? ['-s', serial] : [];
