@@ -1,7 +1,7 @@
 /**
- * Global, and the one rule here that is. A body box as tall as the viewport overflows visibly on the four pages that
- * are longer than one, which is the scrolling they already do, so there is nothing to scope — where the `overflow:
- * hidden` below very much is this page's.
+ * Global, and the one rule here that is. A body box as tall as the viewport overflows visibly on the pages that are
+ * longer than one, which is the scrolling they already do, so there is nothing to scope — where the `overflow: hidden`
+ * below very much is this page's.
  */
 html,
 body {

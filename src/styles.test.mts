@@ -110,7 +110,7 @@ function paintedClasses(css: string) {
 
 test('no stylesheet gives one class name to two kinds of element', () => {
   /*
-   * The other half of the problem the wrapper comment in `search.css` describes. That one is five sheets in one
+   * The other half of the problem the wrapper comment in `search.css` describes. That one is the page sheets in one
    * document meaning different things by `.chip`; this one is a single sheet doing it, which the wrapper cannot help
    * with and which is quieter — a bare rule and a tagged rule mostly set the same properties, so the tagged one wins
    * and nothing looks wrong until the bare rule holds a property the other does not.

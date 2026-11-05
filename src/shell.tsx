@@ -94,7 +94,7 @@ function usePageComponent(page: Page) {
  * Names the open page on the document, for the two things that are the document's rather than a page's.
  *
  * The title is what a bookmark and a tab strip read. The `data-page` attribute is what the stylesheets are scoped by:
- * the Map page's sheet lays out a full viewport that does not scroll, and the five sheets between them define `.grid`,
+ * the Map page's sheet lays out a full viewport that does not scroll, and the page sheets between them define `.grid`,
  * `.card` and `.chip` differently, all of which was free while each page was its own document and none of which is now.
  */
 function useDocument(page: Page) {
