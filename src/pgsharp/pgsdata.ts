@@ -13,7 +13,7 @@
  */
 
 import { said } from '../errors.js';
-import { JavaSer } from '../java-serialization.js';
+import { JavaSer, type JavaValue } from '../java-serialization.js';
 import { CONTROL_RESETS } from './controls.js';
 import {
   applyTimezones,
@@ -44,14 +44,6 @@ export interface Backup {
   routes: number;
   notes: string[];
 }
-
-/**
- * What `dumps` accepts, named off the function because the types in that module are declared inside the IIFE that is
- * its body and it therefore exports none of them. The root map is annotated through it rather than left to inference,
- * since a bare `new Map()` is a `Map<any, any>` that a `set` does not refine — which would make every value put in it
- * unchecked on the way to the one call whose argument type is the whole of what this module is for.
- */
-type JavaValue = Parameters<typeof JavaSer.dumps>[0];
 
 /**
  * Synthesize a partial PGSData.dat from scratch — a HashMap holding only the keys we set. Nothing is read from an
@@ -91,6 +83,8 @@ export function buildBackup(repo: RepoFavourites, ticked: ReadonlySet<string>): 
     notes.push(`${noTz} waypoint(s) without a timezone`);
   }
 
+  // Annotated rather than inferred: a bare `new Map()` is a `Map<any, any>` that `set` does not refine, which would
+  // leave every value put in it unchecked on the way to `dumps`.
   const root = new Map<string, JavaValue>();
   root.set(POINTS_KEY, encodePoints(points));
   root.set(ROUTES_KEY, encodeRoutes(routes));
