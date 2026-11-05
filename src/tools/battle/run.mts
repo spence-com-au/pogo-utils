@@ -52,10 +52,12 @@ import {
   afterThrow,
   chargePriority,
   finisher,
+  NO_STAGE_PAIR,
   NO_STAGES,
   wouldFaint,
   wouldShield,
   type Side,
+  type StagePair,
   type Stages,
   type Verdict,
 } from './damage.mts';
@@ -641,7 +643,7 @@ export async function run(
 
   // The attack and defense stages of the Pokémon out on each side, as the charged moves thrown have moved them: ours
   // from each we throw, theirs off the banner after each of their throws.
-  let stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES };
+  let stages: StagePair = NO_STAGE_PAIR;
 
   // The Pokémon of ours sent in next has moves of its own, perhaps a name, its own CP and HP, and no stages moved, all
   // read again at once. A read finding no label keeps the moves it merges onto, so any left would stand for its own.
@@ -895,7 +897,7 @@ export async function run(
         );
         theirMoves = new Map();
         bannerUntil = -Infinity;
-        stages = { own: NO_STAGES, their: NO_STAGES };
+        stages = NO_STAGE_PAIR;
       }
 
       // Never more than the last count, a shield once spent staying spent: a banner over the HUD reads as one of theirs
@@ -1192,17 +1194,12 @@ export async function run(
       const verdict: Verdict =
         cap === undefined
           ? { faints: true, why: "the league's cap unread" }
-          : wouldFaint(
-              data,
-              facing.own,
-              facing.opponent,
-              health.own,
-              cap,
+          : wouldFaint(data, facing.own, facing.opponent, health.own, cap, {
               meta,
-              theirMoves.get(seen.opponent ?? ''),
+              seen: theirMoves.get(seen.opponent ?? ''),
               affordable,
               stages,
-            );
+            });
 
       // Kept, whatever the verdict, where the hit measured off our bar says their next fast move faints us anyway.
       const shielding = wouldShield(data, verdict, health.own, ourShields, {
@@ -1228,17 +1225,12 @@ export async function run(
         affordable !== undefined &&
         ourShields === 0 &&
         !(verdict.faints && verdict.afforded !== undefined)
-          ? wouldFaint(
-              data,
-              facing.own,
-              facing.opponent,
-              health.own,
-              cap ?? null,
+          ? wouldFaint(data, facing.own, facing.opponent, health.own, cap ?? null, {
               meta,
-              theirMoves.get(seen.opponent ?? ''),
-              affordable + estimate.gain,
+              seen: theirMoves.get(seen.opponent ?? ''),
+              affordable: affordable + estimate.gain,
               stages,
-            )
+            })
           : undefined;
       const prioritising =
         priority && estimate && sooner?.faints && sooner.afforded !== undefined
@@ -1553,17 +1545,11 @@ export async function run(
       const aimed = best !== undefined && lit.includes(best) ? seen.moves.get(best) : undefined;
       const feared =
         ourShields === 0 && theirShields > 0 && aimed !== undefined && cap !== undefined
-          ? wouldFaint(
-              data,
-              facing.own,
-              facing.opponent,
-              health.own,
-              cap,
+          ? wouldFaint(data, facing.own, facing.opponent, health.own, cap, {
               meta,
-              theirMoves.get(seen.opponent ?? ''),
-              undefined,
+              seen: theirMoves.get(seen.opponent ?? ''),
               stages,
-            )
+            })
           : undefined;
       const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
 

@@ -19,3 +19,15 @@ export interface VendedRelease extends Release {
    */
   readonly firstSeen: string;
 }
+
+/**
+ * The vended file's next contents: `release` stamped with when it was first seen. A release the previous file already
+ * holds keeps its `firstSeen`, and only a new one reads the clock through `now`, so an unchanged file after a run still
+ * means nothing was released.
+ */
+export function stampRelease(previous: Partial<VendedRelease>, release: Release, now: () => string): VendedRelease {
+  return {
+    ...release,
+    firstSeen: previous.url === release.url && previous.firstSeen ? previous.firstSeen : now(),
+  };
+}
