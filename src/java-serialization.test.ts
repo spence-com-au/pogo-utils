@@ -15,15 +15,9 @@
 
 import { expect, test } from 'vitest';
 
-import { JavaSer } from './java-serialization.js';
+import { JavaSer, type JavaValue } from './java-serialization.js';
 
 const { box, dumps, loads } = JavaSer;
-
-/**
- * What `dumps` accepts. Named off the function rather than restated, because the types in that module are declared
- * inside the IIFE that is its body and it therefore exports none of them.
- */
-type JavaValue = Parameters<typeof dumps>[0];
 
 /** A stream as the literal bytes a hand-derived expectation is written as. */
 const stream = (...values: number[]) => Uint8Array.from(values);
