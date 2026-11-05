@@ -95,11 +95,9 @@ export const spanned = (range: Range, span: string) => `${range.prefix}${span}${
  *
  * A bound left empty is written as an open end rather than filled from the range's own floor or ceiling. The community
  * phrase list states both forms outright — "`{phrase}{N}-` matches values ≥ `{N}`", "`{phrase}-{N}` matches values ≤
- * `{N}`" — which is what an earlier reading here lacked: it filled the bound in because `cp3000-` only *may well* be
- * read the way it looks, and preferred a spelling that could not be read any other way.
- *
- * That preference is still the rule; it just no longer reaches the open ends. What it reaches instead is the nought the
- * same list makes an irregularity of: "If `{M}` is 0, the search is treated as `{phrase}{N}-` instead".
+ * `{N}`". Where a spelling could be read two ways, the one that cannot is preferred. That preference does not reach
+ * the open ends, which are stated outright; it reaches the nought the same list makes an irregularity of: "If `{M}` is
+ * 0, the search is treated as `{phrase}{N}-` instead".
  *
  * Those are two cases and only the first is settled. A `{N}-0` *is* the span's own opposite, which is why `parse.js`
  * reads one as an open top rather than as a bound to swap round — `cp3000-0` is CP at or above 3000 and came back as
