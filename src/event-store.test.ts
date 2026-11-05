@@ -1,7 +1,7 @@
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { KEYS } from './event-prefs.js';
-import { EventStore, NOTHING_REVEALED } from './event-store.js';
+import { EventStore, fetchEvents, NOTHING_REVEALED } from './event-store.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 import type { StampedEvent } from './event-feed.js';
@@ -402,4 +402,39 @@ test('a first visit that finds only one file seeds nothing, so the other is not 
 
   expect(ids(store)).toEqual([]);
   expect(stored()).toEqual({ through: null, ids: ['a', 'c'] });
+});
+
+const respondWith = (body: unknown, init?: { ok?: boolean; status?: number; statusText?: string }) => {
+  globalThis.fetch = () =>
+    Promise.resolve({
+      ok: init?.ok ?? true,
+      status: init?.status ?? 200,
+      statusText: init?.statusText ?? 'OK',
+      json: () => Promise.resolve(body),
+    } as Response);
+};
+
+afterEach(() => {
+  Reflect.deleteProperty(globalThis, 'fetch');
+});
+
+test('fetchEvents answers the list the feed holds', async () => {
+  respondWith([feedEvent('a')]);
+  await expect(fetchEvents('events-feed.json')).resolves.toEqual([feedEvent('a')]);
+});
+
+/** A status the server refused on names itself, so a 404 from a missing file reads differently from a 503. */
+test('fetchEvents refuses a response the server would not give', async () => {
+  respondWith(null, { ok: false, status: 503, statusText: 'Service Unavailable' });
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('503 Service Unavailable');
+});
+
+/** `Response#json` answers `any`, so this guard is the whole of what says the feed is a list. */
+test.for([
+  { body: 'a bare string', value: 'events' },
+  { body: 'an object', value: { events: [] } },
+  { body: 'null', value: null },
+])('fetchEvents refuses $body', async ({ value }) => {
+  respondWith(value);
+  await expect(fetchEvents('events-feed.json')).rejects.toThrow('not a list of events');
 });
