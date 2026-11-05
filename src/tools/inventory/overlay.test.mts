@@ -2,7 +2,7 @@
  * What `assembled` answers and what it refuses, which is the one reader that returns a triple no pass read and so the
  * one whose refusals are worth as much as its answers.
  *
- * `screens.test.mts` cannot state them. Four of its 43 captures hand `assembled` a reading, it answers on two of those
+ * `screens.test.mts` cannot state them. Few of its captures hand `assembled` a reading, it answers on two of those
  * and changes the answer on one — and on `dialga-origin.png`, the other it answers, the combination that checks out is
  * the one the first pass read anyway, so the row is satisfied either way and nothing there distinguishes an assembly
  * from the fallback. What no capture reaches at all is two combinations checking out, and the single-digit percentage
