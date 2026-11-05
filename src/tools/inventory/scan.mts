@@ -325,7 +325,7 @@ export function landmarkOf(detail: Detail, overlay: Overlay | null): Landmark | 
   return { hp: detail.hp, weight: detail.weight, height: detail.height, iv };
 }
 
-export function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
+function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
   return (
     a !== null &&
     b !== null &&
@@ -337,7 +337,7 @@ export function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
 }
 
 /** How many rows already written a landing is checked against, the last of them being the row before it. */
-export const LANDMARKS = 3;
+const LANDMARKS = 3;
 
 /**
  * The rows of a scan's CSV that a pass resumed with `--skip` lands just past, oldest first: row `skip` itself and the
