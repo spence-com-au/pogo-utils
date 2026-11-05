@@ -7,8 +7,11 @@
   branch wants the tip of what has already merged rather than whatever a local `master` happens to be at. Nothing to
   fast-forward, and nothing carried in from a `master` somebody forgot to pull. The cost is that a worktree cannot build
   on an unmerged branch, so stacked work waits for the branch beneath it to land.
-  a default to assume either way, so when they have not said, ask before opening it, and leave auto-merge off until they
-  answer.
+- **An unresolved conversation can block the merge.** When the rulesets require review threads resolved, green checks
+  are not enough, and clearing an open thread falls to the pull request's author: fix what it raises or reply with why
+  not, then resolve it.
+- **Light alone is enough for a pull request's screenshots.** Take a dark set as well only when dark draws the change
+  meaningfully differently: a change that only follows the theme's colours gains nothing from a second set.
 - **Take turns with the phone.** Sessions share the phone plugged in here, so the `SessionStart` hook in
   `.claude/settings.json` puts `bin/adb` first on the PATH of a session's Bash commands and names it as `ADB`, which
   scrcpy runs in place of the `adb` on the PATH or a portable build's own. So every way to the phone — by hand, from
