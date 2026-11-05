@@ -138,6 +138,29 @@ test('the calendar ends every line CRLF, the last one included', () => {
   expect(ics.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/);
 });
 
+test('the calendar carries the headers a subscriber needs, then each event, then closes', () => {
+  const ics = calendar(FEED, [event({ eventID: 'one' }), event({ eventID: 'two' })], {});
+  const lines = ics.replace(/\r\n /g, '').split('\r\n');
+
+  expect(lines.slice(0, 9)).toEqual([
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//spence-com-au//pogo-utils//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${FEED.name}`,
+    `X-WR-CALDESC:${escape(FEED.description)}`,
+    'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
+    'X-PUBLISHED-TTL:PT6H',
+  ]);
+  expect(lines.filter((line) => line === 'BEGIN:VEVENT')).toHaveLength(2);
+  expect(lines.filter((line) => line.startsWith('UID:'))).toEqual([
+    'UID:one@pogo-utils.spence.com.au',
+    'UID:two@pogo-utils.spence.com.au',
+  ]);
+  expect(lines.slice(-2)).toEqual(['END:VCALENDAR', '']);
+});
+
 test('a local event overrides a feed event of the same ID rather than duplicating it', () => {
   const chosen = calendarEvents([event({ name: 'feed' })], [event({ name: 'local' })]);
 
