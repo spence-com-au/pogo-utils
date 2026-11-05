@@ -63,12 +63,12 @@ test('a first visit gets the defaults, and a null seen set', () => {
 });
 
 /**
- * The default hides the recurring types plus three that describe a standing state rather than somewhere to be at a
+ * The default hides the recurring types plus the ones that describe a standing state rather than somewhere to be at a
  * time. The recurring half is read off the list the calendar feed shares rather than spelled again, so the two cannot
- * drift — and the three extras are checked to be extras, since the point of keeping them out of `RECURRING_TYPES` is
- * that a subscription still carries them.
+ * drift — and the extras are checked to be extras, since the point of keeping them out of `RECURRING_TYPES` is that a
+ * subscription still carries them.
  */
-test('the default hidden set is the recurring types and three standing states', () => {
+test('the default hidden set is the recurring types and the standing states', () => {
   expect(RECURRING_TYPES.every((type) => DEFAULT_HIDDEN.includes(type))).toBe(true);
   expect(DEFAULT_HIDDEN.filter((type) => !RECURRING.has(type))).toEqual([
     'choose-your-path',

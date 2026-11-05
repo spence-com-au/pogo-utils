@@ -31,10 +31,10 @@ import {
   buildsOf,
   capped,
   hit,
-  NO_STAGES,
+  NO_STAGE_PAIR,
   type Shielding,
   type Side,
-  type Stages,
+  type StagePair,
   type Verdict,
   WANDER,
 } from './damage.mts';
@@ -188,12 +188,14 @@ const costOf = (data: GameData, move: string) => -(data.combat[move]?.energy ?? 
 
 /**
  * What the cheapest charged move `opponent` is allowed for costs: of the two `seen`, once both have been, and otherwise
- * of those `chargedOf` allows its forms. Infinity where none is known to cost anything.
+ * of any seen and those `chargedOf` allows its forms. Infinity where none is known to cost anything.
  */
 function cheapestOf(data: GameData, opponent: Side, seen: ReadonlySet<string>, meta?: Meta | null): number {
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
   const names =
-    seen.size >= MOVES_HELD ? [...seen] : formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset));
+    seen.size >= MOVES_HELD
+      ? [...seen]
+      : [...seen, ...formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset))];
 
   return Math.min(...names.map((name) => costOf(data, name)).filter((cost) => cost > 0));
 }
@@ -249,7 +251,7 @@ export class Energy {
    * the model never stands in, nor a step once the stages have moved: either errs towards a hit that faints us, which
    * is the safe side for throwing early and the wrong side for keeping a shield.
    */
-  measured(matchup: Matchup, stages: { own: Stages; their: Stages }): number | undefined {
+  measured(matchup: Matchup, stages: StagePair): number | undefined {
     return stages.their.attack === 0 && stages.own.defense === 0 ? this.#stepAgainst(matchup) : undefined;
   }
 
@@ -278,11 +280,7 @@ export class Energy {
    * step, and with none, undefined, as a charged move feared but not counted throws nothing. Their species unread
    * leaves it undefined outright, a stretch being counted only against an opponent named.
    */
-  fastFaints(
-    matchup: Matchup,
-    hp: number | null,
-    stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
-  ): string | undefined {
+  fastFaints(matchup: Matchup, hp: number | null, stages: StagePair = NO_STAGE_PAIR): string | undefined {
     const { species } = matchup.opponent;
 
     if (hp === null || species === null) {
@@ -457,11 +455,7 @@ export class Energy {
    * What one hit of `fast` takes of our bar in a matchup, for every pairing of builds whose attacker can hold it, at
    * their attack and our defense `stages`.
    */
-  #fractions(
-    fast: string,
-    { matchup }: { matchup: Matchup },
-    stages: { own: Stages; their: Stages } = { own: NO_STAGES, their: NO_STAGES },
-  ): number[] {
+  #fractions(fast: string, { matchup }: { matchup: Matchup }, stages: StagePair = NO_STAGE_PAIR): number[] {
     const move = this.#data.combat[fast];
     const attackers = buildsOf(this.#data, capped(matchup.opponent, matchup.cap), matchup.cap).filter((attacker) =>
       attacker.form.moves.some((m) => m.name === fast),
