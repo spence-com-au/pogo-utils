@@ -709,8 +709,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       parts.push(`${buckets.active.length} happening now`);
     }
 
-    if (prefs.dismissed.size) {
-      parts.push(`${prefs.dismissed.size} dismissed`);
+    // Counted over the feed rather than the stored set, which keeps the ID of every event ever dismissed: one that has
+    // since left the feed is nothing "Hidden" could bring back.
+    const dismissed = events.filter((ev) => prefs.dismissed.has(ev.eventID)).length;
+
+    if (dismissed) {
+      parts.push(`${dismissed} dismissed`);
     }
 
     return {
