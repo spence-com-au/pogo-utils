@@ -1,7 +1,8 @@
 /**
- * The DOM helpers every page needs: one to build an element, one to find one, one to put text on the clipboard. An id
- * matching nothing, or matching a tag it did not used to, is a broken page rather than a case to handle, so `byId`
- * throws where the disagreement is instead of letting a `null` travel until something further along trips over it.
+ * The DOM helpers every page needs: one to build an element, one to find one, one to put text on the clipboard and one
+ * to hand a file over. An id matching nothing, or matching a tag it did not used to, is a broken page rather than a
+ * case to handle, so `byId` throws where the disagreement is instead of letting a `null` travel until something further
+ * along trips over it.
  */
 
 /**
@@ -37,6 +38,22 @@ export async function copyText(text: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Hand text or bytes over as a download, a synthetic click on an `<a download>` being the only way a page can name a
+ * file. Bytes must sit over an `ArrayBuffer`, since a view of a `SharedArrayBuffer` is no `BlobPart`.
+ */
+export function download(part: BlobPart, name: string, type: string) {
+  const url = URL.createObjectURL(new Blob([part], { type }));
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**

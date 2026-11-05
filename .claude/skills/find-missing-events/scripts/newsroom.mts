@@ -31,9 +31,10 @@ const MONTHS = [
 
 // A date as these announcements write one: `September 28, 2026`, `October 3–4, 2026`, `October 31 – November 1, 2026`.
 // The middle group swallows a range so that the year is still reached — without it `October 3–4, 2026` matches nothing,
-// which is how a nine-stop tour running into January 2027 read as naming no dates at all.
+// which is how a nine-stop tour running into January 2027 read as naming no dates at all. It captures the range's end
+// month and day, since the end is the date the year belongs to and the one that says whether an event is still running.
 const DATE_PATTERN = new RegExp(
-  `\\b(${MONTHS.join('|')})\\b\\s*(\\d{1,2})?(?:\\s*[‐-―-]\\s*(?:\\w+\\s+)?\\d{1,2})?,?\\s*(20\\d{2})`,
+  `\\b(${MONTHS.join('|')})\\b\\s*(\\d{1,2})?(?:\\s*[‐-―-]\\s*(?:(\\w+)\\s+)?(\\d{1,2}))?,?\\s*(20\\d{2})`,
   'giu',
 );
 
@@ -127,8 +128,9 @@ export function articleText(html: string, url: string) {
 export function latestDateNamed(text: string) {
   let latest: string | undefined;
 
-  for (const [, month = '', day = '28', year = ''] of text.matchAll(DATE_PATTERN)) {
-    const found = isoDate(Number(year), MONTHS.indexOf(month.toLowerCase()) + 1, Number(day));
+  for (const [, startMonth = '', startDay = '28', endMonth, endDay, year = ''] of text.matchAll(DATE_PATTERN)) {
+    const month = endMonth !== undefined && MONTHS.includes(endMonth.toLowerCase()) ? endMonth : startMonth;
+    const found = isoDate(Number(year), MONTHS.indexOf(month.toLowerCase()) + 1, Number(endDay ?? startDay));
 
     if (found && (!latest || found > latest)) {
       latest = found;

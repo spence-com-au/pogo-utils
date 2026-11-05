@@ -5,6 +5,7 @@
  * each rule to a document it turns down.
  */
 
+import { byCodeUnit } from './event-feed.ts';
 import { MIN_TRKPTS, PGR_FIELDS, PGR_NS } from './gpx-dialect.ts';
 import { eventRefs, parseGpx } from './gpx-source.mts';
 import type { RouteCounts } from './types.js';
@@ -231,7 +232,7 @@ export const unusedCountries = (countries: Readonly<Record<string, unknown>>, us
  * produce the same bytes.
  */
 export function entriesByEvent(eventIndex: ReadonlyMap<string, RouteCounts>): string {
-  const sorted = [...eventIndex].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const sorted = [...eventIndex].sort(([a], [b]) => byCodeUnit(a, b));
 
   return `${JSON.stringify(Object.fromEntries(sorted), null, 2)}\n`;
 }

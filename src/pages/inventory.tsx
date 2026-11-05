@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from 'preact/hooks';
 
+import { download } from '../dom.js';
 import { said } from '../errors.js';
 import { read, unreadable } from '../inventory/reader.js';
 import { usePhone } from '../phone-store.js';
@@ -43,21 +44,6 @@ type Phase =
 
 /** The view a block is printed in: JSON, which says `null` as `null` where a page of prose would leave a gap. */
 const shown = (value: unknown) => JSON.stringify(value, null, 2);
-
-/**
- * `Uint8Array` takes a type argument for the buffer behind it, and only one over an `ArrayBuffer` is a `BlobPart` — a
- * `SharedArrayBuffer` cannot be one. Copied rather than cast, `encodePng` answering the wide type.
- */
-function download(bytes: Uint8Array, name: string, type: string) {
-  const url = URL.createObjectURL(new Blob([Uint8Array.from(bytes)], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 /** The four blocks `report` prints, in its order and under its labels. */
 function Blocks({ reading }: { reading: Reading }) {
@@ -97,7 +83,8 @@ export default function InventoryPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const unread = unreadable();
 
-  // The capture as a PNG, encoded once for the picture below and the download beside it.
+  // The capture as a PNG, encoded once for the picture below and the download beside it. Copied, `encodePng` answering
+  // a view over the wide `ArrayBufferLike`, which is no `BlobPart`.
   const png = useMemo(() => (capture ? Uint8Array.from(encodePng(capture.image)) : null), [capture]);
 
   // The picture of what is being read, as an object URL that is let go of when it is replaced or the page is left.
@@ -267,9 +254,7 @@ export default function InventoryPage() {
                   type="button"
                   onClick={() =>
                     download(
-                      new TextEncoder().encode(
-                        shown({ ...phase.reading, identity: printable(phase.reading.identity) }),
-                      ),
+                      shown({ ...phase.reading, identity: printable(phase.reading.identity) }),
                       capture.name.replace(/\.png$/i, '') + '.json',
                       'application/json',
                     )

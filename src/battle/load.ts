@@ -4,6 +4,7 @@
  * silhouettes the site publishes rather than the 40 MB of icons they are outlined from.
  */
 
+import { said } from '../errors.js';
 import { SILHOUETTES } from '../generated.js';
 import { fetchOk, gameData } from '../inventory/reader.js';
 import { decodeSilhouettes, typeIcons, type Download, type Silhouettes } from '../tools/battle/assets.mts';
@@ -19,7 +20,7 @@ const download: Download = async (_file, url, decode) => {
   try {
     return decode(bytes);
   } catch (error) {
-    throw new Error(`${url}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    throw new Error(`${url}: ${said(error)}`, { cause: error });
   }
 };
 

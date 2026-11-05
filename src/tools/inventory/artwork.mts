@@ -36,7 +36,7 @@ const VALUE = 0.2;
  * What the game's panel is, as the two things that hold whatever it is drawn in: neutral, and brighter than the scene
  * behind the artwork. A level written down instead does not hold — `genderOf` says the same thing about the same panel
  * and for the same reason. Written down as 224 it matched no row of any capture in the corpus, the panel being
- * rgb(255,255,255) on all 43, and `panelTop` then ran on past it to a grey divider 600 rows into the panel.
+ * rgb(255,255,255) on every one, and `panelTop` then ran on past it to a grey divider 600 rows into the panel.
  */
 const PANEL_FLOOR = 200;
 const PANEL_SPREAD = 6;

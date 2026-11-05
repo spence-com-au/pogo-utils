@@ -14,7 +14,7 @@
 
 import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../inventory/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, formsOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
+import { chargedOf, effectiveness, formsOf, MOVES_HELD, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's
@@ -274,9 +274,6 @@ export function hit(
     Math.floor(0.5 * move.power * ratio * stab * effectiveness(data, move.type, defender.form.types) * PVP_BONUS) + 1
   );
 }
-
-/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. */
-export const MOVES_HELD = 2;
 
 /** Whether a hit would faint us, and why that is the answer: the hardest hit and how much it takes, or what is unknown. */
 export interface Verdict {
