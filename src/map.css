@@ -304,7 +304,7 @@ body[data-page='map'] {
   /**
    * Only a row carrying an event wraps, and the name is given a basis of zero within it so that it cannot push the
    * distance and the Copy button down as well — the second line is for the event alone. Asking for the wrap on every
-   * row moved that pair onto its own line on 29 of the 80 rows here, none of which have an event.
+   * row moved that pair onto its own line on rows that have no event.
    */
 
   .route:has(.eventline) {

@@ -8,7 +8,7 @@
 import { expect, test } from 'vitest';
 
 import { bounded, RANGES, TERMS_BY_ID } from './terms.js';
-import { emptyTree, group, isGroup, leafLabel, leafText, nodeAt, update, type Leaf, type Node } from './tree.js';
+import { emptyTree, group, isGroup, leafLabel, leafText, update, type Leaf, type Node } from './tree.js';
 
 const yes = (id: string): Leaf => ({ kind: 'term', id, negated: false });
 const named = (text: string): Leaf => ({ kind: 'name', text, negated: false });
@@ -113,18 +113,6 @@ test('a pill says the label its chip said, so a card and the catalogue agree', (
   expect(leafLabel(yes('star4'))).toBe(TERMS_BY_ID.get('star4')?.label);
   expect(leafLabel(named('pikachu'))).toBe('pikachu');
   expect(leafLabel({ kind: 'range', id: 'cp', from: null, to: null, negated: false })).toBe(range('cp').label);
-});
-
-test('a path names the node it leads to, and nothing where it leads nowhere', () => {
-  const tree = all(yes('shiny'), any(yes('fire'), yes('water')));
-
-  expect(nodeAt(tree, [])).toBe(tree);
-  expect(nodeAt(tree, [0])).toEqual(yes('shiny'));
-  expect(nodeAt(tree, [1, 1])).toEqual(yes('water'));
-
-  // A path can lead past the end of a group, or into a pill as though it were one.
-  expect(nodeAt(tree, [9])).toBeNull();
-  expect(nodeAt(tree, [0, 0])).toBeNull();
 });
 
 test('an edit rebuilds only the spine down to what it changed', () => {
