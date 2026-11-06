@@ -1960,6 +1960,41 @@ test.each([
 });
 
 /**
+ * The countdown before the fight drawn over the opponent's full bar, its 2 across the middle and then its 1 over the
+ * left end, which read the bar 22% and then 78%: a drop for our hits and a rise for a newcomer of theirs. Neither is
+ * read, and the battle, opening with both sides full, holds the opponent there until the fight's first bar.
+ */
+test('holds the opponent full through the countdown drawn over its bar', async () => {
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      two: { frame: fixture('battle-countdown-two'), lasts: { ms: 1000, to: 'one' } },
+      one: { frame: fixture('battle-countdown-one'), lasts: { ms: 1000, to: 'fight' } },
+      fight: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'won' } },
+    },
+    'two',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(new Set(report.fights.map(({ opponent }) => opponent.hp && Math.round(opponent.hp * 100)))).toEqual(
+    new Set([100, 99]),
+  );
+});
+
+/**
  * The opponent sends in another Pokémon with the HUD up throughout: Entei at 28% gives way to Salamence at 43%. A bar of
  * theirs fuller than before is a newcomer's, HP never coming back, so its name is read again at once rather than the
  * departed Entei's standing for up to `READ_MS`, its hits counted to Entei's energy. Until that read is back, as at the
