@@ -157,31 +157,38 @@ function strips(image: Image): Strip[] {
 /** The most any of `levels` is lighter than one after it, which is a light line seen from beyond a dark one. */
 const step = (levels: number[]) => Math.max(...levels.map((l, i) => l - Math.min(l, ...levels.slice(i + 1))));
 
+const lum = (image: Image, x: number, y: number) => luminance(...rgb(image, x, y));
+
+/** `level` at each of four rows or columns out from `from`, in 360ths of the frame's width. */
+const out = (image: Image, from: number, level: (at: number) => number) =>
+  Array.from({ length: Math.round((4 * image.width) / 360) }, (_, i) => level(from + i));
+
 /**
- * Whether a strip has the bar's frame around it: a light line beyond a dark one above it, below it and at its left end,
- * looked for in four rows or columns out from the fill. Above and below are looked for at `OUTLINE.places` along where
- * the full bar would run, and the left end on the strip's middle row.
+ * Each of `OUTLINE.places` along where a strip's full bar would run, and whether the outline is found there: a light
+ * line beyond a dark one both above and below the fill, looked for in four rows out from it.
+ */
+function outline(image: Image, strip: Strip): { x: number; found: boolean }[] {
+  const unit = image.width / 360;
+  const bottom = strip.top + strip.rights.length;
+
+  return Array.from({ length: OUTLINE.places }, (_, k) => {
+    const x = strip.left + ((k + 0.5) / OUTLINE.places) * FULL * image.width;
+    const above = step(out(image, strip.top - 4 * unit, (y) => lum(image, x, y)));
+    const below = step(out(image, bottom, (y) => lum(image, x, y)).reverse());
+
+    return { x, found: above >= OUTLINE.contrast && below >= OUTLINE.contrast };
+  });
+}
+
+/**
+ * Whether a strip has the bar's frame around it: the outline at `OUTLINE.least` of the places `outline` looks, and a
+ * light line beyond a dark one at its left end too, looked for on the strip's middle row in four columns out from it.
  */
 function framed(image: Image, strip: Strip): boolean {
   const unit = image.width / 360;
-  const lum = (x: number, y: number) => luminance(...rgb(image, x, y));
-  const out = (from: number, k: (i: number) => number) =>
-    Array.from({ length: Math.round(4 * unit) }, (_, i) => k(from + i));
-  const bottom = strip.top + strip.rights.length;
-  let places = 0;
-
-  for (let k = 0; k < OUTLINE.places; k++) {
-    const x = strip.left + ((k + 0.5) / OUTLINE.places) * FULL * image.width;
-    const above = step(out(strip.top - 4 * unit, (y) => lum(x, y)));
-    const below = step(out(bottom, (y) => lum(x, y)).reverse());
-
-    if (above >= OUTLINE.contrast && below >= OUTLINE.contrast) {
-      places++;
-    }
-  }
-
-  const middle = Math.floor((strip.top + bottom) / 2);
-  const left = step(out(strip.left - 4 * unit, (x) => lum(x, middle)));
+  const middle = Math.floor(strip.top + strip.rights.length / 2);
+  const places = outline(image, strip).filter(({ found }) => found).length;
+  const left = step(out(image, strip.left - 4 * unit, (x) => lum(image, x, middle)));
 
   return places / OUTLINE.places >= OUTLINE.least && left >= OUTLINE.contrast;
 }
@@ -204,6 +211,33 @@ function covered(image: Image, strip: Strip): boolean {
   return gone.length > 0 && light.length / gone.length >= COVER.least;
 }
 
+/**
+ * Whether a strip's fill ends where something is drawn across its bar rather than where its HP runs out: the outline
+ * missing at the first of `outline`'s places past the fill's end, where it should frame the bar left empty, and either
+ * missing at every place past it, the bar itself ending there with its left end hidden, or with the fill showing again
+ * further along its rows, among `all` the strips found. The countdown before a battle does both to the opponent's bar,
+ * its 2 drawn across the middle and its 1 over the left end: in 10 of the 28 openings kept from 7 GO Battle League
+ * runs, on up to 29 frames of one, the strip alone read 11–24% under the 2 and 76–91% under the 1. A digit fading in
+ * or out shows the outline through it, and is missed. Of the 5,342 bars read on the committed frames and those kept
+ * from 16 runs, 5 go unread for it, each with something drawn across it: a move's beam over a full bar the strip read
+ * at 50%, `BLOCKED!`, `NOT VERY EFFECTIVE...` and PGSharp's star.
+ */
+function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
+  const unit = image.width / 360;
+  const right = rightOf(strip);
+  const past = outline(image, strip).filter(({ x }) => x > right + 2 * unit);
+  const again = all.some(
+    (other) =>
+      other.fill === strip.fill &&
+      other.left >= right + 2 * unit &&
+      rightOf(other) <= strip.left + FULL * image.width + 2 * unit &&
+      other.top >= strip.top - unit &&
+      other.top + other.rights.length <= strip.top + strip.rights.length + unit,
+  );
+
+  return past[0]?.found === false && (past.every(({ found }) => !found) || again);
+}
+
 export interface Health {
   /** Our HP left, as a fraction of full, or null where our bar is not found. */
   own: number | null;
@@ -212,20 +246,22 @@ export interface Health {
 
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
- * not told from the artwork is null, and so is one with something light drawn over where its fill ends. Where a side
- * has two strips, an effect over the fill having split it, the one starting further left is the bar.
+ * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered` and
+ * `cut`. Where a side has two strips, an effect over the fill having split it, the one starting further left is the
+ * bar.
  */
 export function readHealth(image: Image): Health {
   const health: Health = { own: null, opponent: null };
   const starts: Partial<Record<keyof Health, number>> = {};
+  const all = strips(image);
 
-  for (const strip of strips(image)) {
+  for (const strip of all) {
     const left = strip.left / image.width;
     const fraction = (rightOf(strip) - strip.left) / (FULL * image.width);
     const side = (['own', 'opponent'] as const).find((s) => left >= STARTS[s][0] && left <= STARTS[s][1]);
 
     if (side && fraction <= 1.03 && left < (starts[side] ?? Infinity) && framed(image, strip)) {
-      health[side] = covered(image, strip) ? null : Math.min(1, fraction);
+      health[side] = covered(image, strip) || cut(image, strip, all) ? null : Math.min(1, fraction);
       starts[side] = left;
     }
   }
