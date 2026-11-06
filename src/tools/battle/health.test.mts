@@ -63,6 +63,18 @@ test('a bar whose right end is hidden goes unread rather than read short', () =>
   expect(within(health.opponent, 0.98)).toBe(true);
 });
 
+test.each([
+  // The countdown's 2 across the middle of the opponent's full bar, read 22% to where the digit starts, its fill
+  // showing again beyond it; and its 1 over the bar's left end, read 78% from where the digit stops to the outline.
+  ['battle-countdown-two', 0.98],
+  ['battle-countdown-one', 0.98],
+])('%s: a bar cut short by something drawn across it goes unread, ours %f', (name, own) => {
+  const health = read(name);
+
+  expect(within(health.own, own), `ours read ${health.own}`).toBe(true);
+  expect(health.opponent).toBeNull();
+});
+
 /** The HP `Steady` decides on after each of `readings`, each `[own, opponent]`. */
 function steadied(readings: readonly [number | null, number | null][]): [number | null, number | null][] {
   const steady = new Steady();
