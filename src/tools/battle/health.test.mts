@@ -75,6 +75,16 @@ test.each([
   expect(health.opponent).toBeNull();
 });
 
+test.each([
+  // The "Go, Magmar!" bubble over the end of our full bar, read 93% to where the bubble starts, the fill dimmed under it.
+  'battle-charizard-magmar',
+
+  // The backdrop of a Pixel 8 Pro's "Attack incoming!" over the right of our bar, read 45% where it is 87%.
+  'battle-pixel8-attack-incoming',
+])('%s: a bar whose fill runs on dimmed under something translucent goes unread', (name) => {
+  expect(read(name).own).toBeNull();
+});
+
 /** The HP `Steady` decides on after each of `readings`, each `[own, opponent]`. */
 function steadied(readings: readonly [number | null, number | null][]): [number | null, number | null][] {
   const steady = new Steady();

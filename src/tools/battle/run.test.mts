@@ -3246,7 +3246,16 @@ test.each([
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(tapped);
 });
 
-/** Where Charizard's bar ends on `battle-charizard-magmar`, at 93%, and two points of it short of there, as a box. */
+/**
+ * Where Charizard's full bar runs on under the "Go, Magmar!" bubble on `battle-charizard-magmar`, from 93% to the
+ * outline, its fill dimmed there, which `readHealth` leaves unread: painted as the bar left empty, it reads 93%.
+ */
+const CHARIZARD_BUBBLE = [116 / 360, 243 / 360, 121 / 360, 249 / 360];
+
+/** Charizard against Magmar as `battle-charizard-magmar` shows them, with Charizard's bar ending at 93%. */
+const charizard = () => painted(fixture('battle-charizard-magmar'), [52, 86, 97], CHARIZARD_BUBBLE);
+
+/** Where Charizard's bar ends on `charizard`, at 93%, and two points of it short of there, as a box. */
 const CHARIZARD_HIT = [114 / 360, 243 / 360, 117 / 360, 248 / 360];
 
 /** As `CHARIZARD_HIT`, but eight points of Charizard's bar. */
@@ -3256,14 +3265,47 @@ const CHARIZARD_HARD_HIT = [108 / 360, 243 / 360, 117 / 360, 248 / 360];
 const OUR_SECOND_SHIELD = [0.273, 0.2, 0.289, 0.218];
 
 /**
- * Charizard against Magmar as `battle-charizard-magmar` shows them, then one of Magmar's fast moves landing on
- * Charizard, a 2-point step as Ember's or Karate Chop's 3 of its 149 HP is, and then `prompt`. With `spent`, Charizard
- * has spent one of its shields throughout.
+ * Charizard's bar full, then with the "Go, Magmar!" bubble over its end as `battle-charizard-magmar` shows it, which
+ * read the bar 93%, and full again: a 5-point drop that the count took for a fast move of Magmar's. Under the bubble
+ * the bar is not read, and nothing is counted off it.
+ */
+test('counts no hit off our bar while the "Go, X!" bubble dims its end', async () => {
+  const bubbled = fixture('battle-charizard-magmar');
+  const full = painted(bubbled, [119, 250, 189], CHARIZARD_BUBBLE);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: full, lasts: { ms: 1000, to: 'bubble' } },
+      bubble: { frame: bubbled, lasts: { ms: 1000, to: 'after' } },
+      after: { frame: full, lasts: { ms: 1000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(new Set(report.fights.flatMap(({ energy }) => (energy ? [energy.energy] : [])))).toEqual(new Set([0]));
+});
+
+/**
+ * Charizard against Magmar as `charizard` shows them, then one of Magmar's fast moves landing on Charizard, a 2-point
+ * step as Ember's or Karate Chop's 3 of its 149 HP is, and then `prompt`. With `spent`, Charizard has spent one of its
+ * shields throughout.
  */
 function charizardHit(prompt: Image, spent = false): Record<string, Scene> {
-  const fight = spent
-    ? painted(fixture('battle-charizard-magmar'), [111, 81, 118], OUR_SECOND_SHIELD)
-    : fixture('battle-charizard-magmar');
+  const fight = spent ? painted(charizard(), [111, 81, 118], OUR_SECOND_SHIELD) : charizard();
 
   return {
     fight: { frame: fight, lasts: { ms: 1000, to: 'hit' } },
@@ -3323,7 +3365,7 @@ test.each([
  * after it.
  */
 test('keeps the shield where their next fast move, measured, faints us anyway', async () => {
-  const fight = fixture('battle-charizard-magmar');
+  const fight = charizard();
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),

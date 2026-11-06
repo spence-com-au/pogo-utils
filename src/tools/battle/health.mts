@@ -11,6 +11,7 @@
 
 import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
 import { type Area } from './layout.mts';
+import { type Colour } from './minigame.mts';
 
 type Fill = 'green' | 'yellow' | 'red';
 
@@ -68,14 +69,31 @@ const SEARCH = { top: 0.12, bottom: 0.85 } as const;
 const OUTLINE = { contrast: 25, places: 10, least: 0.7 } as const;
 
 /**
- * How much of where the fill has gone may be near-white, of at least `luminance` at no more than `chroma`, before the
- * fill's end is taken as hidden rather than its HP. The "GO!" that opens a battle is drawn over our bar, and in 8 of
- * the 28 openings kept from 7 GO Battle League runs its G stopped the fill short, reading 51–82% for up to 0.7s, with
- * 57–100% of the rest near-white; the countdown's 2 before it once did the same at 94%. Where the fill has truly gone
- * the bar is dark, or the orange trailing a hit: of the 5,092 bars read short of full on the committed frames and those
- * kept from 16 runs, all but one had less than 30% near-white, and that one 40%.
+ * How much of where the fill has gone may be drawn over before the fill's end is taken as hidden rather than its HP:
+ * near-white, of at least `luminance` at no more than `chroma`, or the fill's own colour `dimmed`, within `off` of each
+ * channel. Where the fill has truly gone the bar is dark, a third as bright as the fill, or the orange trailing a hit:
+ * of the 5,663 bars read short of full on the committed frames and those kept from 17 runs, the 21 with half or more of
+ * it drawn over were each under one of the below, and of the rest none had more than a third.
+ *
+ * The "GO!" that opens a battle is drawn over our bar, and in 8 of the 28 openings kept from 7 GO Battle League runs
+ * its G stopped the fill short, reading 51–82% for up to 0.7s, with 57–100% of the rest near-white; the countdown's 2
+ * before it once did the same at 94%. Through what is translucent, the fill runs on at three quarters of its brightness,
+ * too dark to be taken for fill: the "Go, X!" bubble as the opponent sends a Pokémon in, which read our full bar at
+ * 80–89% for up to 1.1s in 3 of those openings and at 93–94% on two frames of others, one mid-battle; and the backdrop
+ * of the Pixel 8 Pro's "Attack incoming!", which read our bar at 45–50% at three shield prompts, where one was 87%.
  */
-const COVER = { luminance: 200, chroma: 40, least: 0.5 } as const;
+const COVER = { luminance: 200, chroma: 40, dimmed: [0.6, 0.9], off: 25, least: 0.5 } as const;
+
+const light = (pixel: Colour) => luminance(...pixel) >= COVER.luminance && chroma(...pixel) <= COVER.chroma;
+
+/** Whether `pixel` is `fill` dimmed by `COVER.dimmed`: each channel within `COVER.off` of the fill's, scaled as it is. */
+function dimmed(pixel: Colour, fill: Colour): boolean {
+  const k = luminance(...pixel) / luminance(...fill);
+
+  return (
+    k >= COVER.dimmed[0] && k <= COVER.dimmed[1] && pixel.every((v, c) => Math.abs(v - k * (fill[c] ?? 0)) <= COVER.off)
+  );
+}
 
 interface Run {
   fill: Fill;
@@ -194,21 +212,27 @@ function framed(image: Image, strip: Strip): boolean {
 }
 
 /**
- * Whether something light is drawn over a strip's bar where its fill has gone, by `COVER`: looked for on the strip's
- * middle row from 2 pixels past where the fill ends, clear of the encoder's blur at its edge, to 4 short of where a
- * full bar's would, clear of the outline. A strip that near full has nothing there to look at, and is read as it is.
+ * Whether something is drawn over a strip's bar where its fill has gone, by `COVER`, the fill's colour the middle of
+ * what it shows: looked for on the strip's middle row from 2 pixels past where the fill ends, clear of the encoder's
+ * blur at its edge, to 4 short of where a full bar's would, clear of the outline. A strip that near full has nothing
+ * there to look at, and is read as it is.
  */
 function covered(image: Image, strip: Strip): boolean {
   const unit = image.width / 360;
   const middle = Math.floor(strip.top + strip.rights.length / 2);
-  const from = Math.round(rightOf(strip) + 2 * unit);
-  const gone = Array.from(
-    { length: Math.max(0, Math.ceil(strip.left + FULL * image.width - 4 * unit - from)) },
-    (_, i) => rgb(image, from + i, middle),
-  );
-  const light = gone.filter((c) => luminance(...c) >= COVER.luminance && chroma(...c) <= COVER.chroma);
+  const row = (from: number, to: number) =>
+    Array.from({ length: Math.max(0, Math.ceil(to - from)) }, (_, i) => rgb(image, from + i, middle));
+  const right = rightOf(strip);
+  const fill = row(Math.round(strip.left + 2 * unit), right - 2 * unit);
+  const colour: Colour = [
+    median(fill.map(([r]) => r)),
+    median(fill.map(([, g]) => g)),
+    median(fill.map(([, , b]) => b)),
+  ];
+  const gone = row(Math.round(right + 2 * unit), strip.left + FULL * image.width - 4 * unit);
+  const over = gone.filter((pixel) => light(pixel) || dimmed(pixel, colour));
 
-  return gone.length > 0 && light.length / gone.length >= COVER.least;
+  return gone.length > 0 && over.length / gone.length >= COVER.least;
 }
 
 /**
