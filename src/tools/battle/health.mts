@@ -9,7 +9,7 @@
  * to it, menus among them, every distance below in the frame's width, which is what the game sizes the bars by.
  */
 
-import { luminance, median, rgb, type Image } from '../inventory/png.mts';
+import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
 import { type Area } from './layout.mts';
 
 type Fill = 'green' | 'yellow' | 'red';
@@ -66,6 +66,16 @@ const SEARCH = { top: 0.12, bottom: 0.85 } as const;
  * than 4 of the 10 places along the bar it is looked for, bar one at 6, where all 180 bars had it at 7 or more.
  */
 const OUTLINE = { contrast: 25, places: 10, least: 0.7 } as const;
+
+/**
+ * How much of where the fill has gone may be near-white, of at least `luminance` at no more than `chroma`, before the
+ * fill's end is taken as hidden rather than its HP. The "GO!" that opens a battle is drawn over our bar, and in 8 of
+ * the 28 openings kept from 7 GO Battle League runs its G stopped the fill short, reading 51–82% for up to 0.7s, with
+ * 57–100% of the rest near-white; the countdown's 2 before it once did the same at 94%. Where the fill has truly gone
+ * the bar is dark, or the orange trailing a hit: of the 5,092 bars read short of full on the committed frames and those
+ * kept from 16 runs, all but one had less than 30% near-white, and that one 40%.
+ */
+const COVER = { luminance: 200, chroma: 40, least: 0.5 } as const;
 
 interface Run {
   fill: Fill;
@@ -176,6 +186,24 @@ function framed(image: Image, strip: Strip): boolean {
   return places / OUTLINE.places >= OUTLINE.least && left >= OUTLINE.contrast;
 }
 
+/**
+ * Whether something light is drawn over a strip's bar where its fill has gone, by `COVER`: looked for on the strip's
+ * middle row from 2 pixels past where the fill ends, clear of the encoder's blur at its edge, to 4 short of where a
+ * full bar's would, clear of the outline. A strip that near full has nothing there to look at, and is read as it is.
+ */
+function covered(image: Image, strip: Strip): boolean {
+  const unit = image.width / 360;
+  const middle = Math.floor(strip.top + strip.rights.length / 2);
+  const from = Math.round(rightOf(strip) + 2 * unit);
+  const gone = Array.from(
+    { length: Math.max(0, Math.ceil(strip.left + FULL * image.width - 4 * unit - from)) },
+    (_, i) => rgb(image, from + i, middle),
+  );
+  const light = gone.filter((c) => luminance(...c) >= COVER.luminance && chroma(...c) <= COVER.chroma);
+
+  return gone.length > 0 && light.length / gone.length >= COVER.least;
+}
+
 export interface Health {
   /** Our HP left, as a fraction of full, or null where our bar is not found. */
   own: number | null;
@@ -184,8 +212,8 @@ export interface Health {
 
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
- * not told from the artwork is null. Where a side has two strips, an effect over the fill having split it, the one
- * starting further left is the bar.
+ * not told from the artwork is null, and so is one with something light drawn over where its fill ends. Where a side
+ * has two strips, an effect over the fill having split it, the one starting further left is the bar.
  */
 export function readHealth(image: Image): Health {
   const health: Health = { own: null, opponent: null };
@@ -197,7 +225,7 @@ export function readHealth(image: Image): Health {
     const side = (['own', 'opponent'] as const).find((s) => left >= STARTS[s][0] && left <= STARTS[s][1]);
 
     if (side && fraction <= 1.03 && left < (starts[side] ?? Infinity) && framed(image, strip)) {
-      health[side] = Math.min(1, fraction);
+      health[side] = covered(image, strip) ? null : Math.min(1, fraction);
       starts[side] = left;
     }
   }

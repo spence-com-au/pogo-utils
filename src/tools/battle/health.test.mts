@@ -55,6 +55,14 @@ test('a bar whose left end is hidden goes unread rather than read short', () => 
   expect(within(health.opponent, 0.99)).toBe(true);
 });
 
+test('a bar whose right end is hidden goes unread rather than read short', () => {
+  // The G of the "GO!" opening a battle over our full bar, which read 68% to where the letter starts.
+  const health = read('battle-go');
+
+  expect(health.own).toBeNull();
+  expect(within(health.opponent, 0.98)).toBe(true);
+});
+
 /** The HP `Steady` decides on after each of `readings`, each `[own, opponent]`. */
 function steadied(readings: readonly [number | null, number | null][]): [number | null, number | null][] {
   const steady = new Steady();
