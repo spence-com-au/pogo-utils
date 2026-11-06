@@ -886,12 +886,7 @@ export async function run(
         leftAtName = null;
         promptedAt = 3;
         departed = null;
-
-        // A battle opens with both sides full, so a bar read short under the countdown's digits before the fight, where
-        // `readHealth` misses one, waits for a second reading rather than standing as the first.
         steady = new Steady();
-        steady.read({ own: 1, opponent: 1 });
-
         energy = new Energy(data, meta);
         hits = new Hits();
         sparing = undefined;

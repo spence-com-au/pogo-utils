@@ -1962,9 +1962,9 @@ test.each([
 /**
  * The countdown before the fight drawn over the opponent's full bar, its 2 across the middle and then its 1 over the
  * left end, which read the bar 22% and then 78%: a drop for our hits and a rise for a newcomer of theirs. Neither is
- * read, and the battle, opening with both sides full, holds the opponent there until the fight's first bar.
+ * read, and the opponent's HP is first decided on off the fight's own bar.
  */
-test('holds the opponent full through the countdown drawn over its bar', async () => {
+test('reads none of the opponent’s bar through the countdown drawn over it', async () => {
   const { phone, clock } = scripted(
     {
       ...battleAndBack(),
@@ -1990,7 +1990,7 @@ test('holds the opponent full through the countdown drawn over its bar', async (
   );
 
   expect(new Set(report.fights.map(({ opponent }) => opponent.hp && Math.round(opponent.hp * 100)))).toEqual(
-    new Set([100, 99]),
+    new Set([null, 99]),
   );
 });
 
