@@ -1,5 +1,16 @@
 [
   {
+    "eventID": "clefable-super-mega-raid-day-2026",
+    "name": "Clefable Super Mega Raid Day",
+    "eventType": "raid-day",
+    "heading": "Raid Day",
+    "link": "https://leekduck.com/events/clefable-super-mega-raid-day-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/clefable-super-mega-raid-day-2026.jpg",
+    "start": "2026-11-28T14:00:00.000",
+    "end": "2026-11-28T17:00:00.000",
+    "added": "2026-11-06T02:47:25.943Z"
+  },
+  {
     "eventID": "cresselia-darkrai-in-5-star-raid-battles-november-2026",
     "name": "Cresselia and Darkrai in 5-star Raid Battles",
     "eventType": "raid-battles",
@@ -108,6 +119,17 @@
     "start": "2026-11-03T10:00:00.000",
     "end": "2026-12-01T10:00:00.000",
     "added": "2026-10-22T13:29:09.732Z"
+  },
+  {
+    "eventID": "go-wild-area-gigantamax-machamp-power-up-timed-research",
+    "name": "GO Wild Area: Gigantamax Machamp Power Up! Timed Research",
+    "eventType": "timed-research",
+    "heading": "Timed Research",
+    "link": "https://leekduck.com/events/go-wild-area-gigantamax-machamp-power-up-timed-research/",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2025/2025-05-25-gigantamax-machamp-max-battle-day-may-2025/gigantamax-machamp-max-battles.jpg",
+    "start": "2026-11-06T10:00:00.000",
+    "end": "2026-11-15T23:59:00.000",
+    "added": "2026-11-06T02:47:25.943Z"
   },
   {
     "eventID": "halloween-2026-part-2",
@@ -449,17 +471,6 @@
     "start": "2026-11-04T06:00:00.000",
     "end": "2026-11-08T22:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
-  },
-  {
-    "eventID": "super-mega-raid-day-november-2026",
-    "name": "Super Mega Raid Day",
-    "eventType": "raid-day",
-    "heading": "Raid Day",
-    "link": "https://leekduck.com/events/super-mega-raid-day-november-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
-    "start": "2026-11-28T14:00:00.000",
-    "end": "2026-11-28T17:00:00.000",
-    "added": "2026-10-12T00:00:00.000Z"
   },
   {
     "eventID": "twilight-wishes-2026",
