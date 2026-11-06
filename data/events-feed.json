@@ -138,8 +138,8 @@
     "heading": "Event",
     "link": "https://leekduck.com/events/halloween-2026-part-2/",
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-01-halloween-2026-part-2/halloween-2026-part-2.jpg",
-    "start": "2026-11-01T10:00:00.000",
-    "end": "2026-11-05T20:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -380,8 +380,8 @@
     "heading": "Pokémon Spotlight Hour",
     "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-05/",
     "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": "2026-11-05T18:00:00.000",
-    "end": "2026-11-05T19:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
@@ -404,17 +404,6 @@
     "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
     "start": "2026-11-26T18:00:00.000",
     "end": "2026-11-26T19:00:00.000",
-    "added": "2026-10-19T22:36:12.344Z"
-  },
-  {
-    "eventID": "raidhour20261104",
-    "name": "Giratina (Altered Forme) Raid Hour",
-    "eventType": "raid-hour",
-    "heading": "Raid Hour",
-    "link": "https://leekduck.com/events/raidhour20261104/",
-    "image": "https://cdn.leekduck.com/assets/img/events/raidhour.jpg",
-    "start": null,
-    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
