@@ -208,8 +208,11 @@ export async function readBanner(
     return null;
   }
 
-  for (const place of BANNERS) {
-    const [, who = '', what = ''] = USED.exec((await readLine(band(image, place, BANNER_ANCHOR, 3).image)) ?? '') ?? [];
+  // Every band is cropped before the first read, since `stream.mts` frees the frame two frames on, while OCR is running.
+  const bands = BANNERS.map((place) => band(image, place, BANNER_ANCHOR, 3).image);
+
+  for (const crop of bands) {
+    const [, who = '', what = ''] = USED.exec((await readLine(crop)) ?? '') ?? [];
 
     // Whatever the pill's edge read as runs on before the name, so the name is the words at the end, as many as it has.
     const words = fold(who).split(' ').slice(-fold(opponent).split(' ').length).join(' ');
