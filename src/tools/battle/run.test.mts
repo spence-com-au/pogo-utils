@@ -1375,6 +1375,9 @@ function pasted(image: Image, from: Image, [left = 0, top = 0, right = 0, bottom
 /** Where our first Poké Ball is on the Pixel 4 XL's frames, as a box for `painted`. */
 const FIRST_BALL = [0.045, 0.19, 0.071, 0.215];
 
+/** The red of a bar's fill as the stream draws it, for painting a bar low enough to turn red. */
+const RED = [230, 106, 96];
+
 /** The minigame of `battleAndBack` with our first Poké Ball painted red, as the frames thrown from are. */
 const minigameNoneFainted = (): Scene => ({
   frame: painted(fixture('battle-minigame-giratina'), [200, 60, 60], FIRST_BALL),
@@ -1509,12 +1512,12 @@ function sneaking(
 ): { scenes: Record<string, Scene>; ours: (px: number) => Image } {
   const balls = paint(painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL));
 
-  // Our fill run on to `px` of the bar's 100 at 360 wide, and dark beyond it; and Shadow Sneak's button unlit, as in
-  // the test above.
+  // Our fill run on to `px` of the bar's 100 at 360 wide, red under 20 as the game draws a bar that low, and dark beyond
+  // it; and Shadow Sneak's button unlit, as in the test above.
   const ours = (px: number) =>
     painted(
       painted(balls, [105, 91, 41], [22 / 360, 220 / 360, 122 / 360, 225 / 360]),
-      [26, 255, 187],
+      px < 20 ? RED : [26, 255, 187],
       [22 / 360, 220 / 360, (22 + px) / 360, 225 / 360],
     );
   const unlit = (image: Image) => painted(image, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
@@ -1843,7 +1846,8 @@ test.each([
   const balls = painted(fixture('battle-pixel8-xerneas-super-effective'), [200, 60, 60], widths(15, 69, 30, 82));
   const donor = fixture('charged-pixel8-xerneas-not-very-effective');
   const lit = pasted(pasted(balls, donor, widths(205, 670, 292, 755)), donor, widths(40, 755, 180, 779));
-  const ours = (px: number) => painted(lit, [22, 31, 36], widths(22 + px, 242, 122, 248));
+  const ours = (px: number) =>
+    painted(painted(lit, RED, widths(22, 242, 122, 248)), [22, 31, 36], widths(22 + px, 242, 122, 248));
   const { phone, clock } = scripted(
     {
       ...masterParty(),
@@ -3277,6 +3281,43 @@ test('counts no hit off our bar while the "Go, X!" bubble dims its end', async (
       ...battleAndBack(),
       fight: { frame: full, lasts: { ms: 1000, to: 'bubble' } },
       bubble: { frame: bubbled, lasts: { ms: 1000, to: 'after' } },
+      after: { frame: full, lasts: { ms: 1000, to: 'won' } },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(new Set(report.fights.flatMap(({ energy }) => (energy ? [energy.energy] : [])))).toEqual(new Set([0]));
+});
+
+/** A ring drawn where a touch landed, as the thin near-white line it draws across a bar, over Charizard's at 37%. */
+const CHARIZARD_RING = [60 / 360, 242 / 360, 62 / 360, 250 / 360];
+
+/**
+ * Charizard's bar full, then with a touch's ring drawn across it, which read the bar 37% to where the ring crosses it,
+ * and full again: a drop the count took for Magmar's fast moves. With the fill showing again past the ring, the bar is
+ * not read, and nothing is counted off it.
+ */
+test('counts no hit off our bar while a touch’s ring crosses it', async () => {
+  const full = painted(fixture('battle-charizard-magmar'), [119, 250, 189], CHARIZARD_BUBBLE);
+  const { phone, clock } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: full, lasts: { ms: 1000, to: 'ring' } },
+      ring: { frame: painted(full, [240, 248, 245], CHARIZARD_RING), lasts: { ms: 1000, to: 'after' } },
       after: { frame: full, lasts: { ms: 1000, to: 'won' } },
     },
     'fight',
