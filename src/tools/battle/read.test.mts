@@ -117,6 +117,22 @@ test.each([
   expect(await banner(name, sides)).toBe(move);
 });
 
+// `stream.mts` frees a frame two frames after yielding it, which can be while the first band's OCR is still running.
+test('reads the second band off a frame freed while the first is read', async () => {
+  const frame = decodePng(readFileSync(new URL('fixtures/battle-banner-quaquaval.png', import.meta.url)));
+  const lines = ['Swampert used Hydro Cannon!', 'Quaquaval used Aqua Jet!'];
+
+  const readLine = () => {
+    if (lines.length === 2) {
+      (frame.data.buffer as ArrayBuffer).transfer();
+    }
+
+    return Promise.resolve(lines.shift() ?? null);
+  };
+
+  expect(await readBanner(frame, DATA, { own: 'Swampert', opponent: 'Quaquaval' }, readLine)).toBe('Aqua Jet');
+});
+
 /**
  * A label line read off the labels' band of `image`, centred under the button at `x` across the screen: the band starts
  * 0.05 in and is scaled up three times, and a label is placed by its left edge and a letter of 0.022 a character.
