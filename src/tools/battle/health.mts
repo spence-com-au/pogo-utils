@@ -84,15 +84,51 @@ const OUTLINE = { contrast: 25, places: 10, least: 0.7 } as const;
  */
 const COVER = { luminance: 200, chroma: 40, dimmed: [0.6, 0.9], off: 25, least: 0.5 } as const;
 
+/**
+ * How long a run of the fill's own colour, at `shown` of its brightness, shows it going on past where its strip stops,
+ * in pixels at 360 wide: a thin line drawn across the bar having split it. Pokémon GO draws a pair of white rings
+ * wherever the screen is touched, and `FIGHT`'s swipe in `play.mts` starts and ends where our bar lies whenever the
+ * camera puts it at that height. The rings and the swipe's trail stopped the fill short, the bar read at 4–47% however
+ * full it was, in 12 of the 14 times a GO Battle League run kept with video has our bar drop 30 points for a line of its
+ * log and come back, and in 3 of the 28 openings kept. Beyond the line the fill runs on, which neither `cut` nor the
+ * share `COVER` takes sees. Of the 6,823 bars read short of full on the committed frames, those kept from 13 runs and
+ * the openings, where nothing was drawn across one the fill showed again for no more than 2 pixels, and each with 10 or
+ * more was under the rings, the trail, the countdown's 2 fading, PGSharp's star or a stat change's banner.
+ */
+const AGAIN = { shown: [0.9, 1.15], run: 6 } as const;
+
+/**
+ * The least of a full bar a green or yellow fill is read at, as a fraction: the bar turns yellow and then red as it
+ * empties, and a strip of either shorter than this is one split off where the bar starts by something drawn across it.
+ * Of the 6,909 bars read on the committed frames and those kept from 13 runs, the green ones under 40% and the yellow
+ * under 20% were each under something drawn over them, PGSharp's yellow star over our bar's start among them, read as a
+ * yellow bar at 2%. A ring split our bar 4 pixels from its start, too short a strip for `covered` to see its colour.
+ */
+const LIT = 0.1;
+
 const light = (pixel: Colour) => luminance(...pixel) >= COVER.luminance && chroma(...pixel) <= COVER.chroma;
 
-/** Whether `pixel` is `fill` dimmed by `COVER.dimmed`: each channel within `COVER.off` of the fill's, scaled as it is. */
-function dimmed(pixel: Colour, fill: Colour): boolean {
+/**
+ * Whether `pixel` is `fill` at a brightness in `range` of it: each channel within `COVER.off` of the fill's, scaled as
+ * it is.
+ */
+function scaled(pixel: Colour, fill: Colour, [least, most]: readonly [number, number]): boolean {
   const k = luminance(...pixel) / luminance(...fill);
 
-  return (
-    k >= COVER.dimmed[0] && k <= COVER.dimmed[1] && pixel.every((v, c) => Math.abs(v - k * (fill[c] ?? 0)) <= COVER.off)
-  );
+  return k >= least && k <= most && pixel.every((v, c) => Math.abs(v - k * (fill[c] ?? 0)) <= COVER.off);
+}
+
+/** The most of `pixels` in a row that `is` holds for. */
+function longest(pixels: readonly Colour[], is: (pixel: Colour) => boolean): number {
+  let run = 0;
+  let most = 0;
+
+  for (const pixel of pixels) {
+    run = is(pixel) ? run + 1 : 0;
+    most = Math.max(most, run);
+  }
+
+  return most;
 }
 
 interface Run {
@@ -212,10 +248,10 @@ function framed(image: Image, strip: Strip): boolean {
 }
 
 /**
- * Whether something is drawn over a strip's bar where its fill has gone, by `COVER`, the fill's colour the middle of
- * what it shows: looked for on the strip's middle row from 2 pixels past where the fill ends, clear of the encoder's
- * blur at its edge, to 4 short of where a full bar's would, clear of the outline. A strip that near full has nothing
- * there to look at, and is read as it is.
+ * Whether something is drawn over a strip's bar where its fill has gone, by `COVER`, or across the fill, which shows
+ * again beyond it by `AGAIN`, the fill's colour the middle of what it shows: looked for on the strip's middle row from 2
+ * pixels past where the fill ends, clear of the encoder's blur at its edge, to 4 short of where a full bar's would, clear
+ * of the outline. A strip that near full has nothing there to look at, and is read as it is.
  */
 function covered(image: Image, strip: Strip): boolean {
   const unit = image.width / 360;
@@ -230,9 +266,13 @@ function covered(image: Image, strip: Strip): boolean {
     median(fill.map(([, , b]) => b)),
   ];
   const gone = row(Math.round(right + 2 * unit), strip.left + FULL * image.width - 4 * unit);
-  const over = gone.filter((pixel) => light(pixel) || dimmed(pixel, colour));
+  const over = gone.filter((pixel) => light(pixel) || scaled(pixel, colour, COVER.dimmed));
 
-  return gone.length > 0 && over.length / gone.length >= COVER.least;
+  return (
+    gone.length > 0 &&
+    (over.length / gone.length >= COVER.least ||
+      longest(gone, (pixel) => scaled(pixel, colour, AGAIN.shown)) >= AGAIN.run * unit)
+  );
 }
 
 /**
@@ -270,8 +310,8 @@ export interface Health {
 
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
- * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered` and
- * `cut`. Where a side has two strips, an effect over the fill having split it, the one starting further left is the
+ * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`
+ * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one starting further left is the
  * bar.
  */
 export function readHealth(image: Image): Health {
@@ -285,7 +325,10 @@ export function readHealth(image: Image): Health {
     const side = (['own', 'opponent'] as const).find((s) => left >= STARTS[s][0] && left <= STARTS[s][1]);
 
     if (side && fraction <= 1.03 && left < (starts[side] ?? Infinity) && framed(image, strip)) {
-      health[side] = covered(image, strip) || cut(image, strip, all) ? null : Math.min(1, fraction);
+      health[side] =
+        covered(image, strip) || cut(image, strip, all) || (strip.fill !== 'red' && fraction < LIT)
+          ? null
+          : Math.min(1, fraction);
       starts[side] = left;
     }
   }

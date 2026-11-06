@@ -85,6 +85,18 @@ test.each([
   expect(read(name).own).toBeNull();
 });
 
+test.each([
+  // The rings drawn where the fight's swipe touched, over our Kyogre's bar at 63%, read 24% to where a ring crosses it,
+  // the fill showing again beyond; and over the start of our Tyranitar's at 60%, read 4%, too short to sample.
+  ['battle-tap-ring', 0.51],
+  ['battle-tap-ring-start', 0.7],
+])('%s: a bar split by a ring drawn across it goes unread, theirs %f', (name, opponent) => {
+  const health = read(name);
+
+  expect(health.own).toBeNull();
+  expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
+});
+
 /** The HP `Steady` decides on after each of `readings`, each `[own, opponent]`. */
 function steadied(readings: readonly [number | null, number | null][]): [number | null, number | null][] {
   const steady = new Steady();
