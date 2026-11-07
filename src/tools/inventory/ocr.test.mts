@@ -46,7 +46,10 @@ test('a move keeps its pluses through a fold', () => {
 test('a Tesseract that fails to start is a rejection naming why, however large the image', async () => {
   const data = new Uint8Array(400 * 400 * 4).map(() => Math.floor(Math.random() * 256));
   const previous = process.env['TESSDATA_PREFIX'];
-  process.env['TESSDATA_PREFIX'] = '/nonexistent';
+
+  // A folder that exists but is empty: Tesseract 5.5 ignores one that does not exist and falls back to its own.
+  const empty = mkdtempSync(join(tmpdir(), 'tessdata-'));
+  process.env['TESSDATA_PREFIX'] = empty;
 
   try {
     await expect(ocr({ width: 400, height: 400, data })).rejects.toThrow(/tesseract exited 1: .*eng/s);
@@ -56,6 +59,8 @@ test('a Tesseract that fails to start is a rejection naming why, however large t
     } else {
       process.env['TESSDATA_PREFIX'] = previous;
     }
+
+    rmSync(empty, { recursive: true });
   }
 });
 
