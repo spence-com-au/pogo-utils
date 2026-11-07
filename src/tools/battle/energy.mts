@@ -39,6 +39,7 @@ import {
   type Verdict,
   WANDER,
 } from './damage.mts';
+import { JUMP } from './health.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, lowersDefense, MOVES_HELD, type Shown } from './strategy.mts';
 
@@ -88,6 +89,12 @@ class Steps {
   #low: number | null = null;
   #at = 0;
 
+  /**
+   * For each drop counted since the last pause, the reading it was measured from and what had been counted before it,
+   * with how many clean steps: what taking it back restores.
+   */
+  #before: { low: number; at: number; lost: number; steps: number }[] = [];
+
   /** Whether the bar is yet to hold for `SETTLE_MS` since a pause, its drops until then no fast move's. */
   #settling = false;
 
@@ -96,6 +103,25 @@ class Steps {
       this.#low = hp;
       this.#at = at;
       return;
+    }
+
+    // HP never comes back within a stretch, either side sent in starting another, so a low the bar snaps back from, by
+    // more than `JUMP`, was a misread: each drop to it is taken back, and with none left, the bar is measured from this
+    // reading. Left as the low, the misread would have no hit counted until the bar fell below it. A smaller rise is
+    // left alone, the bar wobbling by 3 points at times after a hit: taken back, the hit would be measured again from
+    // above to the wobble's top, and the wobble down counted as a clean step of its own, two slivers for one step.
+    while (hp - this.#low > JUMP) {
+      const before = this.#before.pop();
+
+      if (before === undefined) {
+        this.#low = hp;
+        this.#at = at;
+      } else {
+        this.#low = before.low;
+        this.#at = before.at;
+        this.lost = before.lost;
+        this.steps.length = before.steps;
+      }
     }
 
     const drop = this.#low - hp;
@@ -114,6 +140,7 @@ class Steps {
     }
 
     if (drop >= LEAST) {
+      this.#before.push({ low: this.#low, at: this.#at, lost: this.lost, steps: this.steps.length });
       this.lost += drop;
 
       if (at - this.#at < CLEAN_MS) {
@@ -136,6 +163,7 @@ class Steps {
    */
   pause(): void {
     this.#low = null;
+    this.#before = [];
     this.#settling = true;
   }
 
