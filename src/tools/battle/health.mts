@@ -312,8 +312,8 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
  * across some of its rows. Artwork just left of a bar passes `framed`, the bar's own outline running along most of where
  * the strip's bar would, but the fill a bar has left lies inside its outline. Red and orange foliage and pumpkins on the
  * autumn map, and PGSharp's star, did so in 11 of the 17 GO Battle League runs kept with video: of their 350,000
- * pictures, 1,008 readings were the artwork at 2–18% beside a bar of 14–99%, now read as the bar or, where that is not
- * framed, left unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star
+ * pictures, 1,008 readings were the artwork at 2–18%, now the bar beside it at 14–99% or, where that is not framed,
+ * unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star
  * and the orange trail's red end lie there too, inside a bar's outline, which runs over that bar's fill.
  */
 function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof typeof STARTS): boolean {
