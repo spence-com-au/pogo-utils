@@ -6,13 +6,14 @@
  */
 
 import { type Detail } from './detail.mts';
+import { type IVs } from './game-master.mts';
 import { type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
 import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
 import { type Image } from './png.mts';
 
-/** The searches that answer the yes-or-no columns, each column named for the game's own search term. */
+/** The searches that answer the yes-or-no fields, each field named for the game's own search term. */
 export const FLAGS = ['shiny', 'lucky', 'costume', 'shadow', 'purified'] as const;
 
 export type Flag = (typeof FLAGS)[number];
@@ -28,11 +29,11 @@ export function parseFlags(list: string): Flag[] {
   return names as Flag[];
 }
 
-/** A yes-or-no column: blank where nothing answered it, rather than a `no` nothing checked. */
-export type Mark = 'yes' | 'no' | '';
+/** A yes-or-no field: null where nothing answered it, rather than a `false` nothing checked. */
+export type Mark = boolean | null;
 
 /**
- * The `shadow` and `purified` columns, each from its search pass where that ran and from `shadow`, what the stardust to
+ * The `shadow` and `purified` fields, each from its search pass where that ran and from `shadow`, what the stardust to
  * power up says, where it did not — with a note where both answered and disagree, the pass's answer being the one
  * kept — and `identify`'s `shadowed` from the two together. Null where they disagree, one of them being wrong and
  * nothing here saying which.
@@ -43,19 +44,22 @@ export function shaded(
 ): { shadow: Mark; purified: Mark; shadowed: boolean | null; notes: string[] } {
   const notes: string[] = [];
 
-  const column = (f: 'shadow' | 'purified'): Mark => {
-    const seen = shadow === null ? '' : shadow === f ? 'yes' : 'no';
+  const field = (f: 'shadow' | 'purified'): Mark => {
+    const pass = passes[f];
+    const seen = shadow === null ? null : shadow === f;
 
-    if (passes[f] !== '' && seen !== '' && passes[f] !== seen) {
-      notes.push(`the ${f} search says ${passes[f]}, where the stardust to power up says ${seen}`);
+    if (pass !== null && seen !== null && pass !== seen) {
+      notes.push(
+        `the ${f} search says ${pass ? 'yes' : 'no'}, where the stardust to power up says ${seen ? 'yes' : 'no'}`,
+      );
     }
 
-    return passes[f] || seen;
+    return pass ?? seen;
   };
 
-  const marks = { shadow: column('shadow'), purified: column('purified') };
-  const either = marks.shadow === 'yes' || marks.purified === 'yes';
-  const neither = marks.shadow === 'no' && marks.purified === 'no';
+  const marks = { shadow: field('shadow'), purified: field('purified') };
+  const either = marks.shadow === true || marks.purified === true;
+  const neither = marks.shadow === false && marks.purified === false;
 
   return { ...marks, shadowed: notes.length > 0 ? null : either ? true : neither ? false : null, notes };
 }
@@ -75,10 +79,32 @@ export function count(option: string, value: string | undefined, fallback: numbe
   return n;
 }
 
-export function csv(value: string | number | null): string {
-  const text = value === null ? '' : String(value);
-
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+/** One Pokémon as `pnpm inventory scan` writes it, a line of JSON each. */
+export interface Row {
+  index: number;
+  species: string | null;
+  nickname: string | null;
+  dex: number | null;
+  form: string | null;
+  gender: Detail['gender'];
+  favourite: boolean;
+  tags: string[];
+  costume: Mark;
+  shiny: Mark;
+  lucky: Mark;
+  size: Detail['size'];
+  shadow: Mark;
+  purified: Mark;
+  max: Detail['max'];
+  cp: number | null;
+  hp: number | null;
+  levels: number[];
+  iv: IVs | null;
+  moves: Moves;
+  weight: number | null;
+  height: number | null;
+  types: string[];
+  notes: string[];
 }
 
 /**
@@ -260,51 +286,6 @@ export function shortfall(
 }
 
 /**
- * The rows of a CSV as `csv` writes them: a field quoted where it holds a comma, a quote or a line break, and a quote
- * inside one doubled. A line break outside quotes ends a row, and a trailing one does not start another.
- */
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let quoted = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-
-    if (quoted) {
-      if (c === '"' && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (c === '"') {
-        quoted = false;
-      } else {
-        field += c;
-      }
-    } else if (c === '"') {
-      quoted = true;
-    } else if (c === ',') {
-      row.push(field);
-      field = '';
-    } else if (c === '\n') {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = '';
-    } else {
-      field += c;
-    }
-  }
-
-  if (field !== '' || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-
-  return rows;
-}
-
-/**
  * What a row already written says of its Pokémon that the screen can be checked against: the HP, weight and height,
  * and the IVs where they were read. The name is left out for the reason `looseKeyOf` leaves it out, and the IVs are
  * only compared where both sides have them, an overlay that went unread once being no reason to miss the row.
@@ -341,45 +322,32 @@ function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
 const LANDMARKS = 3;
 
 /**
- * The rows of a scan's CSV that a pass resumed with `--skip` lands just past, oldest first: row `skip` itself and the
+ * The rows of a scan's file that a pass resumed with `--skip` lands just past, oldest first: row `skip` itself and the
  * ones written before it, up to `most` of them, stopping at a row that skips a number or has no HP to be known by.
  * Row `skip` is the last one written under that number, a file resumed wrongly before holding it more than once.
  *
  * Throws where row `skip` is missing or has no HP, which is a landing nothing could check.
  */
 export function landmarksBefore(text: string, skip: number, most = LANDMARKS): Landmark[] {
-  const [header = [], ...rows] = parseCsv(text);
-  const columns = ['index', 'hp', 'weight_kg', 'height_m', 'attack_iv', 'defense_iv', 'stamina_iv'];
+  const fields = ['index', 'hp', 'weight', 'height', 'iv'] as const;
 
-  if (columns.some((name) => !header.includes(name))) {
-    throw new Error('it is not a CSV this scan wrote, missing a column it is checked by');
-  }
+  const rows = text
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const row: unknown = JSON.parse(line);
 
-  const field = (row: readonly string[], name: string) => row[header.indexOf(name)] ?? '';
+      if (typeof row !== 'object' || row === null || !fields.every((name) => name in row)) {
+        throw new Error('it is not a file this scan wrote, missing a field it is checked by');
+      }
 
-  const number = (row: readonly string[], name: string) => {
-    const text = field(row, name);
+      return row as Pick<Row, (typeof fields)[number]>;
+    });
 
-    return text === '' ? null : Number(text);
-  };
+  const landmark = ({ hp, weight, height, iv }: (typeof rows)[number]): Landmark | null =>
+    hp === null ? null : { hp, weight, height, iv: iv && ivsOf(iv) };
 
-  const landmark = (row: readonly string[]): Landmark | null => {
-    const read = number(row, 'hp');
-    const attack = number(row, 'attack_iv');
-    const defense = number(row, 'defense_iv');
-    const stamina = number(row, 'stamina_iv');
-
-    return read === null
-      ? null
-      : {
-          hp: read,
-          weight: number(row, 'weight_kg'),
-          height: number(row, 'height_m'),
-          iv: attack === null || defense === null || stamina === null ? null : ivsOf({ attack, defense, stamina }),
-        };
-  };
-
-  const last = rows.findLastIndex((row) => number(row, 'index') === skip);
+  const last = rows.findLastIndex((row) => row.index === skip);
 
   if (last === -1) {
     throw new Error(`it holds no row ${skip} to check the landing against`);
@@ -390,7 +358,7 @@ export function landmarksBefore(text: string, skip: number, most = LANDMARKS): L
   for (const row of rows.slice(0, last + 1).reverse()) {
     const mark = landmark(row);
 
-    if (found.length >= most || number(row, 'index') !== skip - found.length || mark === null) {
+    if (found.length >= most || row.index !== skip - found.length || mark === null) {
       break;
     }
 

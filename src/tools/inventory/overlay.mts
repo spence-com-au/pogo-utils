@@ -44,7 +44,7 @@ export interface Overlay {
 
 /**
  * The IVs as `attack/defense/stamina`, the one spelling every key, landmark and log line compares or shows, whether
- * they were read off the overlay or back out of a CSV.
+ * they were read off the overlay or back out of a scan's file.
  */
 export function ivsOf(iv: IVs): string {
   return `${iv.attack}/${iv.defense}/${iv.stamina}`;
