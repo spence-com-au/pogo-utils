@@ -2889,6 +2889,48 @@ test.each([
 );
 
 /**
+ * Giratina taps Shadow Sneak and faints before it plays, our first Poké Ball going grey with no switch prompt, as when
+ * the last of ours is sent in. The next of ours fights at once, swiped across the field from where the fight's swipes
+ * begin, x 0.15 or 0.7, not left alone or swept in rows from the screen's edges for a minigame that is not coming.
+ */
+test('fights on where ours faints with a throw tapped and no prompt', async () => {
+  const { scenes } = sneaking([96], { lasts: { ms: 1000, to: 'gone' } });
+  const standing: Record<string, string> = { Mamoswine: 'Glaceon', Latias: 'Giratina' };
+  const icons = ICONS.map((icon) => ({ ...icon, species: standing[icon.species] ?? icon.species }));
+  const fight = scenes.fight?.frame ?? fixture('other-white');
+  const { phone, clock, strokes } = scripted(
+    {
+      ...scenes,
+      fight: { frame: fight, lasts: { ms: 2500, to: 'lit' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'fight' } },
+      gone: { frame: pasted(fight, fixture('charged-shadow-sneak'), FIRST_BALL), lasts: { ms: 3000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      meta: MAMOSWINE_AVALANCHE,
+      icons,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  const after = strokes.filter(({ scene }) => scene === 'gone');
+
+  expect(report.events).toContain('own: Shadow Sneak not thrown: Giratina fainted first');
+  expect(after.length).toBeGreaterThan(10);
+  expect(after.filter(({ from }) => from[0] !== 0.15 && from[0] !== 0.7)).toEqual([]);
+});
+
+/**
  * Latias leads, from the party screen, and faints to Glaceon; the switch prompt's first card sends in Mamoswine, the
  * next of the party. No frame here shows a move label or our species, so the party is all that names either. Glaceon
  * is named once the battle's first read is back.
