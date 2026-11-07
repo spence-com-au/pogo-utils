@@ -580,9 +580,13 @@ async function scan(held: Transport) {
         const lines = await readLines(image);
         const detail = await parseDetail(lines, data, image);
 
-        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over: closed here, so the next
-        // attempt reads the screen beneath it rather than every attempt reading the dialog and the pass stopping.
-        if (detail.hp === null && dialogOpen(lines)) {
+        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over, or one the game raised on
+        // its own. Closed here, so the next attempt reads the screen beneath it, and this one counted as unread however
+        // much of it did read: the HP above `New Mega Level available!` reads, and a row keyed by it would carry the
+        // Max, moves, shadow and purified the dialog hides as blanks that look like answers.
+        const covered = dialogOpen(lines, image);
+
+        if (covered) {
           await dismiss();
         }
 
@@ -591,8 +595,8 @@ async function scan(held: Transport) {
         // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
         // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from
         // another.
-        const overlay = detail.hp === null ? null : await overlayOf(image, lost === null || lost > 0);
-        const key = keyOf(detail, overlay);
+        const overlay = detail.hp === null || covered ? null : await overlayOf(image, lost === null || lost > 0);
+        const key = covered ? null : keyOf(detail, overlay);
         const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));
 
         // The key above the other two, not beside them: a reading with no key is the one `walk` counts as a miss and
@@ -859,7 +863,7 @@ async function scan(held: Transport) {
           let dialog = false;
           let cutOff = false;
           const found = ocr(scrolled).then((lines) => {
-            dialog = dialogOpen(lines);
+            dialog = dialogOpen(lines, scrolled);
             cutOff = !options.scroll && movesCutOff(lines, scrolled);
 
             return parseMoves(lines, data, settled.id.form, scrolled);

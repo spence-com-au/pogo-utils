@@ -222,9 +222,32 @@ test('a term longer than the box can be cleared of is refused, and one that fits
 test("a dialog's buttons are what tells it from the detail screen beneath it", () => {
   const line = (text: string) => ({ text, left: 0, top: 0, width: 10, height: 10 });
 
-  expect(dialogOpen([line('POWER UP: GEODUDE'), line('CANCEL')])).toBe(true);
-  expect(dialogOpen([line('YES')])).toBe(true);
-  expect(dialogOpen([line('POWER UP'), line('EVOLVE'), line('NEW ATTACK')])).toBe(false);
+  expect(dialogOpen([line('POWER UP: GEODUDE'), line('CANCEL')], SCREEN)).toBe(true);
+  expect(dialogOpen([line('YES')], SCREEN)).toBe(true);
+  expect(dialogOpen([line('POWER UP'), line('EVOLVE'), line('NEW ATTACK')], SCREEN)).toBe(false);
+});
+
+const capture = (file: string) => decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
+
+/**
+ * The dialog the game raised on its own over a Dynamax Sableye, whose `OK` is white on a pale green pill: OCR reads no
+ * line for it at all, so the button cannot be what tells this one from the screen beneath it. Asked with no lines, so
+ * the scrim alone answers.
+ */
+test("a dialog whose button does not read is told by the scrim it draws over the detail screen's panel", () => {
+  expect(dialogOpen([], capture('dialog/sableye-mega-level.png'))).toBe(true);
+});
+
+/**
+ * The screens the scrim must not be seen on: a detail screen scrolled down to its moves, whose panel runs the whole
+ * height, and storage. Every capture in the corpus is asked the same in `screens.test.mts`.
+ */
+test('a scrolled detail screen and storage read as having no dialog over them', () => {
+  const open = ['moves/necrozma-cut-off.png', 'moves/rookidee-bounced.png', 'storage/grid.png'].filter((file) =>
+    dialogOpen([], capture(file)),
+  );
+
+  expect(open).toStrictEqual([]);
 });
 
 test('a dialog open over the screen is closed with Back before the walk to storage taps anything', async () => {
