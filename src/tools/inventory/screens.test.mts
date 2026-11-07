@@ -3,12 +3,12 @@
  *
  * **A row says what the Pokémon is, not what the readers answered.** A `Fixture` is the screen; a `Defects` beside it
  * is where some reader answers something else, pinned rather than softened away — fixing one is a change to the code
- * and so a pull request of its own. The `unseparated` ones are no second read of the same screen, but seven of the ten
- * are the artwork declining two icons a 12-bin hue histogram cannot tell apart, which a sharper signature could; the
- * two `lugia-hashes` captures are the artwork with nothing to compare, `ARTWORK` recording no icon for either Lugia,
- * which a recorded pair could; and only `basculin-blue.png` is beyond every reader, its form being under PGSharp's own
- * box. Everything after that is derived from the pair, so a consequence cannot drift from its cause, and `COVERAGE`
- * pins the counts rather than leaving them to prose nothing checks.
+ * and so a pull request of its own. The `unseparated` ones are no second read of the same screen, but eight of the
+ * eleven are the artwork declining two icons a 12-bin hue histogram cannot tell apart, which a sharper signature
+ * could; the two `lugia-hashes` captures are the artwork with nothing to compare, `ARTWORK` recording no icon for
+ * either Lugia, which a recorded pair could; and only `basculin-blue.png` is beyond every reader, its form being under
+ * PGSharp's own box. Everything after that is derived from the pair, so a consequence cannot drift from its cause, and
+ * `COVERAGE` pins the counts rather than leaving them to prose nothing checks.
  *
  * `NEGATIVE` holds the captures that are not detail screens, asserting the readers do not invent on a screen none of
  * them was written for. `no-pgsharp.png` and `pgsharp-no-overlay.png` are one Squirtle captured twice and so a control
@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
-import { ambiguous, nearest, type Signature } from './artwork.mts';
+import { ambiguous, nearest, type Colourings } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
@@ -59,30 +59,89 @@ const TAGS = [
 const TAG_SLACK = 0.3;
 
 /**
- * The hue signature of the game's own icon for each form the numbers cannot separate, read once out of the file that
- * form's own `icon` names — no template of the label reaches it, the blank Ho-Oh being `pm250.icon.png` against
- * `Ho-Oh (S)`'s `pm250.fS.icon.png` — and recorded here for the same reason the forms and the CP multipliers are: a
- * test of a reader must not reach the network. Four decimal places, where the margin that decides an answer is 0.3.
+ * The hue signatures of the game's own icons for each form the numbers cannot separate, ordinary then shiny, read once
+ * out of the files that form's own `icon` and `shiny` name — no template of the label reaches them, the blank Ho-Oh
+ * being `pm250.icon.png` against `Ho-Oh (S)`'s `pm250.fS.icon.png` — and recorded here for the same reason the forms
+ * and the CP multipliers are: a test of a reader must not reach the network. Four decimal places, where the margin that
+ * decides an answer is 0.3.
  *
- * Three families, two of which land: Burmy's three icons are 1.85 apart at their closest and Cherrim's two 1.62,
- * against a margin of 0.3. Ho-Oh's two are 0.25 apart, which is the third one's reason for being here — a lead can
- * never exceed the distance between the two icons it is measured against, so that family is one no capture can settle
- * and `MARGIN` is what says so. Without it the five that land are each nearest their own icon, and a margin of 0 would
- * answer every one of them correctly with nothing below noticing.
+ * Four families, two of which land: Burmy's three icons are 1.85 apart at their closest and Cherrim's two 1.62, against
+ * a margin of 0.3. Ho-Oh's two are 0.25 apart in the ordinary colouring and 0.11 in the shiny, which is the third one's
+ * reason for being here — a lead can never exceed the distance between the two icons it is measured against, so that
+ * family is one no capture can settle and `MARGIN` is what says so. Psyduck's shiny icons are 0.02 apart, the swim
+ * ring's white carrying no hue and its cyan being the shiny body's, so a shiny Psyduck is the same: 0.82 apart in the
+ * ordinary colouring, it would be separable drawn plain. Without the margin the five that land are each nearest their
+ * own icon, and a margin of 0 would answer every one of them correctly with nothing below noticing.
  */
-const ARTWORK = new Map<string, Signature>([
-  ['Burmy (Plant)', [0, 0.0527, 0.0288, 0.9173, 0.0012, 0, 0, 0, 0, 0, 0, 0]],
-  ['Burmy (Sandy)', [0, 0.9677, 0.0245, 0, 0, 0, 0, 0.0078, 0, 0, 0, 0]],
-  ['Burmy (Trash)', [0.6469, 0.0088, 0.0064, 0, 0, 0, 0.0064, 0, 0, 0, 0, 0.3315]],
-  ['Cherrim (Overcast)', [0.0235, 0, 0, 0.0294, 0.1917, 0.0002, 0, 0, 0.2918, 0.2974, 0.0092, 0.1568]],
-  ['Cherrim (Sunny)', [0.1492, 0.5625, 0.0217, 0.001, 0.0097, 0, 0, 0, 0, 0, 0, 0.2559]],
-  ['Ho-Oh', [0.6891, 0.213, 0.0867, 0.0005, 0, 0, 0.0006, 0.0064, 0.0016, 0, 0.0009, 0.0011]],
-  ['Ho-Oh (S)', [0.5724, 0.272, 0.1522, 0.0002, 0, 0, 0, 0.0012, 0.0017, 0, 0, 0.0003]],
+const ARTWORK = new Map<string, Colourings>([
+  [
+    'Burmy (Plant)',
+    [
+      [0, 0.0527, 0.0288, 0.9173, 0.0012, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0.0393, 0.0257, 0.7813, 0.0052, 0.0021, 0.065, 0.0797, 0.0016, 0, 0, 0],
+    ],
+  ],
+  [
+    'Burmy (Sandy)',
+    [
+      [0, 0.9677, 0.0245, 0, 0, 0, 0, 0.0078, 0, 0, 0, 0],
+      [0, 0.7156, 0.0277, 0, 0, 0, 0.094, 0.1628, 0, 0, 0, 0],
+    ],
+  ],
+  [
+    'Burmy (Trash)',
+    [
+      [0.6469, 0.0088, 0.0064, 0, 0, 0, 0.0064, 0, 0, 0, 0, 0.3315],
+      [0.458, 0.0034, 0.0103, 0, 0, 0, 0.119, 0.0867, 0, 0, 0, 0.3226],
+    ],
+  ],
+  [
+    'Cherrim (Overcast)',
+    [
+      [0.0235, 0, 0, 0.0294, 0.1917, 0.0002, 0, 0, 0.2918, 0.2974, 0.0092, 0.1568],
+      [0.0193, 0, 0, 0, 0.1701, 0.0437, 0.604, 0.0135, 0, 0, 0.0002, 0.1491],
+    ],
+  ],
+  [
+    'Cherrim (Sunny)',
+    [
+      [0.1492, 0.5625, 0.0217, 0.001, 0.0097, 0, 0, 0, 0, 0, 0, 0.2559],
+      [0.0607, 0.6731, 0.0023, 0.0017, 0.0096, 0, 0, 0, 0, 0, 0, 0.2526],
+    ],
+  ],
+  [
+    'Ho-Oh',
+    [
+      [0.6891, 0.213, 0.0867, 0.0005, 0, 0, 0.0006, 0.0064, 0.0016, 0, 0.0009, 0.0011],
+      [0.2175, 0.7577, 0.0168, 0, 0, 0, 0.0049, 0.0024, 0.0007, 0, 0, 0],
+    ],
+  ],
+  [
+    'Ho-Oh (S)',
+    [
+      [0.5724, 0.272, 0.1522, 0.0002, 0, 0, 0, 0.0012, 0.0017, 0, 0, 0.0003],
+      [0.2703, 0.7169, 0.0072, 0, 0, 0, 0.0033, 0.0001, 0.0016, 0.0003, 0, 0.0003],
+    ],
+  ],
+  [
+    'Psyduck',
+    [
+      [0, 0.9889, 0.0111, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0.0291, 0.9709, 0, 0, 0, 0, 0],
+    ],
+  ],
+  [
+    'Psyduck (Swim 2025)',
+    [
+      [0, 0.581, 0.0069, 0, 0.0001, 0.0021, 0.4099, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0.0169, 0.9831, 0, 0, 0, 0, 0],
+    ],
+  ],
 ]);
 
 /** Those signatures against the forms they belong to, which is the shape `identify` takes them in. */
-const ICONS: ReadonlyMap<Form, Signature> = new Map(
-  DATA.forms.flatMap((f): [Form, Signature][] => {
+const ICONS: ReadonlyMap<Form, Colourings> = new Map(
+  DATA.forms.flatMap((f): [Form, Colourings][] => {
     const signature = ARTWORK.get(label(f));
 
     return signature ? [[f, signature]] : [];
@@ -843,6 +902,20 @@ const FIXTURES: readonly Fixture[] = [
     weight: 5.61,
   },
   {
+    cp: 721,
+    defects: { unseparated: ['Psyduck (Swim 2025)'] },
+    file: 'psyduck-shiny.png',
+    form: null,
+    gender: 'male',
+    height: 0.97,
+    hp: 95,
+    overlay: { iv: { attack: 11, defense: 15, stamina: 9 }, level: 24 },
+    shiny: true,
+    species: 'Psyduck',
+    types: ['Water'],
+    weight: 27.66,
+  },
+  {
     cp: 14,
     file: 'pumpkaboo-large.png',
     form: 'Large',
@@ -1151,7 +1224,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 61 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 62 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1323,9 +1396,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 61.
+ * covers everything else in this file — one capture rather than 62.
  *
- * They need it because a body that waits on all 61 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 62 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1514,16 +1587,16 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 61,
+  rows: 62,
   negatives: 3,
-  answeredAsThemselves: 60,
-  oneLevel: 61,
-  crossCheckAgrees: 61,
+  answeredAsThemselves: 61,
+  oneLevel: 62,
+  crossCheckAgrees: 62,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
   noDefects: 51,
-  unseparated: 10,
+  unseparated: 11,
   noOverlayDrawn: 0,
   boxNotFound: 0,
   overlayNotRead: 0,
@@ -1563,12 +1636,12 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 61 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 62 any more, where eleven raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 61 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 62 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
- * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
+ * The eleven it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
  * every number the screen prints is the artwork's to separate, and it has either declined or had no icon for every
  * member. `basculin-blue.png` is the severest — the overlay is drawn over the fish's head, which is the only part of it
  * that differs between the three stripes, so the screen never stated which. A second read of the same screen cannot
@@ -1582,7 +1655,7 @@ test(
     expect(
       FIXTURES.filter((f) => notesOf(f).length > 0).length,
       'how many captures `identify` raises a note on has changed',
-    ).toBe(10);
+    ).toBe(11);
 
     // Off `clearable` and the readings themselves rather than the rows, that function being the one the scan's own
     // fault count calls: a copy of its arithmetic here could pass while the trigger it stands for had changed.
@@ -1601,8 +1674,8 @@ test(
 
     expect(chased, 'which captures a scan reads a second time has changed').toStrictEqual([]);
 
-    // And the other side of the split, which is what says the ten captures `unseparated` reaches cost a scan nothing:
-    // their note is reported and never chased.
+    // And the other side of the split, which is what says the eleven captures `unseparated` reaches cost a scan
+    // nothing: their note is reported and never chased.
     expect(reported, 'a note no second read could clear is one a scan must report rather than chase').toStrictEqual([
       'basculin-blue.png',
       'charizard-gigantamax.png',
@@ -1614,6 +1687,7 @@ test(
       'pikachu-santa-hat.png',
       'pikachu-willows-assistant.png',
       'pikachu-witch-hat.png',
+      'psyduck-shiny.png',
     ]);
   },
   WHOLE_CORPUS_TIMEOUT,
@@ -1749,6 +1823,7 @@ test(
       'meloetta-aria.png': [169],
       'meowth-kanto.png': [423],
       'pikachu-santa-hat.png': [577, 57],
+      'psyduck-shiny.png': [721, 21],
       'snorlax-purified.png': [2304],
       'spinda-04.png': [511],
       'unown-m.png': [839],
@@ -1774,7 +1849,7 @@ test(
     expect(
       figures([...offered.keys()].filter((file) => labelled.has(file))),
       "`readingsOf`'s docblock quotes these figures; update both or neither",
-    ).toStrictEqual({ captures: 4, carryTheirOwn: 3, silent: 0, stray: [47, 56, 57, 77, 747] });
+    ).toStrictEqual({ captures: 5, carryTheirOwn: 4, silent: 0, stray: [21, 47, 56, 57, 77, 747] });
 
     expect(
       figures([...offered.keys()].filter((file) => !labelled.has(file))),
@@ -1915,6 +1990,7 @@ test(
       'pikachu-santa-hat.png': 50,
       'pikachu-witch-hat.png': 50,
       'pikachu.png': 50,
+      'psyduck-shiny.png': 50,
       'pumpkaboo-large.png': 200,
       'sinistea-phony.png': 50,
       'smoliv.png': 25,
@@ -1982,7 +2058,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(61);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(62);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2096,7 +2172,7 @@ test('the artwork chooses within one set of numbers, past the costumes and no fu
   const clones = new Map(
     DATA.forms
       .filter((f) => f.species === 'Pikachu' && !f.costume)
-      .map((f): [Form, Signature] => [f, f.form === 'Copy 2019' ? own : far]),
+      .map((f): [Form, Colourings] => [f, f.form === 'Copy 2019' ? [own] : far]),
   );
   const clone = identify(DATA, pikachu.detail, pikachu.overlay, { signature: own, icons: clones });
 
@@ -2109,7 +2185,7 @@ test('the artwork chooses within one set of numbers, past the costumes and no fu
   const forms = new Map(
     DATA.forms
       .filter((f) => f.species === 'Deoxys')
-      .map((f): [Form, Signature] => [f, f.form === 'Defense' ? signature : far]),
+      .map((f): [Form, Colourings] => [f, f.form === 'Defense' ? [signature] : far]),
   );
   const blind = identify(DATA, { ...deoxys.detail, cp: null, cps: [] }, deoxys.overlay, { signature, icons: forms });
 
@@ -2468,15 +2544,15 @@ const distinct = (rows: readonly Fixture[], of: (row: Fixture) => unknown): stri
  * another, nothing `parseDetail` or the overlay reads being able to separate them. The whole map, so a reader that
  * gained one answer and lost another cannot come out even.
  *
- * Five answered and one declined, which is both halves rather than one: `MARGIN` mattering is something this would
- * notice, where on a corpus that answered every one the margin could have been 0 unremarked. The decline is `ho-oh.png`
- * and it is the icons' doing rather than the capture's, the two being 0.25 apart; its own nearest is **Ho-Oh (S)** by
- * 0.190, which is the wrong one. `identify` still answers `Ho-Oh` there, the fold keeping the shorter name — right by
- * the same luck that made it wrong on Cherrim's Overcast, and the reason that capture's row pinned a `defects.label`
- * until the mask stopped being PGSharp's box welded to a pink head.
+ * Five answered and two declined, which is both halves rather than one: `MARGIN` mattering is something this would
+ * notice, where on a corpus that answered every one the margin could have been 0 unremarked. Both declines are the
+ * icons' doing rather than the capture's, and both are shiny. `ho-oh.png`'s two forms are 0.11 apart in the shiny
+ * colouring; it leads for its own by 0.105. `identify` still answers `Ho-Oh` there, the fold keeping the shorter name.
+ * `psyduck-shiny.png`'s are 0.02 apart, the cyan of the swim ring being the shiny body's own; it leads for the wrong
+ * one by 0.024, where against the ordinary icons alone it led for it by 0.820 and was answered.
  */
 test(
-  'the artwork settles five of six forms the numbers cannot, and declines the family it cannot separate',
+  'the artwork settles five of seven forms the numbers cannot, and declines the shinies it cannot separate',
   async () => {
     const { drawn } = ambiguous(DATA);
     const answers = new Map<string, string>();
@@ -2495,7 +2571,7 @@ test(
       assert.ok(signature, `${fixture.file} yields no artwork signature at all`);
 
       const icons = new Map(
-        family.flatMap((f): [string, Signature][] => {
+        family.flatMap((f): [string, Colourings][] => {
           const icon = ARTWORK.get(label(f));
 
           return icon ? [[label(f), icon]] : [];
@@ -2512,6 +2588,7 @@ test(
       'cherrim-overcast.png': 'Cherrim (Overcast)',
       'cherrim-sunny.png': 'Cherrim (Sunny)',
       'ho-oh.png': 'declined',
+      'psyduck-shiny.png': 'declined',
     });
   },
   WHOLE_CORPUS_TIMEOUT,
@@ -2593,6 +2670,7 @@ test(
       'pikachu-willows-assistant.png': { fast: 'Quick Attack', charged: ['Thunderbolt'] },
       'pikachu-witch-hat.png': { fast: 'Quick Attack', charged: ['Discharge'] },
       'pikachu.png': { fast: 'Thunder Shock', charged: ['Thunderbolt'] },
+      'psyduck-shiny.png': { fast: 'Water Gun', charged: ['Psybeam'] },
       'pumpkaboo-large.png': { fast: 'Astonish', charged: ['Grass Knot'] },
       'rotom-wash.png': { fast: 'Thunder Shock', charged: ['Hydro Pump'] },
       'sinistea-phony.png': { fast: 'Sucker Punch', charged: ['Shadow Ball'] },
@@ -2753,7 +2831,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 61.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 62.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(

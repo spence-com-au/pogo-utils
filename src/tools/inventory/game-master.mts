@@ -44,6 +44,13 @@ export interface Form {
   icon: string | null;
 
   /**
+   * The same artwork in the shiny colouring, or null where `pogo_assets` holds none — the three Copy 2019 clones of the
+   * Kanto starters, which no shiny was ever drawn for. A form is matched against both, a shiny's colours being as far
+   * from the ordinary icon as another form's are.
+   */
+  shiny: string | null;
+
+  /**
    * Every move this form can hold: the ordinary pools, the elite ones a legacy Pokémon may carry, Rayquaza's
    * untradeable Dragon Ascent, the Frustration and Return a shadow or purified one has, and what a change into the form
    * hands over, as Black Kyurem's Freeze Shock, or a grant kept by hand where the game master records no change, as

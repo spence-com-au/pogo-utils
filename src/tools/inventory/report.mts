@@ -5,7 +5,7 @@
  * walk for `scan` and `snap --search`.
  */
 
-import { signatureOf, type Signature } from './artwork.mts';
+import { signatureOf, type Colourings } from './artwork.mts';
 import { parseDetail, powerUpOn, readLines, type Detail } from './detail.mts';
 import { type Form, type GameData } from './game-master.mts';
 import { identify, settledForm, type Identity } from './identify.mts';
@@ -34,7 +34,7 @@ export interface Reading {
  * artwork, so where its box was found that is the floor to start below — a fraction written down instead would be one
  * phone's.
  */
-export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyMap<Form, Signature>) {
+export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyMap<Form, Colourings>) {
   const signature = signatureOf(image, box ? box.y + box.height : undefined);
 
   return signature ? { signature, icons } : undefined;
@@ -57,7 +57,7 @@ export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyM
 export async function readScreen(
   image: Image,
   data: GameData,
-  icons: ReadonlyMap<Form, Signature>,
+  icons: ReadonlyMap<Form, Colourings>,
   configured?: OverlayBox,
 ): Promise<Reading> {
   const screen = screenIn(image);

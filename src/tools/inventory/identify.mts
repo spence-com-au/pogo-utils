@@ -11,7 +11,7 @@
 
 import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
 import { fold } from './ocr.mts';
-import { nearest, numbersOf, type Signature } from './artwork.mts';
+import { nearest, numbersOf, type Colourings, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';
 
@@ -32,7 +32,7 @@ const PGSHARP_FORMS = new Map([
  */
 export interface Artwork {
   signature: Signature;
-  icons: ReadonlyMap<Form, Signature>;
+  icons: ReadonlyMap<Form, Colourings>;
 }
 
 export interface Identity {
@@ -256,7 +256,7 @@ export function identify(
   if (artwork && first && uncostumed.length > 1 && uncostumed.every((f) => sameNumbers(f, first))) {
     const icons = new Map(uncostumed.map((f) => [f, artwork.icons.get(f)]));
     const known = [...icons].every(([, signature]) => signature !== undefined);
-    const picked = known ? nearest(artwork.signature, icons as ReadonlyMap<Form, Signature>) : null;
+    const picked = known ? nearest(artwork.signature, icons as ReadonlyMap<Form, Colourings>) : null;
 
     if (picked) {
       candidates = [picked];

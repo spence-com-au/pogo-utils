@@ -11,7 +11,7 @@
 import { GAME_MASTER, TESSERACT_VENDOR } from '../generated.js';
 import { ICON_BASE } from '../pokedex/icons.js';
 import { Device, type Transport } from '../tools/inventory/adb.mts';
-import { signatureOfIcon, signaturesFor, type Signature } from '../tools/inventory/artwork.mts';
+import { signatureOfIcon, signaturesFor, type Colourings } from '../tools/inventory/artwork.mts';
 import { DEFAULTS } from '../tools/inventory/config.mts';
 import { type Form, type GameData } from '../tools/inventory/game-master.mts';
 import { useEngine } from '../tools/inventory/ocr.mts';
@@ -30,7 +30,7 @@ const MAX_WORKERS = 4;
 /** Everything a read needs that is the same for every screen. */
 interface Kit {
   data: GameData;
-  icons: ReadonlyMap<Form, Signature>;
+  icons: ReadonlyMap<Form, Colourings>;
 }
 
 let gameMaster: Promise<GameData> | null = null;
@@ -116,8 +116,8 @@ function ready(onModel: (fraction: number) => void): Promise<GameData> {
 function prepare(onModel: (fraction: number) => void): Promise<Kit> {
   kit ??= (async () => {
     const data = await ready(onModel);
-    const icons = await signaturesFor(data, async (form) =>
-      signatureOfIcon(decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + form.icon)).arrayBuffer()))),
+    const icons = await signaturesFor(data, async (file) =>
+      signatureOfIcon(decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer()))),
     );
 
     return { data, icons };

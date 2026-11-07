@@ -13,6 +13,7 @@ const APPLIN: Form = {
   stamina: 120,
   heights: null,
   icon: null,
+  shiny: null,
   moves: [],
   evolveCandy: [200],
   shadowOnly: false,
