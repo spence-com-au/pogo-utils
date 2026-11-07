@@ -585,6 +585,11 @@ export const DROP_RETRIES = 3;
  * screen, is not retried, and is left to `shortfall` to report, as is a drop on the first swipe of a pass: with nothing
  * read before the first Pokémon, the look-back cannot tell a drop from a twin, and the walk stops as it does for twins
  * there.
+ *
+ * Nor does the walk visit past `total`, where it has one. The swipe on from the last Pokémon goes nowhere, and only a
+ * read that `agree`s with the last tells that from a new Pokémon: a scroll back up from the moves that stopped short
+ * left a shiny Uxie, the one Pokémon `dynamax&shiny` counts, open part way down its screen, where it read with neither
+ * its sparkles nor its Max band and was taken for a second Pokémon.
  */
 export async function walk<R extends { key: string | null }>(
   { read, next, back }: Steps<R>,
@@ -651,7 +656,9 @@ export async function walk<R extends { key: string | null }>(
     return null;
   };
 
-  for (let index = from; index < from + max; index++) {
+  const last = Math.min(from + max, total ?? Infinity);
+
+  for (let index = from; index < last; index++) {
     // The swipe forward that brought the walk here, the last step taken, where this is not the first Pokémon.
     const forward = log.length - 1;
     const before = { ends: [...ends], misses };

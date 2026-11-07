@@ -539,6 +539,16 @@ test('a count read too high costs a few swipes at the real end and visits nothin
   expect(swipes).toBeLessThan(keys.length + 3 * (DROP_RETRIES + 1));
 });
 
+/**
+ * #785: `dynamax&shiny`, counted `(1)`, wrote its one Uxie four times. The swipe on from it went nowhere, and the screen
+ * it left, scrolled part way down, read without the shiny or the height, so the Uxie read again did not agree with the
+ * first read and was taken for the next Pokémon. The count says there is no next one to look for.
+ */
+test('a walk visits no further than the count the game shows, however the last Pokémon reads again', async () => {
+  // `max` only bounds a walk that goes past the count, which reads its one Pokémon again on every swipe.
+  expect(await walked(['a'], 4, 0, [], [], 1, { 0: 'q' })).toEqual([['a', 0]]);
+});
+
 test('a drop on the first swipe of a pass cannot be told from a twin, so the walk stops there and says so', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
