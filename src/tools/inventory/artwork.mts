@@ -55,7 +55,7 @@ const PANEL_FROM = 0.25;
 const PANEL_TO = 0.6;
 
 /** The artwork's top where no overlay was found to put a floor under it, and how much of the width to take. */
-const ARTWORK_FROM = 0.215;
+export const ARTWORK_FROM = 0.215;
 const ARTWORK_SPAN = { from: 0.28, to: 0.72 };
 
 /**
@@ -127,7 +127,7 @@ function panelTop(image: Image): number {
 const hued = (saturation: number, value: number): boolean => saturation >= SATURATION && value >= VALUE;
 
 /** Hue in turns, saturation and value, which is what separates a body's colour from the lighting on it. */
-function hsv(r: number, g: number, b: number): [number, number, number] {
+export function hsv(r: number, g: number, b: number): [number, number, number] {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const span = max - min;

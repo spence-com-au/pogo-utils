@@ -13,7 +13,9 @@
  * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
  * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
  * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
- * made of it.
+ * made of it. The costume column names the costume rather than saying yes: a Pikachu's off its artwork, against
+ * captures labelled by hand and the game's own icons (`inventory/costume.mts`), with every costume it could be where
+ * the artwork does not settle which, and any other species' as every costume it has once the pass has found it.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
@@ -65,7 +67,8 @@ import { type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
-import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
+import { DEX, type Wardrobe } from '../src/tools/inventory/costume.mts';
+import { CACHE, iconsFor, loadGameData, wardrobeFor } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
@@ -77,6 +80,7 @@ import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
   artworkIn,
+  costumeIn,
   dumped,
   NO_BOX,
   NO_OVERLAY,
@@ -357,13 +361,21 @@ function key() {
   keyed = true;
 }
 
+let wardrobe: Promise<Wardrobe> | null = null;
+
+/**
+ * Pikachu's icons drawn into one frame for its costume, read the first time a Pikachu is: some 200 icons that a scan
+ * or a `parse` of anything else never needs.
+ */
+const wardrobeOn = (data: GameData) => () => (wardrobe ??= wardrobeFor(CACHE, data, options.refresh));
+
 /**
  * Everything each reader makes of one screenshot, for tuning: `readScreen` does the reading, which the Inventory page
  * shares, and this prints it. The answer first, each field once and coloured by where it came from; then, for
  * `--verbose`, the lines OCR found and the `Detail`, `Overlay` and `Identity` the answer was drawn from.
  */
 async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Colourings>) {
-  const read = await readScreen(image, data, icons, config.overlay);
+  const read = await readScreen(image, data, icons, config.overlay, wardrobeOn(data));
   key();
 
   const { facts, notes } = answer(read);
@@ -928,6 +940,27 @@ async function scan(held: Transport) {
       const { shadow, purified, id } = settled;
       notes.push(...settled.notes);
 
+      // The search's answer taken once, since `take` uses the match up, and handed to the artwork: a Pikachu the search
+      // did not find wears no costume, and one it found is not the plain one. Any other species is named only by the
+      // search, so it gets every costume it has, which is the most the screen says.
+      const costumed = flag('costume');
+      const named = await costumeIn(
+        image,
+        boxes.box,
+        id,
+        wardrobeOn(data),
+        costumed === '' ? null : costumed === 'yes',
+      );
+      const costume =
+        named ??
+        (costumed === 'yes'
+          ? [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))]
+          : []);
+
+      if (named === null && id.form?.dex === DEX && costumed !== 'no') {
+        notes.push('no Pikachu found in the artwork to read its costume off');
+      }
+
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
       const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
       const total = iv ? iv.attack + iv.defense + iv.stamina : null;
@@ -945,7 +978,7 @@ async function scan(held: Transport) {
         gender: detail.gender,
         favourite: detail.favourite ? 'yes' : 'no',
         tags: carried.join('; '),
-        costume: flag('costume'),
+        costume: costume.join(' | '),
         shiny: flag('shiny'),
         lucky,
         size: detail.size,

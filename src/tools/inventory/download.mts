@@ -11,6 +11,7 @@ import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
 import { signaturesFor, signatureOfIcon, type Colourings } from './artwork.mts';
+import { designFiles, wardrobeOf, type Design, type Wardrobe } from './costume.mts';
 import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -581,4 +582,18 @@ export function iconsFor(dir: string, data: GameData, refresh = false): Promise<
   return signaturesFor(data, (file) =>
     cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, (bytes) => signatureOfIcon(decodePng(bytes))),
   );
+}
+
+/** Pikachu's icons drawn into one frame for `costumeOf`, downloaded once and cached beside the others. */
+export async function wardrobeFor(dir: string, data: GameData, refresh = false): Promise<Wardrobe> {
+  const designs: Design[] = [];
+
+  for (const { costume, files } of designFiles(data)) {
+    const colourings = await Promise.all(
+      files.map((file) => cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, decodePng)),
+    );
+    designs.push({ costume, colourings });
+  }
+
+  return wardrobeOf(designs);
 }

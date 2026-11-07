@@ -13,6 +13,7 @@ import { ICON_BASE } from '../pokedex/icons.js';
 import { Device, type Transport } from '../tools/inventory/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../tools/inventory/artwork.mts';
 import { DEFAULTS } from '../tools/inventory/config.mts';
+import { designFiles, wardrobeOf, type Wardrobe } from '../tools/inventory/costume.mts';
 import { type Form, type GameData } from '../tools/inventory/game-master.mts';
 import { useEngine } from '../tools/inventory/ocr.mts';
 import { MODEL, tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
@@ -36,6 +37,7 @@ interface Kit {
 let gameMaster: Promise<GameData> | null = null;
 let tables: Promise<GameData> | null = null;
 let kit: Promise<Kit> | null = null;
+let wardrobe: Promise<Wardrobe> | null = null;
 
 /**
  * Why this page cannot read a screenshot, or null where it can. The OCR model is checked against its hash before it
@@ -130,11 +132,36 @@ function prepare(onModel: (fraction: number) => void): Promise<Kit> {
   return kit;
 }
 
+/**
+ * Pikachu's icons drawn into one frame for its costume, fetched the first time a Pikachu is read rather than with the
+ * kit: some 200 icons that no other screen wants. A failure is not kept, for the reason `ready` gives.
+ */
+function wardrobeOn(data: GameData): Promise<Wardrobe> {
+  wardrobe ??= (async () => {
+    const icon = async (file: string) =>
+      decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer()));
+    const designs = await Promise.all(
+      designFiles(data).map(async ({ costume, files }) => ({
+        costume,
+        colourings: await Promise.all(files.map(icon)),
+      })),
+    );
+
+    return wardrobeOf(designs);
+  })();
+
+  wardrobe.catch(() => {
+    wardrobe = null;
+  });
+
+  return wardrobe;
+}
+
 /** Every reader over one screenshot, as `parse` would read it. */
 export async function read(image: Image, onModel: (fraction: number) => void): Promise<Reading> {
   const { data, icons } = await prepare(onModel);
 
-  return readScreen(image, data, icons);
+  return readScreen(image, data, icons, undefined, () => wardrobeOn(data));
 }
 
 /**

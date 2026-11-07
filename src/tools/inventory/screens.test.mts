@@ -19,6 +19,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
 import { ambiguous, nearest, type Colourings } from './artwork.mts';
+import { designFiles, wardrobeOf, type Wardrobe } from './costume.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
@@ -155,6 +156,10 @@ const ICONS: ReadonlyMap<Form, Colourings> = new Map(
  */
 interface Defects {
   tags?: string[];
+
+  /** What `costumeOf` answers where it is not the row's own costume: one other costume, or several. */
+  costume?: string[];
+
   types?: string[];
   nickname?: string;
   cp?: number;
@@ -237,7 +242,11 @@ interface Fixture {
   /** The scene behind the artwork, or absent for the game's own plain sky. Described, the game showing no label. */
   background?: string;
 
-  /** What the artwork wears, or absent for nothing. Described rather than named, the game showing no label either. */
+  /**
+   * What the artwork wears, or absent for nothing: the name the `costume` column gives it, which `costumeOf` reads on a
+   * Pikachu, and described instead where nothing names it — Eevee's pale cap is none of the six costumes `pogo_assets`
+   * draws an Eevee in.
+   */
   costume?: string;
 
   /** The CP above the artwork, which OCR reads on only the captures the CP test below names. */
@@ -848,7 +857,7 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 69,
-    defects: { unseparated: ['Pikachu (Copy 2019)'] },
+    defects: { costume: ['Spring 2023'], unseparated: ['Pikachu (Copy 2019)'] },
     file: 'pikachu.png',
     form: null,
     gender: 'male',
@@ -860,9 +869,9 @@ const FIXTURES: readonly Fixture[] = [
     weight: 5.11,
   },
   {
-    costume: "Ash's red-and-white cap",
+    costume: 'Costume 1',
     cp: 489,
-    defects: { unseparated: ['Pikachu (Copy 2019)'] },
+    defects: { costume: ['One Year Anniversary'], unseparated: ['Pikachu (Copy 2019)'] },
     file: 'pikachu-ash-hat.png',
     form: null,
     gender: 'female',
@@ -874,7 +883,7 @@ const FIXTURES: readonly Fixture[] = [
     weight: 4.54,
   },
   {
-    costume: 'a Santa hat',
+    costume: 'Holiday 2016',
     cp: 577,
     defects: { unseparated: ['Pikachu (Copy 2019)'] },
     favourite: true,
@@ -889,9 +898,9 @@ const FIXTURES: readonly Fixture[] = [
     weight: 7.32,
   },
   {
-    costume: "Willow's lab coat and goggles",
+    costume: 'Doctor',
     cp: 385,
-    defects: { unseparated: ['Pikachu (Copy 2019)'] },
+    defects: { costume: ['Anniversary 2026'], unseparated: ['Pikachu (Copy 2019)'] },
     file: 'pikachu-willows-assistant.png',
     form: null,
     gender: 'male',
@@ -903,7 +912,7 @@ const FIXTURES: readonly Fixture[] = [
     weight: 3.41,
   },
   {
-    costume: 'a purple witch hat',
+    costume: 'Halloween 2017',
     cp: 625,
     defects: { unseparated: ['Pikachu (Copy 2019)'] },
     file: 'pikachu-witch-hat.png',
@@ -1135,14 +1144,36 @@ const FIXTURES: readonly Fixture[] = [
 const read = async (file: string) => {
   const stitch = decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
   const image = screenIn(stitch);
-  const { lines, detail, moves, box, overlay, identity } = await readScreen(stitch, DATA, ICONS);
+  const { lines, detail, moves, box, overlay, identity, costume } = await readScreen(
+    stitch,
+    DATA,
+    ICONS,
+    undefined,
+    wardrobeOn,
+  );
 
   // `image` is the screen `readScreen` read, handed on for the tests that run a reader of their own over it, and
   // `artwork` is rebuilt the way `readScreen` builds it for the same reason: the ones that call `identify` themselves.
-  return { image, lines, detail, moves, box, overlay, artwork: artworkIn(image, box, ICONS), identity };
+  return { image, lines, detail, moves, box, overlay, artwork: artworkIn(image, box, ICONS), identity, costume };
 };
 
 const readings = new Map<string, ReturnType<typeof read>>();
+
+let wardrobe: Promise<Wardrobe> | null = null;
+
+/**
+ * Pikachu's icons as `pogo_assets` draws them, kept under `fixtures/icons/` for the reason the signatures above are: a
+ * test of a reader must not reach the network. Drawn into their frame once, when the first Pikachu is read.
+ */
+const wardrobeOn = () =>
+  (wardrobe ??= Promise.resolve().then(() =>
+    wardrobeOf(
+      designFiles(DATA).map(({ costume, files }) => ({
+        costume,
+        colourings: files.map((file) => decodePng(readFileSync(new URL(`fixtures/icons/${file}`, import.meta.url)))),
+      })),
+    ),
+  ));
 
 const readingOf = (file: string) => {
   // Forgotten again if it rejects, because what rejects here is the machine rather than the capture: the kernel
@@ -1283,6 +1314,12 @@ for (const fixture of FIXTURES) {
         expect(identity.form?.form).toBe(fixture.form);
       }
     });
+
+    // Read on a Pikachu alone, so every other species answers null whatever it wears.
+    test('costume', async () =>
+      expect((await readingOf(fixture.file)).costume).toStrictEqual(
+        fixture.species === 'Pikachu' ? (defects.costume ?? (fixture.costume ? [fixture.costume] : [])) : null,
+      ));
 
     test('identify levels', async () => expect((await readingOf(fixture.file)).identity.levels).toStrictEqual(levels));
 
@@ -1626,6 +1663,7 @@ const COVERAGE = {
   noLevel: 0,
   noDefects: 53,
   unseparated: 11,
+  costumeMisread: 3,
   noOverlayDrawn: 0,
   boxNotFound: 0,
   overlayNotRead: 0,
@@ -1646,6 +1684,7 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
       noLevel: FIXTURES.filter((f) => overlayOf(f).levels.length === 0).length,
       noDefects: FIXTURES.filter((f) => f.defects === undefined).length,
       unseparated: FIXTURES.filter((f) => f.defects?.unseparated !== undefined).length,
+      costumeMisread: FIXTURES.filter((f) => f.defects?.costume !== undefined).length,
       noOverlayDrawn: FIXTURES.filter((f) => f.overlay === null).length,
       boxNotFound: FIXTURES.filter((f) => f.defects && 'box' in f.defects).length,
       overlayNotRead: FIXTURES.filter((f) => f.defects && 'iv' in f.defects).length,
@@ -2935,7 +2974,7 @@ test('the corpus reaches both sides of every attribute', () => {
   expect(
     [...new Set(FIXTURES.flatMap((f) => Object.keys(f.defects ?? {})))].sort(),
     'a reader has started or stopped disagreeing with the screen about something',
-  ).toStrictEqual(['label', 'unseparated']);
+  ).toStrictEqual(['costume', 'label', 'unseparated']);
 
   // And the other side of it, which the keys above cannot give: that some capture carries no defect at all. Without it
   // a reader that was wrong everywhere would pass every row it had a `defects` entry in.
