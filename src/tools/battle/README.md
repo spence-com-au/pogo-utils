@@ -558,9 +558,10 @@ Neither the opponent's energy nor its fast move is on screen, so both are counte
   - Nor is what the bar goes on losing after one: a charged move's hit drains it for about 2s once the fight is back, a
     drop every frame. Counting starts again only once the bar has held for 300ms, which a fast move's hit, landing in
     one frame, leaves it doing between hits.
-  - Nor is a drop the bar reads back above. HP never comes back while the same two Pokémon face each other, so a low our
-    bar later reads more than 2 points above was a misread: the drops to it are taken back, and the hits after it are
-    measured from what the bar reads again, rather than going uncounted until it falls below the misread.
+  - Nor is a drop the bar snaps back from. HP never comes back while the same two Pokémon face each other, so a low our
+    bar later reads more than 10 points above was a misread: the drops to it are taken back, and the hits after it are
+    measured from what the bar reads again, rather than going uncounted until it falls below the misread. A smaller rise
+    is the bar wobbling, by 3 points at times after a hit, and is left to the lowest reading.
 
 The count can only run low through hits it can't see, such as one landing behind a banner or one smaller than a pixel of
 the bar. The one-hit allowance covers a single miss. When the allowance still leaves no move the opponent could afford,

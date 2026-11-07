@@ -169,6 +169,21 @@ test('however many drops took it there, a hit landing meanwhile measured from be
   expect(energy.step).toBeCloseTo(COUNTER);
 });
 
+test('but a bar wobbling back up a few points is no misread, and splits no hit', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 1 });
+
+  // 3 points up and back after the hit, as our Kyogre's bar read 74% and 77% in turn against Lugia.
+  energy.read(1100, hp + 0.03, MATCHUP);
+  energy.read(1200, hp, MATCHUP);
+  energy.read(1300, hp + 0.03, MATCHUP);
+  energy.read(1400, hp, MATCHUP);
+  fight(energy, { from: hp, step: COUNTER, hits: 1, start: 1500 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(12);
+  expect(energy.step).toBeCloseTo(COUNTER);
+});
+
 test('nor does a misread low as the bar settles stand for what it settled at', () => {
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: COUNTER, hits: 1 });

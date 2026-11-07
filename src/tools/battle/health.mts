@@ -360,7 +360,7 @@ export const areas = (): Area[] => [
  * between readings of 64% and Charizard at 4% between readings of 80%. A charged move's hit is as large, so size alone
  * cannot tell them apart; what does is that a real hit stays and a misread snaps back.
  */
-const JUMP = 0.1;
+export const JUMP = 0.1;
 
 /**
  * Each side's HP as decided on from the bars read frame by frame: a reading within `JUMP` of the HP held replaces it at

@@ -39,6 +39,7 @@ import {
   type Verdict,
   WANDER,
 } from './damage.mts';
+import { JUMP } from './health.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, formsOf, lowersDefense, MOVES_HELD, type Shown } from './strategy.mts';
 
@@ -104,10 +105,12 @@ class Steps {
       return;
     }
 
-    // HP never comes back within a stretch, either side sent in starting another, so a low the bar reads back above by
-    // more than it wanders was a misread: each drop to it is taken back, and with none left, the bar is measured from
-    // this reading. Left as the low, the misread would have no hit counted until the bar fell below it.
-    while (hp - this.#low > WANDER) {
+    // HP never comes back within a stretch, either side sent in starting another, so a low the bar snaps back from, by
+    // more than `JUMP`, was a misread: each drop to it is taken back, and with none left, the bar is measured from this
+    // reading. Left as the low, the misread would have no hit counted until the bar fell below it. A smaller rise is
+    // left alone, the bar wobbling by 3 points at times after a hit: taken back, the hit would be measured again from
+    // above to the wobble's top, and the wobble down counted as a clean step of its own, two slivers for one step.
+    while (hp - this.#low > JUMP) {
       const before = this.#before.pop();
 
       if (before === undefined) {
