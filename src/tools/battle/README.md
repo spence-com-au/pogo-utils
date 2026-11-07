@@ -115,9 +115,11 @@ for text and done every few seconds.
   and a phone that stops answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
-  length. Where none are found, rows are swept instead. `Player` swipes the minigame from a charged-move tap until the
-  throw plays, and from when the run finds a throw [playing](#the-run-loop) that no tap began, as where the opponent's
-  move came first.
+  length. Where none have been found, rows are swept instead; once some have, since the run took the throw to be
+  [playing](#the-run-loop), a frame with none is left alone, the bubbles being over and the move playing out with
+  nothing to pop. Bubbles found before then may be no minigame's, a faint's shards or a Poké Ball's flash after a tap
+  that came to nothing. `Player` swipes the minigame from a charged-move tap until the throw plays, and from when the
+  run finds a throw playing that no tap began, as where the opponent's move came first.
 
 ### Between battles
 
@@ -213,7 +215,8 @@ for text and done every few seconds.
    5.1s or more, and nothing else after a tap more than 2.4s. Its bubbles are no sign, Fly's being found on its own lit
    button and on the sky. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the
    tap dropped, logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw
-   retried. A faint or a switch of ours before it plays drops it too.
+   retried. A faint or a switch of ours before it plays drops it too, and a faint with no switch prompt, as when the
+   last of ours is sent in, has `Player` forget the minigame it was waiting for, the next of ours fighting at once.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
    `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is

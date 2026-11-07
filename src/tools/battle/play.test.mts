@@ -127,7 +127,7 @@ test('swipes the lower field after a charged move, until the throw plays', () =>
   expect(lowest(after)).toBeLessThan(0.55);
 });
 
-test('swipes through the bubbles found in the minigame, and waits for them through its lead-in', () => {
+test('swipes through the bubbles found in the minigame, waiting through its lead-in and once they are gone', () => {
   const player = new Player(SIZE);
   const chain: [Point, Point] = [
     [0.17, 0.59],
@@ -145,11 +145,65 @@ test('swipes through the bubbles found in the minigame, and waits for them throu
     ms: 80,
   });
 
-  // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
+  // Found again once the throw is taken to be playing, then the move playing out once its bubbles are over, read as
+  // the fight until a frame hides the HUD.
+  player.next('battle', 2000, { minigame: true, bubbles: [chain] });
+  const over = Array.from({ length: 60 }, (_, i) => player.next('battle', 3000 + i * 33, { bubbles: [] }));
+
+  expect(over.every((action) => action.kind === 'wait')).toBe(true);
+});
+
+// Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.
+test('sweeps rows where bubbles were found only before the throw was taken to be playing', () => {
+  const player = new Player(SIZE);
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 1500, {
+    bubbles: [
+      [
+        [0.17, 0.59],
+        [0.59, 0.51],
+      ],
+    ],
+  });
+
   const late = player.next('battle', 3000, { bubbles: [] });
 
-  expect(late.kind).toBe('swipe');
-  expect(late).not.toMatchObject({ from: chain[0] });
+  expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
+});
+
+test('sweeps rows through a minigame whose bubbles are never found, though the last one’s were', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 1000, { minigame: true, bubbles: [chain] });
+  play(['other', 'battle', 'charged', 'charged'], player, 2000);
+
+  // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
+  const late = player.next('battle', 5000, { bubbles: [] });
+
+  expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
+});
+
+test('fights once told to forget a minigame that is not coming, whatever was found as its bubbles', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.4, 0.5],
+    [0.89, 0.55],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 3000, { minigame: true, bubbles: [chain] });
+  expect(player.next('battle', 3033, { bubbles: [] })).toEqual({ kind: 'wait' });
+
+  player.forget();
+
+  expect(player.minigame).toBe(false);
+  expect(player.next('battle', 3066)).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
 });
 
 // A throw the opponent's came ahead of plays after theirs, its minigame coming long after the tap that began the last.

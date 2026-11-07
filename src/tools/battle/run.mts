@@ -1127,6 +1127,7 @@ export async function run(
 
         if (gone !== undefined) {
           drop(`${seen.own ?? party[gone]?.species ?? 'ours'} fainted first`);
+          player.forget();
           fainted.add(gone);
           faintAt = clock.now();
           caught = prompt ? caught : { slot: gone, told: state !== 'switch' };

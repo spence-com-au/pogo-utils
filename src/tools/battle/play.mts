@@ -84,9 +84,9 @@ export interface Choices {
   shield?: boolean;
 
   /**
-   * Whether the frame is a minigame that no tap here began, swiped as one from then until the throw plays: a throw the
-   * opponent's came ahead of plays after theirs with no tap of its own, and a frame of no fight early in a minigame ends
-   * the one a tap began.
+   * Whether the caller takes a throw of ours to be playing on this frame, swiped as a minigame from then until the throw
+   * plays though no tap here began it: a throw the opponent's came ahead of plays after theirs with no tap of its own,
+   * and a frame of no fight early in a minigame ends the one a tap began.
    */
   minigame?: boolean;
 
@@ -101,8 +101,9 @@ export interface Choices {
 
   /**
    * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
-   * waits through the minigame's lead-in, there being nothing to pop yet, and sweeps rows after it; undefined, where the
-   * bubbles' colour is not known, sweeps rows throughout.
+   * waits through the minigame's lead-in, there being nothing to pop yet, and once this minigame's have been found since
+   * its throw was taken to be playing, there being none left; otherwise it sweeps rows, the finder perhaps missing the
+   * move's bubbles. Undefined, where the bubbles' colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
 }
@@ -182,6 +183,19 @@ export class Player {
   #tapped: { state: State; at: number } | undefined;
   #swipes = 0;
 
+  /** Whether the caller has taken the throw to be playing since the minigame began, as `minigame` says. */
+  #playing = false;
+
+  /**
+   * Whether the minigame under way has had its bubbles found since its throw was taken to be playing, after which a
+   * frame with none is its bubbles over rather than missed. The move then plays out, read as `battle` until a frame of
+   * it that hides the HUD, with nothing to pop and no fast move to fire: in a kept run, `bubbleSwipes` found Avalanche's
+   * bubbles from 114.14s to 119.35s, never losing them for more than 0.3s, and rows were swept on from there through
+   * `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no minigame's: live, after an Outrage tapped
+   * went unthrown, Kyurem having fainted to our fast move, the shards of its faint were found as Outrage's bubbles.
+   */
+  #found = false;
+
   /** When each lit charged-move button lit, by its x, for as long as it stays lit. */
   readonly #lit = new Map<number, number>();
 
@@ -193,6 +207,18 @@ export class Player {
   /** Whether the charged-move minigame is being swiped at, which nothing else should hold up. */
   get minigame(): boolean {
     return this.#minigame;
+  }
+
+  /**
+   * Forgets the minigame of a charged move tapped that will not be thrown, ours having fainted first with no prompt to
+   * end it, as when the last of ours is sent in. The next of ours fights on frames read as `battle` throughout: live,
+   * Kyogre fainted moments after tapping Avalanche, and Dragonite stood through 5s of the fight, a single frame as it
+   * was sent in, 1.5s after the tap, having been found as Avalanche's bubbles.
+   */
+  forget(): void {
+    this.#minigame = false;
+    this.#playing = false;
+    this.#found = false;
   }
 
   /** What to do about a frame read as `state`, at `now` milliseconds. */
@@ -220,8 +246,11 @@ export class Player {
     // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
     if (state !== 'battle' && state !== 'charged') {
       this.#minigame = false;
+      this.#playing = false;
+      this.#found = false;
     } else if (minigame) {
       this.#minigame = true;
+      this.#playing = true;
     }
 
     const throwable = best === undefined ? ready : ready.filter(([x]) => x === best);
@@ -239,10 +268,12 @@ export class Player {
       const [through] = this.#minigame ? (bubbles ?? []) : [];
 
       if (through) {
+        this.#found ||= this.#playing;
+
         return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
       }
 
-      if (this.#minigame && bubbles && this.#tapped && now - this.#tapped.at < LEAD_IN_MS) {
+      if (this.#minigame && bubbles && (this.#found || (this.#tapped && now - this.#tapped.at < LEAD_IN_MS))) {
         return { kind: 'wait' };
       }
 
@@ -274,6 +305,8 @@ export class Player {
 
     this.#tapped = { state, at: now };
     this.#minigame = true;
+    this.#playing = false;
+    this.#found = false;
 
     return { kind: 'tap', at: first, what: state };
   }
