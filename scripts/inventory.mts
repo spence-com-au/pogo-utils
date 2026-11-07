@@ -64,7 +64,7 @@ import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
+import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
@@ -580,9 +580,13 @@ async function scan(held: Transport) {
         const lines = await readLines(image);
         const detail = await parseDetail(lines, data, image);
 
-        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over: closed here, so the next
-        // attempt reads the screen beneath it rather than every attempt reading the dialog and the pass stopping.
-        if (detail.hp === null && dialogOpen(lines)) {
+        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over, or one the game raised on
+        // its own. Closed here, so the next attempt reads the screen beneath it, and this one counted as unread however
+        // much of it did read: the HP above `New Mega Level available!` reads, and a row keyed by it would carry the
+        // Max, moves, shadow and purified the dialog hides as blanks that look like answers.
+        const covered = dialogOpen(lines, image);
+
+        if (covered) {
           await dismiss();
         }
 
@@ -591,8 +595,8 @@ async function scan(held: Transport) {
         // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
         // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from
         // another.
-        const overlay = detail.hp === null ? null : await overlayOf(image, lost === null || lost > 0);
-        const key = keyOf(detail, overlay);
+        const overlay = detail.hp === null || covered ? null : await overlayOf(image, lost === null || lost > 0);
+        const key = covered ? null : keyOf(detail, overlay);
         const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));
 
         // The key above the other two, not beside them: a reading with no key is the one `walk` counts as a miss and
@@ -858,9 +862,14 @@ async function scan(held: Transport) {
           // swipes, so that a read failing before the phone is back is a rejection here rather than an unhandled one.
           let dialog = false;
           let cutOff = false;
+          let measures = '';
           const found = ocr(scrolled).then((lines) => {
-            dialog = dialogOpen(lines);
+            dialog = dialogOpen(lines, scrolled);
             cutOff = !options.scroll && movesCutOff(lines, scrolled);
+
+            // Not off a stitch, whose first frame is the detail screen the reading came from and so vouches for it
+            // whatever the frames below it show.
+            measures = options.scroll ? '' : measuresIn(lines);
 
             return parseMoves(lines, data, settled.id.form, scrolled);
           });
@@ -882,7 +891,7 @@ async function scan(held: Transport) {
             notes.push('a dialog opened on the swipe to the moves and was closed');
           }
 
-          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, powerUp: await power };
+          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, measures, powerUp: await power };
         };
 
         // The stardust off any look of one reach, since the step further down that a second look takes can scroll
