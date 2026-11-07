@@ -146,7 +146,6 @@ const LEAVE = '\x1b[?25h\x1b[?1049l';
 const SYNC = '\x1b[?2026h';
 const BEGIN = `${SYNC}\x1b[H`;
 const UNSYNC = '\x1b[?2026l';
-const END = `\x1b[J${UNSYNC}`;
 const CLEAR_LINE = '\x1b[K';
 
 /** How wide the table must still be with the phone beside it, or the phone is left out; and the gap between them. */
@@ -331,16 +330,19 @@ export function live(
       pictured = undefined;
     }
 
-    // Each line set in past the phone by moving the cursor rather than by spaces, which would draw over it.
+    // Each line set in past the phone by moving the cursor rather than by spaces, which would draw over it, and cleared
+    // before it is written rather than after: a character written in the last column leaves the cursor on it, where a
+    // clear after the line, to its end or the screen's, would take it, the last digit of the opponent's CP ending its
+    // line. The lines fill every row, so none is left below them to clear.
     const indent = shown ? `\x1b[${taken + 1}G` : '';
 
     stream.write(
       BEGIN +
         picture +
         screen(rows, shown ? columns - taken : columns)
-          .map((line) => indent + line + CLEAR_LINE)
+          .map((line) => indent + CLEAR_LINE + line)
           .join('\r\n') +
-        END,
+        UNSYNC,
     );
   };
 
