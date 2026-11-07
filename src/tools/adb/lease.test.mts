@@ -195,6 +195,15 @@ test('lets go at the end of a turn with nothing that reached the phone still run
   expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 0 });
 });
 
+test('lets go when run by hand, with nothing on stdin', async () => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, 'shell', 'true');
+  execFileSync('node', [SCRIPT, 'stop'], { env: env(a), input: '' });
+
+  expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 0 });
+});
+
 test('keeps the phone past the end of a turn while a command that reached it runs on', async () => {
   const a = await session('pogo-utils-a');
   const b = await session('pogo-utils-b');
