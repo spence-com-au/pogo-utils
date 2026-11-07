@@ -407,8 +407,8 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
  * reads nothing the pattern accepts.
  *
  * Unanchored and so unreliable, which is why these are candidates rather than an answer: a candidate is kept only
- * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 14 captures that reach it,
- * 11 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and two
+ * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 15 captures that reach it,
+ * 12 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and two
  * read nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
  * capture, so they fail there rather than going stale.
  */
@@ -557,8 +557,14 @@ export const measurement = (text: string) => WEIGHT.test(text) || HEIGHT.test(te
  * own names carry one. Tesseract does read a `*` out of sparkles and icons, but not on the line a name is taken from:
  * over 770 detail captures it reads one into 124 other lines on 95 of them, and into no name line but
  * `budew-asterisks.png`'s. A `#` is the same, measured where the name line is chosen.
+ *
+ * And `/`, which nicknames that spell out moves are written with: `tyranitar-slash.png` is called `87% B/C`, for Bite
+ * and Crunch, and was written `87% BC`. Tesseract reads a `/` everywhere on a detail screen — the IV triple, the catch
+ * date, the types and the HP — but over 258 detail captures it reads one into the line the name is taken from on only
+ * three, each a Tyranitar named that way. Of the 402 lines besides those and the HP that carry one, on 244 captures,
+ * the only ones within 400 pixels above the HP are catch dates, which sit above the name and never win its line.
  */
-const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%*#♀♂:-]/gu, '').trim() || null;
+const sanitise = (text: string) => text.replace(/[^\p{L}\p{N} .'%*#/♀♂:-]/gu, '').trim() || null;
 
 /**
  * The name read off the band between the artwork and the HP bar, answered only where it is a species' name, which is
