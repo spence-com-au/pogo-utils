@@ -277,7 +277,8 @@ switch (process.argv[2]) {
   }
 
   case 'stop': {
-    const { background_tasks: tasks } = JSON.parse(readFileSync(0, 'utf8')) as {
+    // Run by hand, as a session asked by another to let go of the phone does, it is given nothing on stdin.
+    const { background_tasks: tasks } = JSON.parse(readFileSync(0, 'utf8') || '{}') as {
       background_tasks?: { type: string; status: string }[];
     };
 
