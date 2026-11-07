@@ -16,10 +16,11 @@ never the content of the report.
 The steps below are the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way,
 under `CLAUDE.md`'s rule for what a change leaves behind, has nobody waiting on it, so nothing is asked or shown and
 Confirm's wait is skipped. A required section the session cannot fill leaves the defect to the reply rather than filed.
-The search hits are judged, each closed one by its `stateReason` from `gh issue view <number> --json stateReason`: an
-open issue that already covers the defect takes a comment with whatever the new case adds instead, one closed as not
-planned leaves it to the reply, and one closed as completed whose defect has come back is linked from the new issue.
-Once Create prints the URL, the task the defect was found in carries on.
+The search hits are judged, each closed one by the reason the search lists for it: an open issue that already covers the
+defect takes a comment with whatever the new case adds instead, one closed as not planned leaves it to the reply, the
+user having already decided, one closed as completed whose defect has come back is linked from the new issue, and one
+closed as a duplicate is judged as the issue it duplicates would be. Once Create prints the URL, the task the defect was
+found in carries on.
 
 ## Read the form first
 
@@ -71,7 +72,8 @@ Draft a title that describes the defect rather than the fix, in the voice the re
 Search for what is already filed, and show any hits above the body rather than judging them:
 
 ```bash
-gh issue list --search '<keywords from the title>' --state all --limit 10
+gh issue list --search '<keywords from the title>' --state all --limit 10 \
+  --json number,state,stateReason,title --jq '.[] | "#\(.number) \(.state) \(.stateReason // "") \(.title)"'
 ```
 
 Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to.
