@@ -35,8 +35,8 @@ body:
       label: 'Link'
       description:
         'The address bar, copied. The fragment carries the state a page was left in, so this is what reproduces it. A
-        `pnpm inventory` or `pnpm battle` command has no address, so leave this empty for one and give the command under
-        What happened instead.'
+        `pnpm inventory` or `pnpm battle` command, or a failure in repository tooling, has no address, so leave this
+        empty for one and give the command or the run that failed under What happened instead.'
       placeholder: 'https://spence.com.au/pogo-utils/#/pokedex?q=pika&n=25'
 
   - type: 'textarea'
