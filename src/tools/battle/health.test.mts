@@ -29,6 +29,9 @@ test.each([
   // The opponent's red at 4 pixels, behind its orange trail.
   ['charged-shadow-sneak', 0.59, 0.04],
   ['charged-two-right', 0.67, 0.42],
+
+  // Red foliage of the autumn map just left of our bar's outline, which read as our bar at 2% beside it.
+  ['charged-pixel8-xerneas-not-very-effective', 0.67, 0.52],
 ])('%s: %f of ours left and %f of theirs', (name, own, opponent) => {
   const health = read(name);
 
@@ -46,6 +49,20 @@ test.each(['battle-minigame-kyogre-great', 'battle-minigame-mewtwo', 'battle-shi
     expect(read(name)).toEqual({ own: null, opponent: null });
   },
 );
+
+test('artwork inside a bar where its fill has gone leaves the bar read', () => {
+  // Red painted where the opponent's 42% has gone, inside the outline, as their own artwork, PGSharp's star and the
+  // orange trail's red end lie there: unlike foliage left of a bar, it starts past a fill the outline runs over.
+  const image = decodePng(readFileSync(new URL('fixtures/charged-two-right.png', import.meta.url)));
+
+  for (let y = 282; y < 288; y++) {
+    for (let x = 236; x < 242; x++) {
+      image.data.set([230, 100, 100], (y * image.width + x) * 4);
+    }
+  }
+
+  expect(within(readHealth(image).opponent, 0.42)).toBe(true);
+});
 
 test('a bar whose left end is hidden goes unread rather than read short', () => {
   // The favourites star sits over our bar's left end, and the outline there that a bar is told by.
