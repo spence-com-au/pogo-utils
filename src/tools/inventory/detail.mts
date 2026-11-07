@@ -383,9 +383,9 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
  * reads nothing the pattern accepts.
  *
  * Unanchored and so unreliable, which is why these are candidates rather than an answer: a candidate is kept only
- * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 13 captures that reach it,
- * 11 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and one
- * reads nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
+ * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 14 captures that reach it,
+ * 11 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and two
+ * read nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
  * capture, so they fail there rather than going stale.
  */
 async function cpsIn(image: Image): Promise<number[]> {

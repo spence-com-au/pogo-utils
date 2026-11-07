@@ -154,15 +154,75 @@ export async function sizeOf(image: Image, height: Line): Promise<Size | null> {
 
 /**
  * Whether the star at the top right is filled. A favourite's is solid gold where an ordinary one is a white outline, so
- * this is the one flag colour alone settles — but by the white as much as by the gold, since a gold or yellow
- * background behind an outline puts as much gold in the corner as a filled star does. The star is the game's own
- * furniture rather than PGSharp's, so it scales with the screen and a fraction holds where one for the overlay did not
- * — 0.900, 0.074 against 0.903, 0.080.
+ * this is the one flag colour alone settles — but by the outline's shape as much as by the gold, since a gold or yellow
+ * background behind an outline puts as much gold in the corner as a filled star does. What only an outline has is a
+ * closed white ring with something that is not white inside it, so that is what is asked for rather than how much white
+ * there is: a pale background behind a filled star brings white of its own into the corner, but no ring. The star is
+ * the game's own furniture rather than PGSharp's, so it scales with the screen and a fraction holds where one for the
+ * overlay did not — 0.900, 0.074 against 0.903, 0.080.
  */
 export function isFavourite(image: Image): boolean {
   const star = crop(image, image.width * 0.86, image.height * 0.05, image.width * 0.1, image.height * 0.06);
 
-  return patchIn(star, gold).fraction >= FAVOURITE_GOLD && patchIn(star, white).fraction < FAVOURITE_WHITE;
+  return patchIn(star, gold).fraction >= FAVOURITE_GOLD && enclosedBy(star, white) < FAVOURITE_RING;
+}
+
+/**
+ * How much of a region the pixels a predicate accepts wall off from its edges: everything it rejects that a walk from
+ * the border through rejected pixels cannot reach, as a fraction of the region.
+ */
+function enclosedBy(image: Image, matches: (r: number, g: number, b: number) => boolean): number {
+  const { width, height } = image;
+  const open = new Uint8Array(width * height);
+  const reached = new Uint8Array(width * height);
+  const stack: number[] = [];
+
+  // A step off the top or the bottom lands outside `open`, which reads as walled.
+  const visit = (i: number) => {
+    if (open[i] && !reached[i]) {
+      reached[i] = 1;
+      stack.push(i);
+    }
+  };
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      open[y * width + x] = matches(...rgb(image, x, y)) ? 0 : 1;
+    }
+  }
+
+  for (let x = 0; x < width; x++) {
+    visit(x);
+    visit((height - 1) * width + x);
+  }
+
+  for (let y = 0; y < height; y++) {
+    visit(y * width);
+    visit(y * width + width - 1);
+  }
+
+  for (let i = stack.pop(); i !== undefined; i = stack.pop()) {
+    const x = i % width;
+
+    if (x > 0) {
+      visit(i - 1);
+    }
+
+    if (x < width - 1) {
+      visit(i + 1);
+    }
+
+    visit(i - width);
+    visit(i + width);
+  }
+
+  let enclosed = 0;
+
+  for (let i = 0; i < open.length; i++) {
+    enclosed += open[i] && !reached[i] ? 1 : 0;
+  }
+
+  return enclosed / open.length;
 }
 
 /**
@@ -404,22 +464,27 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 }
 
 /**
- * Measured over the 63 committed captures: 53 are exactly 0 and the five favourites run 18.66% to 38.47%. Not 0.02,
+ * Measured over the 65 committed captures: 54 are exactly 0 and the six favourites run 18.66% to 38.47%. Not 0.02,
  * because `castform-rainy.png`'s background puts **15.78%** in that corner behind a white-outline star. Gold alone
  * cannot separate them, though: the bokeh behind `frigibax.png`'s outline puts 19.13% there and a live Axew's 24.31%,
- * inside the favourites' range, which is what `FAVOURITE_WHITE` is for.
+ * inside the favourites' range, which is what `FAVOURITE_RING` is for.
  */
 const FAVOURITE_GOLD = 0.17;
 
 /**
- * Near-white in the star's corner, which is the outline itself and so does not move with the background: exactly 0 on
- * all five favourites in the corpus, solid gold leaving none, and 6.40% to 7.23% on its 50 outline stars. The two
- * plain Pixel 4 XL screens of Axew over yellow bokeh that gold alone read as favourites hold 7.07% and 7.33%, and
- * issue #586 found none under 6.4% over about 450 live outlines. Anything between 0 and 6.4% separates them, so the line
- * sits a third of the way up: a favourite's edge catching some glare still clears it, and an outline would have to
- * lose two thirds of itself to fall under it.
+ * How much of the star's corner a white ring walls off, which is the inside of an outline star and so does not move
+ * with the background. Measured over 262 detail screens — the corpus's 62 stitches, the two Axew screens in
+ * `fixtures/favourite/` and 198 single screens from live scans — every one of the 22 favourites walls off exactly 0,
+ * solid gold leaving no ring, and every one of the 240 outlines 6.62% or more: 10.22% to 10.80% across the corpus, and
+ * under 9.5% only where a Rookidee's pale cream backdrop runs on into the star's inside. The 11 outlines with as much
+ * gold as a favourite hold 10.53% to 10.68%.
+ *
+ * Not near-white's share of the corner: an outline's ring brings 6.4% to 7.3% on a backdrop with no white of its own,
+ * but `lileep-favourite.png` sits its solid star on a large pale bubble that brings 13.73% and walls none of it off.
+ * The line sits under a third of the smallest outline's, so an outline would have to lose two thirds of its inside to
+ * white before it read as filled.
  */
-const FAVOURITE_WHITE = 0.02;
+const FAVOURITE_RING = 0.02;
 
 /**
  * The size badge's pill as a band over the height, measured in the height's own height: the pill is a little under two
