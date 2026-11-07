@@ -8,8 +8,7 @@ import { Device, KEY, type Transport } from './adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { type GameData } from './game-master.mts';
 import { useEngine } from './ocr.mts';
-import { readLines } from './detail.mts';
-import { decodePng, encodePng } from './png.mts';
+import { decodePng, encodePng, type Image } from './png.mts';
 import { CLEAR_KEYS, dialogOpen, storage, unsearchable } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
@@ -34,11 +33,15 @@ const STORAGE = [word(1, '(12)', 70, 10, 20, 8), word(2, 'SEARCH', 40, 30, 20, 1
 
 /**
  * A phone showing storage, with `focus` in front as Android user `user`, that records every command and answers each
- * screenshot alike. `dumpsys package` answers that the package is installed for each of `installs`, in the form a
+ * screenshot alike, with `screen`. `dumpsys package` answers that the package is installed for each of `installs`, in the form a
  * Pixel 4 XL on Android 13 writes it, with a user it was uninstalled for alongside so that the field is what is read.
  */
-function phone(focus: string, { user = 0, installs = [0] }: { user?: number; installs?: readonly number[] } = {}) {
+function phone(
+  focus: string,
+  { user = 0, installs = [0], screen = SCREEN }: { user?: number; installs?: readonly number[]; screen?: Image } = {},
+) {
   const sent: string[][] = [];
+  const png = encodePng(screen);
   const transport: Transport = {
     state: () => Promise.resolve('device'),
     shell: (args) => {
@@ -65,7 +68,7 @@ function phone(focus: string, { user = 0, installs = [0] }: { user?: number; ins
     screencap: () => {
       sent.push(['screencap']);
 
-      return Promise.resolve(encodePng(SCREEN));
+      return Promise.resolve(png);
     },
   };
 
@@ -365,21 +368,31 @@ test('a grid whose storage count did not read answers null', () => {
 });
 
 /**
- * Each grid read under real OCR, and the tops of the CP labels in its first row and its second: the first tile's tap
- * belongs between them. `sparkles.png` is the grid whose first row of labels all misread, the ✦✦ a shiny tile carries
- * against its `CP` turning them into `on 376`, `£ 546` and `seo`, so that the first to read was a row down and the scan
- * began from the fourth of six. The other two carry the tabs' counts above the box, which are not labels either.
+ * Each grid searched under real OCR, and the tops of the CP labels in its first row and its second: the first tile's
+ * tap belongs between them. Searched rather than read alone, since what lies above the search box is no tile and the
+ * search is what finds the box: `spheal.png` carries its term, `shiny&363`, ending in a CP-sized number of its own.
+ * `sparkles.png` is the grid whose first row of labels all misread, the ✦✦ a shiny tile carries against its `CP`
+ * turning them into `on 376`, `£ 546` and `seo`, so that the first to read was a row down and the scan began from the
+ * fourth of six; `spheal.png` the one where they read `yor 37`, `7°` and `£ agi`, only one of them ending in a number,
+ * and the scan began from the fourth of five (#798). The other two carry the tabs' counts above the box, which are not
+ * labels either.
  */
 test.for([
   ['sparkles', 742, 1261],
+  ['spheal', 742, 1261],
   ['grid', 460, 828],
   ['searched', 516, 880],
 ] as const)("the first tile is tapped in the first row of storage/%s.png's grid", async ([name, row, next]) => {
   const finished = useTestEngine();
   const image = decodePng(new Uint8Array(readFileSync(new URL(`fixtures/storage/${name}.png`, import.meta.url))));
-  const lines = await readLines(image).finally(finished);
-  const { firstTile } = storage(phone(DEFAULTS.package).device, CONFIG, DATA, image, () => {});
-  const [x, y] = firstTile(lines);
+  const { search, firstTile } = storage(
+    phone(DEFAULTS.package, { screen: image }).device,
+    CONFIG,
+    DATA,
+    image,
+    () => {},
+  );
+  const [x, y] = firstTile(await search('shiny').finally(finished));
 
   expect(x).toBe(image.width * DEFAULTS.taps.firstTile[0]);
   expect(y).toBeGreaterThan(row);
