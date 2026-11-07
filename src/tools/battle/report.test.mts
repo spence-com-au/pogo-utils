@@ -136,16 +136,17 @@ function terminal(columns = 80, rows = 24) {
   const shown = () => {
     const last = written.split('\x1b[?2026h\x1b[H').at(-1) ?? '';
 
-    return (last.split('\x1b[J')[0] ?? '').split('\r\n').map((row) => erased(row, columns));
+    return (last.split('\x1b[?2026l')[0] ?? '').split('\r\n').map((row) => erased(row, columns));
   };
 
   return { stream, written: () => written, shown };
 }
 
 /**
- * `row` as a terminal `columns` wide shows it, its clears to the end of the line done. A clear starts at the cursor, and
- * a character written in the last column leaves the cursor on it rather than past it, so a clear straight after takes
- * that character with it: Ghostty's `eraseLine` clears from `cursor.x`, which a line reaching the edge leaves there.
+ * `row` as a terminal `columns` wide shows it, its clears to the end of the line or the screen done. A clear starts at
+ * the cursor, and a character written in the last column leaves the cursor on it rather than past it, so a clear
+ * straight after takes that character with it: Ghostty's `eraseLine` clears from `cursor.x`, which a line reaching the
+ * edge leaves there, and its `eraseDisplay` below the cursor begins with the same `eraseLine`.
  */
 function erased(row: string, columns: number): string {
   const [first = '', ...sequences] = row.split('\x1b[');
@@ -164,7 +165,7 @@ function erased(row: string, columns: number): string {
   for (const sequence of sequences) {
     const [, at = '', final = '', text = ''] = /^([\d;?]*)([A-Za-z])(.*)$/su.exec(sequence) ?? [];
 
-    if (final === 'K') {
+    if (final === 'K' || final === 'J') {
       const last = shown.findLastIndex(({ drawn }) => drawn);
 
       if (column > columns && last >= 0) {
@@ -289,6 +290,20 @@ test('keeps the last character of a line that reaches the edge of the terminal, 
 
   expect(shown()[3]).toBe(panel(FIGHT, 81).split('\n')[0]);
   expect(shown()[3]?.endsWith('CP 1826')).toBe(true);
+});
+
+test('keeps the last character of the bottom row, the run’s newest event reaching the edge of the terminal', () => {
+  const { stream, shown } = terminal(80, 24);
+  const report = live(stream);
+  const party = `party: ${'Charizard, '.repeat(8)}Gyarados`;
+
+  report.status(STATUS);
+  Array.from({ length: 7 }, (_, i) => report.event(`tap ${i}`));
+  report.event(party);
+  vi.advanceTimersByTime(100);
+
+  expect(shown()).toHaveLength(24);
+  expect(shown().at(-1)).toBe(faded(party.slice(0, 80)));
 });
 
 test('draws why a side did something faint after it, carrying on below where it is too long', () => {
