@@ -331,14 +331,16 @@ export function live(
       pictured = undefined;
     }
 
-    // Each line set in past the phone by moving the cursor rather than by spaces, which would draw over it.
+    // Each line set in past the phone by moving the cursor rather than by spaces, which would draw over it, and cleared
+    // before it is written rather than after: a character written in the last column leaves the cursor on it, where a
+    // clear after the line would take it, the last digit of the opponent's CP ending its line.
     const indent = shown ? `\x1b[${taken + 1}G` : '';
 
     stream.write(
       BEGIN +
         picture +
         screen(rows, shown ? columns - taken : columns)
-          .map((line) => indent + line + CLEAR_LINE)
+          .map((line) => indent + CLEAR_LINE + line)
           .join('\r\n') +
         END,
     );
