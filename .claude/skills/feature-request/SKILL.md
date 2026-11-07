@@ -19,9 +19,11 @@ the content of the request.
 The steps below are the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way,
 under `CLAUDE.md`'s rule for what a change leaves behind, has nobody waiting on it, so nothing is asked or shown and
 Confirm's wait is skipped. A required section the session cannot fill from what it already holds, the finish line most
-often, leaves the follow-up to the reply rather than filed. The hits of both searches are judged: an open issue that
-already covers the behaviour takes a comment with whatever the new case adds instead, and a closed one or a README
-section that settled against it leaves it to the reply. Once Create prints the URL, the task it was found in carries on.
+often, leaves the follow-up to the reply rather than filed. The hits of both searches are judged, each closed one by its
+`stateReason` from `gh issue view <number> --json stateReason`: an open issue that already covers the behaviour takes a
+comment with whatever the new case adds instead, one closed as not planned or a README section that settled against it
+leaves it to the reply, and one closed as completed whose behaviour has gone again is a defect, filed with `bug-report`
+linking it. Once Create prints the URL, the task it was found in carries on.
 
 ## Read the form first
 
