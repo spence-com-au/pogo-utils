@@ -144,6 +144,43 @@ test('nor is what the bar goes on losing after it, until it holds', () => {
   expect(energy.step).toBeCloseTo(COUNTER);
 });
 
+test('a low the bar reads back above was a misread, and the hits after it still count', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 1 });
+
+  // Two frames at 22%, as a ring drawn across our bar once had it, and then what it held.
+  energy.read(1100, 0.22, MATCHUP);
+  energy.read(1200, 0.22, MATCHUP);
+  fight(energy, { from: hp, step: COUNTER, hits: 2, start: 1300 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(18);
+  expect(energy.step).toBeCloseTo(COUNTER);
+});
+
+test('however many drops took it there, a hit landing meanwhile measured from before them', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 1 });
+
+  energy.read(1100, 0.4, MATCHUP);
+  energy.read(1200, 0.22, MATCHUP);
+  energy.read(1300, hp - COUNTER, MATCHUP);
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(12);
+  expect(energy.step).toBeCloseTo(COUNTER);
+});
+
+test('nor does a misread low as the bar settles stand for what it settled at', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 1 });
+
+  energy.pause();
+  energy.read(5000, 0.22, MATCHUP);
+  energy.read(5100, 0.22, MATCHUP);
+  fight(energy, { from: hp, step: COUNTER, hits: 2, start: 5200 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(18);
+});
+
 test('a throw spends the cheapest charged move it is allowed for, from what it had', () => {
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: PSYCHO_CUT, hits: 10 });
