@@ -8,7 +8,7 @@
  * a Pokémon with PGSharp's overlay off, anything whose HP did not read. What the readers made of it is still there
  * under the refusal, folded away, the way `snap` prints its report before it refuses.
  *
- * Out of scope, deliberately: a scan of the whole of storage, its CSV, the flag passes and a scroll capture all stay
+ * Out of scope, deliberately: a scan of the whole of storage, its JSON, the flag passes and a scroll capture all stay
  * the CLI's. This reads one screen, as a phone shows it or as a file holds it.
  *
  * The OCR engine and the ADB stack are most of this chunk and nothing else uses them, which is why the page is reached

@@ -13,6 +13,15 @@ the repository's own bug report form.
 An argument, when there is one, says which failure to write up — it steers a session that holds more than one, and is
 never the content of the report.
 
+The steps below are the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way,
+under `CLAUDE.md`'s rule for what a change leaves behind, has nobody waiting on it, so nothing is asked or shown and
+Confirm's wait is skipped. A required section the session cannot fill leaves the defect to the reply rather than filed.
+The search hits are judged, each closed one by the reason the search lists for it: an open issue that already covers the
+defect takes a comment with whatever the new case adds instead, one closed as not planned leaves it to the reply, the
+user having already decided, one closed as completed whose defect has come back is linked from the new issue, and one
+closed as a duplicate is judged as the issue it duplicates would be. Once Create prints the URL, the task the defect was
+found in carries on.
+
 ## Read the form first
 
 Read `.github/ISSUE_TEMPLATE/bug_report.yaml`. It is the contract, and this document deliberately does not restate it:
@@ -46,7 +55,8 @@ Take from the session what the session already holds. Ask only for what is not t
 A failure in a `pnpm inventory` command is Page `Pokémon inventory`, and one in a `pnpm battle` command is Page
 `Trainer battles`, with Link and Browser left empty. The command and the Node version it ran under go in
 `What happened instead`, and what it printed goes in Console. The site's own `#/inventory` and `#/battle` tabs are Page
-`Inventory` and `Battle`, filled like any other tab.
+`Inventory` and `Battle`, filled like any other tab. A failure in CI, a hook or a script such as `bin/adb` is Page
+`Repository tooling`, filled the way a command is.
 
 Invoked cold, with no failure in scope, interview for each section in one round rather than one question at a time.
 
@@ -62,7 +72,8 @@ Draft a title that describes the defect rather than the fix, in the voice the re
 Search for what is already filed, and show any hits above the body rather than judging them:
 
 ```bash
-gh issue list --search '<keywords from the title>' --state all --limit 10
+gh issue list --search '<keywords from the title>' --state all --limit 10 \
+  --json number,state,stateReason,title --jq '.[] | "#\(.number) \(.state) \(.stateReason // "") \(.title)"'
 ```
 
 Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to.

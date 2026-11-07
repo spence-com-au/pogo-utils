@@ -226,7 +226,7 @@ test('the synopsis lists each command the flags it acts on, and only those', asy
 });
 
 /**
- * A flag a command does not act on is refused rather than ignored. `parse --out inventory.csv` wrote no CSV and said
+ * A flag a command does not act on is refused rather than ignored. `parse --out inventory.jsonl` wrote nothing and said
  * nothing, which is the failure worth closing: a flag that reads as accepted and does nothing is worse than one
  * rejected, because the run looks like it worked.
  */
@@ -236,7 +236,7 @@ test('a flag its command does not act on is refused, not ignored', async () => {
   const cwd = reads();
 
   try {
-    const failure = await run(process.execPath, [SCRIPT, 'parse', '--out', 'x.csv', CAPTURE], { cwd }).catch(
+    const failure = await run(process.execPath, [SCRIPT, 'parse', '--out', 'x.jsonl', CAPTURE], { cwd }).catch(
       (error: unknown) => error,
     );
 

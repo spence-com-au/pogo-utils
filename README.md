@@ -483,28 +483,34 @@ light theme's dark colour every time, rather than whenever the person rendering 
 
 ## Pokémon inventory
 
-`pnpm inventory scan` lists every Pokémon in storage in a CSV (species, nickname, form, costume, shiny, lucky, XXL/XXS,
-Dynamax or Gigantamax, CP, HP, level, IVs and moves) by driving an Android phone over `adb`. Pokémon GO is drawn by
-Unity, so Android can't read its text; instead the script takes a screenshot at each step and reads it with Tesseract.
-Both tools have to be on `PATH`:
+`pnpm inventory scan` lists every Pokémon in storage as [JSON Lines](https://jsonlines.org/), one object per Pokémon
+(species, nickname, form, costume, shiny, lucky, XXL/XXS, Dynamax or Gigantamax, CP, HP, level, IVs and moves), by
+driving an Android phone over `adb`. Pokémon GO is drawn by Unity, so Android can't read its text; instead the script
+takes a screenshot at each step and reads it with Tesseract. Both tools have to be on `PATH`:
 
 ```sh
 brew install android-platform-tools tesseract   # or: apt install adb tesseract-ocr
-pnpm inventory scan --out inventory.csv
+pnpm inventory scan --out inventory.jsonl
 ```
 
+Each line is written as its Pokémon is read, so a run cut short keeps every one before it, and `--skip` adds to the same
+file; `jq 'select(.shiny) | .species' inventory.jsonl` lists the shinies. A yes-or-no field is `null` rather than
+`false` where nothing checked it: a flag pass `--flags` left out, or one whose first Pokémon would not read. `iv` is
+`null` where PGSharp's overlay did not read, and `levels` holds every level the reading fits: one where it settles the
+level, several where it is ambiguous and none where nothing could be worked out.
+
 The scan needs PGSharp with its IV display switched on, since PGSharp's overlay is where the level and the three IVs are
-read from; on the stock client those columns come back empty. Plug the phone in with USB debugging on, set Pokémon GO to
+read from; on the stock client those fields come back null. Plug the phone in with USB debugging on, set Pokémon GO to
 English and choose a storage sort order first; the scan keeps whatever order is set. It opens the first Pokémon and
 swipes through the rest, reading the detail screen and then the moves scrolled into view. Form is never shown on screen,
 so the script works it out from the HP, IVs and types against the base stats in
 [the game master](https://github.com/alexelgt/game_masters), which is also how a nicknamed Pokémon gets its species
 back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or Gigantamax from the row under the weight
 and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
-from the game's own searches, one quick pass each before the full pass; `--flags` picks which. The costume column names
-the costume: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons, and
-lists every costume it could be, separated by `|`, where the artwork does not settle which. Any other species found by
-the costume search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
+from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
+costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
+and lists every costume it could be where the artwork does not settle which. Any other species found by the costume
+search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
 `--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
 `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
 rather than using the week-old cache. The icons are found through GitHub's API, which answers an address without a token
@@ -549,7 +555,8 @@ carrying PGSharp's overlay, those being what every other reader depends on; it s
 refuses, and still stitches one whose only fault is a field that did not read — what it will not scroll is a screen
 PGSharp's overlay cannot vouch for, the map and a detail screen being indistinguishable there. `pnpm inventory help`
 lists the flags each command acts on, and a flag given to a command that does not act on it is refused rather than
-quietly ignored. The cache, the snaps and `inventory*.csv` are git-ignored, since they describe a player's own account.
+quietly ignored. The cache, the snaps and `inventory*.jsonl` are git-ignored, since they describe a player's own
+account.
 
 Automated input is against Niantic's terms of service. The scan only reads and moves at about a person's pace, but the
 risk to the account is yours to weigh.
@@ -561,7 +568,7 @@ it reads one detail screen, grabbed off a phone or dropped in as a PNG, and prin
 `detail`, `moves`, the overlay box and what read inside it, and the identity — from the same
 [`readScreen`](src/tools/inventory/report.mts). A screen a scan could not have used is refused the way `snap` refuses
 it, with the reason said: an HP that did not read, or no PGSharp overlay. What the readers made of it anyway is still
-there, folded under the refusal. A scan of storage, its CSV, the flag passes and a scroll capture stay the CLI's.
+there, folded under the refusal. A scan of storage, its JSON, the flag passes and a scroll capture stay the CLI's.
 
 The phone is reached over WebUSB with [Tango](https://tangoadb.dev/) (`@yume-chan/adb`, MIT), picked through the
 browser's own device chooser, and has to be authorised on the phone the first time as it does for `adb`. It is a

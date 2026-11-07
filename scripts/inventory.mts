@@ -1,8 +1,8 @@
 /**
- * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds to a CSV: species, form,
- * costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO has no export, so this
- * reads the screen the way a person would — open the first Pokémon, read it, swipe to the next — with Tesseract doing
- * the reading.
+ * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds as JSON Lines, one object per
+ * Pokémon: species, form, costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO
+ * has no export, so this reads the screen the way a person would — open the first Pokémon, read it, swipe to the next —
+ * with Tesseract doing the reading. Each line is added as its Pokémon is read, so a run cut short keeps the ones before.
  *
  * Each field comes from wherever it can be got most reliably. The CP, HP, name, weight, height, types, gender, size
  * badge, favourite star, tag chips and the Dynamax or Gigantamax row are read off the detail screen, and the moves off
@@ -13,13 +13,13 @@
  * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
  * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
  * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
- * made of it. The costume column names the costume rather than saying yes: a Pikachu's off its artwork, against
- * captures labelled by hand and the game's own icons (`inventory/costume.mts`), with every costume it could be where
- * the artwork does not settle which, and any other species' as every costume it has once the pass has found it.
+ * made of it. The costume is named rather than said yes to: a Pikachu's off its artwork, against captures labelled by
+ * hand and the game's own icons (`inventory/costume.mts`), with every costume it could be where the artwork does not
+ * settle which, and any other species' as every costume it has once the pass has found it.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
- *   pnpm inventory scan [--out inventory.csv] [--search TERM] [--limit N] [--skip N] [--flags shiny,lucky,…]
+ *   pnpm inventory scan [--out inventory.jsonl] [--search TERM] [--limit N] [--skip N] [--flags shiny,lucky,…]
  *                       [--tags 'Trade to 0xNULL,…'] [--no-moves] [--scroll] [--keep-screens DIR]
  *                       [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
  *   pnpm inventory snap [--search TERM] [--verbose] [--refresh] [--config FILE] [--serial SERIAL] [--user N]
@@ -91,7 +91,6 @@ import {
 } from '../src/tools/inventory/report.mts';
 import {
   count,
-  csv,
   keyOf,
   land,
   landmarkOf,
@@ -108,6 +107,7 @@ import {
   type Flag,
   type Mark,
   type Landmark,
+  type Row,
 } from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
 import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
@@ -161,45 +161,13 @@ const SCROLL_BACK_FLOOR = 0.012;
  */
 const DEFAULT_FLAGS: Flag[] = ['shiny', 'lucky', 'costume'];
 
-const COLUMNS = [
-  'index',
-  'species',
-  'nickname',
-  'dex',
-  'form',
-  'gender',
-  'favourite',
-  'tags',
-  'costume',
-  'shiny',
-  'lucky',
-  'size',
-  'shadow',
-  'purified',
-  'max',
-  'cp',
-  'hp',
-  'level',
-  'attack_iv',
-  'defense_iv',
-  'stamina_iv',
-  'iv_percent',
-  'fast_move',
-  'charged_move_1',
-  'charged_move_2',
-  'weight_kg',
-  'height_m',
-  'types',
-  'notes',
-] as const;
-
 /** How many times one detail screen is read before its reading is taken as final. */
 const READ_ATTEMPTS = 3;
 
 const { values: options, positionals } = parseArgs({
   allowPositionals: true,
   options: {
-    'out': { type: 'string', default: 'inventory.csv' },
+    'out': { type: 'string', default: 'inventory.jsonl' },
     'limit': { type: 'string' },
     'skip': { type: 'string' },
     'flags': { type: 'string' },
@@ -231,7 +199,7 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 
 /**
  * Which flags each command acts on. `parseArgs` takes one flat set of options, so nothing else says where a flag
- * belongs: `parse --out inventory.csv` wrote no CSV and said nothing about it. Stated once here, so the rejection
+ * belongs: `parse --out inventory.jsonl` wrote nothing and said nothing about it. Stated once here, so the rejection
  * below and the usage block above cannot drift apart without a test noticing.
  *
  * `--config` is on all three but splits two ways: `scan` and `snap` drive the phone out of it, reading `swipes`,
@@ -711,16 +679,16 @@ async function scan(held: Transport) {
       const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), total, Infinity, 0, first);
       const short = shortfall(flag, visited, total);
 
-      // Thrown rather than left blank: what cut this pass short would cut the full pass short too, which is hours of
+      // Thrown rather than left null: what cut this pass short would cut the full pass short too, which is hours of
       // phone time to find that out in.
       if (short) {
-        throw new Error(`${short}; marking only those would write \`no\` against the rest`);
+        throw new Error(`${short}; marking only those would write \`false\` against the rest`);
       }
     } else if (matched(grid)) {
       // The search matched Pokémon and the first would not read, which is not the answer a search matching nothing
-      // gives: marking nothing would write `no` against every Pokémon the search holds. So the column is left blank
+      // gives: marking nothing would write `false` against every Pokémon the search holds. So the field is left null
       // instead.
-      console.error(`${flag}: the first Pokémon would not read, so this column is left blank`);
+      console.error(`${flag}: the first Pokémon would not read, so this field is left null`);
       continue;
     }
 
@@ -728,8 +696,9 @@ async function scan(held: Transport) {
     marked.set(flag, marks);
   }
 
+  // Emptied of an earlier scan's rows, a skip adding to them instead.
   if (skip === 0) {
-    writeFileSync(out, `${COLUMNS.join(',')}\n`);
+    writeFileSync(out, '');
   }
 
   const grid = await search(term ?? '');
@@ -756,17 +725,13 @@ async function scan(held: Transport) {
       const iv = overlay?.iv ?? null;
       keep(`${name}-detail`, image);
 
-      // Blank for a flag not asked for, or one whose pass would not read, rather than a `no` nothing checked.
-      const flag = (f: Flag): Mark => {
-        const marks = marked.get(f);
-
-        return marks ? (marks.take(detail, overlay) ? 'yes' : 'no') : '';
-      };
+      // Null for a flag not asked for, or one whose pass would not read, rather than a `false` nothing checked.
+      const flag = (f: Flag): Mark => marked.get(f)?.take(detail, overlay) ?? null;
 
       // Each pass's flag taken once, since `take` uses the match up.
       const passes = { shadow: flag('shadow'), purified: flag('purified') };
 
-      // Identified again where the columns say whether this is shadow or purified, which is all that rules out a form
+      // Identified again where the fields say whether this is shadow or purified, which is all that rules out a form
       // the game only hands out as a shadow, and which the reading `walk` took could not know. A function, since a
       // screen asking no stardust is settled again off the screen the moves are read from.
       const settle = (powerUp: number | null) => {
@@ -784,7 +749,7 @@ async function scan(held: Transport) {
       // Taken whatever the screen says, so that a match the pass holds for this Pokémon is used up here rather than
       // left to mark another. The caption is the screen stating it, where the pass can have been cut short.
       const passed = flag('lucky');
-      const lucky = detail.lucky ? 'yes' : passed;
+      const lucky = detail.lucky || passed;
 
       if (detail.hp === null) {
         notes.push('detail screen not read');
@@ -944,31 +909,26 @@ async function scan(held: Transport) {
       // did not find wears no costume, and one it found is not the plain one. Any other species is named only by the
       // search, so it gets every costume it has, which is the most the screen says.
       const costumed = flag('costume');
-      const named = await costumeIn(
-        image,
-        boxes.box,
-        id,
-        wardrobeOn(data),
-        costumed === '' ? null : costumed === 'yes',
-      );
+      const named = await costumeIn(image, boxes.box, id, wardrobeOn(data), costumed);
       const costume =
         named ??
-        (costumed === 'yes'
-          ? [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))]
-          : []);
+        (costumed === null
+          ? null
+          : costumed
+            ? [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))]
+            : []);
 
-      if (named === null && id.form?.dex === DEX && costumed !== 'no') {
+      if (named === null && id.form?.dex === DEX && costumed !== false) {
         notes.push('no Pikachu found in the artwork to read its costume off');
       }
 
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
       const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
-      const total = iv ? iv.attack + iv.defense + iv.stamina : null;
 
-      const row: Record<(typeof COLUMNS)[number], string | number | null> = {
+      const row: Row = {
         index: index + 1,
 
-        // A nickname says nothing of the species, so a Pokémon `identify` could not place is left blank rather than
+        // A nickname says nothing of the species, so a Pokémon `identify` could not place is left null rather than
         // filed under it.
         species: id.form?.species ?? (id.nickname === null ? detail.name : null),
 
@@ -976,9 +936,9 @@ async function scan(held: Transport) {
         dex: id.form?.dex ?? null,
         form: settledForm(id),
         gender: detail.gender,
-        favourite: detail.favourite ? 'yes' : 'no',
-        tags: carried.join('; '),
-        costume: costume.join(' | '),
+        favourite: detail.favourite,
+        tags: carried,
+        costume,
         shiny: flag('shiny'),
         lucky,
         size: detail.size,
@@ -987,28 +947,23 @@ async function scan(held: Transport) {
         max: detail.max,
         cp: id.cp ?? detail.cp,
         hp: detail.hp,
-        level: id.levels.join(' / '),
-        attack_iv: iv?.attack ?? null,
-        defense_iv: iv?.defense ?? null,
-        stamina_iv: iv?.stamina ?? null,
-        iv_percent: total === null ? null : Math.round((total / 45) * 1000) / 10,
-        fast_move: moves.fast,
-        charged_move_1: moves.charged[0] ?? null,
-        charged_move_2: moves.charged[1] ?? null,
-        weight_kg: detail.weight,
-        height_m: detail.height,
-        types: detail.types.join(' / '),
-        notes: [...notes, ...id.notes].join('; '),
+        levels: id.levels,
+        iv,
+        moves,
+        weight: detail.weight,
+        height: detail.height,
+        types: detail.types,
+        notes: [...notes, ...id.notes],
       };
 
-      appendFileSync(out, `${COLUMNS.map((c) => csv(row[c])).join(',')}\n`);
+      appendFileSync(out, `${JSON.stringify(row)}\n`);
       written++;
 
       const each = (Date.now() - started) / written / 1000;
       const ivText = iv ? ivsOf(iv) : '?';
       console.error(
-        `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.level || '?'}` +
-          ` (${each.toFixed(1)}s each)${row.notes ? ` — ${row.notes}` : ''}`,
+        `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.levels.join(' / ') || '?'}` +
+          ` (${each.toFixed(1)}s each)${row.notes.length > 0 ? ` — ${row.notes.join('; ')}` : ''}`,
       );
     },
     total,

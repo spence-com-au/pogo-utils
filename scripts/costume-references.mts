@@ -1,15 +1,13 @@
 /**
  * Writes `src/tools/inventory/costume-references.mts`, the labelled captures `costumeOf` compares a Pikachu against,
- * from a directory of detail screens and a `costumes.csv` in it naming the costume each one wears:
+ * from a directory of detail screens and a `costumes.json` in it naming the costume each one wears:
  *
- * ```csv
- * file,costume
- * 00137-detail.png,Gofest 2026 Cap Red
- * 00066-detail.png,
+ * ```json
+ * { "00137-detail.png": "Gofest 2026 Cap Red", "00066-detail.png": "" }
  * ```
  *
- * A costume is named as the `costume` column names it, blank for none, and every name has to be one of Pikachu's in
- * the game master or the artwork: a misspelt one would be a reference no icon can check.
+ * A costume is named as a scan names it, blank for none, and every name has to be one of Pikachu's in the game master
+ * or the artwork: a misspelt one would be a reference no icon can check.
  *
  * Kept as numbers rather than as the captures, which hold trainer names and are some 2 MB each: three bytes per block
  * of each, and how far behind the icons' best each costume came on its own captures at worst — the allowance the icons'
@@ -30,7 +28,6 @@ import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { findOverlay } from '../src/tools/inventory/overlay.mts';
 import { decodePng } from '../src/tools/inventory/png.mts';
-import { parseCsv } from '../src/tools/inventory/scan.mts';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import prettier from 'prettier';
@@ -39,26 +36,20 @@ const OUT = 'src/tools/inventory/costume-references.mts';
 const [dir] = process.argv.slice(2);
 
 if (!dir) {
-  throw new Error('usage: node scripts/costume-references.mts DIR, where DIR holds the captures and costumes.csv');
+  throw new Error('usage: node scripts/costume-references.mts DIR, where DIR holds the captures and costumes.json');
 }
 
 useEngine(tesseractCli);
 
 const data = await loadGameData(CACHE);
 const names = new Set(designFiles(data).map((d) => d.costume));
-const [header = [], ...rows] = parseCsv(readFileSync(join(dir, 'costumes.csv'), 'utf8'));
-const [file, costume] = ['file', 'costume'].map((name) => header.indexOf(name));
-
-if (file === undefined || costume === undefined || file < 0 || costume < 0) {
-  throw new Error('costumes.csv needs a file column and a costume column');
-}
+const labelled = JSON.parse(readFileSync(join(dir, 'costumes.json'), 'utf8')) as Record<string, string>;
 
 const wardrobe = await wardrobeFor(CACHE, data);
 const references: References = { captures: [], behind: {} };
 
-for (const row of rows) {
-  const name = row[costume] ?? '';
-  const path = join(dir, row[file] ?? '');
+for (const [file, name] of Object.entries(labelled)) {
+  const path = join(dir, file);
 
   if (!names.has(name)) {
     throw new Error(`${path}: Pikachu has no costume called "${name}"`);

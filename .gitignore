@@ -13,7 +13,7 @@
 /.env
 
 # Inventory scans
-/inventory*.csv
+/inventory*.jsonl
 
 # Generated files
 /data/entries-by-event.json
