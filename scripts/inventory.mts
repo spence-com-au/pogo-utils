@@ -64,7 +64,7 @@ import { Device, type Transport } from '../src/tools/inventory/adb.mts';
 import { type Signature } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
+import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { CACHE, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
@@ -858,9 +858,14 @@ async function scan(held: Transport) {
           // swipes, so that a read failing before the phone is back is a rejection here rather than an unhandled one.
           let dialog = false;
           let cutOff = false;
+          let measures = '';
           const found = ocr(scrolled).then((lines) => {
             dialog = dialogOpen(lines);
             cutOff = !options.scroll && movesCutOff(lines, scrolled);
+
+            // Not off a stitch, whose first frame is the detail screen the reading came from and so vouches for it
+            // whatever the frames below it show.
+            measures = options.scroll ? '' : measuresIn(lines);
 
             return parseMoves(lines, data, settled.id.form, scrolled);
           });
@@ -882,7 +887,7 @@ async function scan(held: Transport) {
             notes.push('a dialog opened on the swipe to the moves and was closed');
           }
 
-          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, powerUp: await power };
+          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, measures, powerUp: await power };
         };
 
         // The stardust off any look of one reach, since the step further down that a second look takes can scroll

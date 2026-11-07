@@ -283,6 +283,40 @@ async function unbadged(image: Image, line: Line): Promise<string> {
   return text ?? line.text;
 }
 
+/** `97 / 97 HP` or `HP 97/97`; the second number is the maximum, which is the one CP and level determine. */
+const HP = /(?:hp\s*)?(\d{1,4})\s*\/\s*(\d{1,4})(?:\s*hp)?/i;
+
+const hpLineOf = (lines: readonly Line[]) => lines.find((l) => /hp/i.test(l.text) && HP.test(l.text));
+const hpOn = (line: Line | undefined) => (line ? Number(HP.exec(line.text)?.[2]) : null);
+
+/** The lines below the HP, which is what makes a whole `1m` or `12kg` safe to take — see `WEIGHT`. */
+const panelOf = (lines: readonly Line[], hpLine: Line | undefined) =>
+  hpLine ? lines.filter((l) => l.top > hpLine.top) : [];
+
+/** The number `pattern` captures on `line`, a decimal comma read as a point. */
+function numberOn(line: Line | undefined, pattern: RegExp): number | null {
+  const value = line ? pattern.exec(line.text)?.[1] : undefined;
+
+  return value === undefined ? null : Number(value.replace(',', '.'));
+}
+
+/**
+ * The HP, weight and height `lines` read, spelled as a key spells them: `|` between, and blank where one did not read.
+ * Off the lines alone, without `parseDetail`'s rescues, for a screen whose lines are in hand for something else — the
+ * moves screen, scrolled one step down, still shows all three, and they say whose moves they are.
+ */
+export function measuresIn(lines: readonly Line[]): string {
+  const hpLine = hpLineOf(lines);
+  const panel = panelOf(lines, hpLine);
+  const on = (pattern: RegExp) =>
+    numberOn(
+      panel.find((l) => pattern.test(l.text)),
+      pattern,
+    );
+
+  return [hpOn(hpLine), on(WEIGHT), on(HEIGHT)].join('|');
+}
+
 export async function parseDetail(lines: readonly Line[], data: GameData, image: Image): Promise<Detail> {
   const longest = cpDigits(data);
   const labelled = cpLabelOf(lines, image);
@@ -295,10 +329,8 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   // with no handler for as long as they take is one Node exits over. This handler only marks it seen.
   void whole?.catch(() => {});
 
-  // `97 / 97 HP` or `HP 97/97`; the second number is the maximum, which is the one CP and level determine.
-  const hpPattern = /(?:hp\s*)?(\d{1,4})\s*\/\s*(\d{1,4})(?:\s*hp)?/i;
-  const hpLine = lines.find((l) => /hp/i.test(l.text) && hpPattern.test(l.text));
-  const hp = hpLine ? Number(hpPattern.exec(hpLine.text)?.[2]) : null;
+  const hpLine = hpLineOf(lines);
+  const hp = hpOn(hpLine);
 
   const nameLine = hpLine ? nameLineOf(lines, hpLine, labelled) : undefined;
   const name = nameLine
@@ -317,18 +349,10 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
       ? named(image, hpLine, data.species)
       : null;
 
-  // Below the HP, which is what makes a whole `1m` or `12kg` safe to take — see `WEIGHT`.
-  const panel = hpLine ? lines.filter((l) => l.top > hpLine.top) : [];
-
-  const number = (line: Line | undefined, pattern: RegExp) => {
-    const value = line ? pattern.exec(line.text)?.[1] : undefined;
-
-    return value === undefined ? null : Number(value.replace(',', '.'));
-  };
-
+  const panel = panelOf(lines, hpLine);
   const row = panel.find((l) => measurement(l.text));
   const weightLine = panel.find((l) => WEIGHT.test(l.text));
-  const weight = number(weightLine, WEIGHT) ?? (row ? measured(image, row) : null);
+  const weight = numberOn(weightLine, WEIGHT) ?? (row ? measured(image, row) : null);
 
   // The size badge sits over the height in particular, so that line is found on its own rather than taken from the row
   // the two share — which is the weight as often as not. Off the row's own end before the whole-screen pass, which
@@ -336,7 +360,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
   const sized = (async () => {
     const line = (row && (await heightOn(image, row))) ?? panel.find((l) => HEIGHT.test(l.text));
 
-    return { height: number(line, HEIGHT), size: line ? await sizeOf(image, line) : null };
+    return { height: numberOn(line, HEIGHT), size: line ? await sizeOf(image, line) : null };
   })();
 
   // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run

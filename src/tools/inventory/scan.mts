@@ -752,6 +752,9 @@ export interface MovesLook {
   moves: Moves;
   cutOff: boolean;
   overlay: Overlay | null;
+
+  /** The HP, weight and height as `measuresIn` reads them on the screen looked at, which one step down still shows. */
+  measures: string;
 }
 
 /**
@@ -769,7 +772,9 @@ export const MOVE_STEPS = 2;
  * wanting, since `look` reads while the phone scrolls back up, and deciding before that would put the read in front of
  * every scroll back.
  */
-export async function reachMoves<L extends MovesLook>(look: (steps: number) => Promise<L>): Promise<L> {
+export async function reachMoves<L extends Pick<MovesLook, 'moves' | 'cutOff'>>(
+  look: (steps: number) => Promise<L>,
+): Promise<L> {
   for (let steps = 1; ; steps++) {
     const found = await look(steps);
     const { moves, cutOff } = found;
@@ -797,6 +802,19 @@ function elsewhere(a: string, b: string): boolean {
 }
 
 /**
+ * Whether the HP, weight and height a moves screen read say it is the Pokémon `key` read: two of them at least read on
+ * both, and every one that did the same. Two because one is no identity, the Pokémon a swipe away sharing an HP as
+ * readily as not, where the weight and height run to two decimals.
+ */
+function vouches(measures: string, key: string): boolean {
+  const x = measures.split('|');
+  const y = key.split('|').slice(1, 4);
+  const both = x.flatMap((f, i) => (f !== '' && y[i] !== '' ? [f === y[i]] : []));
+
+  return both.length >= 2 && both.every(Boolean);
+}
+
+/**
  * The moves of the Pokémon `reading` read, `reach` scrolling down the screen from a reading of it and reading them —
  * never another Pokémon's. A swipe to the next Pokémon can bounce back after the detail screen was read: a live scan
  * read a Roggenrola at `L21 IV53 3/11/10`, and the screen it scrolled down to was the Rookidee before it, `L20 IV60
@@ -805,6 +823,11 @@ function elsewhere(a: string, b: string): boolean {
  * the moves screen having been a frame of another, or the one before it, which one swipe on puts right. Then the moves
  * are looked for again, once. That also leaves the walk where it thinks it is: left on the Rookidee, its next swipe
  * landed on the Roggenrola again, which it took for a swipe that went nowhere.
+ *
+ * Not on the IVs alone, though, where the HP, weight and height the moves screen still shows are this Pokémon's. The
+ * overlay over a scrolled screen sits on the white panel rather than the artwork, where its light text reads worst: an
+ * Elgyem whose detail screen read `11/13/8` had its moves screen read `11/13/3` on both looks, under its own `57 / 57
+ * HP`, `7.6kg` and `0.46m`. The Rookidee's `75 / 75 HP` was never the Roggenrola's 95.
  *
  * Answers the look taken for this Pokémon, so that whatever else was read off its screen is this Pokémon's too, and a
  * note of what happened. Where it could not be put right there is no look, and nothing off another's screen is kept.
@@ -815,8 +838,15 @@ export async function movesOf<R extends { key: string | null; overlay: Overlay |
   { read, next }: Pick<Steps<R>, 'read' | 'next'>,
 ): Promise<{ look: L | null; note: string | null }> {
   const first = await reach(reading);
+  const { key } = reading;
 
-  if (!otherPokemon(reading.overlay, first.overlay) || reading.key === null) {
+  if (key === null) {
+    return { look: first, note: null };
+  }
+
+  const another = (look: L) => otherPokemon(reading.overlay, look.overlay) && !vouches(look.measures, key);
+
+  if (!another(first)) {
     return { look: first, note: null };
   }
 
@@ -829,18 +859,18 @@ export async function movesOf<R extends { key: string | null; overlay: Overlay |
   // 95, 16.26 and 0.37. Not on the IVs, which are what disagreed: a misread of them in `reading` would send the phone
   // on from this Pokémon to the next, which the walk would then swipe past without ever reading. A misread of any one
   // of the three only costs the moves.
-  if (again.key !== null && elsewhere(again.key, reading.key)) {
+  if (again.key !== null && elsewhere(again.key, key)) {
     await next();
     again = await read();
   }
 
-  if (again.key === null || !agree(again.key, reading.key)) {
+  if (again.key === null || !agree(again.key, key)) {
     return lost;
   }
 
   const second = await reach(again);
 
-  return otherPokemon(reading.overlay, second.overlay)
+  return another(second)
     ? { look: null, note: `${other}, and another again when looked at twice` }
     : { look: second, note: `${other}, so they were looked for again` };
 }
