@@ -13,6 +13,14 @@ the repository's own bug report form.
 An argument, when there is one, says which failure to write up — it steers a session that holds more than one, and is
 never the content of the report.
 
+The steps below are the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way,
+under `CLAUDE.md`'s rule for what a change leaves behind, has nobody waiting on it, so nothing is asked or shown and
+Confirm's wait is skipped. A required section the session cannot fill leaves the defect to the reply rather than filed.
+The search hits are judged, each closed one by its `stateReason` from `gh issue view <number> --json stateReason`: an
+open issue that already covers the defect takes a comment with whatever the new case adds instead, one closed as not
+planned leaves it to the reply, and one closed as completed whose defect has come back is linked from the new issue.
+Once Create prints the URL, the task the defect was found in carries on.
+
 ## Read the form first
 
 Read `.github/ISSUE_TEMPLATE/bug_report.yaml`. It is the contract, and this document deliberately does not restate it:
@@ -46,7 +54,8 @@ Take from the session what the session already holds. Ask only for what is not t
 A failure in a `pnpm inventory` command is Page `Pokémon inventory`, and one in a `pnpm battle` command is Page
 `Trainer battles`, with Link and Browser left empty. The command and the Node version it ran under go in
 `What happened instead`, and what it printed goes in Console. The site's own `#/inventory` and `#/battle` tabs are Page
-`Inventory` and `Battle`, filled like any other tab.
+`Inventory` and `Battle`, filled like any other tab. A failure in CI, a hook or a script such as `bin/adb` is Page
+`Repository tooling`, filled the way a command is.
 
 Invoked cold, with no failure in scope, interview for each section in one round rather than one question at a time.
 
@@ -65,10 +74,7 @@ Search for what is already filed, and show any hits above the body rather than j
 gh issue list --search '<keywords from the title>' --state all --limit 10
 ```
 
-Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to. That wait
-belongs to the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way, under
-`CLAUDE.md`'s rule for what a change leaves behind, skips it: judge the hits rather than show them, comment on an open
-one that already covers the defect with whatever the new case adds, and otherwise file.
+Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to.
 
 ## Create
 

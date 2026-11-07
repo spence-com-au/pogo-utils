@@ -1,6 +1,7 @@
 ---
 name: 'Bug report'
-description: 'Something the site, the inventory tool or the battle tool did that it should not have'
+description:
+  'Something the site, the inventory tool, the battle tool or the repository tooling did that it should not have'
 labels:
   - 'bug'
 
@@ -10,8 +11,9 @@ body:
     attributes:
       label: 'Page'
       description:
-        'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, or `Trainer battles` for a `pnpm
-        battle` command. The Inventory and Battle tabs on the site are `Inventory` and `Battle`.'
+        'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, `Trainer battles` for a `pnpm
+        battle` command, or `Repository tooling` for CI, a hook or a script such as `bin/adb`. The Inventory and Battle
+        tabs on the site are `Inventory` and `Battle`.'
       options:
         - 'Events'
         - 'Map'
@@ -23,6 +25,7 @@ body:
         - 'The whole site'
         - 'Pokémon inventory'
         - 'Trainer battles'
+        - 'Repository tooling'
     validations:
       required: true
 

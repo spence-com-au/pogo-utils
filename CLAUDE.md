@@ -18,10 +18,12 @@
   `feature-request` without asking — this rule is the approval their wait gives way to — before the pull request opens,
   so its body links the number, or at the end of the task when there is none. Reproduce it once first, from a frame, a
   command or a log line, and say what went unchecked, since a guess filed as a finding misleads whoever picks it up. Say
-  where it was found (`Found while working on #807`), and where an open issue already covers it, comment with what the
-  new case adds rather than file a second. Text only: filed unasked, it publishes with nobody looking. A problem in
-  another repository, the organization's or a third party's, is named in the reply and left to the user, and a subagent
-  that opens no pull request reports what it found to its parent rather than file it.
+  where it was found (`Found while working on #807`). Where an open issue already covers it, comment with what the new
+  case adds rather than file a second; one closed as not planned leaves it to the reply, the user having already
+  decided, and one closed as completed whose problem is back gets a new issue linking it. Text only: filed unasked, it
+  publishes with nobody looking. A problem in another repository, the organization's or a third party's, is named in the
+  reply and left to the user, and a subagent that opens no pull request reports what it found to its parent rather than
+  file it.
 - **Take turns with the phone.** Sessions share the phone plugged in here, so the `SessionStart` hook in
   `.claude/settings.json` puts `bin/adb` first on the PATH of a session's Bash commands and names it as `ADB`, which
   scrcpy runs in place of the `adb` on the PATH or a portable build's own. So every way to the phone — by hand, from
