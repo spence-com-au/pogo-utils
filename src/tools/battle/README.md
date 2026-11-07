@@ -99,7 +99,8 @@ for text and done every few seconds.
   move's throw waits for the fast move under way, its button lit meanwhile, but a dropped tap looks the same, and a
   Pokémon low on HP can faint while it waits. Nothing is swiped for 0.7s after a charged-move tap, since a swipe
   straight after one could cost the throw. A bench card to switch to is tapped ahead of a lit move, since the switch is
-  made to keep that move's energy.
+  made to keep that move's energy, and then nothing is touched until the fast move of ours it may have been tapped
+  during has ended, since the game holds the switch behind it and a touch meanwhile takes its place.
 - **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts), over the
   marker protocol in [`held-shell.mts`](../inventory/held-shell.mts) that a page's shell over WebUSB shares), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
@@ -200,8 +201,9 @@ for text and done every few seconds.
    next is sent in, which is read again at once. A second of the fainted species sent in has only the party's name until
    the 3s are up, its CP and labels unread and its lit buttons unthrown. While a read is under way, no lit button is
    thrown if any is unnamed, unless a named one is to go now, a finish or a throw for fear of fainting: that covers ours
-   sent in after a faint, read at once, but not one switched in from the bench, whose first read waits 2s. After the
-   opponent's throw, a shield prompt or its countdown, the banner is looked for for 8s, beside the battle too.
+   sent in after a faint, read at once, but not one switched in from the bench, whose first read waits until the switch
+   is [judged](#when-the-opponent-switches), nothing being thrown until then. After the opponent's throw, a shield
+   prompt or its countdown, the banner is looked for for 8s, beside the battle too.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
 5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
    whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
@@ -587,14 +589,22 @@ read, and otherwise by every move its species can learn bar Frustration and Retu
 species never switch, and nor does one with a lit move that would [finish](#which-charged-move-to-throw) the newcomer,
 since the bench is tapped ahead of a lit move, nor one [doomed](#banking-energy) with a move lit to throw into a shield.
 
-The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches at
-once, with nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the
-field, or while our own switch timer runs. The switch is decided the moment a read names the newcomer, and tapped 2s
-later (`FLY_IN_MS`), with nothing thrown meanwhile, so that it still banks a lit move. On recordings of both phones the
-banner was last drawn 1.5–2.0s after the HUD first named the newcomer; the game master's fly-in is three turns, 1.5s.
-The run reads our HUD again 2s after the tap: still naming the Pokémon tapped away from, or where it names neither,
-showing the same CP, means the tap was refused, and that Pokémon is taken to still be out. Within 45s of our last switch
-(the game master's `quickSwapCooldownDurationSeconds`), that is logged as
+The bench's cards run down the right edge, in party order, without the one out or any that fainted. A tap switches with
+nothing to confirm, but does nothing while the opponent's newcomer flies in under `Go, Dragonite!` across the field, or
+while our own switch timer runs. The switch is decided the moment a read names the newcomer, and tapped 2s later
+(`FLY_IN_MS`), with nothing thrown meanwhile, so that it still banks a lit move. On recordings of both phones the banner
+was last drawn 1.5–2.0s after the HUD first named the newcomer; the game master's fly-in is three turns, 1.5s.
+
+A tap made while a fast move of ours plays switches only as the move ends, and any touch of ours before then, a swipe or
+a lit button's tap, takes its place. Over seven kept GO Battle League runs none of ten taps made mid-fight went in, the
+run swiping or throwing straight after each, while six of nine made as our charged move ended did, the other three
+meeting the opponent's own switch or throw. So after the tap nothing is touched for as long as the one out's fast move
+takes, the one its card shows or else the longest its species can learn: the switch is due by then. Nothing is thrown
+until the switch is judged either, since a lit button could be either Pokémon's.
+
+The run reads our HUD again 2s after the switch is due: still naming the Pokémon tapped away from, or where it names
+neither, showing the same CP, means the tap was refused, and that Pokémon is taken to still be out. Within 45s of our
+last switch (the game master's `quickSwapCooldownDurationSeconds`), that is logged as
 `Latias not sent in: the switch timer is running`. Otherwise it's taken as dropped, logged as
 `Latias not sent in: taken as dropped, no switch of ours in the last 45s`, and the switch is decided and tapped once
 more; a second drop against the same newcomer is left.

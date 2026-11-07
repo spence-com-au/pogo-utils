@@ -43,8 +43,8 @@ export const SWITCH_CARDS: readonly Point[] = [TAPS.switch, [0.67, -0.2744]];
  * one at the top as in `battle-one-shield`. Centred 0.055 widths above each card's HP strip, which runs at y 0.6335 and
  * 0.7276 on the Pixel 4 XL's fixtures and 0.6265 and 0.7157 on the Pixel 8 Pro's: pinned at the middle of the screen,
  * `layout.mts`'s anchor from the two coming to 0.500 for both, and so 0.2818 and 0.4805 widths below it on either. A
- * tap on one switches it in at once, with nothing to confirm; on the switch timer, which darkens both cards, it does
- * nothing.
+ * tap on one switches it in with nothing to confirm, at once or, where a fast move of ours is playing, as it ends; on
+ * the switch timer, which darkens both cards, it does nothing.
  */
 export const BENCH = [
   [0.903, 0.227],
@@ -98,6 +98,12 @@ export interface Choices {
    * switch keeping that move's energy, but never through the minigame.
    */
   bench?: Point;
+
+  /**
+   * Whether the fight is left alone, nothing swiped or tapped on its frames: a switch of ours tapped while a fast move
+   * of ours plays waits for the move to end, and any touch of ours meanwhile takes its place.
+   */
+  still?: boolean;
 
   /**
    * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
@@ -199,7 +205,16 @@ export class Player {
   next(
     state: State,
     now: number,
-    { ready = [], best, shield = true, minigame = false, card = this.#taps.switch, bench, bubbles }: Choices = {},
+    {
+      ready = [],
+      best,
+      shield = true,
+      minigame = false,
+      card = this.#taps.switch,
+      bench,
+      still,
+      bubbles,
+    }: Choices = {},
   ): Action {
     this.#streak = state === this.#state ? this.#streak + 1 : 1;
     this.#state = state;
@@ -229,6 +244,10 @@ export class Player {
     // Before a lit move is thrown: the switch is made to keep that energy on the bench.
     if (bench && !this.#minigame && (state === 'battle' || state === 'charged')) {
       return { kind: 'tap', at: bench, what: 'bench' };
+    }
+
+    if (still && (state === 'battle' || state === 'charged')) {
+      return { kind: 'wait' };
     }
 
     if (state === 'battle' || (state === 'charged' && throwable.length === 0)) {

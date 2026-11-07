@@ -211,6 +211,21 @@ test('taps the bench card it is told to in place of a swipe or a lit move, but n
   expect(player.next('battle', 1000, { bench }), 'the minigame').toMatchObject({ kind: 'swipe' });
 });
 
+test('touches nothing in the fight while told to keep still, but answers a prompt', () => {
+  const player = new Player(SIZE);
+  const fight = [
+    player.next('battle', 0, { still: true }),
+    player.next('charged', 33, { ready: [CENTRE], still: true }),
+    player.next('charged', 66, { ready: [CENTRE], still: true }),
+  ];
+  const shield = Array.from({ length: 3 }, (_, i) => player.next('shield', 99 + i * 33, { still: true }));
+
+  expect(fight.every((action) => action.kind === 'wait')).toBe(true);
+  expect(taps(shield)).toMatchObject([{ what: 'shield' }]);
+  player.next('charged', 1000, { ready: [CENTRE] });
+  expect(player.next('charged', 1033, { ready: [CENTRE] }), 'once let go').toMatchObject({ what: 'charged' });
+});
+
 test('leaves a declined shield prompt to run out, and does not swipe at it', () => {
   const player = new Player(SIZE);
   const actions = Array.from({ length: 20 }, (_, i) => player.next('shield', i * 33, { shield: false }));

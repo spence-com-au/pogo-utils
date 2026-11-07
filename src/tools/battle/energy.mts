@@ -567,14 +567,9 @@ export function spare(data: GameData, standing: Standing, meta?: Meta | null): s
     return undefined;
   }
 
-  const turns = (name: string) => data.combat[name]?.turns ?? 0;
   const ours = Math.ceil((hp.opponent + WANDER) / steps.ours);
-  const ourTurns = fast
-    ? turns(fast)
-    : Math.max(
-        ...formsOf(data, matchup.own).flatMap((form) => form.moves.filter((m) => m.fast).map((m) => turns(m.name))),
-      );
-  const theirTurns = turns(estimate.fast);
+  const ourTurns = fastTurns(data, matchup.own, fast);
+  const theirTurns = data.combat[estimate.fast]?.turns ?? 0;
 
   if (ours > SPARE_HITS || !(ourTurns > 0) || !(theirTurns > 0)) {
     return undefined;
@@ -595,7 +590,16 @@ export function spare(data: GameData, standing: Standing, meta?: Meta | null): s
 }
 
 /** How long a turn of a trainer battle lasts, in milliseconds, a fast move taking one to five of them. */
-const TURN_MS = 500;
+export const TURN_MS = 500;
+
+/** How many turns a fast move of `own` takes: `fast`'s, where it is known, and otherwise the longest of its forms'. */
+export function fastTurns(data: GameData, own: Shown, fast?: string | null): number {
+  const turns = (name: string) => data.combat[name]?.turns ?? 0;
+
+  return fast
+    ? turns(fast)
+    : Math.max(0, ...formsOf(data, own).flatMap((form) => form.moves.filter((m) => m.fast).map((m) => turns(m.name))));
+}
 
 /**
  * How soon ours could have filled its energy from `cost`, in milliseconds: what is left of `FULL` after it, at the rate

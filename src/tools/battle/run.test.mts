@@ -2291,7 +2291,7 @@ test.each([
       glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'golem' } },
       golem: { frame: fixture('battle-gengar-label-short'), tap: { at: bench, to: 'entei' } },
       entei: { frame: fixture('battle-night'), lasts: { ms: entei, to: 'back' } },
-      back: { frame: fixture('battle-latias'), lasts: { ms: 8000, to: 'won' } },
+      back: { frame: fixture('battle-latias'), lasts: { ms: 14000, to: 'won' } },
     },
     'party',
   );
@@ -2387,6 +2387,9 @@ const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shi
  * and throws Shadow Sneak into Mamoswine's shield. Painted held, it has a shield to take, and banks. Painted held only
  * for the first second, as though spent while Mamoswine flies in, the switch decided on is given up as Giratina comes
  * to be doomed, before its tap, and it stays in and throws.
+ *
+ * A switch waits for the fast move of ours under way, here at most Dragon Tail's 1.5s, and a touch of ours before then
+ * takes its place: Shadow Sneak still lit meanwhile, neither it nor the fight is touched until the switch has gone.
  */
 test.each([
   ['spent', [], undefined, [STAYED], []],
@@ -2409,7 +2412,7 @@ test.each([
     const red = painted(fixture('charged-shadow-sneak'), [220, 40, 40], ...balls);
     const mamoswine = painted(red, [224, 161, 238], ...held);
     const bench = place(BENCH[0] ?? [0, 0], BENCH_ANCHOR, mamoswine);
-    const { phone, clock, taps } = scripted(
+    const { phone, clock, taps, strokes } = scripted(
       {
         ...battleAndBack(),
         party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
@@ -2418,10 +2421,11 @@ test.each([
         coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
         mamoswine: {
           frame: mamoswine,
-          tap: { at: bench, to: 'won' },
+          tap: { at: bench, to: 'switching' },
           lasts: spentAfter === undefined ? { ms: 6000, to: 'won' } : { ms: spentAfter, to: 'spent' },
         },
-        spent: { frame: red, tap: { at: bench, to: 'won' }, lasts: { ms: 6000, to: 'won' } },
+        spent: { frame: red, tap: { at: bench, to: 'switching' }, lasts: { ms: 6000, to: 'won' } },
+        switching: { frame: mamoswine, lasts: { ms: 1400, to: 'won' } },
       },
       'party',
     );
@@ -2443,6 +2447,7 @@ test.each([
     expect(taps).toContain(spentAfter === undefined ? 'mamoswine' : 'spent');
     expect(report.events.filter((line) => line.startsWith('own: staying'))).toEqual(stayed);
     expect(report.events.filter((line) => line.startsWith('own: switching'))).toEqual(switched);
+    expect([...taps, ...strokes.map(({ scene }) => scene)]).not.toContain('switching');
   },
 );
 

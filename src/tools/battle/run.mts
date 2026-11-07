@@ -65,10 +65,12 @@ import {
 import { iconColour, readTypes } from './typing.mts';
 import {
   Energy,
+  fastTurns,
   holding,
   Hits,
   OurEnergy,
   spare,
+  TURN_MS,
   untilTheirsLands,
   wornDown,
   type Hold,
@@ -159,9 +161,10 @@ const PLAYING_MS = 3_500;
 const RELIT_MS = 1_000;
 
 /**
- * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
- * the Pixel 4 XL, the bench showed the switch by 135.5s and the HUD, hidden behind a banner meanwhile, came back naming
- * the newcomer at 136.3s; a read before then could still find the Pokémon tapped away from.
+ * How long after a switch of ours has gone, if it has, our HUD is read again to see whether it took, in milliseconds:
+ * after the bench card's tap, or after the fast move of ours it may have been tapped during, which it waits for. Recorded
+ * on the Pixel 4 XL, the bench showed the switch by 135.5s and the HUD, hidden behind a banner meanwhile, came back
+ * naming the newcomer at 136.3s; a read before then could still find the Pokémon tapped away from.
  */
 const SWITCHED_MS = 2_000;
 
@@ -474,8 +477,9 @@ export async function run(
   // Whether the opponent's switch just read is still to be answered, and the switch of ours chosen, tapped on the first
   // frame `Player` lets a bench card be once the opponent's newcomer has flown in, at `landing`: a counter to the
   // opponent's switch, or a switch to bank energy, `strip` where it is to draw a shield. Once tapped, the switch is
-  // checked by the first read `SWITCHED_MS` on to name ours, or failing that to read its CP: the one tapped away from
-  // still out is the tap refused, which leaves it out. And whether a tap has been dropped since the newcomer came in.
+  // checked by the first read `SWITCHED_MS` after it is due to name ours, or failing that to read its CP: the one tapped
+  // away from still out is the tap refused, which leaves it out. And whether a tap has been dropped since the newcomer
+  // came in.
   let answer = false;
   let counter: (Switch & { at: Point; strip: boolean }) | undefined;
   let landing = -Infinity;
@@ -493,6 +497,15 @@ export async function run(
         cp: number | null;
         at: number;
         stages: Stages;
+
+        /**
+         * By when the switch has gone, if it is to: the end of the fast move of ours that may have been playing at the
+         * tap, which the game holds the switch behind, any touch of ours until then taking its place. Over seven kept
+         * GO Battle League runs, none of ten bench taps made mid-fight went in, each followed at once by a swipe or a
+         * lit button's tap, the button's throwing the energy the switch was to bank; six of nine made as our charged
+         * move ended, no fast move playing, went in, the other three meeting the opponent's own switch or throw.
+         */
+        due: number;
 
         /** What the slot switched to had banked, given back to it where the switch is refused. */
         bank: Bank | undefined;
@@ -942,7 +955,7 @@ export async function run(
         // Palkia's `CP 4673` read as `CP 44673`, and so as no CP at all, for 16s after its switch was dropped, its name
         // read throughout. Judged ahead of a newcomer of theirs the same read names, so that a drop counts against the
         // one it was tapped against. A read begun too soon to judge by has the next begin as soon as one can.
-        if (switching && at - switching.at >= SWITCHED_MS) {
+        if (switching && at - switching.due >= SWITCHED_MS) {
           const { own, ownCp } = read;
           const was = party[switching.from]?.species;
           const byName = own !== null && was !== switching.to && (own === was || own === switching.to);
@@ -977,7 +990,7 @@ export async function run(
           }
 
           if (stayed === false) {
-            swappedAt = switching.at;
+            swappedAt = switching.due;
             undefer('ours switched out');
           }
 
@@ -985,7 +998,7 @@ export async function run(
             switching = undefined;
           }
         } else if (switching) {
-          readAt = Math.min(readAt, switching.at + SWITCHED_MS - READ_MS);
+          readAt = Math.min(readAt, switching.due + SWITCHED_MS - READ_MS);
         }
 
         const named = seen.opponent;
@@ -1045,7 +1058,7 @@ export async function run(
         switchAt = faintAt;
 
         if (switching) {
-          swappedAt = switching.at;
+          swappedAt = switching.due;
           banked.delete(switching.from);
 
           if (switching.bank) {
@@ -1336,8 +1349,9 @@ export async function run(
       // While a read of the `seen` now held is under way, no lit button is thrown if any is unnamed, for as long as the
       // read takes, about 220ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
       // of no colour known. That covers one of ours sent in after a faint with energy banked, lit at once and read at
-      // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`. Nor a named move that is
-      // to go now, a finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
+      // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`, nothing being thrown
+      // until then. Nor a named move that is to go now, a finish or a throw for fear of fainting, the turn waited being
+      // what either is thrown to save.
       const naming = (finish ?? now) === undefined && sighting?.from === seen && lit.some((x) => !seen.moves.has(x));
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it
@@ -1690,13 +1704,19 @@ export async function run(
           ? swipesAround(reads.bubbleSwipes(frame, bubbleColour), panels, frame)
           : undefined;
 
+      // While a switch of ours is under way nothing is thrown, a lit button being the energy of either the one switched
+      // from or the one switched to, until a read says which is out; and nothing at all is touched until the switch is
+      // due, which a touch would take the place of.
+      const still = switching !== undefined && clock.now() < switching.due;
+
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held && !switching ? ready : [],
         best,
         shield,
         minigame: playing,
         ...(card && { card }),
         ...(counter && !flying && { bench: counter.at }),
+        ...(still && { still }),
         ...(bubbles && { bubbles }),
       });
 
@@ -1734,6 +1754,7 @@ export async function run(
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
           const to = party[counter.slot]?.species ?? '?';
           const keeping = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
+          const due = clock.now() + fastTurns(data, us, ours?.fast) * TURN_MS;
 
           drop(`switched to ${to} first`);
           log(`switching to ${to} against ${seen.opponent ?? 'the opponent'}${keeping}`, 'own', counter.why);
@@ -1744,6 +1765,7 @@ export async function run(
             cp: seen.ownCp,
             at: clock.now(),
             stages: stages.own,
+            due,
             bank: banked.get(counter.slot),
             stripping,
             calm: calmAt,
@@ -1751,10 +1773,10 @@ export async function run(
           banked.delete(counter.slot);
           banked.set(slot, { moves: banking, own: facing.own });
           stripping = counter.strip ? counter.slot : undefined;
-          calmAt = clock.now() + TIMER_MS;
+          calmAt = due + TIMER_MS;
           sent = counter.slot;
           forgetOwn();
-          readAt = clock.now() - READ_MS + SWITCHED_MS;
+          readAt = due - READ_MS + SWITCHED_MS;
         } else {
           log(`tap ${action.what}`, 'own');
         }
