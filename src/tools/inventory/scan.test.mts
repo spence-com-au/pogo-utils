@@ -1,5 +1,5 @@
 /**
- * The parts of `pnpm inventory scan` that need no phone: the arguments it takes, the CSV it writes and the keys that
+ * The parts of `pnpm inventory scan` that need no phone: the arguments it takes, the rows it writes and the keys that
  * decide whether a flag search and the full pass saw the same Pokémon. A wrong key is a flag lost from a row or set on
  * the wrong one, and nothing on a phone screen says which.
  */
@@ -12,7 +12,6 @@ import { decodePng, screenIn } from './png.mts';
 import {
   agree,
   count,
-  csv,
   distance,
   DROP_RETRIES,
   FLAGS,
@@ -27,7 +26,6 @@ import {
   movesOf,
   otherPokemon,
   OverlayBoxes,
-  parseCsv,
   parseFlags,
   reachMoves,
   shaded,
@@ -187,17 +185,6 @@ test('a Pokémon the search did not find is not marked', () => {
 
   expect(marks.take(detail(), overlay(0, 15, 15))).toBe(false);
   expect(marks.take(detail(), overlay(15, 15, 15)), 'the miss used up the mark').toBe(true);
-});
-
-test.for([
-  [null, ''],
-  [12.5, '12.5'],
-  ['Pikachu', 'Pikachu'],
-  ['Trade, maybe', '"Trade, maybe"'],
-  ['say "hi"', '"say ""hi"""'],
-  ['two\nlines', '"two\nlines"'],
-] as const)('%j is written to the CSV as %j', ([value, written]) => {
-  expect(csv(value)).toBe(written);
 });
 
 test('the flags named are the flags searched, and an empty name is no flag', () => {
@@ -576,38 +563,24 @@ test('a look back where one world missed the overlay still tells apart two world
   expect(distance(worlds, 5)).toBe(1);
 });
 
-test('a CSV reads back the rows `csv` wrote, quotes, commas, line breaks and all', () => {
-  const rows = [
-    ['index', 'notes'],
-    ['1', 'say "hi", twice'],
-    ['2', 'two\nlines'],
-    ['3', ''],
-  ];
+/** The fields `landmarksBefore` reads, in a file of `rows` given as index, HP, weight, height and IVs. */
+function written(rows: readonly (readonly [number, number | null, number | null, number | null, string])[]) {
+  return rows
+    .map(([index, hp, weight, height, ivs]) => {
+      const [attack, defense, stamina] = ivs.split('/').map(Number);
+      const iv = ivs === '' ? null : { attack, defense, stamina };
 
-  expect(parseCsv(rows.map((row) => `${row.map(csv).join(',')}\n`).join(''))).toStrictEqual(rows);
-});
-
-/** The columns `landmarksBefore` reads, in a CSV of `rows` given as index, HP, weight, height and IVs. */
-function written(rows: readonly (readonly [number, string, string, string, string])[]) {
-  const header = 'index,species,hp,weight_kg,height_m,attack_iv,defense_iv,stamina_iv,notes\n';
-
-  return (
-    header +
-    rows
-      .map(([index, hp, weight, height, iv]) => {
-        const [a = '', d = '', s = ''] = iv.split('/');
-        return `${index},Pikachu,${hp},${weight},${height},${a},${d},${s},"a, note"\n`;
-      })
-      .join('')
-  );
+      return `${JSON.stringify({ index, species: 'Pikachu', hp, weight, height, iv, notes: ['a note'] })}\n`;
+    })
+    .join('');
 }
 
 test('a skip is checked against the last rows written up to it, oldest first', () => {
   const text = written([
-    [1, '40', '6', '0.4', '1/2/3'],
-    [2, '41', '6.1', '0.41', ''],
-    [3, '42', '6.2', '0.42', '4/5/6'],
-    [4, '43', '6.3', '0.43', '7/8/9'],
+    [1, 40, 6, 0.4, '1/2/3'],
+    [2, 41, 6.1, 0.41, ''],
+    [3, 42, 6.2, 0.42, '4/5/6'],
+    [4, 43, 6.3, 0.43, '7/8/9'],
   ]);
 
   expect(landmarksBefore(text, 3)).toStrictEqual([
@@ -618,19 +591,19 @@ test('a skip is checked against the last rows written up to it, oldest first', (
 });
 
 test('a row written lands as the reading that wrote it, an IV of 0 included', () => {
-  const text = written([[1, '50', '6.1', '0.41', '0/15/0']]);
+  const text = written([[1, 50, 6.1, 0.41, '0/15/0']]);
 
   expect(landmarksBefore(text, 1)).toStrictEqual([landmarkOf(detail(), overlay(0, 15, 0))]);
 });
 
 test('the rows checked stop at one with no HP, and take the last written under a number', () => {
   const text = written([
-    [1, '40', '6', '0.4', ''],
-    [2, '', '', '', ''],
-    [3, '42', '6.2', '0.42', ''],
-    [4, '43', '6.3', '0.43', ''],
-    [3, '99', '9', '0.9', ''],
-    [4, '44', '6.4', '0.44', ''],
+    [1, 40, 6, 0.4, ''],
+    [2, null, null, null, ''],
+    [3, 42, 6.2, 0.42, ''],
+    [4, 43, 6.3, 0.43, ''],
+    [3, 99, 9, 0.9, ''],
+    [4, 44, 6.4, 0.44, ''],
   ]);
 
   expect(landmarksBefore(text, 4).map(({ hp }) => hp)).toStrictEqual([99, 44]);
@@ -638,19 +611,23 @@ test('the rows checked stop at one with no HP, and take the last written under a
 });
 
 test.for([
-  ['a row the CSV does not have', 7, 'holds no row 7'],
+  ['a row the file does not have', 7, 'holds no row 7'],
   ['a row with no HP', 2, 'row 2 has no HP'],
 ] as const)('a skip to %s is refused', ([, skip, why]) => {
   const text = written([
-    [1, '40', '6', '0.4', ''],
-    [2, '', '', '', ''],
+    [1, 40, 6, 0.4, ''],
+    [2, null, null, null, ''],
   ]);
 
   expect(() => landmarksBefore(text, skip)).toThrow(why);
 });
 
-test('a CSV without the columns a landing is checked by is refused', () => {
-  expect(() => landmarksBefore('index,hp\n1,40\n', 1)).toThrow('not a CSV this scan wrote');
+/** The CSV a scan used to write among them, handed to `--out` by a resume of a run from before. */
+test.for([
+  ['a CSV', 'index,hp\n1,40\n', 'is not valid JSON'],
+  ['a row without the fields a landing is checked by', '{"index":1,"hp":40}\n', 'not a file this scan wrote'],
+] as const)('a file holding %s is refused', ([, text, why]) => {
+  expect(() => landmarksBefore(text, 1)).toThrow(why);
 });
 
 /** A Pikachu of `hp`, read whole. */
@@ -1112,17 +1089,17 @@ test('a moves screen whose measurements disagree anywhere is held to its overlay
   expect(await lookedAt(ELGYEM, { overlay: overlay(11, 13, 3), measures: '57|7.6|0.5' })).toMatchObject({ look: null });
 });
 
-/** A default scan runs neither pass, so what the stardust says is both columns and `identify`'s `shadowed`. */
-test('the screen fills the shadow and purified columns no pass answered', () => {
-  const unasked = { shadow: '', purified: '' } as const;
+/** A default scan runs neither pass, so what the stardust says is both fields and `identify`'s `shadowed`. */
+test('the screen fills the shadow and purified fields no pass answered', () => {
+  const unasked = { shadow: null, purified: null };
 
-  expect(shaded(unasked, 'neither')).toStrictEqual({ shadow: 'no', purified: 'no', shadowed: false, notes: [] });
-  expect(shaded(unasked, 'shadow')).toStrictEqual({ shadow: 'yes', purified: 'no', shadowed: true, notes: [] });
-  expect(shaded(unasked, 'purified')).toStrictEqual({ shadow: 'no', purified: 'yes', shadowed: true, notes: [] });
-  expect(shaded(unasked, null)).toStrictEqual({ shadow: '', purified: '', shadowed: null, notes: [] });
-  expect(shaded({ shadow: '', purified: 'no' }, null), 'one pass alone cannot rule both out').toStrictEqual({
-    shadow: '',
-    purified: 'no',
+  expect(shaded(unasked, 'neither')).toStrictEqual({ shadow: false, purified: false, shadowed: false, notes: [] });
+  expect(shaded(unasked, 'shadow')).toStrictEqual({ shadow: true, purified: false, shadowed: true, notes: [] });
+  expect(shaded(unasked, 'purified')).toStrictEqual({ shadow: false, purified: true, shadowed: true, notes: [] });
+  expect(shaded(unasked, null)).toStrictEqual({ shadow: null, purified: null, shadowed: null, notes: [] });
+  expect(shaded({ shadow: null, purified: false }, null), 'one pass alone cannot rule both out').toStrictEqual({
+    shadow: null,
+    purified: false,
     shadowed: null,
     notes: [],
   });
@@ -1133,15 +1110,15 @@ test('the screen fills the shadow and purified columns no pass answered', () => 
  * trusted to rule out a form only a shadow can be.
  */
 test('a pass that ran keeps its answer, and a disagreement with the screen is noted', () => {
-  expect(shaded({ shadow: 'yes', purified: 'no' }, 'shadow')).toStrictEqual({
-    shadow: 'yes',
-    purified: 'no',
+  expect(shaded({ shadow: true, purified: false }, 'shadow')).toStrictEqual({
+    shadow: true,
+    purified: false,
     shadowed: true,
     notes: [],
   });
-  expect(shaded({ shadow: 'no', purified: '' }, 'shadow')).toStrictEqual({
-    shadow: 'no',
-    purified: 'no',
+  expect(shaded({ shadow: false, purified: null }, 'shadow')).toStrictEqual({
+    shadow: false,
+    purified: false,
     shadowed: null,
     notes: ['the shadow search says no, where the stardust to power up says yes'],
   });
