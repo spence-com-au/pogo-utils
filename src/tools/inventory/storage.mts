@@ -9,8 +9,9 @@ import { type Config, type Point } from './config.mts';
 import { CP_LABEL, parseDetail, readLines } from './detail.mts';
 import { type GameData } from './game-master.mts';
 import { centre, findLine, fold, type Line } from './ocr.mts';
-import { type Image } from './png.mts';
+import { luminance, median, rgb, type Image } from './png.mts';
 import { isDetail } from './report.mts';
+import { SCROLL_STRIP } from './stitch.mts';
 
 /**
  * How many backspaces clear the search box, and **the longest term `unsearchable` will pass** — one number on purpose,
@@ -33,15 +34,45 @@ export const CLEAR_KEYS = 300;
 const DIALOG_BUTTON = /^(cancel|yes)$/;
 
 /**
- * Whether a dialog is open over the screen — what a drag the phone dropped as a tap leaves behind, on whatever control
- * it started over. A dialog's own buttons sit where the screen's do — the close button's tap lands on the power-up
- * sheet's CANCEL, and the main menu's tap or a later stray could land on its confirm — so it is asked before the taps at
- * the foot of the screen: `toStorage`'s close and menu taps, and `closeDetail`'s. The scan asks it twice more, on a
- * detail screen whose HP did not read and on the screenshot its moves are read from, which is where a drag dropped on
- * the way to the moves is seen. It is not asked before the swipes between Pokémon, which do nothing over a dialog, nor
- * before the search box's tap or a tile's, which are made on storage, where no detail screen's control can be hit.
+ * The luminance between a detail screen's white panel and the same panel under a dialog's scrim, as `scrimmed` takes
+ * it: measured over every screen committed, the margin's median is 224 or brighter at both heights on each detail
+ * screen and storage, scrolled or not, where the scrim the game drew over a Dynamax Sableye
+ * (`dialog/sableye-mega-level.png`) brings its foot down to 95 and the map reads 86 at the name's height.
  */
-export const dialogOpen = (lines: readonly Line[]) => findLine(lines, DIALOG_BUTTON) !== undefined;
+const PANEL_LIT = 160;
+
+/** The median luminance of the panel's margin over the rows from `from` to `to`, as fractions of the screen height. */
+function margin(image: Image, from: number, to: number): number {
+  const x = Math.round(image.width * SCROLL_STRIP);
+  const rows = Array.from({ length: Math.round(image.height * (to - from)) }, (_, row) =>
+    luminance(...rgb(image, x, Math.round(image.height * from) + row)),
+  );
+
+  return median(rows);
+}
+
+/**
+ * Whether a dialog's scrim is drawn over a detail screen's panel, which is how a dialog is told whatever its button
+ * says: the game's `OK` is white on a pale green pill that OCR reads no line for at all. The margin is the panel's lit
+ * at the name's height, which the scrim fades in below, and unlit at the foot, which it covers. The first is what keeps
+ * this to a detail screen, the map's margin being as dark there as the scrim is; the second is what a screen with no
+ * dialog never is, the margin holding no control to darken it.
+ */
+const scrimmed = (image: Image) => margin(image, 0.4, 0.5) > PANEL_LIT && margin(image, 0.8, 0.9) < PANEL_LIT;
+
+/**
+ * Whether a dialog is open over the screen — what a drag the phone dropped as a tap leaves behind, on whatever control
+ * it started over, or one the game raises on its own, such as `New Mega Level available!` — by its button where that
+ * reads and by its scrim where it does not. A dialog's own buttons sit where the screen's do — the close button's tap
+ * lands on the power-up sheet's CANCEL, and the main menu's tap or a later stray could land on its confirm — so it is
+ * asked before the taps at the foot of the screen: `toStorage`'s close and menu taps, and `closeDetail`'s. The scan
+ * asks it twice more, on every detail screen it reads and on the screenshot its moves are read from, a dialog hiding
+ * what it is drawn over however much of the screen above it read. It is not asked before the swipes between Pokémon,
+ * which do nothing over a dialog, nor before the search box's tap or a tile's, which are made on storage, where no
+ * detail screen's control can be hit.
+ */
+export const dialogOpen = (lines: readonly Line[], image: Image) =>
+  findLine(lines, DIALOG_BUTTON) !== undefined || scrimmed(image);
 
 /**
  * Why `term` cannot be typed into storage's search box, or null where it can: a character `type` would refuse, or more
@@ -143,7 +174,7 @@ export function storage(
       const image = await device.screenshot();
       const lines = await readLines(image);
 
-      if (dialogOpen(lines)) {
+      if (dialogOpen(lines, image)) {
         await dismiss();
         continue;
       }
@@ -315,7 +346,7 @@ export function storage(
       }
 
       // Before either tap below, which are both at the foot of the screen where a dialog keeps its buttons.
-      if (dialogOpen(lines)) {
+      if (dialogOpen(lines, image)) {
         await dismiss();
         continue;
       }

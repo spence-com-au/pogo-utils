@@ -26,6 +26,7 @@ import { clearable, identify, label, shadowOf } from './identify.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
 import { artworkIn, readScreen } from './report.mts';
+import { dialogOpen } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 
 /**
@@ -2324,6 +2325,28 @@ test(
     }
 
     expect(found, 'a band of a screen with no overlay on it read as one').toStrictEqual([]);
+  },
+  WHOLE_CORPUS_TIMEOUT,
+);
+
+/**
+ * That no committed capture reads as having a dialog over it, the corpus being every screen there is to measure
+ * `dialogOpen`'s scrim against: a detail screen it tripped on would be closed with Back and its reading thrown away.
+ */
+test(
+  'no capture reads as having a dialog open over it',
+  async () => {
+    const open: string[] = [];
+
+    for (const file of CORPUS) {
+      const { lines, image } = await readingOf(file);
+
+      if (dialogOpen(lines, image)) {
+        open.push(file);
+      }
+    }
+
+    expect(open).toStrictEqual([]);
   },
   WHOLE_CORPUS_TIMEOUT,
 );
