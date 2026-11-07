@@ -8,9 +8,9 @@
  */
 
 import { said } from '../../errors.ts';
-import { ICON_BASE, ICON_DIR } from '../../pokedex/icons.ts';
+import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { signaturesFor, signatureOfIcon, type Signature } from './artwork.mts';
+import { signaturesFor, signatureOfIcon, type Colourings } from './artwork.mts';
 import { MAX_LEVEL, type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -355,6 +355,8 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     const { baseAttack = 0, baseDefense = 0, baseStamina = 0 } = settings.stats;
     const prefix = `${settings.pokemonId}_`;
     const suffix = name?.startsWith(prefix) ? name.slice(prefix.length) : (name ?? '');
+    const icon = iconName(index, dex, suffix, name);
+    const shiny = icon === null ? null : shinyIcon(icon);
     const form: Form = {
       dex,
       species: strings.get(`pokemon_name_${match[1]}`) ?? titleise(settings.pokemonId),
@@ -365,7 +367,8 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
       // By the form as the form settings give it too, which is the number where the name is missing.
       costume: settings.form !== undefined && costumes.has(settings.form),
-      icon: iconName(index, dex, suffix, name),
+      icon,
+      shiny: shiny !== null && index.has(shiny) ? shiny : null,
       types: [settings.type, settings.type2].filter((t) => t !== undefined).map(typeName),
       attack: baseAttack,
       defense: baseDefense,
@@ -555,13 +558,11 @@ async function cachedJson(dir: string, file: string, url: string, refresh: boole
 }
 
 /**
- * A signature per form for every form the artwork could settle, downloading the icons once and caching them beside the
- * game master.
+ * The colourings of every form the artwork could settle, downloading the icons once and caching them beside the game
+ * master.
  */
-export function iconsFor(dir: string, data: GameData, refresh = false): Promise<Map<Form, Signature>> {
-  return signaturesFor(data, (form) =>
-    cachedAs(join(dir, 'icons'), form.icon, ICON_BASE + form.icon, refresh, (bytes) =>
-      signatureOfIcon(decodePng(bytes)),
-    ),
+export function iconsFor(dir: string, data: GameData, refresh = false): Promise<Map<Form, Colourings>> {
+  return signaturesFor(data, (file) =>
+    cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, (bytes) => signatureOfIcon(decodePng(bytes))),
   );
 }

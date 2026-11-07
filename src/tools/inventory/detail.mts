@@ -146,8 +146,8 @@ export function cpOn(text: string, longest: number): string | null {
  * Several readings are a choice OCR cannot make. `maschiff-female.png`'s `cp/56` is 756 on its screen and the band
  * round it reads `56` under every treatment, the 7 lost the way the line lost it; `unown-b.png`'s `cP48/7` is 487, the
  * slash the stray. Nothing on the screen says which a third read will be, so where `wholeCp` does not settle it
- * `parseDetail` offers every reading as a candidate and leaves the choice to the arithmetic. That is four captures of
- * the corpus, three of them offering the CP their screen prints beside a stray and `castform-snowy.png`'s `ce/4 : 7`
+ * `parseDetail` offers every reading as a candidate and leaves the choice to the arithmetic. That is five captures of
+ * the corpus, four of them offering the CP their screen prints beside a stray and `castform-snowy.png`'s `ce/4 : 7`
  * offering only 747 and 47 for 746. The one place those figures live; `screens.test.mts` pins them capture by capture.
  */
 export function readingsOf(read: string, longest: number): string[] {

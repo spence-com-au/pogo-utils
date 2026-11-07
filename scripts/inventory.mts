@@ -61,7 +61,7 @@
 import { said } from '../src/errors.ts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device, type Transport } from '../src/tools/inventory/adb.mts';
-import { type Signature } from '../src/tools/inventory/artwork.mts';
+import { type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
@@ -362,7 +362,7 @@ function key() {
  * shares, and this prints it. The answer first, each field once and coloured by where it came from; then, for
  * `--verbose`, the lines OCR found and the `Detail`, `Overlay` and `Identity` the answer was drawn from.
  */
-async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Signature>) {
+async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Colourings>) {
   const read = await readScreen(image, data, icons, config.overlay);
   key();
 

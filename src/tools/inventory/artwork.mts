@@ -10,9 +10,16 @@
  * edges enclose that holds the most colour is kept — a flat backdrop with crisp shapes on it has edges too, and growing
  * the mask from them would flood it.
  *
- * **Judge it on the margin.** Seventeen committed captures fall in a reachable family; at `MARGIN` the match answers
- * five and is right on all five, and ten of the twelve it declines are nearest an icon that is not their own. So the
- * margin is what stands between the match and being confidently wrong ten times.
+ * **Judge it on the margin.** Twenty-one committed captures fall in a reachable family; at `MARGIN` the match answers
+ * five and is right on all five, and thirteen of the sixteen it declines are nearest a form that is not their own. So
+ * the margin is what stands between the match and being confidently wrong thirteen times.
+ *
+ * **Against every colouring, not only the ordinary one.** A shiny is recoloured as a whole, which takes it as far from
+ * its own form's ordinary icon as another form is: `psyduck-shiny.png`'s pale blue body sits in the bin the cyan of the
+ * Swim 2025 ring does, so against the ordinary icons alone it leads for the swim ring by 0.820, far past any margin.
+ * So a form is as near as the nearer of its ordinary and shiny icons, which needs nothing to say whether the capture is
+ * shiny — the scan's own pass misses some — and leaves the margin to decline where two forms' colourings meet: the two
+ * shiny Psyduck icons are 0.024 apart, which is all it leads by.
  */
 
 import { said } from '../../errors.ts';
@@ -62,16 +69,18 @@ const GROW = 6;
 
 /**
  * How much closer the nearest form has to be than the runner-up before the answer is worth having. Over the committed
- * captures anything above 0.190 and at or below 0.531 is right wherever it answers: the widest lead a wrong icon takes
- * is `ho-oh.png`'s 0.190 and the narrowest right answer leads by 0.531 (`burmy-sandy.png`). 0.3 sits inside that with
- * 0.110 of headroom over the first. No margin inside that window reaches `basculin-blue.png`, whose own icon leads by
- * 0.142 — beneath `ho-oh.png`'s wrong 0.190, so admitting it would admit that. And the 0.142 is the water behind the
- * fish rather than the fish: PGSharp's box covers the head, the only part of it the three stripes differ in. So that
- * row pins the forms it cannot be told from instead.
+ * captures anything above 0.053 and at or below 0.558 is right wherever it answers: the widest lead a wrong form takes
+ * is `unown-m.png`'s 0.053 and the narrowest right answer leads by 0.558 (`burmy-sandy.png`). 0.3 sits inside that.
+ *
+ * Which holds only against both colourings. Against the ordinary icons alone the window is empty, the shiny
+ * `psyduck-shiny.png` leading for the wrong form by 0.820 and the shiny `ho-oh.png` for the wrong one by 0.190, where
+ * its own leads by 0.105 now. That and `basculin-blue.png`'s 0.139 are right answers the margin declines, and the 0.139
+ * is the water behind the fish rather than the fish: PGSharp's box covers the head, the only part of it the three
+ * stripes differ in. So that row pins the forms it cannot be told from instead.
  *
  * Which is this capture's lead and not a bound on the family's. Its icons are 0.221 apart at their closest, and a lead
  * cannot exceed the distance to the icon it is measured against, so a Blue- or Red-Striped Basculin can lead by at most
- * that — leaving `(0.190, 0.221]` as margins some capture of one could still be answered at.
+ * that.
  */
 export const MARGIN = 0.3;
 
@@ -85,6 +94,9 @@ const COUNTED = 1000;
 
 /** A normalised hue histogram. Comparable between a capture and an icon, which is the only thing the two share. */
 export type Signature = readonly number[];
+
+/** A form's icon in every colouring it is drawn in: the ordinary one, then the shiny one where there is one. */
+export type Colourings = readonly Signature[];
 
 /** The first row of the game's own panel, which bounds the artwork below. */
 function panelTop(image: Image): number {
@@ -349,10 +361,14 @@ export function distance(a: Signature, b: Signature): number {
 /**
  * Whichever reference the signature is nearest, or null where nothing is near enough *ahead of the rest* to be worth
  * answering. The margin is the whole of the contract: a list of one is answered outright, and anything closer than
- * `margin` to its runner-up is declined rather than guessed at.
+ * `margin` to its runner-up is declined rather than guessed at. A reference is as near as the nearest of its
+ * colourings, the capture being drawn in one of them.
  */
-export function nearest<T>(signature: Signature, references: ReadonlyMap<T, Signature>, margin = MARGIN): T | null {
-  const ranked = [...references].map(([key, reference]) => ({ key, gap: distance(signature, reference) }));
+export function nearest<T>(signature: Signature, references: ReadonlyMap<T, Colourings>, margin = MARGIN): T | null {
+  const ranked = [...references].map(([key, colourings]) => ({
+    key,
+    gap: Math.min(...colourings.map((colouring) => distance(signature, colouring))),
+  }));
 
   ranked.sort((a, b) => a.gap - b.gap);
 
@@ -426,21 +442,23 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 export const FETCH_BATCH = 16;
 
 /**
- * A signature per form for every form the artwork could settle, each one's icon fetched and read by `read`, which is
- * where the two callers differ: `download.mts` caches the icons beside the game master for `pnpm inventory`, and the
- * Inventory page fetches them straight from `ICON_BASE`. 162 files of some 24 KB on a real game master, so this is a
- * one-off of under 4 MiB.
+ * The colourings of every form the artwork could settle, each icon fetched and read by `read`, which is where the two
+ * callers differ: `download.mts` caches the icons beside the game master for `pnpm inventory`, and the Inventory page
+ * fetches them straight from `ICON_BASE`. 361 files of some 24 KB on a real game master, an ordinary and a shiny icon
+ * for all but three of its 182 forms, so this is a one-off of under 9 MiB.
  */
 export async function signaturesFor(
   data: GameData,
-  read: (form: Drawn) => Promise<Signature>,
-): Promise<Map<Form, Signature>> {
+  read: (file: string) => Promise<Signature>,
+): Promise<Map<Form, Colourings>> {
   const { drawn: families, short } = ambiguous(data);
   const drawn = families.flat();
-  const signatures = new Map<Form, Signature>();
+  const signatures = new Map<Form, Colourings>();
+  const files = (form: Drawn) => (form.shiny === null ? [form.icon] : [form.icon, form.shiny]);
+  const count = drawn.reduce((total, form) => total + files(form).length, 0);
 
-  if (drawn.length > 0) {
-    progress(`Reading ${drawn.length} form icons`);
+  if (count > 0) {
+    progress(`Reading ${count} form icons`);
   }
 
   // Per family and ahead of the download, since the index already said so: a family short of one icon is one the game
@@ -450,9 +468,17 @@ export async function signaturesFor(
     progress(`  no icon for every form of ${short.length} families, which stay ambiguous: ${named.join(', ')}`);
   }
 
-  const signatureFor = async (form: Drawn): Promise<Signature | null> => {
+  // All of a form's colourings or none: judged on its ordinary icon alone, a shiny is as far from it as another form
+  // is, so a form short of the shiny it has would be answered against the wrong colours rather than declined.
+  const signatureFor = async (form: Drawn): Promise<Colourings | null> => {
     try {
-      return await read(form);
+      const colourings: Signature[] = [];
+
+      for (const file of files(form)) {
+        colourings.push(await read(file));
+      }
+
+      return colourings;
     } catch (error) {
       // An icon is an improvement rather than a prerequisite, so one that cannot be had costs an abstention and not a
       // scan. That holds as much for a network that is down with nothing cached as for a 404, a truncated download or
@@ -472,10 +498,10 @@ export async function signaturesFor(
     const read = await Promise.all(batch.map(signatureFor));
 
     for (const [i, form] of batch.entries()) {
-      const signature = read[i];
+      const colourings = read[i];
 
-      if (signature) {
-        signatures.set(form, signature);
+      if (colourings) {
+        signatures.set(form, colourings);
       }
     }
   }
