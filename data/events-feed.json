@@ -132,17 +132,6 @@
     "added": "2026-11-06T02:47:25.943Z"
   },
   {
-    "eventID": "halloween-2026-part-2",
-    "name": "Pokémon GO Halloween 2026 Part II",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/halloween-2026-part-2/",
-    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-01-halloween-2026-part-2/halloween-2026-part-2.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "into-the-wild-2026",
     "name": "Into the Wild",
     "eventType": "event",
@@ -372,17 +361,6 @@
     "start": "2026-09-25T10:00:00.000",
     "end": "2027-01-15T20:00:00.000",
     "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "pokemonspotlighthour2026-11-05",
-    "name": "Teddiursa wearing a witch hat Spotlight Hour",
-    "eventType": "pokemon-spotlight-hour",
-    "heading": "Pokémon Spotlight Hour",
-    "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-05/",
-    "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-19T22:36:12.344Z"
   },
   {
     "eventID": "pokemonspotlighthour2026-11-19",
