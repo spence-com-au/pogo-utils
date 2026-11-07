@@ -65,7 +65,10 @@ Search for what is already filed, and show any hits above the body rather than j
 gh issue list --search '<keywords from the title>' --state all --limit 10
 ```
 
-Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to.
+Then show the rendered body, the title and the label. Wait. Do not create anything until the user says to. That wait
+belongs to the synchronous flow, a user who asked for the issue and reads the draft. One filed along the way, under
+`CLAUDE.md`'s rule for what a change leaves behind, skips it: judge the hits rather than show them, comment on an open
+one that already covers the defect with whatever the new case adds, and otherwise file.
 
 ## Create
 

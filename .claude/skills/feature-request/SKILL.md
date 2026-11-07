@@ -64,7 +64,10 @@ Draft a title that names the behaviour wanted, in the voice the repository's com
 `Group the Events calendar by day rather than by type`. No `[feature]` prefix: the label already says it.
 
 Show the rendered body, the title, the label, and whatever the two searches turned up. Wait. Do not create anything
-until the user says to.
+until the user says to. That wait belongs to the synchronous flow, a user who asked for the issue and reads the draft.
+One filed along the way, under `CLAUDE.md`'s rule for what a change leaves behind, skips it: judge the hits rather than
+show them, comment on an open one that already covers the behaviour with whatever the new case adds, leave one the
+README settled against to the reply, and otherwise file.
 
 ## Create
 
