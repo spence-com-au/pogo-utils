@@ -4,9 +4,10 @@
  * the wrong one, and nothing on a phone screen says which.
  */
 
-import { type Detail } from './detail.mts';
+import { measuresIn, type Detail } from './detail.mts';
 import { type Moves } from './moves.mts';
-import { findOverlay, readOverlay, widen, type Overlay } from './overlay.mts';
+import { ocr } from './ocr.mts';
+import { findOverlay, ivsOf, readOverlay, widen, type Overlay } from './overlay.mts';
 import { decodePng, screenIn } from './png.mts';
 import {
   agree,
@@ -22,6 +23,7 @@ import {
   looseKeyOf,
   Marks,
   MOVE_STEPS,
+  type MovesLook,
   movesOf,
   otherPokemon,
   OverlayBoxes,
@@ -835,6 +837,41 @@ test('the overlay over a moves screen tells whose moves they are', async () => {
   expect(bounced?.iv).toStrictEqual({ attack: 11, defense: 6, stamina: 10 });
   expect(otherPokemon(roggenrola, bounced), 'the Roggenrola took the Rookidee’s moves screen for its own').toBe(true);
   expect(otherPokemon(rookidee, bounced), 'the Rookidee’s own moves screen is taken for another’s').toBe(false);
+  expect(measuresIn(await ocr(capture('rookidee-bounced.png'))), 'the Rookidee’s HP is the Roggenrola’s').not.toMatch(
+    /^95\|/,
+  );
+});
+
+/**
+ * Issue #792: `elgyem-moves.png` is an Elgyem's own moves screen, which the live scan refused for its overlay. Read
+ * through the box that scan had kept, as its log printed it, the overlay over the white panel loses the `8` the
+ * detail screen's reads; the HP, weight and height under it are the detail screen's all the same.
+ */
+test('the HP, weight and height over a moves screen say whose it is where its overlay misreads', async () => {
+  const box = {
+    x: 0.10972222222222222,
+    y: 0.20082236842105264,
+    width: 0.6076388888888888,
+    height: 0.024671052631578955,
+  };
+  const detail = await readOverlay(capture('elgyem-detail.png'), box);
+  const moves = capture('elgyem-moves.png');
+  const shown = await readOverlay(moves, box);
+
+  expect(detail?.iv).toStrictEqual({ attack: 11, defense: 13, stamina: 8 });
+  expect(otherPokemon(detail, shown), 'the moves screen’s overlay no longer misreads; this test proves nothing').toBe(
+    true,
+  );
+
+  const measures = measuresIn(await ocr(moves));
+  const took = await movesOf(
+    { key: `elgyem|57|7.6|0.46|${ivsOf(detail?.iv ?? expect.unreachable('no overlay'))}`, overlay: detail },
+    async () => ({ moves: { fast: 'Astonish', charged: ['Dark Pulse'] }, cutOff: false, overlay: shown, measures }),
+    { read: async () => expect.unreachable('read again'), next: async () => expect.unreachable('swiped') },
+  );
+
+  expect(measures).toBe('57|7.6|0.46');
+  expect(took.note).toBeNull();
 });
 
 const BAND = { x: 0.15, y: 0.198, width: 0.7, height: 0.03 };
@@ -908,6 +945,9 @@ interface Shown {
   moves: Moves;
 }
 
+/** The HP, weight and height a key carries, which is what a moves screen that reads all three of them shows. */
+const measuresOf = (key: string) => key.split('|').slice(1, 4).join('|');
+
 const ROOKIDEE: Shown = {
   key: 'rookidee|75|2.69|0.25|11/6/10',
   overlay: overlay(11, 6, 10),
@@ -934,7 +974,13 @@ const PIDOVE: Shown = {
  */
 async function lookingDown(
   at: number,
-  { stale = null as Shown | null, swipes = Infinity, blind = 0, read = ROGGENROLA as Omit<Shown, 'moves'> } = {},
+  {
+    stale = null as Shown | null,
+    swipes = Infinity,
+    blind = 0,
+    read = ROGGENROLA as Omit<Shown, 'moves'>,
+    measured = true,
+  } = {},
 ) {
   const shown = [ROOKIDEE, ROGGENROLA, PIDOVE];
   let place = at;
@@ -951,7 +997,12 @@ async function lookingDown(
       caught = null;
       looked.push(place);
 
-      return { moves: screen.moves, cutOff: false, overlay: screen.overlay };
+      return {
+        moves: screen.moves,
+        cutOff: false,
+        overlay: screen.overlay,
+        measures: measured ? measuresOf(screen.key) : '||',
+      };
     },
     {
       read: async () => (misses-- > 0 ? { key: null, overlay: null } : { key: here().key, overlay: here().overlay }),
@@ -1005,8 +1056,8 @@ test('another Pokémon’s moves are left blank where this one cannot be found a
 test.for([
   ['a re-read that misses the HP', { blind: 1, stale: ROOKIDEE }],
   [
-    'IVs misread on the detail screen, the moves screen showing the true ones',
-    { read: { key: 'roggenrola|95|16.26|0.37|8/11/10', overlay: overlay(8, 11, 10) } },
+    'IVs misread on the detail screen, the moves screen showing the true ones but not its HP, weight or height',
+    { read: { key: 'roggenrola|95|16.26|0.37|8/11/10', overlay: overlay(8, 11, 10) }, measured: false },
   ],
 ] as const)('%s leaves the moves blank without a swipe', async ([, options]) => {
   expect(await lookingDown(1, options)).toStrictEqual({
@@ -1015,6 +1066,50 @@ test.for([
     place: 1,
     looked: [1],
   });
+});
+
+const ELGYEM: { key: string | null; overlay: Overlay | null } = {
+  key: 'elgyem|57|7.6|0.46|11/13/8',
+  overlay: overlay(11, 13, 8),
+};
+const ELGYEM_MOVES: Moves = { fast: 'Astonish', charged: ['Dark Pulse'] };
+
+/** A `movesOf` whose every look down shows `shown`, and whose every read of the screen misses it. */
+const lookedAt = (reading: typeof ELGYEM, shown: Omit<MovesLook, 'moves' | 'cutOff'>) =>
+  movesOf(reading, async () => ({ moves: ELGYEM_MOVES, cutOff: false, ...shown }), {
+    read: async () => ({ key: null, overlay: null }),
+    next: async () => {},
+  });
+
+/**
+ * Issue #792: the overlay over an Elgyem's moves screen read `11/13/3` for the `11/13/8` its detail screen read, on
+ * both looks, where the same screen read its `57 / 57 HP`, `7.6kg` and `0.46m`. The screen was this Pokémon's.
+ */
+test('a moves screen whose HP, weight and height are this Pokémon’s keeps its moves under a misread overlay', async () => {
+  expect(await lookedAt(ELGYEM, { overlay: overlay(11, 13, 3), measures: '57|7.6|0.46' })).toStrictEqual({
+    look: { moves: ELGYEM_MOVES, cutOff: false, overlay: overlay(11, 13, 3), measures: '57|7.6|0.46' },
+    note: null,
+  });
+});
+
+/** The same the other way about: the detail screen's overlay misread, the moves screen's right. */
+test('IVs misread on the detail screen keep the moves of a screen whose HP, weight and height agree', async () => {
+  const read = { key: 'roggenrola|95|16.26|0.37|8/11/10', overlay: overlay(8, 11, 10) };
+
+  expect(await lookingDown(1, { read })).toStrictEqual({ moves: ROGGENROLA.moves, note: null, place: 1, looked: [1] });
+});
+
+/** One field agreeing is no identity, two Pokémon a swipe apart sharing an HP as readily as not. */
+test('a moves screen reading only its HP is held to its overlay', async () => {
+  expect(await lookedAt(ELGYEM, { overlay: overlay(11, 13, 3), measures: '57||' })).toStrictEqual({
+    look: null,
+    note: 'the moves screen showed another Pokémon, 11/13/3, and this Pokémon could not be found again',
+  });
+});
+
+/** Nor does a field that disagrees leave the rest to vouch for it. */
+test('a moves screen whose measurements disagree anywhere is held to its overlay', async () => {
+  expect(await lookedAt(ELGYEM, { overlay: overlay(11, 13, 3), measures: '57|7.6|0.5' })).toMatchObject({ look: null });
 });
 
 /** A default scan runs neither pass, so what the stardust says is both columns and `identify`'s `shadowed`. */
