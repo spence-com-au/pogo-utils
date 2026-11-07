@@ -21,7 +21,7 @@ import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-
 import { ambiguous, nearest, type Signature } from './artwork.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
-import { cpLabelOf, HEIGHT } from './detail.mts';
+import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from './moves.mts';
@@ -550,6 +550,19 @@ const FIXTURES: readonly Fixture[] = [
     species: 'Frigibax',
     types: ['Dragon', 'Ice'],
     weight: 16.73,
+  },
+  {
+    cp: 1620,
+    file: 'gengar-gigantamax-shortest.png',
+    form: null,
+    gender: 'male',
+    gigantamax: true,
+    height: 1.13,
+    hp: 98,
+    overlay: { iv: { attack: 15, defense: 15, stamina: 10 }, level: 20 },
+    species: 'Gengar',
+    types: ['Ghost', 'Poison'],
+    weight: 28.63,
   },
   {
     cp: 1632,
@@ -1138,7 +1151,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 60 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 61 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1310,9 +1323,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 60.
+ * covers everything else in this file — one capture rather than 61.
  *
- * They need it because a body that waits on all 60 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 61 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1501,15 +1514,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 60,
+  rows: 61,
   negatives: 3,
-  answeredAsThemselves: 59,
-  oneLevel: 60,
-  crossCheckAgrees: 60,
+  answeredAsThemselves: 60,
+  oneLevel: 61,
+  crossCheckAgrees: 61,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 50,
+  noDefects: 51,
   unseparated: 10,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1550,9 +1563,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 60 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 61 any more, where ten raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 60 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 61 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The ten it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1649,6 +1662,7 @@ test(
       'dialga-altered.png': 2848,
       'dialga-origin.png': 2845,
       'frigibax.png': 656,
+      'gengar-gigantamax-shortest.png': 1620,
       'gengar-gigantamax.png': 1632,
       'growlithe-nickname.png': 738,
       'kecleon.png': 861,
@@ -1968,7 +1982,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(60);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(61);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2136,6 +2150,24 @@ test('a nickname with no types read is reported as unsearched, not as unfitted',
   expect(identity.notes).toStrictEqual([
     'a nickname hides the species, and only the IVs, the HP and the types together can say what it is',
   ]);
+});
+
+/**
+ * The weight line as the whole-screen pass read it off this capture's plain screen during a scan: PGSharp's gear glued
+ * on from the toolbar at the left edge, which made the box 106 tall against the 57 the weight is on its five sibling
+ * Gengars. The stitch committed here does not reproduce it — Tesseract segments the page differently once the rows
+ * below the band's foot come from the scrolled frame — so the line is put back as the scan had it, and the type band
+ * sized off that box ran past the divider into the `Gigantamax` heading and read nothing.
+ */
+test('a weight box swollen by a glued neighbour still leaves the types read', async () => {
+  const { image, lines } = await readingOf('gengar-gigantamax-shortest.png');
+  const glued = { text: 'xt 28.63kg', left: 32, top: 1671, width: 367, height: 106 };
+  const weight = lines.findIndex((l) => l.text === '28.63kg');
+  assert.ok(weight >= 0, 'the weight line no longer reads whole, so there is nothing to put the glued one in place of');
+
+  const detail = await parseDetail(lines.with(weight, glued), DATA, image);
+
+  expect(detail.types).toStrictEqual(['Ghost', 'Poison']);
 });
 
 /**
@@ -2536,6 +2568,7 @@ test(
       'dialga-origin.png': { fast: 'Dragon Breath', charged: ['Iron Head'] },
       'eevee-background.png': { fast: 'Tackle', charged: ['Swift'] },
       'frigibax.png': { fast: 'Ice Fang', charged: ['Outrage'] },
+      'gengar-gigantamax-shortest.png': { fast: 'Sucker Punch', charged: ['Sludge Bomb'] },
       'gengar-gigantamax.png': { fast: 'Shadow Claw', charged: ['Sludge Bomb'] },
       'growlithe-nickname.png': { fast: 'Ember', charged: ['Flamethrower'] },
       'ho-oh.png': { fast: 'Extrasensory', charged: ['Brave Bird'] },
@@ -2720,7 +2753,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 60.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 61.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(

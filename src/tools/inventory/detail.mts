@@ -597,6 +597,9 @@ async function heightOn(image: Image, row: Line): Promise<Line | undefined> {
 /** Only letters and the slash between two types; the row also holds `WEIGHT` and `HEIGHT`, which are letters too. */
 const TYPE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ/ ';
 
+/** How much taller than the other one a measurement box may be before it has taken in something besides its digits. */
+const ANCHOR_RATIO = 1.4;
+
 /**
  * The types, read off the row of labels under the weight rather than out of the whole-screen pass. That row is small
  * grey capitals and the sparse pass mangles it, measuring **6 of 25** on real screens; found by the weight and read on
@@ -638,7 +641,17 @@ async function typesOf(lines: readonly Line[], row: Line | undefined, data: Game
     // Generous, because the band is measured in the anchor's own height and the two anchors disagree: `0.44m` came
     // back 45 tall where `5.42kg` beside it came back 58, and a band sized off the shorter ended six pixels into the
     // labels and lost a Cyndaquil's `FIRE`. The alphabet keeps the digits above out of it.
-    const band = crop(image, image.width * 0.25, row.top + row.height * 0.8, image.width * 0.5, row.height * 2);
+    //
+    // But no taller than the other anchor allows, since a box can take in more than its digits. Over 64 screens reading
+    // both, the corpus's and four more Gengars from one scan, the weight came back 1.21–1.30 times the height, its `g`
+    // hanging below the line; a fifth Gengar's came back `xt 28.63kg`, PGSharp's gear glued on from the toolbar at the
+    // left edge, 106 tall against its `1.13m`'s 45. A band twice that ran past the divider into the `Gigantamax`
+    // heading below and read nothing at all.
+    const level = lines.filter(
+      (l) => measurement(l.text) && l.top < row.top + row.height && row.top < l.top + l.height,
+    );
+    const tall = Math.min(row.height, ...level.map((l) => l.height * ANCHOR_RATIO));
+    const band = crop(image, image.width * 0.25, row.top + tall * 0.8, image.width * 0.5, tall * 2);
     const read = found((await ocrLine(scale(band, 2), TYPE_ALPHABET)) ?? '');
 
     // Unless the pass read the band's types and another besides. The band can take the slash for a letter and glue it
