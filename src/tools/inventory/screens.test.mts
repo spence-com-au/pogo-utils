@@ -1034,6 +1034,20 @@ const FIXTURES: readonly Fixture[] = [
     weight: 9.55,
   },
   {
+    cp: 2264,
+    favourite: true,
+    file: 'tyranitar-slash.png',
+    form: null,
+    gender: 'female',
+    height: 2.2,
+    hp: 144,
+    name: '87% B/C',
+    overlay: { iv: { attack: 13, defense: 15, stamina: 11 }, level: 21 },
+    species: 'Tyranitar',
+    types: ['Rock', 'Dark'],
+    weight: 249.57,
+  },
+  {
     cp: 487,
     file: 'unown-b.png',
     form: 'B',
@@ -1239,7 +1253,7 @@ for (const fixture of FIXTURES) {
 
     // Whether a box was found is asserted apart from what was read out of it, because the two are different defects
     // and a reader fixed at either stage has to fail here. The corpus reaches one side only: no row has no overlay
-    // drawn on it and none needs `defects.box`, so `boxed` holds for all 63 and the false case of this test is
+    // drawn on it and none needs `defects.box`, so `boxed` holds for all 64 and the false case of this test is
     // unreachable — pinned as a hole where the counts are asserted. One row carries `defects.iv`, a box found whose
     // triple was misread, which is what keeps the test below from being the same assertion twice. `findOverlay`
     // answering null is covered apart from the rows, on the two Squirtle captures PGSharp drew nothing on.
@@ -1411,9 +1425,9 @@ afterAll(async () => {
 
 /**
  * What the tests that read the whole corpus in one body are given, where the `corpus` project's own `testTimeout`
- * covers everything else in this file — one capture rather than 63.
+ * covers everything else in this file — one capture rather than 64.
  *
- * They need it because a body that waits on all 63 captures waits on the whole corpus, which `READ_AHEAD` paces at
+ * They need it because a body that waits on all 64 captures waits on the whole corpus, which `READ_AHEAD` paces at
  * about 65s however the rest of the file is filtered: `-t 'which captures the CP is read off'` on its own has the pool
  * to warm it and still takes 64.8s, there being no earlier test to have paid for any of it. What the pool did take away
  * is the other reason this was here — that on a full run the `describe` blocks above happened to have filled the memo
@@ -1602,15 +1616,15 @@ test('every stitch carries a `Viewport` smaller than itself, and no screen carri
  * disagree with the loop.
  */
 const COVERAGE = {
-  rows: 63,
+  rows: 64,
   negatives: 3,
-  answeredAsThemselves: 62,
-  oneLevel: 63,
-  crossCheckAgrees: 63,
+  answeredAsThemselves: 63,
+  oneLevel: 64,
+  crossCheckAgrees: 64,
   crossCheckDisagrees: 0,
   severalLevels: 0,
   noLevel: 0,
-  noDefects: 52,
+  noDefects: 53,
   unseparated: 11,
   noOverlayDrawn: 0,
   boxNotFound: 0,
@@ -1651,9 +1665,9 @@ test('the corpus is the shape `COVERAGE` says it is', () => {
  * screenshot rather than writing the contradiction into a row. The rows are what make that measurable — nothing on a
  * phone says what the Pokémon was.
  *
- * None of the 63 any more, where eleven raise a note at all — so the trigger costs the corpus no extra read, and would
+ * None of the 64 any more, where eleven raise a note at all — so the trigger costs the corpus no extra read, and would
  * cost one only on a reading that could improve. That it costs one *there* is held by the `identify notes` test above
- * rather than here: that one asserts what `identify` answers on all 63 against `notesOf`, which is empty for a row with
+ * rather than here: that one asserts what `identify` answers on all 64 against `notesOf`, which is empty for a row with
  * no `defects`, so a capture that starts raising a note without earning one fails there.
  *
  * The eleven it does not reach are the ones `unseparated` names, and they are a limit rather than a gap: a form sharing
@@ -1842,6 +1856,7 @@ test(
       'psyduck-shiny.png': [721, 21],
       'snorlax-purified.png': [2304],
       'spinda-04.png': [511],
+      'tyranitar-slash.png': [2264],
       'unown-m.png': [839],
     });
 
@@ -1870,7 +1885,7 @@ test(
     expect(
       figures([...offered.keys()].filter((file) => !labelled.has(file))),
       "`cpsIn`'s docblock quotes these figures; update both or neither",
-    ).toStrictEqual({ captures: 14, carryTheirOwn: 11, silent: 2, stray: [169, 238] });
+    ).toStrictEqual({ captures: 15, carryTheirOwn: 12, silent: 2, stray: [169, 238] });
   },
   WHOLE_CORPUS_TIMEOUT,
 );
@@ -2075,7 +2090,7 @@ test(
     }
 
     const offered = FIXTURES.filter((f) => f.overlay !== null && stated.get(f.file)?.length);
-    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(63);
+    expect(offered.length, 'how many overlays are read has changed, so these two properties say less').toBe(64);
     assert.ok(
       offered.some((f) => stated.get(f.file)?.some((level) => level > (f.overlay?.level ?? 0))),
       'no shortlist offers a level above the true one, so nothing can catch an HP test that is not exact',
@@ -2719,6 +2734,7 @@ test(
       'spinda-04.png': { fast: 'Sucker Punch', charged: ['Icy Wind'] },
       'spoink.png': { fast: 'Splash', charged: ['Psybeam'] },
       'stunfisk-xs.png': { fast: 'Metal Claw', charged: ['Muddy Water'] },
+      'tyranitar-slash.png': { fast: 'Bite', charged: ['Crunch'] },
       'unown-b.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-exclamation.png': { fast: 'Hidden Power', charged: ['Struggle'] },
       'unown-m.png': { fast: 'Hidden Power', charged: ['Struggle'] },
@@ -2871,7 +2887,7 @@ test('the corpus reaches both sides of every attribute', () => {
     'a capture needs `defects.size` again, so `sizeOf` has started misreading a badge',
   ).toStrictEqual([]);
 
-  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 63.
+  // And the two the CP cross-check used to need, the fourth and fifth, now that it agrees with the screen on all 64.
   // What still exercises its note is the other direction, a CP *read* off a screen disagreeing with the derived one,
   // which no capture does any more and the test forging `unown-question.png`'s old `4864` does instead.
   expect(
