@@ -1,6 +1,6 @@
 /**
  * The detail screen scrolled down: the fast move and one or two charged moves. Each row is matched against the pool its
- * form can actually learn, which is a median of seven moves rather than all 328 — the single largest thing that can be
+ * form can actually learn, which is a median of seven moves rather than all 329 — the single largest thing that can be
  * done for the reading, since a small pool affords slack a large one cannot.
  *
  * The region is bounded above by the `GYMS & RAIDS` tab and below by the catch details.
@@ -36,7 +36,7 @@ export async function parseMoves(
  * panel a held Pokémon shows in a trainer battle's party.
  *
  * Each row is matched against `pool`, the moves its form can hold, before the whole list is considered, which is a
- * choice among a median of seven rather than 328 and affords far more slack: `oO Tackle`, where the type icon came
+ * choice among a median of seven rather than 329 and affords far more slack: `oO Tackle`, where the type icon came
  * through as two letters, is two edits from `Tackle` and is rejected outright against the full list. A row that still
  * does not match is cropped out of `image` and read again on its own, and that rescue answers only to the pool.
  *
@@ -162,7 +162,7 @@ async function moveUnder(image: Image, row: Line, pool: readonly Move[]): Promis
 const MOVE_SLACK = 0.2;
 const MOVE_NOISE = 3;
 
-/** A form's own pool is a median of seven moves against 328, so a row may be much further from one of those. */
+/** A form's own pool is a median of seven moves against 329, so a row may be much further from one of those. */
 const POOL_SLACK = 0.45;
 
 /** The tabs directly above the moves, and the first of whatever follows them. */
