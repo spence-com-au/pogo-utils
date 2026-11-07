@@ -115,9 +115,10 @@ for text and done every few seconds.
   and a phone that stops answering does so after 30s with `no answer after 30s`.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
-  length. Where none are found, rows are swept instead. `Player` swipes the minigame from a charged-move tap until the
-  throw plays, and from when the run finds a throw [playing](#the-run-loop) that no tap began, as where the opponent's
-  move came first.
+  length. Where none have been found, rows are swept instead; once some have, a frame with none is left alone, the
+  bubbles being over and the move playing out with nothing to pop. `Player` swipes the minigame from a charged-move tap
+  until the throw plays, and from when the run finds a throw [playing](#the-run-loop) that no tap began, as where the
+  opponent's move came first.
 
 ### Between battles
 

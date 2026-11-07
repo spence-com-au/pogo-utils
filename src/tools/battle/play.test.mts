@@ -127,7 +127,7 @@ test('swipes the lower field after a charged move, until the throw plays', () =>
   expect(lowest(after)).toBeLessThan(0.55);
 });
 
-test('swipes through the bubbles found in the minigame, and waits for them through its lead-in', () => {
+test('swipes through the bubbles found in the minigame, waiting through its lead-in and once they are gone', () => {
   const player = new Player(SIZE);
   const chain: [Point, Point] = [
     [0.17, 0.59],
@@ -145,11 +145,27 @@ test('swipes through the bubbles found in the minigame, and waits for them throu
     ms: 80,
   });
 
-  // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
-  const late = player.next('battle', 3000, { bubbles: [] });
+  // The move playing out once its bubbles are over, read as the fight until a frame hides the HUD.
+  const over = Array.from({ length: 60 }, (_, i) => player.next('battle', 3000 + i * 33, { bubbles: [] }));
 
-  expect(late.kind).toBe('swipe');
-  expect(late).not.toMatchObject({ from: chain[0] });
+  expect(over.every((action) => action.kind === 'wait')).toBe(true);
+});
+
+test('sweeps rows through a minigame whose bubbles are never found, though the last one’s were', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 1000, { bubbles: [chain] });
+  play(['other', 'battle', 'charged', 'charged'], player, 2000);
+
+  // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
+  const late = player.next('battle', 5000, { bubbles: [] });
+
+  expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });
 
 // A throw the opponent's came ahead of plays after theirs, its minigame coming long after the tap that began the last.

@@ -101,7 +101,8 @@ export interface Choices {
 
   /**
    * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
-   * waits through the minigame's lead-in, there being nothing to pop yet, and sweeps rows after it; undefined, where the
+   * waits through the minigame's lead-in, there being nothing to pop yet, and once this minigame's have been found,
+   * there being none left; otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Undefined, where the
    * bubbles' colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
@@ -182,6 +183,14 @@ export class Player {
   #tapped: { state: State; at: number } | undefined;
   #swipes = 0;
 
+  /**
+   * Whether the minigame under way has had its bubbles found, after which a frame with none is its bubbles over rather
+   * than missed. The move then plays out, read as `battle` until a frame of it that hides the HUD, with nothing to pop
+   * and no fast move to fire: in a kept run, `bubbleSwipes` found Avalanche's bubbles from 114.14s to 119.35s, never
+   * losing them for more than 0.3s, and rows were swept on from there through `Kyogre used Avalanche!` until 121.7s.
+   */
+  #found = false;
+
   /** When each lit charged-move button lit, by its x, for as long as it stays lit. */
   readonly #lit = new Map<number, number>();
 
@@ -220,6 +229,7 @@ export class Player {
     // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
     if (state !== 'battle' && state !== 'charged') {
       this.#minigame = false;
+      this.#found = false;
     } else if (minigame) {
       this.#minigame = true;
     }
@@ -239,10 +249,12 @@ export class Player {
       const [through] = this.#minigame ? (bubbles ?? []) : [];
 
       if (through) {
+        this.#found = true;
+
         return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
       }
 
-      if (this.#minigame && bubbles && this.#tapped && now - this.#tapped.at < LEAD_IN_MS) {
+      if (this.#minigame && bubbles && (this.#found || (this.#tapped && now - this.#tapped.at < LEAD_IN_MS))) {
         return { kind: 'wait' };
       }
 
@@ -274,6 +286,7 @@ export class Player {
 
     this.#tapped = { state, at: now };
     this.#minigame = true;
+    this.#found = false;
 
     return { kind: 'tap', at: first, what: state };
   }
