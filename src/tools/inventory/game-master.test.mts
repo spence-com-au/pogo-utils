@@ -288,7 +288,7 @@ test('a misread name reaches its species and a nickname does not', () => {
   expect(distance('Nidoran♀', 'Nidoran♂'), 'the two Nidoran no longer fold to one string').toBe(0);
 });
 
-test('a form is found by the species and form name the CSV prints', () => {
+test('a form is found by the species and form name the scan writes', () => {
   const autumn = form('Deerling', 'Autumn');
 
   expect([autumn.dex, autumn.types, autumn.attack, autumn.defense, autumn.stamina]).toStrictEqual([
