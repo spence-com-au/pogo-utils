@@ -58,12 +58,17 @@ export function* eachTrack(doc: Document): Generator<{ trk: Element; trkpts: HTM
 }
 
 /**
- * The text of a direct child `<tag>`, or null. Read from the element itself rather than its descendants, so a
- * gpx.studio file's `<metadata><author><name>` is never mistaken for an entry's name.
+ * The text of a direct child `<tag>`, in namespace `ns` where one is given, or null. Read from the element itself
+ * rather than its descendants, so a gpx.studio file's `<metadata><author><name>` is never mistaken for an entry's name.
  */
-function childText(el: Element, tag: string): string | null {
+function childText(el: Element, tag: string, ns?: string): string | null {
   for (const child of el.children) {
-    if (child.localName === tag && child.textContent && child.textContent.trim()) {
+    if (
+      child.localName === tag &&
+      (ns === undefined || child.namespaceURI === ns) &&
+      child.textContent &&
+      child.textContent.trim()
+    ) {
       return child.textContent.trim();
     }
   }
@@ -74,14 +79,15 @@ function childText(el: Element, tag: string): string | null {
 /**
  * The text of a `<pgr:*>` field in this element's own `<extensions>`, or null. `tag` is typed by `PGR_FIELDS` rather
  * than left a string: a misspelling answered null, which every caller reads as the file not carrying the field.
- * Matching on local name leaves the prefix a file's own business.
+ * Matching on namespace and local name leaves the prefix a file's own business, and reads only what the validator's
+ * `eventRefs` and field walk read: a foreign `<x:event>` is no event of ours.
  *
  * Worth knowing when editing: an editor that does not model foreign extensions drops the whole block on export —
  * gpx.studio is one — so a round trip through such a tool loses these fields.
  */
 export function extText(el: Element, tag: PgrField): string | null {
   const ext = [...el.children].find((child) => child.localName === 'extensions');
-  return ext ? childText(ext, tag) : null;
+  return ext ? childText(ext, tag, PGR_NS) : null;
 }
 
 /**

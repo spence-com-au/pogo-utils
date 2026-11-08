@@ -107,7 +107,8 @@ export interface Row {
 
   /**
    * The costume's name, every one it could be where the screen does not settle which, empty for none, and null where
-   * nothing answered: no `costume` search ran, and this is not a Pikachu whose artwork was read.
+   * nothing answered: no `costume` search ran, and this is not a Pikachu whose artwork was read. None is `''` among
+   * several wherever the screen could not rule it out, since the costumes alone would read as settled among them.
    */
   costume: string[] | null;
 }
@@ -177,13 +178,15 @@ export class Marks {
    * order can do is see the rows still to come: a row with a field blank takes the first entry it fits, which a later
    * row may have matched exactly. That needs two of one species sharing an HP and every field both read, and moves a
    * mark between them rather than gaining or losing one.
+   *
+   * Null for a screen with no key, which nothing here can match against the search, so the search may well hold it.
    */
-  take(detail: Detail, overlay: Overlay | null): boolean {
+  take(detail: Detail, overlay: Overlay | null): Mark {
     const key = keyOf(detail, overlay);
     const loose = looseKeyOf(detail, overlay);
 
     if (key === null) {
-      return false;
+      return null;
     }
 
     for (const fits of [
