@@ -462,8 +462,9 @@ async function wholeCp(image: Image, line: Line, read: string, longest: number):
 
     // Settled rather than all-or-nothing, then examined in order, which is what keeps a read the answer does not need
     // from failing the capture: a rejection is thrown only where it is reached, and one past the accepted treatment
-    // never is. Thrown rather than swallowed because `ocr.mts` rejects for the machine's reasons and resolves for the
-    // image's, so a Tesseract missing or killed would otherwise read as a band with nothing on it.
+    // never is. Thrown rather than swallowed because the engines, `ocr-cli.mts` and `ocr-wasm.mts` after it, reject for
+    // the machine's reasons and resolve for the image's, so a Tesseract missing or killed would otherwise read as a
+    // band with nothing on it.
     for (const settled of await Promise.allSettled(readTreated(band))) {
       if (settled.status === 'rejected') {
         throw settled.reason;
