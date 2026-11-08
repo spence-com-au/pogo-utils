@@ -90,6 +90,21 @@ test('an unknown pgr element is a misspelling, where a foreign one is left alone
   expect(problemsIn(wpt(`<name>Here</name>${ext(foreign)}`))).toEqual([]);
 });
 
+/**
+ * A prefix bound to `http://` for `https://` reads as `pgr:` and is not. `eventRefs` cannot see such an event, so the
+ * field walk must not index it either, or an event nobody checked reaches data/entries-by-event.json.
+ */
+test('a field in another namespace is not a pgr field, even under the pgr: prefix', () => {
+  const lookalike = (name: string, text: string) =>
+    `<pgr:${name} xmlns:pgr="http://spence.com.au/pogo-utils/gpx/1">${text}</pgr:${name}>`;
+  const body = wpt(`<name>Here</name>${ext(lookalike('country', 'Australia') + lookalike('event', 'gone'))}`);
+  const { problems, eventIndex, usedCountries } = entryProblems([{ fileName: 't.gpx', contents: gpx(body) }], TABLES);
+
+  expect(problems).toEqual(['t.gpx:4: <wpt> has no <pgr:country>']);
+  expect(eventIndex.size).toBe(0);
+  expect(usedCountries.size).toBe(0);
+});
+
 test('a <pgr:event> names an event data/events.json has, wherever in the file it is', () => {
   // Outside any entry too: the pruner cuts a reference wherever it is, so the validator has to refuse one anywhere.
   expect(

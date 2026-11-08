@@ -284,6 +284,22 @@ test('the close button is not tapped while a dialog is open, nor on a screen tha
   expect(sent).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
 });
 
+test('a dialog that Back does not close is given up on after three tries, with nothing tapped', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, DIALOG);
+  const said: string[] = [];
+  const { closeDetail } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
+
+  await expect(closeDetail()).resolves.toBeUndefined();
+
+  expect(said).toStrictEqual(Array<string>(3).fill('  a dialog was open; closing it with Back'));
+  expect(sent).toStrictEqual(
+    Array(3)
+      .fill([['screencap'], ['input', 'keyevent', String(KEY.BACK)]])
+      .flat(),
+  );
+});
+
 /** A detail screen as OCR reads it: the HP line `parseDetail` takes as the mark of one. */
 const DETAIL = word(1, '80 / 80 HP', 30, 100, 40, 8);
 
@@ -456,4 +472,29 @@ test('a menu tap that opened anything but the menu stops the walk, without tappi
 
   await expect(search('shiny')).rejects.toThrow('the main menu did not open');
   expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '182']]);
+});
+
+test('a detail screen the close button never closes stops the walk after three taps', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, DETAIL);
+  const { search, at } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
+  expect(tapped(sent)).toStrictEqual(Array(3).fill(['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]));
+});
+
+test('a map the main menu is walked from three times without reaching storage stops the walk', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, MAP, MENU, MAP, MENU, MAP, MENU);
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
+  expect(tapped(sent)).toStrictEqual(
+    Array(3)
+      .fill([
+        ['input', 'tap', '50', '182'],
+        ['input', 'tap', '25', '164'],
+      ])
+      .flat(),
+  );
 });

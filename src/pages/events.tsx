@@ -1146,8 +1146,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           timezone.
         </p>
         <p>
-          <a href={EVENTS_FEED}>Subscribe in your own calendar</a>, without the weekly Spotlight and Raid Hours. In
-          Google Calendar, copy the link into <em>Other calendars → From URL</em>.
+          <a href={EVENTS_FEED}>Subscribe in your own calendar</a>, without Spotlight Hours, Raid Hours, Max Mondays or
+          seasons. In Google Calendar, copy the link into <em>Other calendars → From URL</em>.
         </p>
         <p>This site is unofficial. Click an event to open its source page.</p>
       </footer>
