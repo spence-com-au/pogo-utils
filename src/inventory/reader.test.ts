@@ -1,27 +1,36 @@
 /**
  * What the reader keeps for the page, and when it lets go of it. The game master, the engine and the icons are each
  * fetched once and held, but a fetch that failed must not be: a rejected promise kept would answer every later read
- * with the network as it was the first time, and leave the page broken until it was reloaded. The engine, the game
- * master and the readers over them are stood in for, so these are claims about the caching and not the reading.
+ * with the network as it was the first time, and leave the page broken until it was reloaded. The Pikachu wardrobe is
+ * the same, held only once it has the plain icon. Besides the caching, the storage search's refusal of a term before it
+ * touches anything, and how many workers the engine is given. The engine, the game master and the readers over them
+ * are stood in for, so these are claims about the caching and the wiring and not the reading.
  */
 
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
+import { DEFAULTS } from '../tools/inventory/config.mts';
+
 const mocks = vi.hoisted(() => ({
   readScreen: vi.fn(),
   signaturesFor: vi.fn(),
+  storage: vi.fn(),
   tesseractWasm: vi.fn(),
+  unsearchable: vi.fn(),
   useEngine: vi.fn(),
+  wardrobeFor: vi.fn(),
 }));
 
 vi.mock('../tools/inventory/artwork.mts', () => ({
   signatureOfIcon: (image: unknown) => image,
   signaturesFor: mocks.signaturesFor,
 }));
+vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));
 vi.mock('../tools/inventory/ocr.mts', () => ({ useEngine: mocks.useEngine }));
 vi.mock('../tools/inventory/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
 vi.mock('../tools/inventory/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
 vi.mock('../tools/inventory/report.mts', () => ({ readScreen: mocks.readScreen }));
+vi.mock('../tools/inventory/storage.mts', () => ({ storage: mocks.storage, unsearchable: mocks.unsearchable }));
 
 const data = { species: 'game master' };
 const image = { width: 1, height: 1, data: new Uint8Array(4) } as never;
@@ -37,6 +46,7 @@ beforeEach(() => {
   fetch.mockImplementation(async () => Response.json(data));
   mocks.readScreen.mockImplementation((_image, game, icons) => ({ game, icons }));
   mocks.signaturesFor.mockResolvedValue(new Map());
+  mocks.unsearchable.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -127,6 +137,139 @@ test('a read whose icons failed keeps the engine and the game master, and reads 
   await expect(read(image, vi.fn())).rejects.toThrow('icons');
   await expect(read(image, vi.fn())).resolves.toBeDefined();
   expect(mocks.signaturesFor).toHaveBeenCalledTimes(2);
+  expect(mocks.useEngine).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+/** The wardrobe `read` lets `readScreen` ask for, which it does only on meeting a Pikachu. */
+async function pikachu() {
+  const { read } = await load();
+
+  await read(image, vi.fn());
+
+  const [, , , , wardrobe] = mocks.readScreen.mock.calls.at(-1) ?? [];
+
+  return wardrobe as () => Promise<unknown>;
+}
+
+test('the wardrobe is not fetched until a Pikachu asks for it', async () => {
+  await pikachu();
+
+  expect(mocks.wardrobeFor).not.toHaveBeenCalled();
+});
+
+test('a wardrobe that arrived is kept, and asked for once however many Pikachu ask', async () => {
+  const wardrobe = { costumes: 'drawn' };
+  const ask = await pikachu();
+
+  mocks.wardrobeFor.mockResolvedValue(wardrobe);
+
+  expect(await Promise.all([ask(), ask()])).toEqual([wardrobe, wardrobe]);
+  await expect(ask()).resolves.toBe(wardrobe);
+  expect(mocks.wardrobeFor).toHaveBeenCalledTimes(1);
+  expect(mocks.wardrobeFor).toHaveBeenCalledWith(data, expect.any(Function));
+});
+
+test('a wardrobe short of the plain icon is not kept, and the next Pikachu asks for it again', async () => {
+  const wardrobe = { costumes: 'drawn' };
+  const ask = await pikachu();
+
+  mocks.wardrobeFor.mockResolvedValueOnce(null).mockResolvedValueOnce(wardrobe);
+
+  await expect(ask()).resolves.toBeNull();
+  await expect(ask()).resolves.toBe(wardrobe);
+  await expect(ask()).resolves.toBe(wardrobe);
+  expect(mocks.wardrobeFor).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  [16, 4],
+  [2, 2],
+  [0, 1],
+  [undefined, 1],
+])('an engine on a device reporting %s cores gets %s workers: at most four, at least one', async (cores, workers) => {
+  const { wasmEngine } = await load();
+
+  vi.stubGlobal('navigator', { hardwareConcurrency: cores });
+  wasmEngine('https://spence.com.au/pogo-utils/');
+
+  expect(mocks.tesseractWasm).toHaveBeenCalledWith(expect.objectContaining({ workers }));
+});
+
+test('the engine finds its worker and cores against the base it is given, which a Worker has none of', async () => {
+  const { wasmEngine } = await load();
+
+  wasmEngine('https://worker.test/app/');
+
+  expect(mocks.tesseractWasm).toHaveBeenCalledWith(
+    expect.objectContaining({
+      workerPath: expect.stringMatching(/^https:\/\/worker\.test\/app\/.+\/worker\.min\.js$/),
+      corePath: expect.stringMatching(/^https:\/\/worker\.test\/app\/.+\/$/),
+    }),
+  );
+});
+
+test('the engine hears the model download only where it is given someone to tell', async () => {
+  const { wasmEngine } = await load();
+  const progress = vi.fn();
+
+  wasmEngine('https://spence.com.au/pogo-utils/');
+  wasmEngine('https://spence.com.au/pogo-utils/', progress);
+
+  const [quiet, heard] = mocks.tesseractWasm.mock.calls.map(([options]) => options);
+
+  expect(quiet).not.toHaveProperty('progress');
+  expect(heard).toHaveProperty('progress', progress);
+});
+
+/** The bytes a screenshot arrives as, which `decodePng` above hands on as they are. */
+const screen = Uint8Array.of(1, 2, 3);
+
+/** The phone's transport, which answers a screenshot and nothing else. */
+const transport = () => ({
+  state: async () => 'device',
+  shell: async () => new Uint8Array(),
+  screencap: vi.fn(async () => screen),
+});
+
+test('a search the phone cannot be sent is refused before the phone, engine or network is touched', async () => {
+  const { searchStorage } = await load();
+  const phone = transport();
+
+  mocks.unsearchable.mockReturnValue('has characters the phone cannot be sent: ?');
+
+  await expect(searchStorage(phone, 'what?', vi.fn(), vi.fn())).rejects.toThrow(
+    /^this search has characters the phone cannot be sent: \?$/,
+  );
+  expect(phone.screencap).not.toHaveBeenCalled();
+  expect(mocks.useEngine).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(mocks.storage).not.toHaveBeenCalled();
+});
+
+test('a search is typed into storage on the phone, and the count the game gave is what is answered', async () => {
+  const { searchStorage } = await load();
+  const { Device } = await import('../tools/inventory/adb.mts');
+  const lines = ['a screen read'];
+  const search = vi.fn(async () => lines);
+  const matches = vi.fn(() => 3);
+  const say = vi.fn();
+
+  mocks.storage.mockReturnValue({ search, matches });
+
+  await expect(searchStorage(transport(), 'shiny', vi.fn(), say)).resolves.toBe(3);
+  expect(mocks.storage).toHaveBeenCalledWith(expect.any(Device), DEFAULTS, data, screen, say);
+  expect(search).toHaveBeenCalledWith('shiny');
+  expect(matches).toHaveBeenCalledWith(lines);
+});
+
+test('a storage search and a read share the engine and game master, installed and fetched once', async () => {
+  const { read, searchStorage } = await load();
+
+  mocks.storage.mockReturnValue({ search: vi.fn(), matches: vi.fn(() => null) });
+
+  await read(image, vi.fn());
+  await expect(searchStorage(transport(), 'pikachu', vi.fn(), vi.fn())).resolves.toBeNull();
   expect(mocks.useEngine).toHaveBeenCalledTimes(1);
   expect(fetch).toHaveBeenCalledTimes(1);
 });
