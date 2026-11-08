@@ -107,8 +107,8 @@ export interface Row {
 
   /**
    * The costume's name, every one it could be where the screen does not settle which, empty for none, and null where
-   * nothing answered: no `costume` search ran, and this is not a Pikachu whose artwork was read. None is `''` where the
-   * screen leaves it beside a single costume, which alone would read as settled, and is left out beside several.
+   * nothing answered: no `costume` search ran, and this is not a Pikachu whose artwork was read. None is `''` among
+   * several wherever the screen could not rule it out, since the costumes alone would read as settled among them.
    */
   costume: string[] | null;
 }
