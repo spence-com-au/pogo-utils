@@ -16,7 +16,7 @@ import { expect, test } from 'vitest';
 
 import POKEMON from '../pokemon/pokedex.js';
 import { all, any, named, no, yes } from '../testing/search.js';
-import { compose, emptyState, type State } from './query.js';
+import { compose, emptyState, fromFragment, nameFragment, type State } from './query.js';
 import { current, optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
 import { leafText, type Leaf, type Node } from './tree.js';
@@ -123,6 +123,18 @@ test('a name is matched as the game spells it, punctuation and all', () => {
   // A fragment never ends on the space inside a name: `sandy ` reaches Sandy Shocks alone, but goes out trimmed to
   // `sandy`, which takes Sandygast too.
   expect(short(all(named('+sandy shocks')))).toBe('+sandy s');
+});
+
+test('a name pill holding a catalogue term is that term to the game, and is not shortened as a name', () => {
+  // `dark` is the Dark type, and Darkrai the only species whose name holds it, so read as a name it would go out as
+  // `491` — and a ruled-out `!dark` as `!491`, every other Dark type let into a transfer string.
+  expect(term('dark')).toBe('dark');
+  expect(short(all(named('darkrai')))).toBe(`${Number(POKEMON.DARKRAI)}`);
+  expect(told(all(named('dark', true)))).toEqual({ query: '!dark', rewrites: [], lossy: EXACT });
+
+  for (const { term: text } of GROUPS.flatMap((entry) => entry.terms)) {
+    expect(told(all(named(text)))).toEqual({ query: text, rewrites: [], lossy: EXACT });
+  }
 });
 
 test('dex spans AND’d collapse into their overlap, and OR’d into their union', () => {
@@ -309,8 +321,11 @@ test('copies of one covered term are not the whole of what a union covers', () =
 
   expect(union?.covers).toContain(first);
 
-  // Two copies of one covered term are that term, not the union of it and the one beside it.
-  expect(short(all(yes(first), yes(first)))).not.toBe(term('background'));
+  // Two copies of one covered term are that term, not the union of it and the one beside it. Each junction is given the
+  // side its reduction reaches — required terms in an `any`, refused ones in an `all` — since the other side returns
+  // before the count is made.
+  expect(short(any(yes(first), yes(first)))).toBe(term(first));
+  expect(short(all(no(first), no(first)))).toBe(`!${term(first)}`);
 });
 
 test('an any of all but some of a partition is written as the complement where that is shorter', () => {
@@ -479,4 +494,18 @@ test('a reduction to nothing is not taken, a blank box beside cards full of pill
     rewrites: [],
     lossy: EXACT,
   });
+});
+
+/**
+ * A name pill comes out of the fragment of a link someone shared, with no bound on its length, and with Shorten on its
+ * text is tried as a dex span on every render. So a long run of digits ending in something other than a digit has to
+ * cost its length rather than its square, which is the shape that backtracks when the two bounds of a span can trade
+ * digits. The budget is generous for linear work and orders of magnitude short of what the quadratic version took.
+ */
+test('a long run of digits from a shared link costs its length, not its square', () => {
+  const text = `${'1'.repeat(40_000)}x`;
+  const started = performance.now();
+
+  expect(current({ ...fromFragment(nameFragment(text)), optimise: true }).query).toBe(text);
+  expect(performance.now() - started).toBeLessThan(1_000);
 });
