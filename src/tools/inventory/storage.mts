@@ -18,9 +18,9 @@ import { SCROLL_STRIP } from './stitch.mts';
  * the box having no length of its own: all 234 characters of a patterned run landed with no sign of a cap, so what
  * bounds it is what is typed into it.
  *
- * It was 40, shorter than the 50 characters a re-snap sends, so ten survived the clear and the next term was typed
- * onto the end of them. The failure is silent, which is what makes the bound worth enforcing: the field scrolls, so a
- * merged term looks exactly like a clean one and the only symptom is a result count quietly wrong.
+ * Longer than the 50 characters a re-snap sends, since a clear shorter than the term leaves its tail in the box and the
+ * next term is typed onto the end of it. The failure is silent, which is what makes the bound worth enforcing: the
+ * field scrolls, so a merged term looks exactly like a clean one and the only symptom is a result count quietly wrong.
  *
  * Generous because generosity is free — `device.key` sends every code in one `input keyevent`, and a backspace on an
  * empty field does nothing. A term typed into the box by hand can still exceed it; clear it by hand too.

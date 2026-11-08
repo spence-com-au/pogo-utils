@@ -102,10 +102,10 @@ export class Device {
   /**
    * Starts `pkg` for Android user `user`, as the launcher would: its launcher activity, a task brought forward where one
    * is already running. The user is not optional because the phone's default is not a safe one. A work profile is a
-   * user of its own, 10 where there is one, holding its own copy of every app installed there; `monkey`, which this was,
-   * starts user 0's, so a game played in a work profile came back up signed in to whatever trainer the personal
-   * profile's copy holds (#594). `am start` takes the user it is given, and the trailing package is the intent's own
-   * rather than a component, so no activity name has to be known.
+   * user of its own, 10 where there is one, holding its own copy of every app installed there; a launch naming no user,
+   * as `monkey` does, starts user 0's, so a game played in a work profile would come back up signed in to whatever
+   * trainer the personal profile's copy holds (#594). `am start` takes the user it is given, and the trailing package
+   * is the intent's own rather than a component, so no activity name has to be known.
    */
   async launch(pkg: string, user: number): Promise<void> {
     await this.#shell(

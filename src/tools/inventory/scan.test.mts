@@ -527,7 +527,7 @@ function seeded(seed: number) {
 /**
  * #820's phone dropped 9 of the 106 swipes on, and swipes back can go nowhere as well. With every swipe going nowhere
  * at that rate, a walk seldom reaches the count having visited a Pokémon twice or out of place, which nothing after it
- * would catch. Before #820, 31 walks in these 100 did, and 55 visited every Pokémon right.
+ * would catch.
  */
 test('swipes going nowhere at random, either way, seldom cost a walk its place unseen', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
