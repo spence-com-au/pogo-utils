@@ -41,7 +41,7 @@ jobs:
 
       # The JDK `ScreenPower.dex` is committed from, since another release's `javac` may write other bytes.
       - if: "matrix.check == 'dex'"
-        uses: 'actions/setup-java@v6.1.0'
+        uses: 'actions/setup-java@v6.2.0'
         with:
           distribution: 'temurin'
           java-version: '21'
