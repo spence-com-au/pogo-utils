@@ -1,8 +1,8 @@
 import { createReadStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { BOTTOM, place } from './layout.mts';
-import { BENCH, BENCH_ANCHOR, Player, TAPS, type Action, type Point } from './play.mts';
+import { BOTTOM, place, type Point } from './layout.mts';
+import { BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
 import { decodeFrames } from './stream.mts';
