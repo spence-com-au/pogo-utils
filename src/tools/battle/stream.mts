@@ -11,7 +11,7 @@
 
 import { type Image } from '../inventory/png.mts';
 import { type Size } from './layout.mts';
-import { RECORD_LIMIT_S, recordCommand } from './record-command.mts';
+import { decodeArgs, RECORD_LIMIT_S, recordCommand } from './record-command.mts';
 import { type Feed } from './screen.mts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { type Readable } from 'node:stream';
@@ -32,25 +32,9 @@ export function screenrecord(serial: string | undefined, size: Size, seconds = R
   });
 }
 
-/**
- * Each frame of an H.264 stream as it is decoded, ending with the stream. The flags are for latency: by default
- * `ffmpeg` probes a few seconds of input before it decodes any, and frame threading holds frames back to decode them
- * side by side, either of which puts the picture behind the battle it shows. Threading is turned off twice, since
- * `-threads` before `-i` reaches only the decoder, and the `rawvideo` encoder's threading would hold each frame until
- * the next. `-fflags nobuffer` is the one that reads as if it belongs with them and does not: it dropped 28 of the
- * first 30 frames of a recording off the phone. A frame still comes out only once the next has begun, `ffmpeg` finding
- * where a picture ends from the start of the one after it.
- */
+/** Each frame of an H.264 stream as `ffmpeg` decodes it with `decodeArgs`, ending with the stream. */
 export async function* decodeFrames(h264: Readable, { width, height }: Size): AsyncGenerator<Image> {
-  const ffmpeg = spawn(
-    'ffmpeg',
-    [
-      ...['-loglevel', 'error', '-flags', 'low_delay', '-probesize', '32', '-threads', '1'],
-      ...['-f', 'h264', '-i', 'pipe:0'],
-      ...['-threads', '1', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`, 'pipe:1'],
-    ],
-    { stdio: ['pipe', 'pipe', 'pipe'] },
-  );
+  const ffmpeg = spawn('ffmpeg', decodeArgs({ width, height }), { stdio: ['pipe', 'pipe', 'pipe'] });
 
   let stderr = '';
   ffmpeg.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));

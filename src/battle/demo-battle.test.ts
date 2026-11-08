@@ -18,7 +18,7 @@ import { tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
 import { type Image } from '../tools/inventory/png.mts';
 import { type Size } from '../tools/battle/layout.mts';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
-import { recordCommand } from '../tools/battle/record-command.mts';
+import { decodeArgs, recordCommand } from '../tools/battle/record-command.mts';
 import { run, type Clock } from '../tools/battle/run.mts';
 import { type Feed } from '../tools/battle/screen.mts';
 import { demoConnection } from './demo.js';
@@ -69,11 +69,7 @@ const SIZE = ((): Size => {
  * comes out as soon as the picture after it has begun rather than once `ffmpeg` has buffered a few.
  */
 async function* decode(h264: ReadableStream<Uint8Array>): AsyncGenerator<Image> {
-  const ffmpeg = spawn('ffmpeg', [
-    ...['-loglevel', 'error', '-flags', 'low_delay', '-probesize', '32', '-threads', '1'],
-    ...['-f', 'h264', '-i', 'pipe:0'],
-    ...['-threads', '1', '-f', 'rawvideo', '-pix_fmt', 'rgba', 'pipe:1'],
-  ]);
+  const ffmpeg = spawn('ffmpeg', decodeArgs(SIZE));
 
   void (async () => {
     const reader = h264.getReader();

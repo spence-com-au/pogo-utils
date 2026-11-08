@@ -1,6 +1,8 @@
 /**
  * What `screenrecord` is asked for, apart from the `adb` process `stream.mts` runs it in, so that a page streaming over
- * WebUSB asks for exactly the same picture: `stream.mts` reaches Node's `child_process`, and this reaches nothing.
+ * WebUSB asks for exactly the same picture: `stream.mts` reaches Node's `child_process`, and this reaches nothing. And
+ * what `ffmpeg` is asked to decode it with, so that a test decoding where the page's WebCodecs would decodes as `pnpm
+ * battle` does.
  */
 
 import { type Size } from './layout.mts';
@@ -34,5 +36,22 @@ export function recordCommand({ width, height }: Size, seconds = RECORD_LIMIT_S)
     `--bit-rate=${BIT_RATE}`,
     `--time-limit=${seconds}`,
     '-',
+  ];
+}
+
+/**
+ * `ffmpeg` decoding H.264 from its stdin into RGBA frames at `size` on its stdout. The flags are for latency: by default
+ * `ffmpeg` probes a few seconds of input before it decodes any, and frame threading holds frames back to decode them
+ * side by side, either of which puts the picture behind the battle it shows. Threading is turned off twice, since
+ * `-threads` before `-i` reaches only the decoder, and the `rawvideo` encoder's threading would hold each frame until
+ * the next. `-fflags nobuffer` is the one that reads as if it belongs with them and does not: it dropped 28 of the
+ * first 30 frames of a recording off the phone. A frame still comes out only once the next has begun, `ffmpeg` finding
+ * where a picture ends from the start of the one after it.
+ */
+export function decodeArgs({ width, height }: Size): string[] {
+  return [
+    ...['-loglevel', 'error', '-flags', 'low_delay', '-probesize', '32', '-threads', '1'],
+    ...['-f', 'h264', '-i', 'pipe:0'],
+    ...['-threads', '1', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`, 'pipe:1'],
   ];
 }
