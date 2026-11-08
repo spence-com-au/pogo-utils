@@ -625,6 +625,10 @@ body[data-page='events'] {
     --type-color: #db2777;
   }
 
+  .type-timed-research {
+    --type-color: #059669;
+  }
+
   .type-wild-area {
     --type-color: #65a30d;
   }
@@ -688,6 +692,10 @@ body[data-page='events'] {
 
     .type-pokemon-spotlight-hour {
       --type-color: #f472b6;
+    }
+
+    .type-timed-research {
+      --type-color: #34d399;
     }
 
     .type-wild-area {
