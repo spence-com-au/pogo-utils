@@ -59,12 +59,20 @@ test('a datetime the calendar cannot read is named although the prune could', ()
 });
 
 test('a datetime the calendar reads but the prune cannot is named once', () => {
-  // The calendar takes a naive datetime on the strength of its first nineteen characters, and the prune hands all of it
-  // to `Date.parse`.
+  // The calendar takes a naive datetime on the strength of its first nineteen characters, and the prune and the page
+  // hand all of it to `Date.parse`.
   const problems = eventProblems([event({ end: '2026-12-31T23:59:59.000Q' })]);
 
   expect(problems).toHaveLength(1);
   expect(problems[0]).toMatch(/^an-event: end "2026-12-31T23:59:59.000Q" is not a datetime/);
+});
+
+test('a start the calendar reads but the page cannot is named', () => {
+  // The calendar copies a zoneless datetime's digits out without checking their range, so it would write
+  // `DTSTART:20260718T250000` for an event the page shows with no start at all.
+  expect(eventProblems([event({ start: '2026-07-18T25:00:00' })])).toEqual([
+    'an-event: start "2026-07-18T25:00:00" is not a datetime — expected one like "2026-12-31T23:59:59.000" or "…Z"',
+  ]);
 });
 
 test('an eventID an earlier entry has is named, the later entry overriding it in both merges', () => {

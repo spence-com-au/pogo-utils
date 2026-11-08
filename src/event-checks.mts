@@ -18,8 +18,10 @@ import type { FeedEvent } from './types.js';
  *   `parseDate` takes a bare date as UTC midnight.
  * - A repeated `eventID` is overridden by the later entry in both merges, the earlier one vanishing without a word.
  *
- * Dates are held to `icsDate`'s reading, the stricter one, and an `end` to `ended`'s as well, which refuses what
- * `Date.parse` cannot take once it is read as UTC−12.
+ * Dates are held to the calendar's reading and the page's both, since neither is the stricter: `icsDate` refuses a
+ * datetime with no seconds, which the page takes, and copies a zoneless one's digits out without checking their range,
+ * so `"2026-07-18T25:00:00"` goes into the calendar while the page reads no date at all. An `end` is held to `ended`'s
+ * reading as well, which refuses what `Date.parse` cannot take once it is read as UTC−12.
  */
 export function eventProblems(events: readonly FeedEvent[]): string[] {
   const problems: string[] = [];
@@ -42,16 +44,16 @@ export function eventProblems(events: readonly FeedEvent[]): string[] {
     for (const field of ['start', 'end'] as const) {
       const value = event[field];
 
-      if (value !== null && icsDate(value) === null) {
+      if (value !== null && !readable(value)) {
         problems.push(
           `${eventID}: ${field} "${value}" is not a datetime — expected one like "2026-12-31T23:59:59.000" or "…Z"`,
         );
       }
     }
 
-    // Whether `ended` can read an `end` does not turn on the clock, so any instant will do. Skipped for one `icsDate`
-    // has already refused, which would only say the same thing twice.
-    if (event.end !== null && icsDate(event.end) !== null) {
+    // Whether `ended` can read an `end` does not turn on the clock, so any instant will do. Skipped for one already
+    // refused above, which would only say the same thing twice.
+    if (event.end !== null && readable(event.end)) {
       try {
         ended(event, new Date(0));
       } catch (error) {
@@ -61,4 +63,13 @@ export function eventProblems(events: readonly FeedEvent[]): string[] {
   }
 
   return problems;
+}
+
+/**
+ * Whether both the calendar and the page can read `value`. The page's reader is `parseDate` in
+ * `src/event-schedule.ts`, a `new Date` that is the same parse as `Date.parse`; it is not imported because that module
+ * names its own imports by `.js`, which Node does not resolve to the `.ts` beside it.
+ */
+function readable(value: string) {
+  return icsDate(value) !== null && !Number.isNaN(Date.parse(value));
 }
