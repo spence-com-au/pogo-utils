@@ -10,7 +10,8 @@
  */
 
 import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
-import { around, BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
+import { around, BOTTOM, down, spanning, TOP, type AnchoredBox, type Area, type Size } from './layout.mts';
+import { type Colour } from './minigame.mts';
 
 /**
  * - `battle`: the fight, with no charged move ready.
@@ -24,17 +25,11 @@ import { around, BOTTOM, down, spanning, TOP, type Area, type Size } from './lay
  */
 export type State = 'battle' | 'charged' | 'playing' | 'shield' | 'switch' | 'other';
 
-/** A box, its left and right as fractions of the frame's width and its top and bottom as widths from an anchor. */
-type Box = readonly [left: number, top: number, right: number, bottom: number];
-
-/** A colour, as its three channels. */
-type Colour = [r: number, g: number, b: number];
-
 /** Where a box `top` to `bottom` widths from `anchor` runs down `image`, in pixels. */
 const rows = (image: Image, top: number, bottom: number, anchor: number) =>
   [down(top, anchor, image), down(bottom, anchor, image)].map((y) => Math.round(y * image.height)) as [number, number];
 
-function* pixels(image: Image, [left, top, right, bottom]: Box, anchor: number): Generator<Colour> {
+function* pixels(image: Image, [left, top, right, bottom]: AnchoredBox, anchor: number): Generator<Colour> {
   const [from, to] = rows(image, top, bottom, anchor);
 
   for (let y = from; y < to; y++) {
@@ -44,7 +39,7 @@ function* pixels(image: Image, [left, top, right, bottom]: Box, anchor: number):
   }
 }
 
-function mean(image: Image, box: Box, anchor: number): Colour {
+function mean(image: Image, box: AnchoredBox, anchor: number): Colour {
   let [r, g, b, n] = [0, 0, 0, 0];
 
   for (const [red, green, blue] of pixels(image, box, anchor)) {
@@ -60,14 +55,14 @@ function mean(image: Image, box: Box, anchor: number): Colour {
 }
 
 /** Each channel's median over a box: the colour of whatever covers most of it, deaf to what covers the rest. */
-function medianColour(image: Image, box: Box, anchor: number): Colour {
+function medianColour(image: Image, box: AnchoredBox, anchor: number): Colour {
   const channels: [number[], number[], number[]] = [[], [], []];
 
   for (const colour of pixels(image, box, anchor)) {
     colour.forEach((level, i) => channels[i]?.push(level));
   }
 
-  return channels.map(median) as Colour;
+  return channels.map(median) as unknown as Colour;
 }
 
 const near = (colour: Colour, target: Colour, within: number) =>
@@ -113,21 +108,21 @@ const near = (colour: Colour, target: Colour, within: number) =>
  * limits above are of a panel, not of a panel and whatever is drawn on it. What is saturated or darker than a panel can
  * be is no more than 8% of a strip on any committed frame, so the median never sees it, however many balls are left.
  */
-const HUD: readonly Box[] = [
+const HUD: readonly AnchoredBox[] = [
   [0.03, 0.1794, 0.2, 0.2006],
   [0.62, 0.1794, 0.8, 0.2006],
 ];
-const HUD_NAMES: readonly Box[] = [
+const HUD_NAMES: readonly AnchoredBox[] = [
   [0.03, 0.1478, 0.4, 0.1816],
   [0.6, 0.1478, 0.97, 0.1816],
 ];
-const HUD_GAP: Box = [0.44, 0.1794, 0.56, 0.2006];
+const HUD_GAP: AnchoredBox = [0.44, 0.1794, 0.56, 0.2006];
 const TEXT = { dark: 180, grey: 120, least: 0.08, most: 0.3 } as const;
 
 const panel = (colour: Colour) => Math.min(...colour) >= 195 && chroma(...colour) <= 52;
 
 /** The shares of a box darker than `TEXT.dark`: of any colour, and of no more colour than `TEXT.grey`. */
-function darkIn(image: Image, box: Box): { dark: number; grey: number } {
+function darkIn(image: Image, box: AnchoredBox): { dark: number; grey: number } {
   let [dark, grey, n] = [0, 0, 0];
 
   for (const colour of pixels(image, box, TOP)) {
@@ -163,7 +158,7 @@ function showsHud(image: Image): boolean {
  * The prompt's own panel would not do: it is translucent, and measured 77 by luminance over a bright field against 95
  * for the shield going up.
  */
-const SHIELD: Box = [0.46, -0.4222, 0.54, -0.3378];
+const SHIELD: AnchoredBox = [0.46, -0.4222, 0.54, -0.3378];
 const SHIELD_PINK: Colour = [226, 159, 240];
 
 /**
@@ -176,17 +171,17 @@ const SHIELD_PINK: Colour = [226, 159, 240];
  * (`playing-slate-night`) and Dialga standing over the field, which matched the slate's three places in that run,
  * measured 5% and none.
  */
-const SWITCH_PANEL: readonly Box[] = [
+const SWITCH_PANEL: readonly AnchoredBox[] = [
   [0.45, -0.5911, 0.55, -0.5489],
   [0.46, -0.4222, 0.54, -0.3378],
   [0.08, -0.1689, 0.14, -0.1056],
 ];
 const SLATE: Colour = [35, 44, 58];
-const SWITCH_TITLE: Box = [0.25, -0.56, 0.75, -0.525];
+const SWITCH_TITLE: AnchoredBox = [0.25, -0.56, 0.75, -0.525];
 const TITLE_WHITE = 0.1;
 
 /** The share of a box that is white, as the switch prompt's title is on its slate. */
-function whiteIn(image: Image, box: Box, anchor = BOTTOM): number {
+function whiteIn(image: Image, box: AnchoredBox, anchor = BOTTOM): number {
   let [white, n] = [0, 0];
 
   for (const colour of pixels(image, box, anchor)) {
@@ -218,7 +213,7 @@ function whiteIn(image: Image, box: Box, anchor = BOTTOM): number {
  * A Galarian Moltres's wing behind part of the disc took it to 79% (`other-pixel8-countdown-wing`), still a pass.
  */
 const COUNTDOWN = { x: 0.5, y: 0.1778, inside: 0.054, outside: 0.108, points: 24 } as const;
-const COUNTDOWN_NUMERAL: Box = [0.475, 0.1428, 0.525, 0.2128];
+const COUNTDOWN_NUMERAL: AnchoredBox = [0.475, 0.1428, 0.525, 0.2128];
 
 /** How much darker a point inside the disc must be than the one beyond it, and on how many of the points. */
 const DIMMED = { by: 0.75, share: 0.75 } as const;
@@ -385,7 +380,9 @@ function named(image: Image): boolean {
  * measured 223–233/159–167/235–248 on the committed frames, under day and night skies alike; one spent is a dark
  * purple, 108–116/79–82/113–123, and the left goes first.
  */
-const OPPONENT_SHIELDS: readonly Box[] = [0.718, 0.764].map((x) => [x - 0.006, 0.2027, x + 0.006, 0.2153] as const);
+const OPPONENT_SHIELDS: readonly AnchoredBox[] = [0.718, 0.764].map(
+  (x) => [x - 0.006, 0.2027, x + 0.006, 0.2153] as const,
+);
 const SPENT: Colour = [111, 81, 118];
 
 /**
@@ -402,7 +399,7 @@ export function opponentShields(image: Image): number {
  * The same two colours, measured on the committed frames and on 92 frames of two GO Battle League runs that read as a
  * battle: 214–234/156–165/230–245 held and 107–112/78–83/112–121 spent.
  */
-const OWN_SHIELDS: readonly Box[] = [0.236, 0.281].map((x) => [x - 0.006, 0.2027, x + 0.006, 0.2153] as const);
+const OWN_SHIELDS: readonly AnchoredBox[] = [0.236, 0.281].map((x) => [x - 0.006, 0.2027, x + 0.006, 0.2153] as const);
 const HELD: Colour = [224, 161, 238];
 
 /**
@@ -430,7 +427,7 @@ const BALLS = {
   opponent: [0.842, 0.892, 0.944],
 } as const;
 
-const ball = (x: number): Box => [x - 0.006, 0.1963, x + 0.006, 0.209];
+const ball = (x: number): AnchoredBox => [x - 0.006, 0.1963, x + 0.006, 0.209];
 const red = ([r, g, b]: Colour) => r > 150 && r - g > 60 && r - b > 60;
 const grey = ([r, g, b]: Colour) => r < 130 && Math.abs(r - g) < 45 && Math.abs(g - b) < 20;
 
@@ -479,7 +476,7 @@ export function recognise(image: Image): State {
  * as far out as the ring around its rim that has to stay dark, and each move's name with the bare rows either side.
  */
 export function areas(screen: Size): Area[] {
-  const at = (boxes: readonly Box[], anchor: number) => boxes.map((box) => spanning(box, anchor, screen));
+  const at = (boxes: readonly AnchoredBox[], anchor: number) => boxes.map((box) => spanning(box, anchor, screen));
 
   return [
     { name: "the battle's names and CPs", boxes: at([...HUD, ...HUD_NAMES, HUD_GAP], TOP) },
