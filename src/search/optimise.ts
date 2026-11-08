@@ -26,7 +26,7 @@
 
 import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
-import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
+import { GROUPS, IDS_BY_TERM, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
 import { compose, type State } from './query.js';
 
@@ -178,6 +178,12 @@ function shortName(token: string, negated: boolean): { text: string; spans: Span
 
   if (span) {
     return { text: token, spans: [span], numbered: false };
+  }
+
+  // `dark` is the Dark type, where read as a name it reaches Darkrai alone and would be written `491` — so a ruled-out
+  // `!dark` would let every other Dark type through.
+  if (IDS_BY_TERM.has(token)) {
+    return { text: token, spans: null, numbered: false };
   }
 
   const family = token.startsWith('+');

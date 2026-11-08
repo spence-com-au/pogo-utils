@@ -620,3 +620,11 @@ export const RANGES_BY_ID: ReadonlyMap<string, Range> = new Map(RANGES.map((rang
 export const TERMS_BY_ID: ReadonlyMap<string, Term> = new Map(
   GROUPS.flatMap((group) => group.terms).map((term) => [term.id, term]),
 );
+
+/**
+ * Every term's id by the text the game reads it as, for the query reader and the optimiser. The game tells no chip from
+ * the same word typed, so a typed `dark` is the Dark type, and so is a name pill holding it.
+ */
+export const IDS_BY_TERM: ReadonlyMap<string, string> = new Map(
+  GROUPS.flatMap((group) => group.terms).map((term) => [term.term, term.id]),
+);
