@@ -391,15 +391,23 @@ test('a login the server refuses is not retried', async () => {
       : json(response, 200, {}),
   );
 
+  const controller = new AbortController();
+  let waits = 0;
+
   try {
     await expect(
       watch({
         client: new LivePokeMap(map.url, { username: 'u', password: 'p' }),
         ntfy: { server: 'http://127.0.0.1:9', topic: 't' },
         queries: [parseQuery('shiny-hunt.json', fixture('shiny-hunt.json'))],
-        signal: new AbortController().signal,
+        signal: controller.signal,
         log: () => {},
-        sleep: async () => {},
+        sleep: async () => {
+          // A safety net, so that a regression fails here rather than hanging the suite.
+          if (++waits > 5) {
+            controller.abort();
+          }
+        },
       }),
     ).rejects.toThrow('Live PokeMap refused the login');
   } finally {
