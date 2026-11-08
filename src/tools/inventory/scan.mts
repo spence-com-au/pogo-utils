@@ -604,8 +604,12 @@ const DROPS = 3;
  * the look came back is what such a story does not fit, a swipe dropped on the way putting the phone somewhere else.
  * Where a read leaves no story standing, the walk tells the log again from the last visit, with up to {@link DROPS} of
  * the swipes since gone nowhere, and keeps the stories that `cost` least. Where none fits even then, it stops rather
- * than visit a Pokémon from a place it cannot name. What it cannot tell from a twin is all three of a look's swipes
- * dropped, the swipe on included, which leaves every read since the last visit the same screen.
+ * than visit a Pokémon from a place it cannot name. All three of a look's swipes dropped, the swipe on included, leave
+ * every read since the last visit the same screen, which a twin fits without a drop, so no story is ruled out. So
+ * before it visits a twin of the last Pokémon, the walk tells the log again the same way, keeps the stories costing
+ * least of those that read nothing past the last visit beside the twin, and looks once more: they put the phone a
+ * Pokémon short of the twin, where a swipe back lands on the one before rather than on the last again. Each twin costs
+ * that look, where a dropped swipe a twin would have hidden costs every row after it.
  *
  * The walk visits the last screen it read where a story puts the phone on the next Pokémon. Where nothing it has read
  * can tell that from the phone being on the last one again — a run of twins from the start of the pass, the first
@@ -640,6 +644,7 @@ export async function walk<R extends { key: string | null }>(
   let latest: string | null = null;
   let misses = 0;
   let retries = 0;
+  let doubted = false;
 
   // The stories the last visit left and where in the log it left them, which the walk tells again from.
   let left = stories;
@@ -659,24 +664,32 @@ export async function walk<R extends { key: string | null }>(
     stories = stories.filter((story) => replay(log, from, story) !== null);
   };
 
-  /** Where no story fits any more, the ones costing least of those that do with swipes since the last visit dropped. */
-  const explain = () => {
-    if (stories.length > 0) {
-      return;
-    }
-
+  /** The stories the last visit left told again with up to {@link DROPS} of the swipes since gone nowhere that fit. */
+  const retell = () => {
     const swipes = log.flatMap((step, i) => (i >= since && 'move' in step ? [i] : []));
 
-    const told = left.flatMap((story) =>
+    return left.flatMap((story) =>
       subsets(swipes, DROPS).flatMap((dropped) => {
         const retold = { end: story.end, dropped: [...story.dropped, ...dropped] };
         const world = replay(log, from, retold);
-        return world ? [{ story: retold, cost: cost(retold, world) }] : [];
+        return world ? [{ story: retold, world }] : [];
       }),
     );
+  };
 
-    const least = Math.min(...told.map(({ cost }) => cost));
-    stories = told.filter(({ cost }) => cost === least).map(({ story }) => story);
+  const cheapest = (told: readonly { story: Story; world: World }[]) => {
+    const costs = told.map(({ story, world }) => cost(story, world));
+
+    // Folded rather than spread, since a long look around a run of twins can leave more than the call stack holds.
+    const least = costs.reduce((a, b) => Math.min(a, b), Infinity);
+    return told.filter((_, i) => costs[i] === least).map(({ story }) => story);
+  };
+
+  /** Where no story fits any more, the ones costing least of those that do with swipes since the last visit dropped. */
+  const explain = () => {
+    if (stories.length === 0) {
+      stories = cheapest(retell());
+    }
   };
 
   /** Reads the Pokémon a look back landed on, `visiting` being the stories that would visit the screen it left. */
@@ -788,13 +801,28 @@ export async function walk<R extends { key: string | null }>(
     const here = possible.filter(({ story, world }) => story.end === Infinity && world.at === index);
 
     if (here.length > 0) {
-      if (here.length < possible.length && reading.key !== null && latest !== null && agree(reading.key, latest)) {
+      const twin = reading.key !== null && latest !== null && agree(reading.key, latest);
+
+      if (here.length < possible.length && twin) {
         console.error(
           `  ${reading.key} may be the last Pokémon read again, so its end cannot be told; stopping this pass`,
         );
         break;
       }
 
+      // Once for each Pokémon: the look this adds settles it, or leaves the twin and the drop both standing, which stops
+      // the walk above.
+      if (twin && !doubted) {
+        doubted = true;
+        const instead = retell().filter(({ world }) => [...world.known.keys()].every((place) => place < index));
+
+        if (instead.length > 0) {
+          stories = [...stories, ...cheapest(instead)];
+          continue;
+        }
+      }
+
+      doubted = false;
       latest = reading.key ?? latest;
       misses = reading.key === null ? misses + 1 : 0;
       retries = 0;
