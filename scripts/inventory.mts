@@ -537,8 +537,8 @@ async function scan(held: Transport) {
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
    * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
    * back worse, and one whose HP goes unread has no key at all — three of those in a row stop the pass. That decision
-   * sits there so `attempts.test.mts` can assert it, this being the one part of the walk no test could otherwise reach:
-   * a scan needs a phone, and the one command `cli.test.mts` drives without one is `parse`, which reads a file once.
+   * sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan driven against recordings
+   * shows what it wrote and not how many looks it took to get there.
    */
   const readDetail = async (): Promise<Reading> => {
     let latest: Image | null = null;
