@@ -289,7 +289,7 @@ export class Player {
 
     if (state === 'shield' || state === 'switch' || (state === 'other' && !begun) || back) {
       this.forget();
-    } else if (minigame && state === 'playing') {
+    } else if (minigame) {
       this.#minigame = true;
       this.#playing = true;
     }

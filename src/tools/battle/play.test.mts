@@ -258,6 +258,22 @@ test('ends the minigame once the fight has held for a moment, though nothing hid
   expect(player.minigame).toBe(false);
 });
 
+// The run says a throw is playing on one frame only, which can be one of the few inside a charged move that read as
+// the fight: the minigame begins all the same, or the rest of it would be waited through.
+test('begins a minigame that no tap here began on the frame it is told of, though it reads as the fight', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged', 'shield', 'other'], player);
+  player.next('playing', 12_000);
+  player.next('battle', 12_033, { minigame: true, bubbles: [] });
+
+  expect(player.next('playing', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+});
+
 // Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.
 test('sweeps rows where bubbles were found only before the throw was taken to be playing', () => {
   const player = new Player(SIZE);
