@@ -106,6 +106,15 @@ const AGAIN = { shown: [0.9, 1.15], run: 6 } as const;
  */
 const LIT = 0.1;
 
+/**
+ * The longest a strip just above or below a longer one is taken for artwork at, as a fraction of a full bar. In the 26
+ * GO Battle League runs kept with video, 167 pictures had one framed strip of a side's within 8 rows of another's top or
+ * bottom: in 161 the shorter was 2–8%, the map seen between the letters of "NOT VERY EFFECTIVE..." or "BLOCKED!", which
+ * the game writes just above a bar; in the other 6 it was 22–46%, two bars drawn one above the other at the start of a
+ * charged move, each its Pokémon's.
+ */
+const SLIVER = 0.1;
+
 const light = (pixel: Colour) => luminance(...pixel) >= COVER.luminance && chroma(...pixel) <= COVER.chroma;
 
 /**
@@ -307,32 +316,56 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
 }
 
 /**
- * Whether a strip lies outside the bar's outline, beside the bar rather than in it: the outline found over fewer than
- * half its own pixels, with another strip among `all` those found starting past its end, where `side`'s bar starts,
+ * Whether a strip lies outside the bar's outline rather than in it, beside the bar or just above or below it, among
+ * `all` the strips found, any of which starting where `side`'s bar starts may be that bar.
+ *
+ * Beside it, the outline is found over fewer than half the strip's own pixels, with another strip starting past its end
  * across some of its rows. Artwork just left of a bar passes `framed`, the bar's own outline running along most of where
  * the strip's bar would, but the fill a bar has left lies inside its outline. Red and orange foliage and pumpkins on the
  * autumn map, and PGSharp's star, did so in 11 of the 17 GO Battle League runs kept with video: of their 350,000
  * pictures, 1,008 readings were the artwork at 2–18%, now the bar beside it at 14–99% or, where that is not framed,
- * unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star
- * and the orange trail's red end lie there too, inside a bar's outline, which runs over that bar's fill.
+ * unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star and the orange
+ * trail's red end lie there too, inside a bar's outline, which runs over that bar's fill. Foliage a few pixels wide has
+ * had its shading pass for the outline over exactly half of them, which is outside too where the other fill starts no
+ * more than 4 pixels on, the outline and its rim between the two. PGSharp's star over our bar's left end leaves an edge
+ * like it further from where the fill shows past the star, which read from there would be 44–46% of a bar at 56–64%.
+ *
+ * Just above or below it, the strip is shorter than `SLIVER`, and a longer, framed strip lies across its columns or the
+ * outline's left end beyond them, its fill within 8 rows: the outline looked for 4 rows out from each finds one between
+ * them, framing both. The map between the letters of "NOT VERY EFFECTIVE..." read as our bar at 2–4% while it was at
+ * 43–85%.
  */
 function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof typeof STARTS): boolean {
+  const unit = image.width / 360;
   const [least, most] = STARTS[side];
   const right = rightOf(strip);
+  const bottom = strip.top + strip.rights.length;
   const xs = Array.from({ length: Math.ceil(right - strip.left) }, (_, i) => strip.left + i);
   const over = xs.filter((x) => edged(image, strip, x)).length;
-
-  return (
-    over < xs.length / 2 &&
-    all.some(
-      (other) =>
-        other.left > right &&
-        other.left >= least * image.width &&
-        other.left <= most * image.width &&
-        other.top < strip.top + strip.rights.length &&
-        strip.top < other.top + other.rights.length,
-    )
+  const bars = all.filter((other) => other.left >= least * image.width && other.left <= most * image.width);
+  const beside = bars.some(
+    (other) =>
+      other.left > right &&
+      other.top < bottom &&
+      strip.top < other.top + other.rights.length &&
+      (2 * over < xs.length || (2 * over === xs.length && other.left - right <= 4 * unit)),
   );
+  const stacked =
+    right - strip.left < SLIVER * FULL * image.width &&
+    bars.some((other) => {
+      const gap = Math.max(other.top - bottom, strip.top - (other.top + other.rights.length));
+
+      return (
+        gap >= 0 &&
+        gap <= 8 * unit &&
+        other.left - 4 * unit < right &&
+        strip.left < rightOf(other) &&
+        rightOf(other) - other.left > right - strip.left &&
+        framed(image, other)
+      );
+    });
+
+  return beside || stacked;
 }
 
 export interface Health {

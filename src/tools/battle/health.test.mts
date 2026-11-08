@@ -32,6 +32,12 @@ test.each([
 
   // Red foliage of the autumn map just left of our bar's outline, which read as our bar at 2% beside it.
   ['charged-pixel8-xerneas-not-very-effective', 0.67, 0.52],
+
+  // Red foliage between the letters of "NOT VERY EFFECTIVE..." just above our bar, which read as it at 3%, taking the
+  // bar's outline below it for its own; and just left of the bar, where one of its 2 pixels' shading passed for the
+  // outline, at 2%.
+  ['other-pixel8-countdown-xerneas-foliage', 0.43, 0.24],
+  ['battle-pixel8-xerneas-foliage', 0.6, 0.98],
 ])('%s: %f of ours left and %f of theirs', (name, own, opponent) => {
   const health = read(name);
 
@@ -64,12 +70,25 @@ test('artwork inside a bar where its fill has gone leaves the bar read', () => {
   expect(within(readHealth(image).opponent, 0.42)).toBe(true);
 });
 
-test('a bar whose left end is hidden goes unread rather than read short', () => {
+test.each([
   // The favourites star sits over our bar's left end, and the outline there that a bar is told by.
-  const health = read('battle-night');
+  ['battle-night', 0.99],
+
+  // PGSharp's star over the left end of our bar at 56%, read 44% from where its fill shows past the star, beside the
+  // star's edge, which passes for the outline over 1 of its 2 pixels.
+  ['battle-pixel8-palkia-star', 0.66],
+])('%s: a bar whose left end is hidden goes unread rather than read short, theirs %f', (name, opponent) => {
+  const health = read(name);
 
   expect(health.own).toBeNull();
-  expect(within(health.opponent, 0.99)).toBe(true);
+  expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
+});
+
+test('a bar just above another is read rather than taken for artwork', () => {
+  // As our Avalanche starts, Sylveon's bar at 22% above our Kyogre's at 53%, both where the opponent's bar starts.
+  const health = read('other-two-bars');
+
+  expect(within(health.opponent, 0.22), `theirs read ${health.opponent}`).toBe(true);
 });
 
 test('a bar whose right end is hidden goes unread rather than read short', () => {
