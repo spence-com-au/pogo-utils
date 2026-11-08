@@ -231,9 +231,9 @@ const characters = (length: number) => `${length} character${length === 1 ? '' :
  * A sentence's backticked parts set in `<code>`, so that prose written in this repository's convention reads on screen
  * the way the caveat beside it does rather than showing its own punctuation.
  *
- * Four callers: the two refusals, from `clauses.js` and `parse.js`; a category's own help in `terms.js`, which was
- * showing its ticks as ticks — `the game has no \`gen1\`` had been on the page since before the canvas; and the
- * caveats beside a phrase the game mishandles, one of which quotes the span it reads a shortcut as instead.
+ * Four callers: the two refusals, from `clauses.js` and `parse.js`; a category's own help in `terms.js`, which would
+ * otherwise show its ticks as ticks — `the game has no \`gen1\``; and the caveats beside a phrase the game mishandles,
+ * one of which quotes the span it reads a shortcut as instead.
  */
 const ticked = (message: string) =>
   spans(message).map((part, index) => (index % 2 === 0 ? part : <code key={index}>{part}</code>));

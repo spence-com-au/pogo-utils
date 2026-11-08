@@ -29,7 +29,7 @@ test('the clauses of the tree, joined, are the string', () => {
 
   const spread = compose(state(any(all(named('pikachu'), yes('shiny')), all(named('pumpkaboo'), yes('xxl')))));
 
-  // The search the earlier fixed builder could not say at all, as the four clauses the game will take for it.
+  // A shiny Pikachu or an XXL Pumpkaboo, as the four clauses the game will take for it.
   expect(spread.query).toBe('pikachu,pumpkaboo&pikachu,xxl&shiny,pumpkaboo&shiny,xxl');
   expect(spread.clauses).toBe(4);
 });
@@ -104,10 +104,10 @@ test('the one preset is everything it names, ruled out', () => {
 
 test("the Pokédex's link into this page arrives as the one name it asked for", () => {
   /*
-   * `pokedex.tsx` offers *Search for it* and *Search its family*, and it used to build `t=` by hand — the key the name
-   * box had. A fragment spelled at the call site goes on saying so after the page it points at has stopped reading it,
-   * and the only sign would have been a link that opens with no cards. So it goes through `nameFragment`, and this
-   * is that link followed.
+   * `pokedex.tsx` offers *Search for it* and *Search its family*, and builds each link through `nameFragment` rather
+   * than spelling `t=` — the key the name box has — at the call site. A fragment spelled there goes on saying so after
+   * the page it points at has stopped reading it, and the only sign would be a link that opens with no cards. This is
+   * that link followed.
    */
   for (const text of ['charmander', '+charmander', "farfetch'd", 'mr. mime']) {
     const arrived = fromFragment(nameFragment(text));
