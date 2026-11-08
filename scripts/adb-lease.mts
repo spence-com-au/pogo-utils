@@ -57,11 +57,18 @@ const WRAPPER = fileURLToPath(new URL('../bin', import.meta.url));
 
 /**
  * The commands a session runs to look around, which reach no phone and so take no lease and are never refused. Any
- * other command leases the phone `get-serialno` names, among them the host commands that reach none — `connect`,
- * `pair`, `start-server` — which are rare enough here to be held back with the rest, and `kill-server`, which cuts
- * every session's connection and should be.
+ * other command but those of `EVERY` leases the phone `get-serialno` names, among them the host commands that reach
+ * none — `connect`, `pair`, `start-server` — which are rare enough here to be held back with the rest.
  */
 const HOST = new Set(['devices', 'help', 'version']);
+
+/**
+ * The commands that act on more phones than the one `get-serialno` names, whatever `-s` says, so that leasing it would
+ * not hold them back: `kill-server` cuts every session's connection, and `disconnect` every wireless one or the one at
+ * the address it is given. They take no lease, there being no one phone to take, and are refused while another session
+ * holds any.
+ */
+const EVERY = new Set(['disconnect', 'kill-server']);
 
 /** The options `adb` takes ahead of its command that take the next argument as their value. */
 const VALUED = new Set(['-s', '-t', '-H', '-P', '-L', '--one-device']);
@@ -234,7 +241,23 @@ switch (process.argv[2]) {
     const adb = realAdb();
     const at = args.findIndex((arg, i) => !arg.startsWith('-') && !VALUED.has(args[i - 1] ?? ''));
     const started = stat(pid)?.[STARTED];
-    const serial = started && at !== -1 && !HOST.has(args[at] ?? '') ? reached(adb, args.slice(0, at)) : undefined;
+    const every = EVERY.has(args[at] ?? '');
+
+    const serial =
+      started && at !== -1 && !HOST.has(args[at] ?? '') && !every ? reached(adb, args.slice(0, at)) : undefined;
+
+    if (started && every) {
+      const others = open()
+        .prepare('SELECT * FROM use WHERE pid != ? ORDER BY since DESC')
+        .all(pid) as unknown as Use[];
+
+      const held = others.find(live);
+
+      if (held) {
+        console.error(refusal(held));
+        process.exit(1);
+      }
+    }
 
     if (started && serial) {
       const db = open();
