@@ -18,7 +18,7 @@ import { read } from './parse.js';
 import { GROUPS, PRESETS, RANGES, type Range } from './terms.js';
 import { range } from '../testing/search.js';
 import { unsearchable } from '../tools/inventory/storage.mts';
-import { boxText, marked, pickable, rangeTitle, readBound, spans, unmarked } from './controls.js';
+import { answered, boxText, marked, pickable, rangeTitle, readBound, spans, unmarked, type Sent } from './controls.js';
 
 /**
  * Both halves of what `spans` promises, for any message at all: an odd number of pieces, so the last one is prose and
@@ -385,6 +385,30 @@ test('a bound already set is offered at the end showing it', () => {
     ceilingSet: has('to', which.max, which.max),
     ceilingUnset: has('to', which.max, null),
   }).toEqual({ floorSet: true, floorUnset: false, floorElsewhere: false, ceilingSet: true, ceilingUnset: false });
+});
+
+test('a send is answered for as long as the string on the page is the one sent', () => {
+  const sent = (kind: Sent['kind']): Sent => ({ query: 'shiny', kind, message: kind });
+
+  expect(answered(null, 'shiny', true)).toBeNull();
+  expect(answered(sent('done'), 'shiny', true)).toEqual(sent('done'));
+  expect(answered(sent('failed'), 'shiny', true)).toEqual(sent('failed'));
+  expect(answered(sent('done'), 'shiny&xxl', true)).toBeNull();
+  expect(answered(sent('failed'), 'shiny&xxl', true)).toBeNull();
+});
+
+test('a send in flight is answered for whatever the string has become', () => {
+  const busy: Sent = { query: 'shiny', kind: 'busy', message: 'Searching…' };
+
+  expect(answered(busy, 'shiny&xxl', true)).toEqual(busy);
+});
+
+test('a press with no phone is answered for until a phone is held, and not after, the string unchanged', () => {
+  const unheld: Sent = { query: 'shiny', kind: 'unheld', message: 'No phone is connected.' };
+
+  expect(answered(unheld, 'shiny', false)).toEqual(unheld);
+  expect(answered(unheld, 'shiny', true)).toBeNull();
+  expect(answered(unheld, 'shiny&xxl', false)).toBeNull();
 });
 
 /**

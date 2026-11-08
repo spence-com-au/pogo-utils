@@ -1,7 +1,7 @@
 /**
  * What the Search page's boxes, chips and tooltips say, taken out of the page so they can be tested without a DOM: the
- * marks the `@` and `#` boxes put in front of what a reader types, a chip's tooltip, a sentence's backticked parts and
- * what a span pill's boxes show and offer.
+ * marks the `@` and `#` boxes put in front of what a reader types, a chip's tooltip, a sentence's backticked parts, what
+ * a span pill's boxes show and offer and which answer to a send to the phone is still worth showing.
  */
 
 import { names } from './query.js';
@@ -197,3 +197,27 @@ export function boxText(typed: Typed | null, path: Path, edge: Edge, bound: numb
 
   return bound === null ? '' : String(bound);
 }
+
+/**
+ * Where the last string sent to the phone has got to, and which string that was: an answer is about the string sent, so
+ * it is shown only while that is still the string on the page.
+ *
+ * `unheld` is a press with no phone to send to, a kind of its own because it stops being true in a way the others do
+ * not: connecting a phone from the top bar leaves this page mounted and the string unchanged.
+ */
+export interface Sent {
+  query: string;
+  kind: 'busy' | 'done' | 'failed' | 'unheld';
+  message: string;
+}
+
+/**
+ * The send the page has an answer to show for, or null where there is none.
+ *
+ * **A send in flight is shown whatever the string has become**, since the phone is still typing the one it was given
+ * and the button is shut until it finishes. Every other answer is about the string sent, so it goes the moment the
+ * string on the page is a different one. And an `unheld` press goes the moment a phone is held, string unchanged,
+ * because the answer it gave — connect one — has been done.
+ */
+export const answered = (sent: Sent | null, query: string, held: boolean): Sent | null =>
+  sent !== null && (sent.kind === 'busy' || sent.query === query) && !(sent.kind === 'unheld' && held) ? sent : null;
