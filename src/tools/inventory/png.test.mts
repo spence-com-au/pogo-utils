@@ -224,10 +224,9 @@ test('a byte damaged inside a chunk is caught by its CRC', () => {
   expect(() => decodePng(bytes)).toThrow(/IDAT chunk fails its CRC/);
 });
 
-/** A PNG around `raw` as its inflated pixel stream, with honest CRCs, so only the stream itself is wrong. */
-const withPixels = (raw: number[]): Buffer => {
+/** A 2×2 PNG around `body` as its IDAT, with honest CRCs, so only the stream itself is wrong. */
+const withIdat = (body: Buffer): Buffer => {
   const valid = encodePng(ramp(2, 2));
-  const body = deflateSync(Buffer.from(raw));
   const idat = Buffer.alloc(12 + body.length);
   idat.writeUInt32BE(body.length, 0);
   idat.write('IDAT', 4, 'latin1');
@@ -237,12 +236,29 @@ const withPixels = (raw: number[]): Buffer => {
   return Buffer.concat([valid.subarray(0, 33), idat, valid.subarray(-12)]);
 };
 
+/** The same around `raw` as its inflated pixel stream. */
+const withPixels = (raw: number[]): Buffer => withIdat(deflateSync(Buffer.from(raw)));
+
 test('a pixel stream that is short or names an unknown filter is refused rather than filled in', () => {
   const row = (filter: number) => [filter, ...new Array<number>(8).fill(128)];
 
   expect(decodePng(withPixels([...row(0), ...row(4)])).data, 'the helper builds a readable PNG').toHaveLength(16);
   expect(() => decodePng(withPixels(row(0)))).toThrow(/9 bytes of pixels where 2×2 needs 18/);
   expect(() => decodePng(withPixels([...row(0), ...row(5)]))).toThrow(/row 1 has filter 5/);
+});
+
+/**
+ * A zlib stream cut off within its first six bytes holds no deflate data, which fflate answers by handing back the
+ * buffer it was given, zero-filled and full length, rather than refusing. So each of these would read as sixteen zeros.
+ */
+test('a pixel stream with nothing inside its zlib framing is refused rather than read as a blank image', () => {
+  const stream = deflateSync(Buffer.alloc(18, 128));
+
+  for (const length of [2, 3, 4, 5, 6]) {
+    expect(() => decodePng(withIdat(stream.subarray(0, length))), `cut at ${length}`).toThrow(
+      /bytes of IDAT cannot hold the 18 that 2×2 needs/,
+    );
+  }
 });
 
 /**

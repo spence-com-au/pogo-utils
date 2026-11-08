@@ -305,6 +305,21 @@ test.each([
   expect(near(menu, x, y)).toBe(true);
 });
 
+// Ultra League's card read as Master League's, on beside Master League Mega Edition: a title given in full, or an open
+// league's by its name alone, is that league rather than more than one.
+test.each([
+  ['master', 0.54, 0.43],
+  ['Master League', 0.54, 0.43],
+  ['master league mega', 0.64, 0.57],
+])('taps the GO Battle League %s card beside a longer title it starts', async (league, x, y) => {
+  const master = async (image: Parameters<typeof ocr>[0]) =>
+    (await ocr(image)).map((line) => (fold(line.text) === 'ultra league' ? { ...line, text: 'MASTER LEAGUE' } : line));
+  const menu = await readMenu(fixture('menu-gbl-league'), { ...GBL, league }, master);
+
+  expect(menu.screen).toBe('league');
+  expect(near(menu, x, y)).toBe(true);
+});
+
 test('refuses a league that is not on now, naming those that are', async () => {
   await expect(readMenu(fixture('menu-gbl-league'), { ...GBL, league: 'great' })).rejects.toThrow(
     '--league great is not on now: ultra league; master league mega edition; fantasy cup great league edition',
