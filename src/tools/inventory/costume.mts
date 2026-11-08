@@ -77,7 +77,10 @@ interface Fit {
   overlap: number;
 }
 
-/** A set of an image's pixels. */
+/**
+ * A set of an image's pixels, with a border one pixel wide past its right edge and its bottom that is never in it: where
+ * `search` counts a point that lands off the image, rather than checking each one.
+ */
 interface Mask {
   width: number;
   height: number;
@@ -148,28 +151,46 @@ function isYellow(r: number, g: number, b: number): boolean {
 const range = (from: number, to: number, step: number) =>
   Array.from({ length: Math.floor((to - from) / step + 1e-9) + 1 }, (_, i) => from + i * step);
 
-const hits = (mask: Mask, x: number, y: number) =>
-  x >= 0 && y >= 0 && x < mask.width && y < mask.height && mask.bits[y * mask.width + x] === 1;
+/**
+ * Where each of `at` lands along one side of a mask, `size` long, once scaled and offset: as an offset into its bits,
+ * `stride` apart, and one past the end for any that land off it, which the mask's border keeps out of the set.
+ */
+function along(at: readonly number[], scale: number, offset: number, size: number, stride: number): Int32Array {
+  const offsets = new Int32Array(at.length);
+
+  for (let i = 0; i < at.length; i++) {
+    const to = Math.round((at[i] as number) * scale + offset);
+    offsets[i] = (to >= 0 && to < size ? to : size) * stride;
+  }
+
+  return offsets;
+}
 
 /** The placement of `points` that overlaps `target` most, as intersection over union in the target's pixels. */
 function search(points: readonly Point[], target: Mask, scales: number[], xs: number[], ys: number[]): Fit {
   const step = Math.max(1, Math.floor(points.length / SAMPLE));
+  const sampled = points.filter((_, i) => i % step === 0);
+  const across = sampled.map((p) => p.x);
+  const down = sampled.map((p) => p.y);
   let best: Fit = { scale: 0, x: 0, y: 0, overlap: -1 };
 
   for (const scale of scales) {
     // Each point stands for a patch `scale` on a side, so both sides of the ratio are counted in the target's pixels.
     const area = scale * scale;
 
+    // This loop is where drawing a wardrobe spends its time. A point's row is the same at every offset across and its
+    // column at every offset down, so each is worked out once per scale rather than at every placement, and the count
+    // is a sum with no branch: whether a point lands on the yellow is as good as random, so a branch on it mispredicts.
+    const rows = ys.map((y) => ({ y, row: along(down, scale, y, target.height, target.width + 1) }));
+
     for (const x of xs) {
-      for (const y of ys) {
+      const column = along(across, scale, x, target.width, 1);
+
+      for (const { y, row } of rows) {
         let n = 0;
 
-        for (let i = 0; i < points.length; i += step) {
-          const p = points[i] as Point;
-
-          if (hits(target, Math.round(p.x * scale + x), Math.round(p.y * scale + y))) {
-            n++;
-          }
+        for (let i = 0; i < sampled.length; i++) {
+          n += target.bits[(row[i] as number) + (column[i] as number)] as number;
         }
 
         const shared = n * step * area;
@@ -221,10 +242,10 @@ function yellowOf(icon: Image): Point[] {
 }
 
 function maskOf(points: readonly Point[], width: number, height: number): Mask {
-  const bits = new Uint8Array(width * height);
+  const bits = new Uint8Array((width + 1) * (height + 1));
 
   for (const { x, y } of points) {
-    bits[y * width + x] = 1;
+    bits[y * (width + 1) + x] = 1;
   }
 
   return { width, height, bits, count: points.length };
