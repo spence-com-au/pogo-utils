@@ -63,7 +63,7 @@ test.each([
 });
 
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
-  expect(await read('battle-minigame-kyogre-great')).toEqual({
+  expect(await read('playing-minigame-kyogre-great')).toEqual({
     ...unseen(),
     opponent: 'Entei',
     ownCp: 3813,
@@ -105,21 +105,21 @@ const banner = (name: string, sides: { own: string | null; opponent: string | nu
 // Gardevoir's are from a GO Battle League set off a Pixel 4 XL on 2026-11-06, where the pill was drawn higher, above
 // the band the others are read in, which held only sky.
 test.each([
-  ['battle-banner-ursaluna', { own: 'Zamazenta', opponent: 'Ursaluna' }, 'Fire Punch'],
-  ['battle-banner-gardevoir', { own: 'Kyogre', opponent: 'Gardevoir' }, 'Dazzling Gleam'],
-  ['battle-banner-quaquaval', { own: 'Swampert', opponent: 'Quaquaval' }, 'Aqua Jet'],
-  ['battle-banner-swampert', { own: 'Swampert', opponent: 'Quaquaval' }, null],
-  ['battle-banner-quaquaval', { own: 'Quaquaval', opponent: 'Quaquaval' }, null],
-  ['battle-banner-quaquaval', { own: 'Swampert', opponent: null }, null],
+  ['playing-banner-ursaluna', { own: 'Zamazenta', opponent: 'Ursaluna' }, 'Fire Punch'],
+  ['playing-banner-gardevoir', { own: 'Kyogre', opponent: 'Gardevoir' }, 'Dazzling Gleam'],
+  ['playing-banner-quaquaval', { own: 'Swampert', opponent: 'Quaquaval' }, 'Aqua Jet'],
+  ['playing-banner-swampert', { own: 'Swampert', opponent: 'Quaquaval' }, null],
+  ['playing-banner-quaquaval', { own: 'Quaquaval', opponent: 'Quaquaval' }, null],
+  ['playing-banner-quaquaval', { own: 'Swampert', opponent: null }, null],
   ['other-banner-golem', { own: 'Gengar', opponent: 'Golem' }, null],
-  ['battle-banner-pixel8-groudon', { own: 'Moltres', opponent: 'Groudon' }, 'Solar Beam'],
+  ['playing-banner-pixel8-groudon', { own: 'Moltres', opponent: 'Groudon' }, 'Solar Beam'],
 ])('reads the move %s names, against %j', async (name, sides, move) => {
   expect(await banner(name, sides)).toBe(move);
 });
 
 // `stream.mts` frees a frame two frames after yielding it, which can be while the first band's OCR is still running.
 test('reads the second band off a frame freed while the first is read', async () => {
-  const frame = decodePng(readFileSync(new URL('fixtures/battle-banner-quaquaval.png', import.meta.url)));
+  const frame = decodePng(readFileSync(new URL('fixtures/playing-banner-quaquaval.png', import.meta.url)));
   const lines = ['Swampert used Hydro Cannon!', 'Quaquaval used Aqua Jet!'];
 
   const readLine = () => {

@@ -72,10 +72,12 @@ Everything read per frame is done by colour samples, which are cheap. OCR is slo
 for text and done every few seconds.
 
 - **[`recognise.mts`](recognise.mts)** says which part of a battle a frame shows: `battle`, `charged` (a charged-move
-  button is lit), `shield` (the Protect Shield prompt), `switch` (the prompt after a faint) or `other` (a charged move
-  playing, a banner, the result, a menu). It also reads which charged-move buttons are lit, each side's shields from the
-  hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, and the countdown the opponent's
-  charged move puts up at the top of the screen while its minigame plays.
+  button is lit), `playing` (the HUD up but none of our charged moves' names drawn beneath their buttons: a charged move
+  under way, from its tap or the opponent's throw through its banner, `Get Ready!` and minigame, or a faint and the next
+  Pokémon flying in), `shield` (the Protect Shield prompt), `switch` (the prompt after a faint) or `other` (the HUD
+  hidden by a charged move, the result, a menu). It also reads which charged-move buttons are lit, each side's shields
+  from the hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, and the countdown the
+  opponent's charged move puts up at the top of the screen while its minigame plays.
 - **[`health.mts`](health.mts)** finds each side's HP bar. The camera moves both bars around the screen, so they are
   searched for: a strip of the fill's green, yellow or red with the bar's outline around it. Where a strip starts across
   the screen says whose it is.
@@ -211,7 +213,7 @@ for text and done every few seconds.
    logged as thrown, `threw Fly`, and its stat changes counted only once it plays. In the user's GO Battle League
    recordings, an opponent throwing on the same turn could drop our tap, its button lighting again with the energy kept,
    or hold our throw back until after theirs, its minigame then coming with no tap. So a throw is taken to be playing
-   once the fight has shown none of our buttons lit for 3.5s, as its minigame does throughout: every minigame there ran
+   once the HUD has shown none of our buttons lit for 3.5s, as its minigame does throughout: every minigame there ran
    5.1s or more, and nothing else after a tap more than 2.4s. Its bubbles are no sign, Fly's being found on its own lit
    button and on the sky. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the
    tap dropped, logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw
@@ -221,7 +223,9 @@ for text and done every few seconds.
    `Outrage not thrown: Mewtwo fainted first`: the game hides our buttons while it picks its next, 6s live, longer than
    the 3.5s a throw waits to be taken as playing, and lights the button again once the newcomer is in, its energy kept.
    Nor is anything thrown for half a second after the Poké Ball goes grey, a button tapped as it fades out being a throw
-   that never plays.
+   that never plays. Through a `playing` frame other than our minigame's nothing is touched and none of our energy
+   counted, no fast move firing there; one straight from the fight is still the fight for 0.6s, a fast move's flash
+   having washed our buttons' names out for up to 0.46s.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
    `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is

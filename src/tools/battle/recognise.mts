@@ -13,13 +13,16 @@ import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts
 import { around, BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 
 /**
- * - `battle`: the fight, with no charged move ready, or an animation within it — the charged-move minigame among them.
+ * - `battle`: the fight, with no charged move ready.
  * - `charged`: the fight, with a charged move ready to throw.
+ * - `playing`: the HUD up but none of our charged-move buttons drawn, so no fast move fires: a charged move under way,
+ *   from the tap that throws it or the opponent's throw, through its banner, `Get Ready!`, the minigame and the move
+ *   playing out; a Pokémon fainting, and the next flying in.
  * - `shield`: the prompt offering a Protect Shield against an incoming charged move.
  * - `switch`: the prompt choosing the next Pokémon after one has fainted.
  * - `other`: anything else.
  */
-export type State = 'battle' | 'charged' | 'shield' | 'switch' | 'other';
+export type State = 'battle' | 'charged' | 'playing' | 'shield' | 'switch' | 'other';
 
 /** A box, its left and right as fractions of the frame's width and its top and bottom as widths from an anchor. */
 type Box = readonly [left: number, top: number, right: number, bottom: number];
@@ -170,7 +173,7 @@ const SHIELD_PINK: Colour = [226, 159, 240];
  * A dark field at night can be that slate too, and the white of the prompt's title, `Switch in a new Pokémon?`, across
  * the middle of its line is what tells the two apart: 19–23% of `SWITCH_TITLE` on `switch-glaceon`, `switch-sneasel`,
  * `switch-pixel8` and two prompts of a GO Battle League run at night, where a charged move's purple burst
- * (`battle-slate-night`) and Dialga standing over the field, which matched the slate's three places in that run,
+ * (`playing-slate-night`) and Dialga standing over the field, which matched the slate's three places in that run,
  * measured 5% and none.
  */
 const SWITCH_PANEL: readonly Box[] = [
@@ -310,6 +313,74 @@ export function readyButtons(image: Image): [x: number, y: number][] {
 }
 
 /**
+ * The name of each charged move, printed beneath its button in grey letters on the dark band the fight draws along the
+ * foot: drawn under every button, lit or not, through the fight and nowhere else. From the tap that throws a move, or
+ * the opponent's throw, until the fight comes back, the buttons and their names are gone, the HUD staying up.
+ *
+ * Told by the letters' edges: neighbouring pixels within `EDGE.half` of the width of a button's x differing by more
+ * than `EDGE.by` in luminance, the lighter of them grey, counted per row over the name's rows and taken less those over
+ * the bare rows beside it, above and below, which artwork crosses as often as the name's own. A lit button's name is
+ * larger and lower, where its own rows and the unlit name's bare ones are looked at as well: its button is `charged`,
+ * but our tap's white ring around it hid its rim from `readyButtons` for up to ten frames at a time, and so did a lit
+ * button dimming for the throw. On the committed frames every unlit name read 6.8 or more, Fly's three letters the
+ * least and the rest 16 or more, and every lit one 13 or more, where nothing else read more than 2.5.
+ *
+ * Replayed over every frame of 20 runs kept with video, the fight read otherwise for no more than 0.15s with a second of
+ * it either side, but where ours was sent in, which shows no button until it has flown in, 1.6s and more. A fast move's
+ * flash can wash the names out for longer, which `FLASH_MS` in `run.mts` waits out: Lugia's did for up to 0.46s. A name
+ * read where none was drawn lasted a few frames at a time, the white of Kyogre's jaw through its own minigame among it.
+ */
+const NAMES = [
+  {
+    letters: [-0.1306, -0.1111],
+    beside: [
+      [-0.15, -0.137],
+      [-0.105, -0.095],
+    ],
+  },
+  {
+    letters: [-0.1028, -0.0778],
+    beside: [
+      [-0.1306, -0.1111],
+      [-0.074, -0.058],
+    ],
+  },
+] as const;
+const EDGE = { by: 25, grey: 40, half: 0.09 } as const;
+const NAMED = 5;
+
+/** The edges per row between rows `top` and `bottom` widths above the foot, across `x` ± `EDGE.half`. */
+function edges(image: Image, x: number, [top, bottom]: readonly [number, number]): number {
+  const unit = image.width / 360;
+  const [from, to] = rows(image, top, bottom, BOTTOM);
+  const [left, right] = [x - EDGE.half, x + EDGE.half].map((at) => Math.round(at * image.width)) as [number, number];
+  let found = 0;
+
+  for (let y = from; y <= to; y++) {
+    for (let px = left; px < right; px += unit) {
+      const [a, b] = [rgb(image, px, y), rgb(image, px + unit, y)];
+      const [lighter, darker] = luminance(...a) > luminance(...b) ? [a, b] : [b, a];
+
+      if (luminance(...lighter) - luminance(...darker) > EDGE.by && chroma(...lighter) < EDGE.grey) {
+        found++;
+      }
+    }
+  }
+
+  return found / (to - from + 1);
+}
+
+/** Whether any of the charged moves' names is drawn beneath its button, lit or not: the fight's own frames. */
+function named(image: Image): boolean {
+  return BUTTON_XS.some((x) =>
+    NAMES.some(
+      ({ letters, beside: [above, below] }) =>
+        edges(image, x, letters) - edges(image, x, above) - edges(image, x, below) >= NAMED,
+    ),
+  );
+}
+
+/**
  * The opponent's two shields along the top, as small boxes at the centre of each hexagon. One still held is pink,
  * measured 223–233/159–167/235–248 on the committed frames, under day and night skies alike; one spent is a dark
  * purple, 108–116/79–82/113–123, and the left goes first.
@@ -395,13 +466,17 @@ export function recognise(image: Image): State {
     return 'other';
   }
 
-  return readyButtons(image).length > 0 ? 'charged' : 'battle';
+  if (readyButtons(image).length > 0) {
+    return 'charged';
+  }
+
+  return named(image) ? 'battle' : 'playing';
 }
 
 /**
  * What a frame of the battle is told by, for `overlay.mts`: every box above, where it is sampled. Each of them is needed,
  * the HUD's strips and names together saying it is up, and each button, shield and Poké Ball read on its own; a button
- * as far out as the ring around its rim that has to stay dark.
+ * as far out as the ring around its rim that has to stay dark, and each move's name with the bare rows either side.
  */
 export function areas(screen: Size): Area[] {
   const at = (boxes: readonly Box[], anchor: number) => boxes.map((box) => spanning(box, anchor, screen));
@@ -417,6 +492,13 @@ export function areas(screen: Size): Area[] {
     {
       name: "the charged moves' buttons",
       boxes: BUTTON_XS.map((x) => around([x, BUTTON.y], BUTTON.radius * 1.35, BOTTOM, screen)),
+    },
+    {
+      name: "the charged moves' names",
+      boxes: at(
+        BUTTON_XS.map((x) => [x - EDGE.half, NAMES[0].beside[0][0], x + EDGE.half, NAMES[1].beside[1][1]] as const),
+        BOTTOM,
+      ),
     },
     { name: "each side's shields", boxes: at([...OWN_SHIELDS, ...OPPONENT_SHIELDS], TOP) },
     { name: "each side's Poké Balls", boxes: at([...BALLS.own, ...BALLS.opponent].map(ball), TOP) },

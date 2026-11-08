@@ -207,7 +207,7 @@ export class Player {
   /**
    * The stretch of the minigame under way that its bubbles have been found over, unbroken by `OVER_MS`, since its throw
    * was taken to be playing, after which a frame with none is its bubbles over rather than missed. The move then plays
-   * out, read as `battle` until a frame of it that hides the HUD, with nothing to pop and no fast move to fire: in a
+   * out, read as `playing` until a frame of it that hides the HUD, with nothing to pop and no fast move to fire: in a
    * kept run, `bubbleSwipes` found Avalanche's bubbles from 114.14s to 119.35s, never losing them for more than 0.3s,
    * and rows were swept on from there through `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no
    * minigame's: live, after an Outrage tapped went unthrown, Kyurem having fainted to our fast move, the shards of its
@@ -266,9 +266,9 @@ export class Player {
       }
     }
 
-    // A charged move thrown is the minigame next, inside frames that read as `battle` throughout, and over once the
-    // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
-    if (state !== 'battle' && state !== 'charged') {
+    // A charged move thrown is the minigame next, inside frames that read as `playing` throughout, and over once the
+    // throw itself plays and hides the HUD; as is a frame the caller says is a minigame, though no tap here began it.
+    if (state !== 'battle' && state !== 'charged' && state !== 'playing') {
       this.forget();
     } else if (minigame) {
       this.#minigame = true;
@@ -282,7 +282,14 @@ export class Player {
       return { kind: 'tap', at: bench, what: 'bench' };
     }
 
-    if (state === 'battle' || (state === 'charged' && throwable.length === 0)) {
+    if (state === 'battle' || state === 'playing' || (state === 'charged' && throwable.length === 0)) {
+      // A charged move under way other than our minigame — the opponent's, or ours yet to come behind it — fires no
+      // fast move and draws no bubbles: in a kept run, swipes landed through Garchomp's Sand Tomb and through the
+      // `Get Ready!` of our throw held behind it.
+      if (state === 'playing' && !this.#minigame) {
+        return { kind: 'wait' };
+      }
+
       if (this.#tapped?.state === 'charged' && now - this.#tapped.at < HOLD_MS) {
         return { kind: 'wait' };
       }

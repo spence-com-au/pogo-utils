@@ -321,7 +321,7 @@ function battleAndBack(): Record<string, Scene> {
     loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'fight' } },
     fight: { frame: fixture('battle-deoxys'), swipes: { count: 30, to: 'charged' } },
     charged: { frame: fixture('charged-shadow-sneak'), tap: { at: [0.499, 0.889], to: 'minigame' } },
-    minigame: { frame: fixture('battle-minigame-giratina'), swipes: { count: 40, to: 'won' } },
+    minigame: { frame: fixture('playing-minigame-giratina'), swipes: { count: 40, to: 'won' } },
     won: { frame: fixture('other-win'), screenshot: fixture('menu-unknown-medal'), lasts: { ms: 8000, to: 'result' } },
     result: menu('menu-result', { at: [0.5, 0.935], to: 'training' }),
   };
@@ -931,6 +931,12 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
 });
 
 /**
+ * The next of ours sent in after a faint, Mamoswine's minigame standing for it flying in: the HUD up and no button
+ * drawn yet, nothing to swipe at, until the battle is won.
+ */
+const flyingIn = (): Scene => ({ frame: fixture('playing-minigame-mamoswine'), lasts: { ms: 2000, to: 'won' } });
+
+/**
  * Zeraora leads and faints to Glaceon. Of Latias and Gyarados, Glaceon hits Latias super effectively and not Gyarados,
  * so Gyarados goes in, off the prompt's second card. The first tap does not land, and the retap a second later goes to
  * the same card: decided again, with Gyarados already taken to be out, it went to Latias's. A retap that misses runs on
@@ -955,7 +961,7 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
       still: true,
     },
     stuck: { frame: fixture('other-loss') },
-    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' }, still: true },
+    next: { ...flyingIn(), still: true },
   };
   const { phone, clock, taps } = scripted(scenes, 'party');
   const report = recorder();
@@ -1093,7 +1099,7 @@ test('stops on a Battle tab whose Training card never shows, rather than scroll 
 
 /**
  * Shadow Sneak thrown, its minigame's Ghost bubbles are swiped through rather than swept across in rows: every swipe in
- * it crosses the bubble low in the middle of `battle-minigame-giratina`.
+ * it crosses the bubble low in the middle of `playing-minigame-giratina`.
  */
 test('aims the minigame’s swipes at its bubbles', async () => {
   // Straight to Shadow Sneak's frame: the usual fight is Deoxys's, whose Zap Cannon would be read as the move thrown.
@@ -1179,10 +1185,10 @@ function moltresFly(tapped: string, after: string): Record<string, Scene> {
     fight: fly(tapped),
     prompt: { frame: fixture('shield-pixel8-charizard'), lasts: { ms: 2000, to: 'away' } },
     away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'banner' } },
-    banner: { frame: fixture('battle-banner-pixel8-charizard'), lasts: { ms: 2000, to: 'gap' } },
+    banner: { frame: fixture('playing-banner-pixel8-charizard'), lasts: { ms: 2000, to: 'gap' } },
     gap: { frame: fixture('other-vs-fade'), lasts: { ms: 700, to: after } },
     relit: fly('minigame'),
-    minigame: { frame: fixture('battle-minigame-pixel8-fly'), lasts: { ms: 6000, to: 'won' } },
+    minigame: { frame: fixture('playing-minigame-pixel8-fly'), lasts: { ms: 6000, to: 'won' } },
   };
 }
 
@@ -1208,7 +1214,10 @@ test.each([
 ])('tells a throw %s once it plays, and swipes its minigame', async (_, tapped, after, before) => {
   const { phone, clock, strokes } = scripted(moltresFly(tapped, after), 'fight');
   const report = recorder();
-  const [chain] = bubbleSwipes(fixture('battle-minigame-pixel8-fly'), typeColour(fixture('types/POKEMON_TYPE_FLYING')));
+  const [chain] = bubbleSwipes(
+    fixture('playing-minigame-pixel8-fly'),
+    typeColour(fixture('types/POKEMON_TYPE_FLYING')),
+  );
 
   await run(
     phone,
@@ -1261,6 +1270,12 @@ test('loses a throw where ours faints before it plays', async () => {
   ]);
 });
 
+/** Our two shields' hexagons, for `painted`. */
+const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
+
+/** Latias's fight with both our shields painted spent. */
+const shieldsSpent = () => painted(fixture('battle-latias'), [110, 80, 116], ...HELD);
+
 /**
  * Each stretch off the field told once the battle is back, with what showed: our Shadow Sneak's minigame and the move
  * playing after it, and, with our shields spent, a move of theirs that puts up no prompt. Shorter stretches and the
@@ -1269,22 +1284,24 @@ test('loses a throw where ours faints before it plays', async () => {
 test.each([
   [
     'charged-shadow-sneak',
+    () => fixture('charged-shadow-sneak'),
     'run: off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)',
   ],
   [
-    'battle-shields-spent',
-    "run: off the battle for 5.0s: likely Quaquaval's charged move, none of our shields left to prompt for",
+    'our shields spent',
+    shieldsSpent,
+    "run: off the battle for 5.0s: likely Glaceon's charged move, none of our shields left to prompt for",
   ],
-])('tells how long the battle was off its field from %s', async (fight, said) => {
+])('tells how long the battle was off its field from %s', async (_, fight, said) => {
   const { phone, clock } = scripted(
     {
       ...battleAndBack(),
       fight: {
-        frame: fixture(fight),
+        frame: fight(),
         tap: { at: [0.499, 0.889], to: 'minigame' },
         swipes: { count: 10, to: 'away' },
       },
-      minigame: { frame: fixture('battle-minigame-giratina'), swipes: { count: 40, to: 'away' } },
+      minigame: { frame: fixture('playing-minigame-giratina'), swipes: { count: 40, to: 'away' } },
       away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'back' } },
       back: { frame: fixture('battle-deoxys'), swipes: { count: 10, to: 'blip' } },
       blip: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'last' } },
@@ -1347,6 +1364,7 @@ test('baits with the cheaper move while the opponent has shields', async () => {
         tap: { at: [0.69, 0.889], to: 'minigame' },
         swipes: { count: 10, to: 'training' },
       },
+      minigame: minigameNoneFainted(),
     },
     'fight',
   );
@@ -1409,7 +1427,7 @@ const RED = [230, 106, 96];
  * from are: one grey on either side would be read as a faint, the opponent's taking the throw for one that never plays.
  */
 const minigameNoneFainted = (): Scene => ({
-  frame: painted(fixture('battle-minigame-giratina'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS),
+  frame: painted(fixture('playing-minigame-giratina'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS),
   swipes: { count: 40, to: 'won' },
 });
 
@@ -1909,6 +1927,83 @@ test.each([
   });
 });
 
+/** Xerneas against Garchomp as above, our grey Poké Ball painted red. */
+const xerneas = () =>
+  painted(fixture('battle-pixel8-xerneas-super-effective'), [200, 60, 60], [15 / 360, 69 / 360, 30 / 360, 82 / 360]);
+
+/** The same with the foot painted dark over our buttons and their names, as a charged move under way leaves it. */
+const unnamed = () => painted(xerneas(), [20, 26, 30], [0, 1.85, 1, 802 / 360]);
+
+/**
+ * Xerneas, its card read as Geomancy, fights Garchomp for 3s and goes on to `after`'s `next`: the phone's strokes, and
+ * every status told, with the screen it was told on and our energy as counted.
+ */
+async function fightThen(after: Record<string, Scene>) {
+  const { phone, clock, strokes } = scripted(
+    { ...masterParty(), fight: { frame: xerneas(), lasts: { ms: 3000, to: 'next' } }, ...after },
+    'party',
+  );
+  const report = recorder();
+  const told: { screen: string; energy: number | undefined }[] = [];
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'master' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    {
+      ...report,
+      status: (status) => {
+        report.status(status);
+        told.push({ screen: status.screen, energy: status.fight?.ourEnergy?.energy });
+      },
+    },
+  );
+
+  return { strokes, told };
+}
+
+/**
+ * The opponent throws, and its move plays out after the shield prompt, the HUD up and none of our buttons drawn: nothing
+ * is touched, and our energy is counted no further. In a kept run, swipes landed through Garchomp's Sand Tomb and the
+ * `Get Ready!` of ours after it, and our energy was counted from 52 to 91 through them.
+ */
+test('touches nothing and counts none of our energy through the opponent’s charged move', async () => {
+  const { strokes, told } = await fightThen({
+    next: {
+      frame: fixture('shield-pixel8'),
+      tap: { at: [0.5, 0.83], to: 'playing' },
+      lasts: { ms: 1500, to: 'playing' },
+    },
+    playing: { frame: unnamed(), lasts: { ms: 3000, to: 'won' } },
+  });
+  const fought = told.filter(({ screen }) => screen === 'battle').at(-1)?.energy;
+
+  expect(fought).toBeGreaterThan(0);
+  expect(strokes.filter(({ scene }) => scene === 'playing')).toEqual([]);
+  expect(new Set(told.filter(({ screen }) => screen === 'playing').map(({ energy }) => energy))).toEqual(
+    new Set([fought]),
+  );
+});
+
+/**
+ * Straight from the fight, a frame of the HUD with none of our charged moves' names drawn, as a fast move's flash over
+ * the foot of the screen leaves: Lugia's hid them for up to 0.46s at a time in a kept run, the fight going on beneath.
+ * It is swiped as the fight for `FLASH_MS`, and no longer.
+ */
+test('fights on through a flash that hides our buttons’ names for a moment', async () => {
+  const { strokes } = await fightThen({ next: { frame: unnamed(), lasts: { ms: 3000, to: 'won' } } });
+  const flash = strokes.filter(({ scene }) => scene === 'next').map(({ at }) => at);
+
+  expect(flash.length).toBeGreaterThan(0);
+  expect(Math.max(...flash) - Math.min(...flash)).toBeLessThan(600);
+});
+
 /**
  * The game master with Entei's base attack 3 higher, which leaves a rank-1 Entei at CP 4163 built as before but for
  * its attack, ~214 to the ~212 of a rank-1 Kyogre at CP 3813: Entei then wins CMP, where it loses it to its ~211.
@@ -2400,7 +2495,6 @@ test('stays in when nothing benched counters the opponent switched in', async ()
   expect(taps.filter((scene) => scene === 'sneasel')).toEqual([]);
 });
 
-const HELD = [0.236, 0.281].map((x) => [x - 0.008, 0.2, x + 0.008, 0.218]);
 const STAYED = 'own: staying in against Mamoswine: Shadow Sneak drawn into a shield before Giratina faints';
 
 /**
@@ -2728,7 +2822,7 @@ test.each([
       mamoswine: { frame: dark, lasts: { ms: unlit, to: 'avalanche' } },
       avalanche: { frame: avalanche, tap: { at: [0.499, 0.889], to: 'thrown' } },
       thrown: {
-        frame: painted(fixture('battle-minigame-mamoswine'), [200, 60, 60], FIRST_BALL),
+        frame: painted(fixture('playing-minigame-mamoswine'), [200, 60, 60], FIRST_BALL),
         swipes: { count: 40, to: 'played' },
       },
       played: { frame: fixture('other-vs-fade'), lasts: { ms: 1000, to: 'again' } },
@@ -2801,7 +2895,7 @@ test.each([
       mamoswine: { frame: ours(74), lasts: { ms: wait, to: 'prompt' } },
       prompt: { frame: fixture('shield-glaceon'), lasts: { ms: 3000, to: 'banner' } },
       banner: {
-        frame: banner ? painted(fixture('battle-banner'), [200, 60, 60], FIRST_BALL) : ours(74),
+        frame: banner ? painted(fixture('playing-banner'), [200, 60, 60], FIRST_BALL) : ours(74),
         lasts: { ms: 2000, to: 'steady' },
       },
       steady: { frame: ours(74), tap: bench, lasts: { ms: 1000, to: 'hit1' } },
@@ -3023,7 +3117,7 @@ test('names the lead from the party, and the next of it after a faint', async ()
       ...battleAndBack(),
       fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'fainted' } },
       fainted: { frame: fixture('switch-glaceon'), tap: { at: [0.33, 0.87], to: 'next' } },
-      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+      next: flyingIn(),
     },
     'party',
   );
@@ -3066,7 +3160,7 @@ test('answers a switch prompt that reads as the fight for a frame as it slides i
     fading: { frame: latias, lasts: { ms: 90, to: 'gone' } },
     gone: { frame: prompt, lasts: { ms: 20, to: 'next' } },
     stuck: { frame: fixture('other-loss') },
-    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+    next: flyingIn(),
   };
   const { phone, clock, taps, strokes } = scripted(scenes, 'party');
   const report = recorder();
@@ -3150,7 +3244,7 @@ test('counts a faint off our Poké Balls where no switch prompt is answered for 
     {
       ...battleAndBack(),
       fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'next' } },
-      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+      next: flyingIn(),
     },
     'party',
   );
@@ -3189,7 +3283,7 @@ test('forgets the moves of one of ours fainting with no switch prompt', async ()
     {
       ...battleAndBack(),
       fight: { frame: fixture('battle-two-unlit'), swipes: { count: 10, to: 'next' } },
-      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+      next: flyingIn(),
     },
     'party',
   );
@@ -3224,7 +3318,7 @@ test('counts a faint off our Poké Balls where the moves read fit none of ours',
     {
       ...battleAndBack(),
       fight: { frame: fixture('battle-two-unlit'), swipes: { count: 10, to: 'next' } },
-      next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+      next: flyingIn(),
     },
     'party',
   );
@@ -3344,16 +3438,16 @@ test('takes a read naming a fainted species once the HUD has had time to change'
 
 /**
  * A shield prompt is tapped while we have a shield left, and left to run out once both are spent: tapped, it would be
- * a tap at a prompt with nothing behind it. Latias leads with both shields up; Charizard has spent both.
+ * a tap at a prompt with nothing behind it. Latias leads with both shields up, and again with both painted spent.
  */
 test.each([
-  ['battle-latias', ['prompt']],
-  ['battle-shields-spent', []],
-])('after %s, the shield prompt is tapped in %j', async (fight, tapped) => {
+  ['both up', () => fixture('battle-latias'), ['prompt']],
+  ['both spent', shieldsSpent, []],
+])('with our shields %s, the shield prompt is tapped in %j', async (_, fight, tapped) => {
   const { phone, clock, taps } = scripted(
     {
       ...battleAndBack(),
-      fight: { frame: fixture(fight), swipes: { count: 10, to: 'prompt' } },
+      fight: { frame: fight(), swipes: { count: 10, to: 'prompt' } },
       prompt: { frame: fixture('shield-glaceon'), tap: { at: [0.5, 0.82], to: 'won' }, lasts: { ms: 3000, to: 'won' } },
     },
     'fight',
@@ -3686,7 +3780,7 @@ test('learns the move the banner after a shield prompt names', async () => {
       ...battleAndBack(),
       fight: { frame: fixture('battle-one-shield'), swipes: { count: 10, to: 'prompt' } },
       prompt: { frame: fixture('shield-low'), lasts: { ms: 3000, to: 'banner' } },
-      banner: { frame: fixture('battle-banner-quaquaval'), lasts: { ms: 2000, to: 'won' } },
+      banner: { frame: fixture('playing-banner-quaquaval'), lasts: { ms: 2000, to: 'won' } },
     },
     'fight',
   );
@@ -3723,7 +3817,7 @@ test.each([
       ...battleAndBack(),
       fight: { frame: fixture(fight), swipes: { count: 10, to: 'countdown' } },
       countdown: { frame: fixture('other-pixel8-countdown'), lasts: { ms: 3000, to: 'banner' } },
-      banner: { frame: fixture('battle-banner-pixel8-greninja'), lasts: { ms: 2000, to: 'won' } },
+      banner: { frame: fixture('playing-banner-pixel8-greninja'), lasts: { ms: 2000, to: 'won' } },
     },
     'fight',
   );
