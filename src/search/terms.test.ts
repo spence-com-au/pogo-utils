@@ -3,9 +3,9 @@
  *
  * A category's `help` is prose in this repository's own convention and `pages/search.js` renders it through `ticked`,
  * which splits on the tick and sets the odd pieces in `<code>`. So a sentence that opens a pair and never closes it
- * leaves its tail code-set on the page, which is the same defect that routing was added to fix from the other side:
- * `the game has no \`gen1\`` had been showing its own ticks since before the canvas. Balanced ticks are an invariant
- * of this table now, and an invariant nothing checks is one the next sentence added here can break quietly.
+ * leaves its tail code-set on the page — the reverse of a sentence that skips `ticked`, which prints its own ticks, as
+ * `the game has no \`gen1\`` would. Balanced ticks are an invariant of this table, and an invariant nothing checks is
+ * one the next sentence added here can break quietly.
  *
  * The other two are about names colliding, and both are the kind of fault that leaves the page working: a term and a
  * range sharing an id draws two chips that read each other's pill, and a shortcut naming no range writes no span at
@@ -29,9 +29,9 @@ test('every help sentence closes the backticks it opens', () => {
 });
 
 /**
- * A pill on the canvas is its label and nothing else — the heading the chip sat under is not drawn there, and the four
+ * A pill on the canvas is its label and nothing else — the heading the chip sits under is not drawn there, and the four
  * type groups share a hue, so neither position nor colour says which group a pill came from. So a label that reads as
- * a quantifier names nothing a reader can act on: *Safe to transfer* drew `!background` as a pill reading `Any`.
+ * a quantifier names nothing a reader can act on: *Safe to transfer* would draw `!background` as a pill reading `Any`.
  */
 test('no label leans on the heading above it to say what it is', () => {
   const bare = new Set(['all', 'any', 'both', 'either', 'neither', 'none']);

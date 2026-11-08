@@ -1,7 +1,8 @@
 /**
  * What `bestOf` reads and what it keeps, which is the decision `scripts/inventory.mts` makes about every Pokémon it
- * walks past and the one part of that walk no other test reaches: `cli.test.mts` drives the script as a subprocess,
- * and the only command there that needs no phone is `parse`, which reads a file once and retries nothing.
+ * walks past. `phone.test.mts` drives the whole script against a phone of recordings, which says what a scan wrote and
+ * not how many looks at a screen it took to get there, and `parse` in `cli.test.mts` reads a file once and retries
+ * nothing.
  *
  * So the scan's half of the contract is asserted here, against answers scripted as the fault scores a reading comes
  * out with — a screen read whole scoring nought, and each thing wrong with it raising the score. Which facts about a

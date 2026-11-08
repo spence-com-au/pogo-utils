@@ -354,9 +354,9 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   /**
    * The entries the filters leave, in dex order — what the grid shows and what the dialog's arrows step through.
    *
-   * Derived on every render rather than kept, which is what retires the ordering the imperative page had to arrange by
-   * hand: it filtered before rendering the dialog so the arrows were decided against the current list, since a link
-   * that changed the query and the open species together would otherwise place the entry in the list it was replacing.
+   * Derived on every render rather than kept, so the dialog's arrows are always decided against the current list: a
+   * link that changes the query and the open species together would otherwise place the entry in the list it is
+   * replacing.
    */
   const visible = ENTRIES.filter((entry) => matches(entry, state));
   const shown = new Set(visible.map((entry) => entry.dex));

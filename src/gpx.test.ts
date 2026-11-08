@@ -1,6 +1,15 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
-import { eachTrack, entryCoords, entryCountry, entryGpx, extText, loadManifest, placeName } from './gpx.js';
+import {
+  eachTrack,
+  entryCoords,
+  entryCountry,
+  entryGpx,
+  extText,
+  loadManifest,
+  parseGpxDocument,
+  placeName,
+} from './gpx.js';
 import { parseXml } from './testing/xml.js';
 
 const gpx = (body: string) =>
@@ -93,6 +102,24 @@ test('extText answers null for an element with no extensions block', () => {
 });
 
 /**
+ * Matched as the validator matches, on namespace and local name: a foreign tool's field of the same name, first in
+ * document order so a reader going by name alone would find it, is not one the validator checked.
+ */
+test('extText reads the pgr namespace under any prefix, and nothing else', () => {
+  const doc = gpx(
+    '<wpt lat="1" lon="2"><name>Here</name><extensions>' +
+      '<x:country xmlns:x="urn:other">Atlantis</x:country>' +
+      '<p:country xmlns:p="https://spence.com.au/pogo-utils/gpx/1">Australia</p:country>' +
+      '<x:event xmlns:x="urn:other">gone</x:event>' +
+      '</extensions></wpt>',
+  );
+  const wpt = first(doc, 'wpt');
+
+  expect(extText(wpt, 'country')).toBe('Australia');
+  expect(extText(wpt, 'event')).toBeNull();
+});
+
+/**
  * `coordStr` is the file's own text rather than the parsed pair printed back, which is what lets the copy button hand
  * over exactly what the file said — trailing zeroes and all, where `${lat},${lng}` would have dropped them.
  */
@@ -153,27 +180,23 @@ test('eachTrack pairs a track with its points from every segment', () => {
 });
 
 /**
- * `loadManifest` is the one reader here that needs a global rather than a tree, so the tree-based cases above cannot
- * reach it. The stub is `fetch` itself because that is what the function names: a parameter would be a seam the page
- * does not have, and what the guard is about is a response this repository's own build wrote going wrong.
- *
- * `parseGpxDocument` is the one reader no test here reaches, and deliberately: it tells a malformed file apart by
- * `querySelector('parsererror')`, a browser convention `@xmldom/xmldom` does not implement at all — it throws from
- * `parseFromString` instead. So a test over xmldom would be checking a different contract, and the browser suite is
- * what covers it.
+ * `loadManifest` needs a global rather than a tree, so the tree-based cases above cannot reach it. The stub is `fetch`
+ * itself because that is what the function names: a parameter would be a seam the page does not have, and what the
+ * guard is about is a response this repository's own build wrote going wrong.
  */
 const respondWith = (body: unknown, init?: { ok?: boolean; status?: number; statusText?: string }) => {
-  globalThis.fetch = () =>
+  vi.stubGlobal('fetch', () =>
     Promise.resolve({
       ok: init?.ok ?? true,
       status: init?.status ?? 200,
       statusText: init?.statusText ?? 'OK',
       json: () => Promise.resolve(body),
-    } as Response);
+    } as Response),
+  );
 };
 
 afterEach(() => {
-  Reflect.deleteProperty(globalThis, 'fetch');
+  vi.unstubAllGlobals();
 });
 
 test('loadManifest answers the list of paths the build wrote', async () => {
@@ -207,6 +230,42 @@ test.for([
 ])('loadManifest refuses $body', async ({ value }) => {
   respondWith(value);
   await expect(loadManifest()).rejects.toThrow('is not a list of paths');
+});
+
+/**
+ * `parseGpxDocument` reaches for `DOMParser` by name, which Node does not have, and tells a malformed file apart by
+ * `querySelector('parsererror')`, a browser convention `@xmldom/xmldom` does not implement at all: it throws from
+ * `parseFromString` instead, and its documents have no `querySelector`. So a test over xmldom would be checking a
+ * different contract, and no suite here drives a real browser's parser. What these pin is the function's own half of
+ * the exchange — that it asks for XML and raises on finding a `<parsererror>` by that selector — against a
+ * `DOMParser` that answers as a browser would. That a browser really puts a `<parsererror>` into the document it
+ * hands back is the platform's word, taken as given.
+ */
+const parseAnswering = (parsererror: Element | null) => {
+  const doc = { querySelector: (selector: string) => (selector === 'parsererror' ? parsererror : null) };
+  const parseFromString = vi.fn<(text: string, type: string) => unknown>(() => doc);
+
+  vi.stubGlobal(
+    'DOMParser',
+    class {
+      parseFromString = parseFromString;
+    },
+  );
+
+  return { doc, parseFromString };
+};
+
+test('parseGpxDocument answers the tree a browser parsed from the text as XML', () => {
+  const { doc, parseFromString } = parseAnswering(null);
+
+  expect(parseGpxDocument('<gpx/>')).toBe(doc);
+  expect(parseFromString).toHaveBeenCalledWith('<gpx/>', 'application/xml');
+});
+
+/** A browser reports a malformed file by handing back a document with a `<parsererror>` in it, never by throwing. */
+test('parseGpxDocument refuses a document the parser reported an error in', () => {
+  parseAnswering(parseXml('<parsererror/>').documentElement);
+  expect(() => parseGpxDocument('<gpx>')).toThrow('not valid XML');
 });
 
 /**

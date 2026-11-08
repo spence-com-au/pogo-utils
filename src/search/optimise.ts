@@ -9,11 +9,10 @@
  * intersection. And **a category saying what its own terms already settle**, which `terms.js` declares through
  * `exclusive`, `exhaustive` and `covers`.
  *
- * **Every one of the three is local to one node**, which is what the canvas changed: the earlier builder AND'd one
- * clause per category, so "this category's terms" and "the terms AND'd with everything else" were the same set. An
- * arrangement can put a category's terms in two groups, or inside an `any` the rest of the query is not AND'd with, so
- * each reduction asks only about one junction's own parts. A pill one group over is a pill this knows nothing about,
- * which is the only reading that cannot make a search broader than it was.
+ * **Every one of the three is local to one node.** An arrangement can put a category's terms in two groups, or inside
+ * an `any` the rest of the query is not AND'd with, so "this category's terms" and "the terms AND'd with everything
+ * else" are not the same set, and each reduction asks only about one junction's own parts. A pill one group over is a
+ * pill this knows nothing about, which is the only reading that cannot make a search broader than it was.
  *
  * What is *not* reduced is a category's terms arriving at one junction with mixed polarity — an `any` holding `shadow`
  * beside `!purified` is `!purified`, and goes out as it came in. The facts in `terms.js` are stated for the reading
@@ -26,7 +25,7 @@
 
 import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
-import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
+import { GROUPS, IDS_BY_TERM, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
 import { compose, type State } from './query.js';
 
@@ -178,6 +177,12 @@ function shortName(token: string, negated: boolean): { text: string; spans: Span
 
   if (span) {
     return { text: token, spans: [span], numbered: false };
+  }
+
+  // `dark` is the Dark type, where read as a name it reaches Darkrai alone and would be written `491` — so a ruled-out
+  // `!dark` would let every other Dark type through.
+  if (IDS_BY_TERM.has(token)) {
+    return { text: token, spans: null, numbered: false };
   }
 
   const family = token.startsWith('+');
@@ -350,9 +355,8 @@ function shortCategory(junction: Group['junction'], category: Category, pills: r
 /**
  * The dex spans among one junction's own parts, collapsed into the one thing they say between them.
  *
- * Which way they collapse is the junction's to say, and this is where the canvas changed the arithmetic rather than
- * just where it is applied: an `all` of spans is their overlap — Gen 1 with Gen 2 is nothing, no species being in
- * both — where an `any` of them is their union.
+ * Which way they collapse is the junction's to say: an `all` of spans is their overlap — Gen 1 with Gen 2 is nothing,
+ * no species being in both — where an `any` of them is their union.
  *
  * A negated pill is left out, ruling a span out not being asking for one, and so is a span inside a nested group,
  * whose own pass will have seen it.

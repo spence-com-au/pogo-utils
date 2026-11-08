@@ -19,6 +19,10 @@ updates:
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
 
+      # Its major names the Node it describes, so it moves with `devEngines.runtime` rather than ahead of it.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:

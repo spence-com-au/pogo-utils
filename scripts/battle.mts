@@ -52,11 +52,11 @@ import { live, plain } from '../src/tools/battle/report.mts';
 import { phoneOf } from '../src/tools/battle/phone.mts';
 import { ending } from '../src/tools/battle/reporter.mts';
 import { keepFrames } from '../src/tools/battle/keep-frames.mts';
+import { keepVideo } from '../src/tools/battle/keep-video.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
 import { feed, screenrecord } from '../src/tools/battle/stream.mts';
-import { Video } from '../src/tools/battle/video.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
 import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
@@ -65,9 +65,9 @@ import { type GameData } from '../src/tools/inventory/game-master.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { MODEL, MODEL_SHA256, tesseractWasm } from '../src/tools/inventory/ocr-wasm.mts';
 import { createHash } from 'node:crypto';
-import { closeSync, createWriteStream, mkdirSync, openSync, readFileSync, writeSync } from 'node:fs';
+import { createWriteStream, readFileSync } from 'node:fs';
 import { constants } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
@@ -248,82 +248,17 @@ if (command === 'run') {
   const dir = options['keep-frames'];
   const frames = dir === undefined ? undefined : keepFrames(dir, started, clock.now);
 
-  // The whole of the screen, written a picture at a time once each is known whole and `HELD_MS` have gone by since it
-  // came, or a cut is known: synchronously, at about 8 KB a picture, so that a run stopped by Ctrl-C, which exits
-  // without waiting on a stream, still leaves all it saw. Opened here rather than at the first picture, so a FILE that
-  // cannot be written fails before the run changes the phone.
   const videoFile = options['keep-video'];
-  let video: Video | undefined;
-  let fd: number | undefined;
-  let videoFailed: string | undefined;
-  let videoWritten = 0;
+  let kept: ReturnType<typeof keepVideo> | undefined;
 
   if (videoFile !== undefined) {
     try {
-      mkdirSync(dirname(videoFile), { recursive: true });
-      fd = openSync(videoFile, 'w');
+      kept = keepVideo(videoFile, started, clock.now);
     } catch (error) {
       console.error(`could not write ${videoFile}: ${said(error)}`);
       process.exit(1);
     }
-
-    // A write that fails — the disk full — stops the video and nothing else. It is heard from `screenrecord`'s stdout,
-    // from `Video`'s timer for pictures held, and from the ways out, where a throw would be uncaught or skip putting
-    // the phone's setting back, so it is kept to be told once the run is over rather than thrown, and nothing more is
-    // written after it.
-    video = new Video(
-      (bytes) => {
-        if (fd === undefined || videoFailed !== undefined) {
-          return;
-        }
-
-        try {
-          videoWritten += writeSync(fd, bytes);
-        } catch (error) {
-          videoFailed = `${((clock.now() - started) / 1000).toFixed(1)}s in: ${said(error)}`;
-        }
-      },
-      started,
-      clock.now,
-    );
   }
-
-  const closeVideo = () => {
-    video?.close();
-    video = undefined;
-
-    if (fd !== undefined) {
-      // A close that fails is told apart from a write that did: what was written before it may be whole.
-      let closeFailed: string | undefined;
-
-      try {
-        closeSync(fd);
-      } catch (error) {
-        closeFailed = said(error);
-      }
-
-      fd = undefined;
-
-      // Nothing reaches the file before the first whole picture, which a run stopped early never sees.
-      if (videoWritten === 0) {
-        console.error(
-          videoFailed === undefined
-            ? `no picture of the screen came, so ${videoFile} is empty`
-            : `nothing kept in ${videoFile}: a write failed ${videoFailed}`,
-        );
-      } else {
-        console.error(
-          videoFailed === undefined
-            ? `kept the screen in ${videoFile}`
-            : `kept the screen in ${videoFile} only until a write failed ${videoFailed}`,
-        );
-      }
-
-      if (closeFailed !== undefined) {
-        console.error(`closing ${videoFile} failed: ${closeFailed}`);
-      }
-    }
-  };
 
   // Ctrl-C closes the held shell while the run is still sending to it: what then fails is no error of the run's, and
   // the setting is put back by the handler alone. A `kill`, a `timeout` or the terminal closed stops it the same way,
@@ -336,7 +271,7 @@ if (command === 'run') {
   const release = () => {
     frames?.flush();
     screen?.close();
-    closeVideo();
+    kept?.close();
     held.close();
   };
 
@@ -355,7 +290,6 @@ if (command === 'run') {
 
     // A screenshot for the screen's size, which the stream takes its shape from.
     const size = streamSize(await device.screenshot());
-    const kept = video;
     const recording = new Screen(() => {
       const recorded = screenrecord(options.serial, size);
 
@@ -387,13 +321,8 @@ if (command === 'run') {
       console.error(said(error));
     }
 
-    // A write that fails is told by `flush` with the others rather than thrown over the error that stopped the run.
-    if (
-      error instanceof Lost &&
-      frames &&
-      error.frames.every((frame, i) => frames.save(`${String(i).padStart(2, '0')}.png`, frame))
-    ) {
-      console.error(`kept the last ${error.frames.length} frames in ${dir}`);
+    if (error instanceof Lost) {
+      frames?.last(error.frames);
     }
   } finally {
     release();
@@ -471,6 +400,6 @@ if (command === 'run') {
     process.exit(1);
   }
 } else {
-  console.log(USAGE);
+  (command === 'help' ? console.log : console.error)(USAGE);
   process.exit(command === 'help' ? 0 : 1);
 }
