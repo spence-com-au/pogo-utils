@@ -9,7 +9,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } fr
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
 import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
-import { SERVED_TYPES } from '../scripts/served-types.mts';
+import { SERVED_TYPES } from './served-types.mts';
 
 /**
  * What the site serves that the compiler does not write, relative to the repository root. An entry ending `*.ext` takes
