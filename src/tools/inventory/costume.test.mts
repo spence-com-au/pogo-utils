@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { afterAll, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, expect, test, vi } from 'vitest';
 import { costumeOf, measure, wardrobeFor, wardrobeOf, type Wardrobe } from './costume.mts';
 import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
@@ -10,6 +10,10 @@ import { artworkFrom, costumeIn } from './report.mts';
 import { useTestEngine } from './test-engine.mts';
 
 afterAll(useTestEngine());
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
 

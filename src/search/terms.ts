@@ -543,8 +543,12 @@ export const SHORTCUTS: readonly { phrase: string; range: RangeId; from: number;
  * would silently stop recognising what the writer had just produced. What the readers do with an open end is still
  * theirs to decide, and they differ: `parse.js` leaves it open, where a span in `optimise.js` is a closed interval and
  * closes it against the dex.
+ *
+ * The bound after the dash sits inside the dash's own group, so a run of digits with no dash can only be the first
+ * bound. With both bounds free to stand alone, a long run ending in anything but a digit is tried at every split
+ * between them, which costs the square of its length on every render of a name pill read out of a shared link.
  */
-export const SPAN = /^(\d+)?(-)?(\d+)?$/;
+export const SPAN = /^(\d+)?(?:(-)(\d+)?)?$/;
 
 /**
  * A number inside a range's own limits, which is the whole of what `max` above bounds.
@@ -615,4 +619,12 @@ export const RANGES_BY_ID: ReadonlyMap<string, Range> = new Map(RANGES.map((rang
  */
 export const TERMS_BY_ID: ReadonlyMap<string, Term> = new Map(
   GROUPS.flatMap((group) => group.terms).map((term) => [term.id, term]),
+);
+
+/**
+ * Every term's id by the text the game reads it as, for the query reader and the optimiser. The game tells no chip from
+ * the same word typed, so a typed `dark` is the Dark type, and so is a name pill holding it.
+ */
+export const IDS_BY_TERM: ReadonlyMap<string, string> = new Map(
+  GROUPS.flatMap((group) => group.terms).map((term) => [term.term, term.id]),
 );

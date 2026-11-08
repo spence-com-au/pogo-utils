@@ -47,7 +47,7 @@ test('names a frame by when it was seen and says how many it kept once, however 
 test('stops keeping frames at a write that fails, throwing nothing from the event loop and saying so once', () => {
   vi.useFakeTimers({ toFake: ['setImmediate'] });
 
-  const { dir, told, keep, save, flush } = keeper();
+  const { dir, told, keep, last, flush } = keeper();
 
   keep(frame, 2000, 'shield');
   vi.runAllTimers();
@@ -57,10 +57,10 @@ test('stops keeping frames at a write that fails, throwing nothing from the even
 
   expect(() => vi.runAllTimers()).not.toThrow();
 
-  // With `dir` back, only the stop keeps a later frame out.
+  // With `dir` back, only the stop keeps a later frame out, and says nothing of it.
   mkdirSync(dir);
+  last([frame]);
 
-  expect(save('later.png', frame)).toBe(false);
   expect(readdirSync(dir)).toEqual([]);
 
   flush();
@@ -73,12 +73,36 @@ test('stops keeping frames at a write that fails, throwing nothing from the even
 });
 
 test('throws nothing from a flush that writes what is still queued into a directory that is gone', () => {
-  const { dir, told, keep, save, flush } = keeper();
+  const { dir, told, keep, last, flush } = keeper();
 
   keep(frame, 2000, 'shield');
   rmSync(dir, { recursive: true });
 
   expect(() => flush()).not.toThrow();
-  expect(save('later.png', frame)).toBe(false);
+
+  last([frame]);
+
   expect(told.mock.calls).toEqual([[stopped(dir, '0001.000s-shield.png')]]);
+});
+
+test('names the frames a run was lost with in the order they were seen, and says how many it kept', () => {
+  const { dir, told, last } = keeper();
+
+  last([frame, frame, frame]);
+
+  expect(readdirSync(dir).sort()).toEqual(['00.png', '01.png', '02.png']);
+  expect(told.mock.calls).toEqual([[`kept the last 3 frames in ${dir}`]]);
+});
+
+test('says nothing of the frames a run was lost with where a write failed, and leaves it to flush', () => {
+  const { dir, told, last, flush } = keeper();
+
+  rmSync(dir, { recursive: true });
+  last([frame, frame]);
+
+  expect(told).not.toHaveBeenCalled();
+
+  flush();
+
+  expect(told.mock.calls).toEqual([[stopped(dir, '00.png')]]);
 });

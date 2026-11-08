@@ -17,9 +17,8 @@ import { closest, type Form, type GameData } from '../inventory/game-master.mts'
 import { readMoves, type Moves } from '../inventory/moves.mts';
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
-import { around, BOTTOM, down, place, tall, TOP, type Area, type Size } from './layout.mts';
+import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
-import { type Point } from './play.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
 const SEARCH: Point = [0.556, 0.536];

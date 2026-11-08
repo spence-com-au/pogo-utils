@@ -20,9 +20,9 @@ import {
   type Outcome,
 } from './menus.mts';
 import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
-import { BOTTOM, place, type Size } from './layout.mts';
+import { BOTTOM, place, type Point, type Size } from './layout.mts';
 import { readCard } from './selection.mts';
-import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS, type Point } from './play.mts';
+import { BENCH, BENCH_ANCHOR, Player, SWITCH_CARDS } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth, Steady } from './health.mts';
 import { merge, readBanner, readBattle, unseen, type Sighting } from './read.mts';
