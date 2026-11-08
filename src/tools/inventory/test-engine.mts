@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 
 /** Where the CLI keeps its models, as it says itself, which follows `TESSDATA_PREFIX` the way a read would. */
-function tessdata(): string {
+export function tessdata(): string {
   const listing = execFileSync('tesseract', ['--list-langs'], { encoding: 'utf8' });
   const dir = /"([^"]+)"/.exec(listing)?.[1];
 

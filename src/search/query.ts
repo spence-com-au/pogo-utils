@@ -95,16 +95,17 @@ export const presetTree = (preset: Preset): Node =>
   );
 
 /**
- * A name as a token carries it. `encodeURIComponent` leaves `_` alone and `_` is what separates the tokens below, so
- * that one is escaped by hand on top — a nickname holding one would otherwise end the token early and the rest of the
- * name would read as a pill of its own.
+ * A name as a token carries it. `encodeURIComponent` leaves `_` and `!` alone and the reader below takes both for its
+ * own, so those two are escaped by hand on top. `_` separates the tokens, so a nickname holding one would otherwise end
+ * the token early and the rest of the name would read as a pill of its own. `!` at a token's head is what rules a pill
+ * out, so a name typed as `!pikachu` would otherwise write the token a ruled-out `pikachu` does and come back as one.
  *
  * Which only holds because the whole stream is escaped again on its way into the fragment. `URLSearchParams` decodes
  * the value it hands back, so a `%5F` written straight into the link arrives as the `_` it was standing in for and the
  * name is split anyway: `my_shiny` came back as `my`. Escaping the stream means the reader below is handed the stream
  * as it was written, `%5F` and all.
  */
-const encodeName = (text: string) => encodeURIComponent(text).replaceAll('_', '%5F');
+const encodeName = (text: string) => encodeURIComponent(text).replaceAll('_', '%5F').replaceAll('!', '%21');
 
 /**
  * The tree as tokens. A group writes how it joins and *how many parts it has*, rather than opening and closing a
