@@ -12,8 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
-import { GAME_MASTER_CACHE, ICON_CACHE } from '../inventory/download.mts';
-import { encodePng } from '../inventory/png.mts';
+import { reads } from '../inventory/test-cache.mts';
 import { tessdata } from '../inventory/test-engine.mts';
 
 const SCRIPT = fileURLToPath(new URL('../../../scripts/battle.mts', import.meta.url));
@@ -163,38 +162,21 @@ test('refuses a recording with nowhere to go', async () => {
 });
 
 /**
- * A working directory holding the cache `run` would otherwise download, so that a run reaches no network: its `CACHE`
- * is relative, so the directory a subprocess runs in decides where the cache is. The game master is the least that
- * loads and still names one form, because a run with no form icon to outline stops before it changes the phone; its
- * icon is a single pixel, which outlines as readily as any. The model is the installed Tesseract's own, the one file
- * that cannot be made up, since `run` holds it to the hash of `tessdata_fast` 4.1.0.
+ * A working directory holding the cache `run` would otherwise download, so that a run reaches no network. The game
+ * master is the least that loads and still names one form, because a run with no form icon to outline stops before it
+ * changes the phone; its icon is a single pixel, which outlines as readily as any. The model is the installed
+ * Tesseract's own, the one file that cannot be made up, since `run` holds it to the hash of `tessdata_fast` 4.1.0.
  */
 function seeded(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'battle-run-'));
-  const cache = join(dir, '.cache', 'inventory');
-  const levels = Array.from({ length: 100 }, (_, i) => 0.1 + i / 100);
+  const bulbasaur = {
+    templateId: 'V0001_POKEMON_BULBASAUR',
+    data: { pokemonSettings: { pokemonId: 'BULBASAUR', stats: {} } },
+  };
+  const dir = reads([bulbasaur], ['pm1.icon.png']);
+  const model = join(dir, '.cache', 'inventory', 'tessdata');
 
-  mkdirSync(join(cache, 'icons'), { recursive: true });
-  mkdirSync(join(cache, 'tessdata'));
-  writeFileSync(
-    join(cache, GAME_MASTER_CACHE),
-    JSON.stringify([
-      { templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: levels } } },
-      {
-        templateId: 'POKEMON_UPGRADE_SETTINGS',
-        data: { pokemonUpgrades: { stardustCost: [], shadowStardustMultiplier: 1.2, purifiedStardustMultiplier: 0.9 } },
-      },
-      { templateId: 'LUCKY_POKEMON_SETTINGS', data: { luckyPokemonSettings: { powerUpStardustDiscountPercent: 0.5 } } },
-      { templateId: 'V0001_POKEMON_BULBASAUR', data: { pokemonSettings: { pokemonId: 'BULBASAUR', stats: {} } } },
-    ]),
-  );
-  writeFileSync(join(cache, 'english.json'), JSON.stringify({ data: [] }));
-  writeFileSync(join(cache, ICON_CACHE), JSON.stringify({ tree: [{ path: 'pm1.icon.png' }] }));
-  writeFileSync(
-    join(cache, 'icons', 'pm1.icon.png'),
-    encodePng({ width: 1, height: 1, data: Uint8Array.of(255, 0, 0, 255) }),
-  );
-  copyFileSync(join(tessdata(), 'eng.traineddata'), join(cache, 'tessdata', 'eng.traineddata'));
+  mkdirSync(model);
+  copyFileSync(join(tessdata(), 'eng.traineddata'), join(model, 'eng.traineddata'));
 
   return dir;
 }
