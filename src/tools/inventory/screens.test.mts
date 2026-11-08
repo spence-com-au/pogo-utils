@@ -1772,22 +1772,29 @@ const statedCps = async () => {
 };
 
 /**
+ * `map` as tesseract.js has it: the CLI's, less the captures in `drop` and with those in `add`. Written as the
+ * difference so that what the two engines read differently is the part a reader sees.
+ */
+const underWasm = <Value,>(map: Record<string, Value>, drop: readonly string[], add: Record<string, Value>) => ({
+  ...Object.fromEntries(Object.entries(map).filter(([file]) => !drop.includes(file))),
+  ...add,
+});
+
+/**
  * Which captures the CP is read off, and what it is read as — the one thing the rows cannot say, since each of them
  * states the number the game printed and a `cpOn` answering null for everything would pass every row. It is a minority
  * of them because the CP is white text over the artwork and the hardest thing on the screen to make out.
  *
  * Asserted as the whole map rather than as a count, so a reader losing one capture and gaining another cannot come out
- * even. The map is the CLI's own and `INVENTORY_OCR=wasm` does not run it: tesseract.js reads some of these straight
- * off the label line where the CLI sweeps the region for them, and the rest the other way round, which is a difference
- * in the route a CP took rather than in what any capture answers.
+ * even. Pinned for each engine, the page's as much as the CLI's: tesseract.js reads three of these off the label line
+ * where the CLI is left to candidates for them, and leaves four to candidates that the CLI reads, which is a difference
+ * in the route a CP took rather than in what any capture answers, and one a bump of either engine should be seen to
+ * move.
  */
-test.skipIf(ON_WASM)(
+test(
   'which captures the CP is read off, and what it is read as',
   async () => {
-    expect(
-      Object.fromEntries(await statedCps()),
-      'which captures state a CP, or what they state, has changed',
-    ).toStrictEqual({
+    const cli = {
       'articuno-galar.png': 1966,
       'articuno-kanto.png': 1705,
       'audino.png': 922,
@@ -1832,7 +1839,20 @@ test.skipIf(ON_WASM)(
       'unown-question.png': 486,
       'vulpix.png': 472,
       'xurkitree.png': 2197,
-    });
+    };
+
+    expect(
+      Object.fromEntries(await statedCps()),
+      'which captures state a CP, or what they state, has changed',
+    ).toStrictEqual(
+      ON_WASM
+        ? underWasm(cli, ['burmy-trash.png', 'charizard-gigantamax.png', 'necrozma.png', 'vulpix.png'], {
+            'castform-snowy.png': 746,
+            'deoxys-defense.png': 1569,
+            'pikachu-santa-hat.png': 577,
+          })
+        : cli,
+    );
   },
   WHOLE_CORPUS_TIMEOUT,
 );
@@ -1862,7 +1882,9 @@ test(
  * The other half of which captures the CP is read off: which it is left to candidates on, and every candidate offered.
  * The two maps partition the corpus, `cps` being read on exactly the captures `cp` is null on, and only this one says
  * what the generosity costs — one capture pinned a `cps` before this, so a band that started offering five numbers
- * where it offered one changed nothing a test could see. The CLI's own for the reason that map is.
+ * where it offered one changed nothing a test could see. Pinned for each engine as that map is, the captures that move
+ * between the two moving here the other way, and `tyranitar-slash.png`'s 2264 offered as 264 by tesseract.js. The
+ * figures below it are the CLI's alone, quoting docblocks that describe the CLI's sweep.
  *
  * The candidates come from one of two places, which the figures below keep apart: every reading of a label line whose
  * `/` nothing settled, or the region swept where no label line was found at all. The whole map, empties included, the
@@ -1870,7 +1892,7 @@ test(
  * for the reason the misreads above are, and what one costs is nothing only while the arithmetic cannot reproduce it —
  * `identify` says where that floor is, and this is what would move it.
  */
-test.skipIf(ON_WASM)(
+test(
   'which captures the CP is left to candidates on, and what each offers',
   async () => {
     const offered = new Map<string, readonly number[]>();
@@ -1888,10 +1910,7 @@ test.skipIf(ON_WASM)(
       }
     }
 
-    expect(
-      Object.fromEntries(offered),
-      'which captures are left to candidates, or what they offer, has changed',
-    ).toStrictEqual({
+    const cli = {
       'applin.png': [286],
       'castform-normal.png': [],
       'castform-rainy.png': [832],
@@ -1912,7 +1931,26 @@ test.skipIf(ON_WASM)(
       'spinda-04.png': [511],
       'tyranitar-slash.png': [2264],
       'unown-m.png': [839],
-    });
+    };
+
+    expect(
+      Object.fromEntries(offered),
+      'which captures are left to candidates, or what they offer, has changed',
+    ).toStrictEqual(
+      ON_WASM
+        ? underWasm(cli, ['castform-snowy.png', 'deoxys-defense.png', 'pikachu-santa-hat.png'], {
+            'burmy-trash.png': [477, 47],
+            'charizard-gigantamax.png': [1605],
+            'necrozma.png': [2078],
+            'tyranitar-slash.png': [264],
+            'vulpix.png': [4772, 472],
+          })
+        : cli,
+    );
+
+    if (ON_WASM) {
+      return;
+    }
 
     // And the figures `readingsOf`'s and `cpsIn`'s docblocks quote, derived from the map rather than transcribed under
     // it, so a reader that changed what it offered cannot leave that prose standing. `stray` is every number offered
@@ -1963,8 +2001,9 @@ test.skipIf(ON_WASM)(
  * is where the last of the two sits. Measuring it is what makes the comment's claim falsifiable rather than a
  * reassurance, and what would catch a later change widening the generosity.
  *
- * Over the captures the CLI leaves to candidates, so the CLI's own like the maps above: `deoxys-defense.png` is the
- * second of the two only for as long as the engine reads no CP off it, which tesseract.js does.
+ * Over the captures the CLI leaves to candidates, and so the CLI's own where the maps above are pinned for each engine:
+ * `deoxys-defense.png` is the second of the two only for as long as the engine reads no CP off it, which tesseract.js
+ * does.
  */
 test.skipIf(ON_WASM)(
   'the nearest band reading answered with a wrong form and no note is 73 CP away',
@@ -2531,7 +2570,7 @@ test(
  *
  * Under tesseract.js, `overworld.png` is the exception: it reads a `yes` into the map's scenery, at 697,242, which
  * `dialogOpen` takes for a dialog's button. It is pinned rather than passed over, since `toStorage` asks before the
- * menu tap it makes from the map, and on a map that read so would press Back instead.
+ * menu tap it makes from the map, and on a map that read so would press Back instead (#935).
  */
 test(
   'no capture reads as having a dialog open over it',

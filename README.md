@@ -607,9 +607,10 @@ both ways: under the CLI, and under the WebAssembly engine with `INVENTORY_OCR=w
 model off disk so it reaches no network and checked to be the same file the page fetches. Every capture reads the same
 fields, identity, form, level and IVs under both. What differs is the route a CP took, which is not what any capture
 answers: tesseract.js is its own build of Tesseract, and it reads some captures' CP straight off the label line where
-the CLI has to sweep the region for it, and others the other way round. The three tests that pin those routes are the
-CLI's to keep, and are skipped under wasm. The one other difference is pinned where the corpus finds it: tesseract.js
-reads a `yes` into the scenery of `overworld.png`, which `dialogOpen` takes for a dialog.
+the CLI has to sweep the region for it, and others the other way round. The two maps of which captures a CP is read off
+and what is offered where it is not are pinned for each engine, so a bump of either that moves a route fails; the test
+that measures the CLI's own sweep is skipped under wasm. The one other difference is pinned where the corpus finds it:
+tesseract.js reads a `yes` into the scenery of `overworld.png`, which `dialogOpen` takes for a dialog (#935).
 
 ## Trainer battles
 
