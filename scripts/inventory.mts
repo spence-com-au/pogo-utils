@@ -67,8 +67,8 @@ import { type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
-import { DEX, type Wardrobe } from '../src/tools/inventory/costume.mts';
-import { CACHE, iconsFor, loadGameData, wardrobeFor } from '../src/tools/inventory/download.mts';
+import { DEX, wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
+import { CACHE, cachedIcon, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
@@ -329,13 +329,13 @@ function key() {
   keyed = true;
 }
 
-let wardrobe: Promise<Wardrobe> | null = null;
+let wardrobe: Promise<Wardrobe | null> | null = null;
 
 /**
  * Pikachu's icons drawn into one frame for its costume, read the first time a Pikachu is: some 200 icons that a scan
  * or a `parse` of anything else never needs.
  */
-const wardrobeOn = (data: GameData) => () => (wardrobe ??= wardrobeFor(CACHE, data, options.refresh));
+const wardrobeOn = (data: GameData) => () => (wardrobe ??= wardrobeFor(data, cachedIcon(CACHE, options.refresh)));
 
 /**
  * Everything each reader makes of one screenshot, for tuning: `readScreen` does the reading, which the Inventory page
@@ -909,17 +909,17 @@ async function scan(held: Transport) {
       // did not find wears no costume, and one it found is not the plain one. Any other species is named only by the
       // search, so it gets every costume it has, which is the most the screen says.
       const costumed = flag('costume');
-      const named = await costumeIn(image, boxes.box, id, wardrobeOn(data), costumed);
+      const worn = await costumeIn(image, boxes.box, id, wardrobeOn(data), costumed);
       const costume =
-        named ??
-        (costumed === null
+        worn.costume ??
+        (costumed === null || id.form?.dex === DEX
           ? null
           : costumed
             ? [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))]
             : []);
 
-      if (named === null && id.form?.dex === DEX && costumed !== false) {
-        notes.push('no Pikachu found in the artwork to read its costume off');
+      if (worn.note) {
+        notes.push(worn.note);
       }
 
       // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.

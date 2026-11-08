@@ -26,7 +26,8 @@
  * anything has been labelled for.
  */
 
-import { hsv } from './artwork.mts';
+import { said } from '../../errors.ts';
+import { FETCH_BATCH, hsv } from './artwork.mts';
 import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
 import { type Image } from './png.mts';
@@ -547,10 +548,7 @@ export function costumeOf(
   return answer.length === 1 ? named : named.sort();
 }
 
-/**
- * The icon files a Pikachu's wardrobe is drawn from: the plain form's, then every costume's, ordinary then shiny. Read
- * by the CLI out of its cache and by the Inventory page straight from `pogo_assets`.
- */
+/** The icon files a Pikachu's wardrobe is drawn from: the plain form's, then every costume's, ordinary then shiny. */
 export function designFiles(data: GameData): { costume: string; files: string[] }[] {
   const plain = data.forms.find((f) => f.dex === DEX && f.form === null && f.icon !== null);
   const files = (icon: string, shiny: string | null) => (shiny === null ? [icon] : [icon, shiny]);
@@ -559,4 +557,37 @@ export function designFiles(data: GameData): { costume: string; files: string[] 
     ...(plain?.icon ? [{ costume: '', files: files(plain.icon, plain.shiny) }] : []),
     ...data.costumes.filter((c) => c.dex === DEX).map((c) => ({ costume: c.name, files: files(c.icon, c.shiny) })),
   ];
+}
+
+/** An icon by its file, decoded: out of the CLI's cache, from `pogo_assets` for the Inventory page, or a fixture. */
+export type Fetch = (file: string) => Promise<Image>;
+
+/**
+ * Pikachu's wardrobe, out of every icon that could be had, or null where the plain icon could not be, everything else
+ * being registered onto it.
+ *
+ * An icon is an improvement rather than a prerequisite, as it is for `signaturesFor`: a costume whose icons cannot be
+ * had is left out, so a Pikachu wearing it is answered from the labelled captures alone or as something else, rather
+ * than a 404 failing the whole read. Each costume is had whole or not at all, since a shiny judged against an ordinary
+ * icon alone is as far from it as another costume is. `FETCH_BATCH` at a time, as `signaturesFor` fetches.
+ */
+export async function wardrobeFor(data: GameData, fetch: Fetch): Promise<Wardrobe | null> {
+  const wanted = designFiles(data);
+  const designs: Design[] = [];
+
+  for (let at = 0; at < wanted.length; at += FETCH_BATCH) {
+    const batch = wanted.slice(at, at + FETCH_BATCH).map(async ({ costume, files }) => {
+      try {
+        return [{ costume, colourings: await Promise.all(files.map(fetch)) }];
+      } catch (error) {
+        console.error(`  ${said(error)}; ${costume ? `Pikachu's ${costume} costume is` : 'its costumes are'} left out`);
+
+        return [];
+      }
+    });
+
+    designs.push(...(await Promise.all(batch)).flat());
+  }
+
+  return designs.some((d) => d.costume === '') ? wardrobeOf(designs) : null;
 }

@@ -13,7 +13,7 @@ import { ICON_BASE } from '../pokedex/icons.js';
 import { Device, type Transport } from '../tools/inventory/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../tools/inventory/artwork.mts';
 import { DEFAULTS } from '../tools/inventory/config.mts';
-import { designFiles, wardrobeOf, type Wardrobe } from '../tools/inventory/costume.mts';
+import { wardrobeFor, type Wardrobe } from '../tools/inventory/costume.mts';
 import { type Form, type GameData } from '../tools/inventory/game-master.mts';
 import { useEngine } from '../tools/inventory/ocr.mts';
 import { MODEL, tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
@@ -37,7 +37,7 @@ interface Kit {
 let gameMaster: Promise<GameData> | null = null;
 let tables: Promise<GameData> | null = null;
 let kit: Promise<Kit> | null = null;
-let wardrobe: Promise<Wardrobe> | null = null;
+let wardrobe: Promise<Wardrobe | null> | null = null;
 
 /**
  * Why this page cannot read a screenshot, or null where it can. The OCR model is checked against its hash before it
@@ -134,27 +134,21 @@ function prepare(onModel: (fraction: number) => void): Promise<Kit> {
 
 /**
  * Pikachu's icons drawn into one frame for its costume, fetched the first time a Pikachu is read rather than with the
- * kit: some 200 icons that no other screen wants. A failure is not kept, for the reason `ready` gives.
+ * kit: some 200 icons that no other screen wants. One that could not be had leaves its costume out, and a wardrobe
+ * short of the plain icon is not kept, for the reason `ready` gives.
  */
-function wardrobeOn(data: GameData): Promise<Wardrobe> {
-  wardrobe ??= (async () => {
-    const icon = async (file: string) =>
-      decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer()));
-    const designs = await Promise.all(
-      designFiles(data).map(async ({ costume, files }) => ({
-        costume,
-        colourings: await Promise.all(files.map(icon)),
-      })),
-    );
+function wardrobeOn(data: GameData): Promise<Wardrobe | null> {
+  const fetching = (wardrobe ??= wardrobeFor(data, async (file) =>
+    decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer())),
+  ));
 
-    return wardrobeOf(designs);
-  })();
-
-  wardrobe.catch(() => {
-    wardrobe = null;
+  void fetching.then((drawn) => {
+    if (!drawn && wardrobe === fetching) {
+      wardrobe = null;
+    }
   });
 
-  return wardrobe;
+  return fetching;
 }
 
 /** Every reader over one screenshot, as `parse` would read it. */

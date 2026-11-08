@@ -51,18 +51,35 @@ export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyM
 export const artworkFrom = (box: OverlayBox | null) => (box ? box.y + box.height : ARTWORK_FROM);
 
 /**
- * The costume a Pikachu wears, or null for any other species or where there is no wardrobe to read it with.
- * `wardrobe` is asked for only here, since it is some 200 icons that a screen showing anything but a Pikachu never
- * needs. `costumed` is what the scan's `costume` search said, where it ran.
+ * The costume a Pikachu wears, as `costumeOf` answers it, or null for any other species, for a Pikachu read with no
+ * wardrobe, and for one whose costume could not be read — which `note` then says why of. `wardrobe` is asked for only
+ * here, and not where the search already said there is none, since it is some 200 icons that no other screen needs.
+ * `costumed` is what the scan's `costume` search said, where it ran.
  */
 export async function costumeIn(
   image: Image,
   box: OverlayBox | null,
   identity: Identity,
-  wardrobe?: () => Promise<Wardrobe>,
+  wardrobe?: () => Promise<Wardrobe | null>,
   costumed: boolean | null = null,
-): Promise<string[] | null> {
-  return identity.form?.dex === DEX && wardrobe ? costumeOf(image, artworkFrom(box), await wardrobe(), costumed) : null;
+): Promise<{ costume: string[] | null; note: string | null }> {
+  if (identity.form?.dex !== DEX || !wardrobe) {
+    return { costume: null, note: null };
+  }
+
+  if (costumed === false) {
+    return { costume: [], note: null };
+  }
+
+  const drawn = await wardrobe();
+
+  if (!drawn) {
+    return { costume: null, note: "Pikachu's own icon could not be had, so its costume was not read" };
+  }
+
+  const costume = costumeOf(image, artworkFrom(box), drawn, costumed);
+
+  return { costume, note: costume ? null : 'no Pikachu found in the artwork to read its costume off' };
 }
 
 /**
@@ -85,7 +102,7 @@ export async function readScreen(
   data: GameData,
   icons: ReadonlyMap<Form, Colourings>,
   configured?: OverlayBox,
-  wardrobe?: () => Promise<Wardrobe>,
+  wardrobe?: () => Promise<Wardrobe | null>,
 ): Promise<Reading> {
   const screen = screenIn(image);
 
@@ -107,7 +124,7 @@ export async function readScreen(
   const identity = identify(data, detail, overlay, artworkIn(screen, box, icons));
   const [moves, costume] = await Promise.all([
     parseMoves(whole, data, identity.form, image),
-    costumeIn(screen, box, identity, wardrobe),
+    costumeIn(screen, box, identity, wardrobe).then(({ costume }) => costume),
   ]);
 
   return { lines, whole, detail, moves, box, overlay, identity, costume };

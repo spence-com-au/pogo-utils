@@ -21,9 +21,9 @@
  * ```
  */
 
-import { CACHE, loadGameData, wardrobeFor } from '../src/tools/inventory/download.mts';
+import { CACHE, cachedIcon, loadGameData } from '../src/tools/inventory/download.mts';
 import { ARTWORK_FROM } from '../src/tools/inventory/artwork.mts';
-import { designFiles, measure, type References } from '../src/tools/inventory/costume.mts';
+import { designFiles, measure, wardrobeFor, type References } from '../src/tools/inventory/costume.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { findOverlay } from '../src/tools/inventory/overlay.mts';
@@ -45,7 +45,13 @@ const data = await loadGameData(CACHE);
 const names = new Set(designFiles(data).map((d) => d.costume));
 const labelled = JSON.parse(readFileSync(join(dir, 'costumes.json'), 'utf8')) as Record<string, string>;
 
-const wardrobe = await wardrobeFor(CACHE, data);
+const wardrobe = await wardrobeFor(data, cachedIcon(CACHE));
+
+// Every icon, since an allowance measured with a costume left out is measured against fewer rivals than a scan has.
+if (!wardrobe || wardrobe.drawn.length < designFiles(data).reduce((n, d) => n + d.files.length, 0)) {
+  throw new Error("some of Pikachu's icons could not be had, so the allowances would not be the scan's");
+}
+
 const references: References = { captures: [], behind: {} };
 
 for (const [file, name] of Object.entries(labelled)) {

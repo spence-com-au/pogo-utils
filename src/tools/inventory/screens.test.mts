@@ -19,7 +19,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
 import { ambiguous, nearest, type Colourings } from './artwork.mts';
-import { designFiles, wardrobeOf, type Wardrobe } from './costume.mts';
+import { wardrobeFor, type Wardrobe } from './costume.mts';
 import { decodePng, screenIn } from './png.mts';
 import { sizeOf, type Gender, type Size } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
@@ -1159,20 +1159,15 @@ const read = async (file: string) => {
 
 const readings = new Map<string, ReturnType<typeof read>>();
 
-let wardrobe: Promise<Wardrobe> | null = null;
+let wardrobe: Promise<Wardrobe | null> | null = null;
 
 /**
  * Pikachu's icons as `pogo_assets` draws them, kept under `fixtures/icons/` for the reason the signatures above are: a
  * test of a reader must not reach the network. Drawn into their frame once, when the first Pikachu is read.
  */
 const wardrobeOn = () =>
-  (wardrobe ??= Promise.resolve().then(() =>
-    wardrobeOf(
-      designFiles(DATA).map(({ costume, files }) => ({
-        costume,
-        colourings: files.map((file) => decodePng(readFileSync(new URL(`fixtures/icons/${file}`, import.meta.url)))),
-      })),
-    ),
+  (wardrobe ??= wardrobeFor(DATA, async (file) =>
+    decodePng(readFileSync(new URL(`fixtures/icons/${file}`, import.meta.url))),
   ));
 
 const readingOf = (file: string) => {
