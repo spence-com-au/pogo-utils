@@ -72,7 +72,11 @@ for (const [file, name] of Object.entries(labelled)) {
   const best = Math.min(...measured.scores.values());
   const own = measured.scores.get(name);
 
-  references.captures.push({ costume: name, blocks: Buffer.from(measured.blocks).toString('base64') });
+  references.captures.push({
+    costume: name,
+    blocks: Buffer.from(measured.blocks).toString('base64'),
+    front: Buffer.from(measured.front).toString('base64'),
+  });
 
   if (own !== undefined) {
     references.behind[name] = Math.max(references.behind[name] ?? 0, Number((own - best).toFixed(4)));

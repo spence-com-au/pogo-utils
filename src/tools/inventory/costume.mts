@@ -6,17 +6,18 @@
  * Two references, because neither is enough alone. Measured over 160 Pikachu labelled by hand on a Pixel 4 XL and the
  * corpus's five from a 1008-wide phone:
  *
- * - **Captures already labelled**, which show the same model under the same lighting, are right about 146 times in 155.
- *   But they can only name a costume someone has labelled, and their distances cannot say when that is not the case:
- *   an unlabelled costume's nearest capture is often nearer than a labelled one's own.
+ * - **Captures already labelled**, which show the same model under the same lighting, are right 154 times in 155. But
+ *   they can only name a costume someone has labelled, and their distances cannot say when that is not the case: an
+ *   unlabelled costume's nearest capture is often nearer than a labelled one's own.
  * - **The game's icons**, which draw every costume there is, are right 102 times in 160. Each icon is lit unlike the
  *   game's model and framed to fit its own outfit, so a big one shrinks Pikachu in it by up to 1.6×.
  *
  * So the captures answer and the icons check them. Where the icons put the captures' pick further behind their own best
  * than they ever put that costume on its own labelled captures, the pick is a costume nobody labelled, and the answer is
  * every icon close to the best instead. Each of the 160 judged against the other 159 and the corpus's five against all
- * of them, that names 152 rightly and lists 2 with the right one among them; of the 11 wrong, four are the GO Fest
- * caps, which differ by their logo alone.
+ * of them, that names 159 rightly and lists 1 with the right one among them. One of the 5 wrong is a yellow GO Fest cap
+ * the icons veto: their yellow cap is drawn unlike the model, and comes further behind on that capture than on the
+ * other two.
  *
  * Both are compared in the plain icon's frame rather than the screen's. Each screen is registered onto the plain icon by
  * Pikachu's yellow, searched afresh each time, which is what lets references labelled on one phone read another's: the
@@ -36,13 +37,13 @@ import { type Image } from './png.mts';
 export const DEX = 25;
 
 /**
- * Every labelled capture, as `blocksOf` reduced it, and how far behind its own icons' best each costume came on its own
- * captures at worst: the per-costume allowance the veto measures a pick against.
+ * Every labelled capture, as `blocksOf` reduced its `BODY` and its `FRONT`, and how far behind its own icons' best each
+ * costume came on its own captures at worst: the per-costume allowance the veto measures a pick against.
  *
  * Written by `scripts/costume-references.mts` from a directory of captures and the costume each wears.
  */
 export interface References {
-  captures: { costume: string; blocks: string }[];
+  captures: { costume: string; blocks: string; front: string }[];
   behind: Record<string, number>;
 }
 
@@ -91,14 +92,30 @@ interface Mask {
 const FRAME = 384;
 const PAD = 64;
 
+/** Blocks over the plain icon's pixels: the columns and rows they span, and each one's side. */
+interface Grid {
+  x: readonly [number, number];
+  y: readonly [number, number];
+  block: number;
+}
+
 /**
- * The blocks a screen is compared with the labelled captures in, in the plain icon's pixels: Pikachu from the eyes down
- * to its feet, across its arms and tail. Its ears and the hats above them are under PGSharp's box on every screen
- * measured, and blocks the box covers are left empty on both sides alike. Blocks of 6 and 10 answered the same.
+ * The blocks a screen is compared with the labelled captures in: Pikachu from the eyes down to its feet, across its
+ * arms and tail. Its ears and the hats above them are under PGSharp's box on every screen measured, and blocks the box
+ * covers are left empty. Blocks of 6 and 10 answered the same.
  */
-const BLOCK = 10;
-const BLOCKS_X = [60, 210] as const;
-const BLOCKS_Y = [140, 230] as const;
+const BODY: Grid = { x: [60, 210], y: [140, 230], block: 10 };
+
+/**
+ * A closer look at the front of the head, just below where PGSharp's box ends, at rows 123 to 137 of the plain icon on
+ * every screen measured. The three GO Fest 2026 caps differ only by the logo on their front, some 15 of the icon's
+ * pixels across, which `BODY`'s blocks average away.
+ *
+ * Counted twice over beside `BODY`. Weights from 1 to 4 all named as many rightly, and so did blocks of 3 and of 5 over
+ * much the same area.
+ */
+const FRONT: Grid = { x: [98, 130], y: [134, 154], block: 4 };
+const FRONT_WEIGHT = 2;
 
 /** How much the brightness counts beside the colour, which is what keeps a darker backdrop from outweighing an outfit. */
 const BRIGHTNESS = 0.3;
@@ -335,20 +352,20 @@ const sample = (image: Image, fit: Fit, u: number, v: number) => {
 };
 
 /**
- * The screen as the labelled captures are kept: three bytes per block of the frame, its red and green shares of the
- * total and its brightness, from every screen pixel the block covers below `top`.
+ * The screen as the labelled captures are kept: three bytes per block of the grid, its red and green shares of the
+ * total and its brightness, from every screen pixel the block covers below `top`. A block with none is all zeroes.
  */
-function blocksOf(image: Image, fit: Fit, top: number): Uint8Array {
+function blocksOf(image: Image, fit: Fit, top: number, { x, y, block }: Grid): Uint8Array {
   const out: number[] = [];
 
-  for (let v = BLOCKS_Y[0]; v < BLOCKS_Y[1]; v += BLOCK) {
-    for (let u = BLOCKS_X[0]; u < BLOCKS_X[1]; u += BLOCK) {
+  for (let v = y[0]; v < y[1]; v += block) {
+    for (let u = x[0]; u < x[1]; u += block) {
       const total = [0, 0, 0];
       let n = 0;
 
-      // Half-pixel steps, since a block is some 30 screen pixels on a side and its pixels are what is averaged.
-      for (let dv = 0; dv < BLOCK; dv += 0.5) {
-        for (let du = 0; du < BLOCK; du += 0.5) {
+      // Half-pixel steps, since each of the icon's pixels is three or four of the screen's, which are what is averaged.
+      for (let dv = 0; dv < block; dv += 0.5) {
+        for (let du = 0; du < block; du += 0.5) {
           if ((v + dv) * fit.scale + fit.y < top) {
             continue;
           }
@@ -372,18 +389,30 @@ function blocksOf(image: Image, fit: Fit, top: number): Uint8Array {
   return Uint8Array.from(out);
 }
 
-/** How far apart two screens' blocks are. */
+const empty = (blocks: Uint8Array, i: number) => blocks[i] === 0 && blocks[i + 1] === 0 && blocks[i + 2] === 0;
+
+/**
+ * How far apart two screens' blocks are, over the blocks both show and scaled up to the whole grid: a block the box
+ * covers on either screen says nothing about the other, and a screen whose box ends lower is no nearer for showing
+ * less.
+ */
 function apart(a: Uint8Array, b: Uint8Array): number {
   let total = 0;
+  let shown = 0;
 
   for (let i = 0; i < a.length; i += 3) {
+    if (empty(a, i) || empty(b, i)) {
+      continue;
+    }
+
     total +=
       Math.abs((a[i] as number) - (b[i] as number)) +
       Math.abs((a[i + 1] as number) - (b[i + 1] as number)) +
       BRIGHTNESS * Math.abs((a[i + 2] as number) - (b[i + 2] as number));
+    shown++;
   }
 
-  return total / 255;
+  return shown === 0 ? 0 : (total / 255) * (a.length / 3 / shown);
 }
 
 /**
@@ -481,18 +510,23 @@ export function measure(
   image: Image,
   from: number,
   wardrobe: Wardrobe,
-): { blocks: Uint8Array; scores: Map<string, number> } | null {
+): { blocks: Uint8Array; front: Uint8Array; scores: Map<string, number> } | null {
   const top = Math.round(from * image.height);
   const fit = register(image, top, wardrobe.plain);
 
-  return fit && { blocks: blocksOf(image, fit, top), scores: scoresOf(image, fit, top, wardrobe) };
+  return (
+    fit && {
+      blocks: blocksOf(image, fit, top, BODY),
+      front: blocksOf(image, fit, top, FRONT),
+      scores: scoresOf(image, fit, top, wardrobe),
+    }
+  );
 }
 
+const bytes = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+
 const decoded = (references: References) =>
-  references.captures.map(({ costume, blocks }) => ({
-    costume,
-    blocks: Uint8Array.from(atob(blocks), (c) => c.charCodeAt(0)),
-  }));
+  references.captures.map(({ costume, blocks, front }) => ({ costume, blocks: bytes(blocks), front: bytes(front) }));
 
 let kept: ReturnType<typeof decoded> | null = null;
 
@@ -523,12 +557,12 @@ export function costumeOf(
   }
 
   const allowed = (costume: string) => !(costumed === true && costume === '');
-  const { blocks } = measured;
+  const { blocks, front } = measured;
   const labelled = (references === REFERENCES ? (kept ??= decoded(references)) : decoded(references)).filter((r) =>
     allowed(r.costume),
   );
   const pick = labelled.reduce<{ costume: string; gap: number } | null>((best, r) => {
-    const gap = apart(blocks, r.blocks);
+    const gap = apart(blocks, r.blocks) + FRONT_WEIGHT * apart(front, r.front);
 
     return best === null || gap < best.gap ? { costume: r.costume, gap } : best;
   }, null)?.costume;

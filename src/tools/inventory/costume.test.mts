@@ -1,10 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, vi } from 'vitest';
-import { wardrobeFor } from './costume.mts';
+import { afterAll, expect, test, vi } from 'vitest';
+import { costumeOf, measure, wardrobeFor, type Wardrobe } from './costume.mts';
+import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
 import { type Identity } from './identify.mts';
+import { findOverlay } from './overlay.mts';
 import { decodePng } from './png.mts';
-import { costumeIn } from './report.mts';
+import { artworkFrom, costumeIn } from './report.mts';
+import { useTestEngine } from './test-engine.mts';
+
+afterAll(useTestEngine());
 
 const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
 
@@ -38,6 +43,33 @@ test('a wardrobe without the plain icon is none at all', async () => {
   await expect(
     wardrobeFor(TWO, (file) => (file === PLAIN ? Promise.reject(new Error(`${file}: offline`)) : fixture(file))),
   ).resolves.toBeNull();
+});
+
+let whole: Promise<Wardrobe | null> | null = null;
+
+/** Every costume's icons, which a pick is vetoed among. Drawn once, for the first cap read. */
+const wardrobe = () => (whole ??= wardrobeFor(DATA, fixture));
+
+// The three caps differ by the logo on their front alone, which the body's blocks average away. Each is read against
+// every other labelled capture: its own is among `REFERENCES`, and would answer at no distance at all.
+test.each(['Red', 'Yellow', 'Blue'])('a Pikachu in the %s GO Fest 2026 cap is read as wearing it', async (colour) => {
+  const file = `fixtures/costume/pikachu-gofest-2026-cap-${colour.toLowerCase()}.png`;
+  const image = decodePng(readFileSync(new URL(file, import.meta.url)));
+  const from = artworkFrom((await findOverlay(image))?.box ?? null);
+  const drawn = await wardrobe();
+  const measured = drawn && measure(image, from, drawn);
+
+  if (!drawn || !measured) {
+    throw new Error(`${file}: no Pikachu found to read`);
+  }
+
+  const own = Buffer.from(measured.blocks).toString('base64');
+  const others = REFERENCES.captures.filter((c) => c.blocks !== own);
+
+  expect(others).toHaveLength(REFERENCES.captures.length - 1);
+  expect(costumeOf(image, from, drawn, null, { ...REFERENCES, captures: others })).toStrictEqual([
+    `Gofest 2026 Cap ${colour}`,
+  ]);
 });
 
 const pikachu = { form: DATA.forms.find((f) => f.dex === 25 && f.form === null) } as Identity;

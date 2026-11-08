@@ -857,7 +857,7 @@ const FIXTURES: readonly Fixture[] = [
   },
   {
     cp: 69,
-    defects: { costume: ['Spring 2023'], unseparated: ['Pikachu (Copy 2019)'] },
+    defects: { unseparated: ['Pikachu (Copy 2019)'] },
     file: 'pikachu.png',
     form: null,
     gender: 'male',
@@ -1658,7 +1658,7 @@ const COVERAGE = {
   noLevel: 0,
   noDefects: 53,
   unseparated: 11,
-  costumeMisread: 3,
+  costumeMisread: 2,
   noOverlayDrawn: 0,
   boxNotFound: 0,
   overlayNotRead: 0,

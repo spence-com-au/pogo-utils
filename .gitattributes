@@ -15,3 +15,4 @@
 /src/tools/inventory/fixtures/moves/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/inventory/fixtures/favourite/*.png filter=lfs diff=lfs merge=lfs -text
 /src/tools/inventory/fixtures/dialog/*.png filter=lfs diff=lfs merge=lfs -text
+/src/tools/inventory/fixtures/costume/*.png filter=lfs diff=lfs merge=lfs -text
