@@ -410,7 +410,7 @@ function scanRange() {
     try {
       behind = landmarksBefore(readFileSync(options.out, 'utf8'), skip);
     } catch (error) {
-      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : (error as Error).message;
+      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : said(error);
       throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${options.out}, but ${why}`, {
         cause: error,
       });
@@ -546,8 +546,8 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
    * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
    * back worse, and one whose HP goes unread has no key at all — three of those in a row stop the pass. That decision
-   * sits there so `attempts.test.mts` can assert it, this being the one part of the walk no test could otherwise reach:
-   * a scan needs a phone, and the one command `cli.test.mts` drives without one is `parse`, which reads a file once.
+   * sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan driven against recordings
+   * shows what it wrote and not how many looks it took to get there.
    */
   const readDetail = async (): Promise<Reading> => {
     let latest: Image | null = null;
@@ -656,7 +656,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
       try {
         off = await land({ read: readDetail, next, back }, behind, (r) => landmarkOf(r.detail, r.overlay), reach);
       } catch (error) {
-        throw new Error(`--skip ${from} could not find where to start: ${(error as Error).message}`, { cause: error });
+        throw new Error(`--skip ${from} could not find where to start: ${said(error)}`, { cause: error });
       }
 
       if (off > 0) {
@@ -1343,6 +1343,6 @@ if (command === 'scan') {
     await report(decodePng(readFileSync(path)), data, icons);
   }
 } else {
-  console.error(USAGE);
+  (command === 'help' ? console.log : console.error)(USAGE);
   process.exit(command === 'help' ? 0 : 1);
 }

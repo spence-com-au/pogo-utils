@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { coinBagReleaseStore } from './coin-bag/release-store.js';
 import { eventStore, useEventStore } from './event-store.js';
-import { releaseStore } from './pgsharp/release-store.js';
+import { pgsharpReleaseStore } from './pgsharp/release-store.js';
 import { useDismiss } from './popover.js';
 import { useReleaseStore } from './release-store.js';
 import { toHash } from './router.js';
@@ -60,8 +60,8 @@ function eventNotices(): Notice[] {
  * The PGSharp release, while it is a version this browser has not acknowledged — never on a first visit, which takes
  * the current one as its baseline. Choosing it downloads that APK, the same link the Integrations page's button names.
  */
-function releaseNotices(): Notice[] {
-  const release = releaseStore.unacknowledged();
+function pgsharpNotices(): Notice[] {
+  const release = pgsharpReleaseStore.unacknowledged();
 
   return release === null
     ? []
@@ -72,7 +72,7 @@ function releaseNotices(): Notice[] {
           detail: `Seen ${dayFmt.format(new Date(release.firstSeen))} · Download the APK`,
           href: release.url,
           external: true,
-          clear: () => releaseStore.acknowledge(),
+          clear: () => pgsharpReleaseStore.acknowledge(),
         },
       ];
 }
@@ -109,7 +109,7 @@ interface Source {
 
 /** Every kind of notice, in the order the list shows them. */
 const SOURCES: readonly Source[] = [
-  { notices: releaseNotices, clearAll: () => releaseStore.acknowledge() },
+  { notices: pgsharpNotices, clearAll: () => pgsharpReleaseStore.acknowledge() },
   { notices: coinBagNotices, clearAll: () => coinBagReleaseStore.acknowledge() },
   { notices: eventNotices, clearAll: () => eventStore.acknowledge(eventStore.newlyVisible()) },
 ];
@@ -117,7 +117,7 @@ const SOURCES: readonly Source[] = [
 export function Notices() {
   // Each redraws this whenever its store changes; the stores themselves are read through `SOURCES`.
   useEventStore();
-  useReleaseStore(releaseStore);
+  useReleaseStore(pgsharpReleaseStore);
   useReleaseStore(coinBagReleaseStore);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -126,7 +126,7 @@ export function Notices() {
   // and are handed them.
   useEffect(() => {
     void eventStore.ensureLoaded();
-    void releaseStore.ensureLoaded();
+    void pgsharpReleaseStore.ensureLoaded();
     void coinBagReleaseStore.ensureLoaded();
   }, []);
 

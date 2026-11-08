@@ -8,7 +8,7 @@
 import { expect, test } from 'vitest';
 
 import { all, any, named, no, shape, yes } from '../testing/search.js';
-import { added, asCards, cardsOf, holds, pillsOf, toggled } from './cards.js';
+import { added, afterPress, asCards, cardsOf, holds, pillsOf, toggled } from './cards.js';
 import { compose, fromFragment } from './query.js';
 import { read } from './parse.js';
 import { emptyTree, type Group, type Leaf, type Node } from './tree.js';
@@ -96,6 +96,40 @@ test('a chip reads the card it is pressed for and no other', () => {
     false,
   ]);
   expect(shape(toggled(root, 1, yes('shiny')))).toEqual({ all: ['shiny', { any: ['fire', 'shiny'] }] });
+});
+
+test('a press that leaves its card standing leaves the sheet aimed at it', () => {
+  const root = all(yes('shiny'), any(yes('fire'), yes('water')), no('traded'));
+
+  // A pill added to a card, and one of a card's two pills taken off it.
+  expect(afterPress(root, 1, yes('grass')).at).toBe(1);
+  expect(afterPress(root, 1, yes('fire')).at).toBe(1);
+  expect(shape(afterPress(root, 1, yes('fire')).tree)).toEqual({ all: ['shiny', 'water', '!traded'] });
+});
+
+test('a press that takes a card whole aims the sheet past the end, not at the card that moved up into its place', () => {
+  const root = all(yes('shiny'), yes('fire'), no('traded'));
+  const { tree, at } = afterPress(root, 0, yes('shiny'));
+
+  expect(shape(tree)).toEqual({ all: ['fire', '!traded'] });
+  expect(at).toBe(2);
+});
+
+test('a press that takes the last card whole aims the sheet at the new card that replaces it', () => {
+  const root = all(yes('shiny'), yes('fire'));
+  const { tree, at } = afterPress(root, 1, yes('fire'));
+
+  expect(shape(tree)).toEqual({ all: ['shiny'] });
+  expect(at).toBe(1);
+});
+
+test('a press on the card past the last starts it and keeps the sheet aimed at it', () => {
+  const root = all(yes('shiny'));
+  const { tree, at } = afterPress(root, 1, yes('fire'));
+
+  expect(shape(tree)).toEqual({ all: ['shiny', 'fire'] });
+  expect(at).toBe(1);
+  expect(holds(tree, at, yes('fire'))).toBe(true);
 });
 
 test('a span chip is read by its range rather than by its bounds', () => {

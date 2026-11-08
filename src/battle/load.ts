@@ -6,7 +6,7 @@
 
 import { said } from '../errors.js';
 import { SILHOUETTES } from '../generated.js';
-import { fetchOk, gameData } from '../inventory/reader.js';
+import { fetchBytes, gameData } from '../inventory/reader.js';
 import { decodeSilhouettes, typeIcons, type Download, type Silhouettes } from '../tools/battle/assets.mts';
 import { loadMeta } from '../tools/battle/meta.mts';
 
@@ -15,7 +15,7 @@ import { loadMeta } from '../tools/battle/meta.mts';
  * decode is named by its URL, as `cachedAs` names it for the CLI, `fetchOk` naming it already for a status.
  */
 const download: Download = async (_file, url, decode) => {
-  const bytes = new Uint8Array(await (await fetchOk(url)).arrayBuffer());
+  const bytes = await fetchBytes(url);
 
   try {
     return decode(bytes);

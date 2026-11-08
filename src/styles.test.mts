@@ -190,8 +190,8 @@ test('no other stylesheet selects a class the top bar is styled by', () => {
  * A selector with every `:not(…)` removed, innermost first until it stops changing. `:not([hidden])` selects an element
  * that is *shown*, so a rule keyed on one has nothing to do with hiding and must not be asked to hide unconditionally —
  * `.filters:not([hidden]) ~ .x {display: none}` hides a sibling while the panel is open, and an `!important` there
- * would be wrong. It is the likeliest such shape to arrive, being the alternative the three comments in `events.css`
- * discuss and reject.
+ * would be wrong. It is the likeliest such shape to arrive, being the alternative the comment in `events.css`
+ * discusses and rejects.
  *
  * Two shapes it gets wrong, in opposite directions and neither of them written anywhere. A `[hidden]` behind a second
  * bracketed form inside the `:not` is never reached, so `:not(.a:has([hidden]))` over-reports as keyed; and double

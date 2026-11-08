@@ -12,11 +12,9 @@
  * through.
  */
 
-import { around, BOTTOM, place, type Area, type Size } from './layout.mts';
+import { around, BOTTOM, place, type Area, type Point, type Size } from './layout.mts';
 import { FINGER } from './menus.mts';
 import { type State } from './recognise.mts';
-
-export type Point = readonly [x: number, y: number];
 
 export type Action =
   | { kind: 'swipe'; from: Point; to: Point; ms: number }

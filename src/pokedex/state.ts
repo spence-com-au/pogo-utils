@@ -59,16 +59,19 @@ export const TOGGLES = new Map([...FLAGS, ...HUNT_FLAGS].map((flag) => [flag.id,
 export const availabilityOf = (value: string | null): Availability => (value === 'in' || value === 'out' ? value : '');
 
 /**
+ * The shorter name a hunt's tab has room for, beside the list's own label on its toggle. Every `HuntId` has to be named
+ * here, so a hunt added to `HUNTS` is a compile error until its tab is named rather than a toggle with no tab or count.
+ */
+const tabLabels: Readonly<Record<HuntId, string>> = { shiny: 'Shiny', xxl: 'XXL', xxs: 'XXS', perfect: '100%' };
+
+/**
  * The modes in the order the game's tabs run. Every one but the plain dex is a hunt list's id, the list whose absence
  * counts as registered: a hunt list is what is still wanted, so a species off the XXL list is one the XXL dex already
  * holds — which is the same reading the game's own XXL tab makes of the storage it looks at.
  */
 export const MODES: readonly { id: Mode; label: string }[] = [
   { id: 'pokemon', label: 'Pokémon' },
-  { id: 'shiny', label: 'Shiny' },
-  { id: 'xxl', label: 'XXL' },
-  { id: 'xxs', label: 'XXS' },
-  { id: 'perfect', label: '100%' },
+  ...HUNTS.map(({ id }) => ({ id, label: tabLabels[id] })),
 ];
 
 export const modeOf = (value: string | null): Mode => MODES.find(({ id }) => id === value)?.id ?? 'pokemon';
@@ -180,6 +183,6 @@ export function matches(entry: Entry, state: State) {
 
   // Reading the slot rather than testing `has` first, since nothing at the type level joins the two lookups. An id no
   // toggle answers to is a bug rather than a case — `fromFragment` drops them and the chips only ever add their own —
-  // and an empty grid says so where the `TypeError` this used to throw took the page down.
+  // and an empty grid says so, where calling `test` on nothing would throw a `TypeError` and take the page down.
   return [...state.flags].every((id) => TOGGLES.get(id)?.test(entry));
 }
