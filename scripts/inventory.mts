@@ -535,10 +535,10 @@ async function scan(held: Transport) {
    * then separate is exactly the one worth looking at twice.
    *
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
-   * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
-   * back worse, and one whose HP goes unread has no key at all — three of those in a row stop the pass. That decision
-   * sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan driven against recordings
-   * shows what it wrote and not how many looks it took to get there.
+   * reading kept is `bestOf`'s and not this loop's: a stricter test reads again what a looser one would have accepted,
+   * a second look can come back worse, and one whose HP goes unread has no key at all — three of those in a row stop
+   * the pass. That decision sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan
+   * driven against recordings shows what it wrote and not how many looks it took to get there.
    */
   const readDetail = async (): Promise<Reading> => {
     let latest: Image | null = null;
@@ -780,7 +780,7 @@ async function scan(held: Transport) {
             //
             // Under the plain name, the stitch being the capture and `-detail` above the frame the row was read from.
             // `name` here is the scan's own index, so a capture kept for the corpus is still renamed to the Pokémon it
-            // shows; what the plain name buys is that the suffix is no longer part of what has to come off.
+            // shows; what the plain name buys is that the suffix is not part of what has to come off.
             const capture = await scrollFrames(device, latest);
             scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
             shown = capture.frames.at(-1) ?? latest;

@@ -342,9 +342,9 @@ export function storage(
    *
    * Where it is more than one, the phone has a copy in each profile — a work profile's and the personal profile's,
    * signed in to different trainers — and picking either is a guess that drives an account nobody asked for: launching
-   * user 0's, as the scan did, brought up the personal profile's trainer where the game was played from the work
-   * profile (#594). Refused, then, rather than guessed, and the game in front answers it from then on: that is the copy
-   * being played, which is why it is asked before this is.
+   * user 0's brings up the personal profile's trainer where the game is played from the work profile (#594). Refused,
+   * then, rather than guessed, and the game in front answers it from then on: that is the copy being played, which is
+   * why it is asked before this is.
    */
   const onlyInstall = async () => {
     const users = await device.installs(config.package);
@@ -397,8 +397,8 @@ export function storage(
       await tap(at(config.taps.pokemonButton), config.waits.search);
     }
 
-    // Opening it by hand is enough on its own now: storage showing means the game is in front, so the next run reads
-    // that off the phone and neither relaunches it nor waits for a cold start it is not doing.
+    // Opening it by hand is enough on its own: storage showing means the game is in front, so the next run reads that
+    // off the phone and neither relaunches it nor waits for a cold start it is not doing.
     throw new Error('could not find Pokémon storage; open it by hand and run again');
   };
 
