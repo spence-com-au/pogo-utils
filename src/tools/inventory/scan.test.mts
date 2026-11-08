@@ -498,11 +498,13 @@ test.for([
 /**
  * #820: the swipe on to a Pokémon went nowhere, and so did a swipe of the look back for it. Where that was the swipe
  * back, the look read the screen it left and took the Pokémon before for a twin, which the read where the look came
- * back does not fit. Each case drops the third swipe forward, and a swipe of the look back that follows it.
+ * back does not fit. Each case drops the third swipe forward, and a swipe of the look back that follows it — or, as in
+ * #831, both of them, which leaves every read after the third Pokémon reading it again, as a twin of it would.
  */
 test.for([
   ['swipe back', (move: 1 | -1, n: number) => (move === 1 ? n === 2 : n === 0)],
   ['swipe forward again', (move: 1 | -1, n: number) => move === 1 && (n === 2 || n === 3)],
+  ['swipe back and forward again', (move: 1 | -1, n: number) => (move === 1 ? n === 2 || n === 3 : n === 0)],
 ] as const)('a look for a dropped swipe whose %s goes nowhere too visits every Pokémon once', async ([, dropped]) => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
   const keys = ['a', 'b', 'c', 'd', 'e', 'f'];
