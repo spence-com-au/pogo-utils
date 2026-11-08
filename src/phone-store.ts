@@ -10,9 +10,8 @@
  * Only the `Phone` type comes from `webusb.ts`, so a tab that merely asks whether a phone is held loads none of Tango.
  */
 
-import { useEffect, useState } from 'preact/hooks';
-
 import type { Phone } from './inventory/webusb.js';
+import { Store, useStore } from './store.js';
 
 /**
  * What the demo phone in `inventory/demo.ts` is found by, which no USB serial is. Here rather than there so the Battle
@@ -21,11 +20,9 @@ import type { Phone } from './inventory/webusb.js';
 export const DEMO_SERIAL = 'demo';
 
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
-export class PhoneStore {
+export class PhoneStore extends Store {
   /** The phone held, or null before one is connected, once it is unplugged and while it is lent to a battle. */
   phone: Phone | null = null;
-
-  readonly #listeners = new Set<() => void>();
 
   /**
    * Holds `next` in place of whatever was held, letting that one go. It may be unplugged by now and throw for it, which
@@ -40,12 +37,12 @@ export class PhoneStore {
     const gone = () => {
       if (this.phone === next) {
         this.phone = null;
-        this.#emit();
+        this.emit();
       }
     };
 
     this.phone = next;
-    this.#emit();
+    this.emit();
     next.disconnected.then(gone, gone);
 
     await was?.close().catch(() => undefined);
@@ -60,24 +57,10 @@ export class PhoneStore {
 
     if (was) {
       this.phone = null;
-      this.#emit();
+      this.emit();
     }
 
     return was;
-  }
-
-  subscribe(listener: () => void) {
-    this.#listeners.add(listener);
-
-    return () => {
-      this.#listeners.delete(listener);
-    };
-  }
-
-  #emit() {
-    for (const listener of this.#listeners) {
-      listener();
-    }
   }
 }
 
@@ -86,9 +69,5 @@ export const phoneStore = new PhoneStore();
 
 /** The phone held, with the calling component redrawn whenever that changes. */
 export function usePhone(): Phone | null {
-  const [, redraw] = useState(0);
-
-  useEffect(() => phoneStore.subscribe(() => redraw((count) => count + 1)), []);
-
-  return phoneStore.phone;
+  return useStore(phoneStore).phone;
 }
