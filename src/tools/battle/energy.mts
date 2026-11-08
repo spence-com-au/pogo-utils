@@ -158,7 +158,9 @@ class Steps {
 
     // A drop counts once the bar has come to rest, `REST_MS` within `WANDER` of one reading, and is measured to the
     // highest it read meanwhile, every misread seen having read the bar short. Back up to the low before then, it took
-    // nothing. The reading that finds it rested can be lower already, the next hit landed, and is a drop of its own.
+    // nothing; further than `WANDER` from that reading, the drop is measured to where it rests next instead, however
+    // long the bar went unread between, as a frame read short is never confirmed. The reading that finds the bar rested
+    // can be lower already, within `WANDER`, the next hit landed, and is a drop of its own.
     const landing = this.#landing;
 
     if (landing && drop >= LEAST && Math.abs(hp - landing.hp) <= WANDER) {
