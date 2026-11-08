@@ -399,6 +399,34 @@ test.for([
   expect(y).toBeLessThan(next);
 });
 
+/**
+ * Each storage screen under real OCR, given the empty search a scan without `--search` types, and whether it sent the
+ * Back that closes the suggestions panel. `suggestions.png` is the panel a scan started from the map stopped on, its
+ * Recommended chips each carrying a count — `362`, `631`, `405` and `296` at one height, which `tileLabel` takes for a
+ * row of labels whose `CP`s misread — so the Back was skipped and the first tile tapped beneath `Normal` (#816). The
+ * grids are the other half, where a Back closes storage, and the two whose first row of labels misread are the ones
+ * that could be taken for the panel.
+ */
+test.for([
+  ['suggestions', true],
+  ['grid', false],
+  ['searched', false],
+  ['sparkles', false],
+  ['spheal', false],
+] as const)(
+  'an empty search over storage/%s.png sends Back only where it is the suggestions panel',
+  async ([name, closed]) => {
+    const finished = useTestEngine();
+    const image = capture(`storage/${name}.png`);
+    const { sent, device } = phone(DEFAULTS.package, { screen: image });
+    const { search } = storage(device, CONFIG, DATA, image, () => {});
+
+    await search('').finally(finished);
+
+    expect(sent.some((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toBe(closed);
+  },
+);
+
 /** The map as OCR reads it, with a quest above the avatar that names Pokémon without being the menu's button. */
 const MAP = word(1, 'Catch 500 Pokémon', 10, 165, 50, 8);
 
