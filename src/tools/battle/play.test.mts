@@ -124,7 +124,7 @@ test('swipes the lower field after a charged move, until the throw plays', () =>
   const player = new Player(SIZE);
   const fight = swipes(play(Array(4).fill('battle'), player));
   const minigame = swipes(play(['charged', 'charged', ...Array<State>(40).fill('playing')], player, 1000));
-  const after = swipes(play(['other', ...Array<State>(4).fill('battle')], player, 3000));
+  const after = swipes(play(['other', ...Array<State>(4).fill('battle')], player, 7000));
 
   const lowest = (actions: readonly { from: Point; to: Point }[]) =>
     Math.max(...actions.flatMap(({ from, to }) => [from[1], to[1]]));
@@ -162,7 +162,7 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 
 /** `count` frames from `from` milliseconds, 33ms apart, each read as `battle` with `bubbles` found on it. */
 const frames = (player: Player, from: number, count: number, bubbles: readonly (readonly [Point, Point])[]) =>
-  Array.from({ length: count }, (_, i) => player.next('battle', from + i * 33, { bubbles }));
+  Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles }));
 
 const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
 
@@ -180,7 +180,7 @@ test('leaves alone what is found once the bubbles have been gone a while, the mo
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 3000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
   frames(player, 3033, 60, [chain]);
 
   // A moment lost among them is not their end.
@@ -206,13 +206,56 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 3000, { minigame: true, bubbles: [fight] });
+  player.next('playing', 3000, { minigame: true, bubbles: [fight] });
   frames(player, 3033, 24, [fight]);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
   expect(frames(player, 6003, 30, [chain]).every((action) => action.kind === 'swipe' && action.from === chain[0])).toBe(
     true,
   );
+});
+
+// Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
+// unswiped until the run took the throw to be playing, 2.5s of its bubbles lost; a prompt still ends it.
+test('keeps the minigame a tap began through the HUD hidden as it begins, but not through a prompt', () => {
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const hidden = new Player(SIZE);
+
+  play(['charged', 'charged', 'playing', 'other', 'other', 'playing'], hidden);
+
+  expect(hidden.next('playing', 2000, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+
+  const prompted = new Player(SIZE);
+
+  play(['charged', 'charged', 'playing', 'shield', 'other', 'playing'], prompted);
+
+  expect(prompted.next('playing', 2000, { bubbles: [chain] })).toEqual({ kind: 'wait' });
+});
+
+// Live, Close Combat played out with the HUD up throughout, and the minigame, still waited on, left 2.6s of the fight
+// unplayed once it was back; the fight read for a frame or two inside the minigame ends nothing.
+test('ends the minigame once the fight has held for a moment, though nothing hid the HUD', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: [chain] });
+  player.next('battle', 1033, { bubbles: [] });
+  player.next('battle', 1066, { bubbles: [] });
+
+  expect(player.next('playing', 1100, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+
+  const back = Array.from({ length: 11 }, (_, i) => player.next('battle', 5000 + i * 33, { bubbles: [] }));
+
+  expect(back.slice(0, 9).every((action) => action.kind === 'wait')).toBe(true);
+  expect(back.at(-1)).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
+  expect(player.minigame).toBe(false);
 });
 
 // Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.

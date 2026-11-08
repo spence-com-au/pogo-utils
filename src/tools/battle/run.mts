@@ -158,7 +158,8 @@ const PLAYING_MS = 3_500;
  * milliseconds. A fast move's flash can wash out the foot of the screen, names and all, as the fight goes on: Lugia's did
  * for up to 0.46s at a time in a kept run. A charged move under way straight from the fight, the opponent's `Attack
  * incoming!` or a faint, is played as the fight for as long, its swipes and the energy counted meanwhile for nothing; one
- * after a prompt or the HUD hidden, as the opponent's move after a shield is, is told at once.
+ * after a prompt or the HUD hidden, as the opponent's move after a shield is, is told at once, and so is one of our own
+ * minigame, which our tap begins as its button goes.
  */
 const FLASH_MS = 600;
 
@@ -754,7 +755,7 @@ export async function run(
       foughtAt = -Infinity;
     }
 
-    const flash = recognised === 'playing' && clock.now() - foughtAt < FLASH_MS;
+    const flash = recognised === 'playing' && clock.now() - foughtAt < FLASH_MS && !player.minigame;
     const state = recognised === 'switch' && !owed ? 'other' : flash ? 'battle' : recognised;
     const theirName = () => seen.opponent ?? 'the opponent';
 
