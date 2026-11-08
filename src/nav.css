@@ -1,15 +1,15 @@
 /**
  * The site's top tab bar, shared by every page, so they read as co-equal destinations rather than one hanging off
- * another. The active tab is marked with aria-current="page", which doubles
- * as the styling hook. Uses the tokens from theme.css.
+ * another. The active tab is marked with aria-current="page", which doubles as the styling hook. Uses the tokens from
+ * theme.css.
  *
- * Every class here is a name no other sheet selects. The page sheets are scoped to `body[data-page='…']`, and the bar is
- * inside the body too, so a page that paints a name the bar uses paints the bar on that page alone.
+ * Every class here is a name no other sheet selects. The page sheets are scoped to `body[data-page='…']`, and the bar
+ * is inside the body too, so a page that paints a name the bar uses paints the bar on that page alone.
  */
 
 /**
- * The bar itself, holding the tabs and the notifications, phone and settings controls beside them. The background and rule are
- * drawn here rather than on the tabs, so they run under all of it.
+ * The bar itself, holding the tabs and the notifications, phone and settings controls beside them. The background and
+ * rule are drawn here rather than on the tabs, so they run under all of it.
  *
  * Positioned so the panels its menus open hang from its right edge rather than each from its own control: the bell sits
  * two controls' width in from the edge, and a phone-wide panel anchored to it would run that far off the left of the
@@ -77,8 +77,8 @@
 }
 
 /**
- * The notifications, phone and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels they
- * open are not clipped by it.
+ * The notifications, phone and settings controls, at the bar's far end, outside the scrolling `.topnav` so the panels
+ * they open are not clipped by it.
  */
 .menu {
   flex: 0 0 auto;

@@ -54,9 +54,9 @@ footer a {
 }
 
 /**
- * A line of progress or failure under a panel, and the shell's own when a page fails to load. Here rather than in a page's
- * sheet because the shell draws its message on every page, and a rule scoped to one page left it plain body text on the
- * rest — indistinguishable from content, on the one line telling the reader the page is missing.
+ * A line of progress or failure under a panel, and the shell's own when a page fails to load. Here rather than in a
+ * page's sheet because the shell draws its message on every page, and a rule scoped to one page left it plain body text
+ * on the rest — indistinguishable from content, on the one line telling the reader the page is missing.
  */
 
 .status {

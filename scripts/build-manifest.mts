@@ -19,7 +19,9 @@ import { HOME, PAGES, toHash } from '../src/page-table.ts';
 /** Everything in the manifest that is not a page, which is also what `scripts/build-icons.mts` renders from. */
 const SOURCE = 'manifest.json';
 
-/** The members written here. One in the source as well would be a hand copy again, so it is refused rather than merged. */
+/**
+ * The members written here. One in the source as well would be a hand copy again, so it is refused rather than merged.
+ */
 const GENERATED = ['start_url', 'shortcuts'];
 
 const source = JSON.parse(readFileSync(SOURCE, 'utf8')) as Record<string, unknown>;
