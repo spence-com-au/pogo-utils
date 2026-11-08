@@ -279,27 +279,33 @@ function partyTitle(lines: readonly Line[], image: Image): string | undefined {
 /** Whether the party titled `title`, as `partyTitle` read it, is the one named `name`: its words, whole, in order. */
 export const isParty = (title: string, name: string) => ` ${title} `.includes(` ${fold(name)} `);
 
-/** Where a search of the party carousel has got to: the way it is going, and the titles it has passed. */
+/**
+ * Where a search of the party carousel has got to: the way it is going, the titles it has passed, and whether the swipe
+ * that left the party in front where it was has been made again.
+ */
 export interface Carousel {
   way: 'next' | 'back';
   turned: boolean;
+  retried: boolean;
   seen: string[];
   steps: number;
 }
 
-export const carousel = (): Carousel => ({ way: 'next', turned: false, seen: [], steps: 0 });
+export const carousel = (): Carousel => ({ way: 'next', turned: false, retried: false, seen: [], steps: 0 });
 
 /**
- * How many swipes a search of the carousel takes at most: there and back across a dozen parties. Its ends are what
- * stop it otherwise, and a title misread differently swipe after swipe would never show one.
+ * How many swipes a search of the carousel takes at most: there and back across a dozen parties, eleven swipes each way
+ * and two at each end. Its ends are what stop it otherwise, and a title misread differently swipe after swipe would
+ * never show one.
  */
-const CAROUSEL_STEPS = 24;
+const CAROUSEL_STEPS = 26;
 
 /**
  * What to do next about the party carousel showing `title`, to use the party named `name`: use it, swipe on, or wait for
- * a read that names it. The search goes one way until a swipe leaves the same party in front — that end of the carousel
- * — then the other, and throws, naming the parties it passed, once both ends are reached without it: a party the run
- * was told to use and cannot find is no reason to battle with another.
+ * a read that names it. The search goes one way until two swipes in a row leave the same party in front — that end of
+ * the carousel, where one alone could be a swipe the phone dropped — then the other, and throws, naming the parties it
+ * passed, once both ends are reached without it: a party the run was told to use and cannot find is no reason to battle
+ * with another.
  */
 export function searchParty(
   search: Carousel,
@@ -314,17 +320,23 @@ export function searchParty(
     return 'use';
   }
 
-  if ((search.seen.at(-1) === title && search.turned) || search.steps >= CAROUSEL_STEPS) {
+  const end = search.seen.at(-1) === title && search.retried;
+
+  if ((end && search.turned) || search.steps >= CAROUSEL_STEPS) {
     throw new Error(`no party named ${name} saved for this league: ${search.seen.join(', ')}`);
   }
 
   search.steps++;
 
-  if (search.seen.at(-1) === title) {
+  if (search.seen.at(-1) !== title) {
+    search.seen.push(title);
+    search.retried = false;
+  } else if (end) {
     search.turned = true;
     search.way = search.way === 'next' ? 'back' : 'next';
+    search.retried = false;
   } else {
-    search.seen.push(title);
+    search.retried = true;
   }
 
   return search.way;
