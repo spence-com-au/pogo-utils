@@ -558,8 +558,8 @@ let kept: ReturnType<typeof decoded> | null = null;
  *
  * `costumed` is true where the scan's `costume` search found the Pikachu in a costume, which cannot be the plain one,
  * and null where it did not run. A Pikachu it did not find wears none, which `costumeIn` answers without reading it and
- * so without a wardrobe, and is not asked here. A list naming several leaves no costume out rather than saying it,
- * there being no name for it in a column that names costumes.
+ * so without a wardrobe, and is not asked here. A list of several keeps no costume in it as `''` wherever the screen
+ * could not rule it out, since the costumes alone would read as the screen having settled on one of them.
  */
 export function costumeOf(
   image: Image,
@@ -595,9 +595,7 @@ export function costumeOf(
       ? [pick]
       : scores.filter(([, score]) => score - best <= SHORTLIST).map(([costume]) => costume);
 
-  const named = [...new Set(answer)].filter((costume) => costume !== '');
-
-  return answer.length === 1 ? named : named.sort();
+  return answer.length === 1 ? answer.filter((costume) => costume !== '') : answer.sort();
 }
 
 /** The icon files a Pikachu's wardrobe is drawn from: the plain form's, then every costume's, ordinary then shiny. */
