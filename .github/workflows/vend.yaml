@@ -14,6 +14,7 @@ on:
       - 'src/coin-bag/release.ts'
       - 'src/event-feed.ts'
       - 'src/pgsharp/release.ts'
+      - 'src/release.ts'
 
   schedule:
     - cron: '40 * * * *'
