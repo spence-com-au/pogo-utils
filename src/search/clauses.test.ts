@@ -55,7 +55,7 @@ function agrees(node: Node, terms: readonly string[]) {
 }
 
 test('an any of two alls asks what the arrangement asked', () => {
-  // A shiny Pikachu or an XXL Pumpkaboo: an `any` of two `all`s.
+  // A shiny Fire type or an XXL Water type: an `any` of two `all`s.
   agrees(any(all(yes('shiny'), yes('fire')), all(yes('xxl'), yes('water'))), ['shiny', 'fire', 'xxl', 'water']);
 });
 
