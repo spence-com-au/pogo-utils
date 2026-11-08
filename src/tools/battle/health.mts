@@ -65,8 +65,13 @@ const SEARCH = { top: 0.12, bottom: 0.85 } as const;
  * of the fill's colours has no such frame around it: of the strips the search turned up where a bar would start, the
  * 930 that were artwork — the minigame's bubbles, Kyogre's and Mamoswine's colours, the menus — had it at no more
  * than 4 of the 10 places along the bar it is looked for, bar one at 6, where all 180 bars had it at 7 or more.
+ *
+ * Where a bar's fill has gone, from 2 pixels past its end to 4 short of a full bar's, the outline runs on along `along`
+ * of it or more: so it did for 26,739 of the 27,208 bars read short of full on one picture in ten of the 26 GO Battle
+ * League runs kept with video, and for no more than 82% where a strip of the map shows between the letters of "NOT VERY
+ * EFFECTIVE..." or "BLOCKED!", which the game writes just above a bar, the letters breaking it.
  */
-const OUTLINE = { contrast: 25, places: 10, least: 0.7 } as const;
+const OUTLINE = { contrast: 25, places: 10, least: 0.7, along: 0.9 } as const;
 
 /**
  * How much of where the fill has gone may be drawn over before the fill's end is taken as hidden rather than its HP:
@@ -307,32 +312,61 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
 }
 
 /**
- * Whether a strip lies outside the bar's outline, beside the bar rather than in it: the outline found over fewer than
- * half its own pixels, with another strip among `all` those found starting past its end, where `side`'s bar starts,
+ * Whether a strip lies outside the bar's outline rather than in it, beside the bar or just above or below it, among
+ * `all` the strips found, any of which starting where `side`'s bar starts may be that bar.
+ *
+ * Beside it, the outline is found over fewer than half the strip's own pixels, with another strip starting past its end
  * across some of its rows. Artwork just left of a bar passes `framed`, the bar's own outline running along most of where
  * the strip's bar would, but the fill a bar has left lies inside its outline. Red and orange foliage and pumpkins on the
  * autumn map, and PGSharp's star, did so in 11 of the 17 GO Battle League runs kept with video: of their 350,000
  * pictures, 1,008 readings were the artwork at 2–18%, now the bar beside it at 14–99% or, where that is not framed,
- * unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star
- * and the orange trail's red end lie there too, inside a bar's outline, which runs over that bar's fill.
+ * unread. Another fill past a strip's end says nothing alone: the opponent's own artwork, PGSharp's star and the orange
+ * trail's red end lie there too, inside a bar's outline, which runs over that bar's fill. Foliage a few pixels wide has
+ * had its shading pass for the outline over exactly half of them, which is outside too where the other fill starts no
+ * more than 4 pixels on, the outline and its rim between the two. PGSharp's star over our bar's left end leaves an edge
+ * like it further from where the fill shows past the star, which read from there would be 44–46% of a bar at 56–64%.
+ *
+ * Just above or below it, a longer, framed strip lies across its columns or the outline's left end beyond them, its fill
+ * within 8 rows, and the outline runs along less than `OUTLINE.along` of where the strip's fill has gone. The outline
+ * looked for 4 rows out from each finds one between the two, framing both, but only a bar's runs on past its fill. The
+ * map between the letters of "NOT VERY EFFECTIVE..." read as our bar at 2–4% while it was at 43–85%; two bars drawn
+ * one above the other where the opponent's starts, as a charged move starts, are each a bar.
  */
 function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof typeof STARTS): boolean {
+  const unit = image.width / 360;
   const [least, most] = STARTS[side];
   const right = rightOf(strip);
+  const bottom = strip.top + strip.rights.length;
   const xs = Array.from({ length: Math.ceil(right - strip.left) }, (_, i) => strip.left + i);
   const over = xs.filter((x) => edged(image, strip, x)).length;
-
-  return (
-    over < xs.length / 2 &&
-    all.some(
-      (other) =>
-        other.left > right &&
-        other.left >= least * image.width &&
-        other.left <= most * image.width &&
-        other.top < strip.top + strip.rights.length &&
-        strip.top < other.top + other.rights.length,
-    )
+  const bars = all.filter((other) => other.left >= least * image.width && other.left <= most * image.width);
+  const beside = bars.some(
+    (other) =>
+      other.left > right &&
+      other.top < bottom &&
+      strip.top < other.top + other.rights.length &&
+      (2 * over < xs.length || (2 * over === xs.length && other.left - right <= 4 * unit)),
   );
+  const from = Math.round(right + 2 * unit);
+  const gone = Array.from(
+    { length: Math.max(0, Math.ceil(strip.left + FULL * image.width - 4 * unit - from)) },
+    (_, i) => from + i,
+  );
+  const stacked =
+    bars.some((other) => {
+      const gap = Math.max(other.top - bottom, strip.top - (other.top + other.rights.length));
+
+      return (
+        gap >= 0 &&
+        gap <= 8 * unit &&
+        other.left - 4 * unit < right &&
+        strip.left < rightOf(other) &&
+        rightOf(other) - other.left > right - strip.left &&
+        framed(image, other)
+      );
+    }) && gone.filter((x) => edged(image, strip, x)).length < OUTLINE.along * gone.length;
+
+  return beside || stacked;
 }
 
 export interface Health {
