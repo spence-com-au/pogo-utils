@@ -257,6 +257,17 @@ test('its energy is kept while it is out, and a drop across our switch is not a 
   expect(energy.estimate({ ...MATCHUP, opponent: { species: 'Registeel', cp: 1497 } })?.energy, 'a newcomer').toBe(0);
 });
 
+test('a hit yet to rest as our switch starts another stretch is counted to the one it landed in', () => {
+  const energy = new Energy(DATA);
+  const azumarill: Matchup = { ...MATCHUP, own: { species: 'Azumarill', cp: 1499 } };
+  const hp = fight(energy, { step: COUNTER, hits: 2 });
+
+  energy.read(2300, hp - COUNTER, MATCHUP);
+  rest(energy, 2400, 0.8, azumarill);
+
+  expect(energy.estimate(azumarill)?.energy).toBe(18);
+});
+
 test('nothing is counted for an opponent not named, nor HP lost that nothing says how many hits held', () => {
   const energy = new Energy(DATA);
   const unnamed: Matchup = { ...MATCHUP, opponent: { species: null, cp: 1497 } };

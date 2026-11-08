@@ -285,7 +285,9 @@ export class Energy {
   read(at: number, hp: number, matchup: Matchup): void {
     const species = matchup.opponent.species;
 
+    // The stretch left behind counts a drop it was still waiting to see rest, as a pause does.
     if (species === null) {
+      this.#stretch?.pause();
       this.#stretch = undefined;
       return;
     }
@@ -293,6 +295,7 @@ export class Energy {
     const tally = this.#tallyOf(species);
 
     if (!this.#stretch || keyOf(this.#stretch.matchup) !== keyOf(matchup)) {
+      this.#stretch?.pause();
       this.#stretch = new Stretch(matchup);
       tally.stretches.push(this.#stretch);
     }
