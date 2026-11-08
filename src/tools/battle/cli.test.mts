@@ -40,6 +40,15 @@ test.each([[[]], [['run']], [['record', 'out.h264']]])('--help after %j prints t
   expect(stdout).toContain('pnpm battle record [--seconds N] [--serial SERIAL] OUT');
 });
 
+/** A typo's usage goes with the refusal on stderr, leaving stdout to the `help` that was asked for. */
+test('an unknown command prints the usage to stderr and fails', async () => {
+  const { code, stdout, stderr } = await battle('rnu');
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('pnpm battle record [--seconds N] [--serial SERIAL] OUT');
+  expect(stdout).toBe('');
+});
+
 test('refuses a flag it does not know', async () => {
   const { code, stderr } = await battle('record', '--seconds=5', '--loud', 'out.h264');
 

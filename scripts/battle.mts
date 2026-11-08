@@ -467,6 +467,6 @@ if (command === 'run') {
     process.exit(1);
   }
 } else {
-  console.log(USAGE);
+  (command === 'help' ? console.log : console.error)(USAGE);
   process.exit(command === 'help' ? 0 : 1);
 }
