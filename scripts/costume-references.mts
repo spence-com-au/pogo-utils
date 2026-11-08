@@ -22,12 +22,12 @@
  */
 
 import { CACHE, cachedIcon, loadGameData } from '../src/tools/inventory/download.mts';
-import { ARTWORK_FROM } from '../src/tools/inventory/artwork.mts';
 import { designFiles, measure, wardrobeFor, type References } from '../src/tools/inventory/costume.mts';
 import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
 import { useEngine } from '../src/tools/inventory/ocr.mts';
 import { findOverlay } from '../src/tools/inventory/overlay.mts';
 import { decodePng } from '../src/tools/inventory/png.mts';
+import { artworkFrom } from '../src/tools/inventory/report.mts';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import prettier from 'prettier';
@@ -61,10 +61,9 @@ for (const [file, name] of Object.entries(labelled)) {
     throw new Error(`${path}: Pikachu has no costume called "${name}"`);
   }
 
-  // The same floor `readScreen` reads the artwork from.
   const image = decodePng(readFileSync(path));
-  const box = (await findOverlay(image))?.box;
-  const measured = measure(image, box ? box.y + box.height : ARTWORK_FROM, wardrobe);
+  const box = (await findOverlay(image))?.box ?? null;
+  const measured = measure(image, artworkFrom(box), wardrobe);
 
   if (!measured) {
     throw new Error(`${path}: no Pikachu found on it`);

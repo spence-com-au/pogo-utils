@@ -907,16 +907,14 @@ async function scan(held: Transport) {
 
       // The search's answer taken once, since `take` uses the match up, and handed to the artwork: a Pikachu the search
       // did not find wears no costume, and one it found is not the plain one. Any other species is named only by the
-      // search, so it gets every costume it has, which is the most the screen says.
+      // search, so it gets every costume it has, which is the most the screen says — or null, unknown, where it has
+      // none the game data names or its species is unread, since an empty list would say it wears none.
       const costumed = flag('costume');
       const worn = await costumeIn(image, boxes.box, id, wardrobeOn(data), costumed);
+      const named = [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))];
       const costume =
         worn.costume ??
-        (costumed === null || id.form?.dex === DEX
-          ? null
-          : costumed
-            ? [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))]
-            : []);
+        (costumed === null || id.form?.dex === DEX ? null : costumed ? (named.length > 0 ? named : null) : []);
 
       if (worn.note) {
         notes.push(worn.note);
