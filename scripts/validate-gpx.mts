@@ -1,7 +1,8 @@
 /**
  * Checks the GPX files in the repository are in order: well-formed and really GPX 1.1 against `resources/gpx.xsd`,
  * with `pgr` extension fields the viewer reads and a country it knows, nothing in `src/countries.ts` the files never
- * name, every entry naming itself and every track carrying points enough to draw.
+ * name, every entry naming itself and every track carrying points enough to draw. `data/events.json`, which the files
+ * are checked against, is held to an `eventID` of its own and dates every reader takes.
  *
  * `--write` adds the two files that tell the pages what the repository holds, each derived from the same pass that
  * just checked the files. Neither is in version control, so the flag is which caller wants them rather than a mode:
@@ -12,6 +13,7 @@
  */
 
 import COUNTRIES from '../src/countries.ts';
+import { eventProblems } from '../src/event-checks.mts';
 import { LOCAL_EVENTS } from '../src/event-feed.ts';
 import { ENTRIES_BY_EVENT, GPX_PATHS } from '../src/generated.ts';
 import { gpxSources } from '../src/gpx-source.mts';
@@ -37,6 +39,13 @@ if (problems.length === 0) {
 }
 
 const EVENTS: FeedEvent[] = JSON.parse(readFileSync(LOCAL_EVENTS, 'utf8'));
+
+const events = eventProblems(EVENTS);
+problems.push(...events.map((problem) => `${LOCAL_EVENTS}: ${problem}`));
+
+if (events.length === 0) {
+  console.log(`${EVENTS.length} events carry an eventID of their own and dates every reader takes.`);
+}
 
 /** The events a `<pgr:event>` may point at, by `eventID` (`LOCAL_EVENTS`). */
 const eventIds = new Set(EVENTS.map((event) => event.eventID));
