@@ -6,13 +6,13 @@
  */
 
 import { execFile } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { expect, test } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 import { reads } from '../inventory/test-cache.mts';
 import { tessdata } from '../inventory/test-engine.mts';
 
@@ -118,25 +118,43 @@ test('reports an adb it cannot find rather than throwing', async () => {
   expect(stderr).toContain("could not read the screen's size: adb shell wm size: spawn adb ENOENT");
 });
 
+/**
+ * A directory holding an `adb` that runs `body` as a shell script, `body` being handed the directory to keep files in.
+ * It is removed when the test is over.
+ */
+function fakeAdb(body: (dir: string) => string) {
+  const dir = mkdtempSync(join(tmpdir(), 'battle-adb-'));
+  onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, 'adb'), `#!/bin/sh\n${body(dir)}`, { mode: 0o755 });
+
+  return dir;
+}
+
+/** `record` to `out` for a second, with the `adb` in `bin` the first on the PATH. */
+function record(bin: string, out: string) {
+  return promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', out], {
+    env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
+    timeout: 10_000,
+  }).then(
+    ({ stderr }) => ({ code: 0, stderr }),
+    (error: { code: number; stderr: string }) => error,
+  );
+}
+
 // `/dev/full` is Linux only, and `ubuntu-latest` is every runner in `.github/workflows/`.
 test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and stops recording', async () => {
   // An `adb` that answers `wm size`, then writes its pid and a byte before it records for a minute. A script that left
   // it running would leave that pid alive, which is what is checked: the child's piped stdio lets the script exit
   // whether or not it stopped the child. `/dev/full` takes the byte only to fail it, so the failure comes after the pid
   // is written.
-  const bin = mkdtempSync(join(tmpdir(), 'battle-adb-'));
+  const bin = fakeAdb(
+    (dir) =>
+      `[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\necho $$ > ${join(dir, 'pid')}\necho x\nexec sleep 60\n`,
+  );
   const pidFile = join(bin, 'pid');
-  const adb = `#!/bin/sh\n[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\necho $$ > ${pidFile}\necho x\nexec sleep 60\n`;
-  writeFileSync(join(bin, 'adb'), adb, { mode: 0o755 });
 
   try {
-    const { code, stderr } = await promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', '/dev/full'], {
-      env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
-      timeout: 10_000,
-    }).then(
-      () => ({ code: 0, stderr: '' }),
-      (error: { code: number; stderr: string }) => error,
-    );
+    const { code, stderr } = await record(bin, '/dev/full');
 
     expect(code).toBe(1);
     expect(stderr).toContain('could not write /dev/full');
@@ -164,6 +182,48 @@ test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and st
   }
 });
 
+// The screen is recorded at the size `wm size` answers with, an override ahead of the physical size: 1440×3040 is
+// 360×760 and 1080×1920 is 360×640.
+test.each([
+  ['Physical size: 1440x3040', '360x760'],
+  ['Physical size: 1440x3040\nOverride size: 1080x1920', '360x640'],
+])('records %j at %s and writes it to OUT', async (answer, size) => {
+  const bin = fakeAdb(
+    (dir) => `[ "$1" = shell ] && echo '${answer}' && exit\necho "$@" > ${join(dir, 'args')}\nprintf x\n`,
+  );
+  const out = join(bin, 'out.h264');
+
+  const { code, stderr } = await record(bin, out);
+
+  expect(code).toBe(0);
+  expect(stderr).toContain(`recording 1s to ${out}`);
+  expect(readFileSync(join(bin, 'args'), 'utf8')).toContain(`--size=${size}`);
+  expect(readFileSync(out, 'utf8')).toBe('x');
+});
+
+test.each([[''], ['Error: no display']])('refuses a wm size that answered %j', async (answer) => {
+  const bin = fakeAdb((dir) => `[ "$1" = shell ] && echo '${answer}' && exit\necho recorded > ${join(dir, 'args')}\n`);
+
+  const { code, stderr } = await record(bin, join(bin, 'out.h264'));
+
+  expect(code).toBe(1);
+  expect(stderr).toContain(`wm size answered ${JSON.stringify(answer)} rather than the screen's size`);
+  expect(existsSync(join(bin, 'args'))).toBe(false);
+});
+
+// A `screenrecord` that refuses exits 0 with its reason on stderr, so the exit code is not all there is to go by.
+test.each([
+  ['exits 0 with its reason on stderr', 'echo "Unable to get output buffers" >&2', 'Unable to get output buffers'],
+  ['exits non-zero without a reason', 'exit 3', 'exit 3, nothing recorded'],
+])('reports a screenrecord that %s', async (_, body, reason) => {
+  const bin = fakeAdb(() => `[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\n${body}\n`);
+
+  const { code, stderr } = await record(bin, join(bin, 'out.h264'));
+
+  expect(code).toBe(1);
+  expect(stderr).toContain(`screenrecord failed: ${reason}`);
+});
+
 // A FIFO stands for any OUT that is not a regular file, such as `/dev/stdout` piped to a player, which reading back
 // once the recording is done would wait on for good. Not `/dev/stdout` itself, which `execFile` makes a socket that
 // cannot be opened by that name.
@@ -171,22 +231,13 @@ test.each([
   ['h264', 0, ''],
   ['', 1, 'screenrecord failed: refused\n'],
 ])('records %j into a FIFO and exits %i', async (recorded, expectedCode, failure) => {
-  const bin = mkdtempSync(join(tmpdir(), 'battle-adb-'));
+  const bin = fakeAdb(
+    () => `[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\nprintf '${recorded}'\necho refused >&2\n`,
+  );
   const out = join(bin, 'out.h264');
-  const adb = `#!/bin/sh\n[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\nprintf '${recorded}'\necho refused >&2\n`;
-  writeFileSync(join(bin, 'adb'), adb, { mode: 0o755 });
   await promisify(execFile)('mkfifo', [out]);
 
-  const [read, { code, stderr }] = await Promise.all([
-    readFile(out, 'utf8'),
-    promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', out], {
-      env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
-      timeout: 10_000,
-    }).then(
-      ({ stderr }) => ({ code: 0, stderr }),
-      (error: { code: number; stderr: string }) => error,
-    ),
-  ]);
+  const [read, { code, stderr }] = await Promise.all([readFile(out, 'utf8'), record(bin, out)]);
 
   expect(code).toBe(expectedCode);
   expect(read).toBe(recorded);
