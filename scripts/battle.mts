@@ -56,6 +56,7 @@ import { keepVideo } from '../src/tools/battle/keep-video.mts';
 import { Lost, run, type Clock } from '../src/tools/battle/run.mts';
 import { RECORD_LIMIT_S, streamSize } from '../src/tools/battle/record-command.mts';
 import { Screen } from '../src/tools/battle/screen.mts';
+import { putStayOn, readStayOn, stayOnUsb } from '../src/tools/battle/stay-on.mts';
 import { feed, screenrecord } from '../src/tools/battle/stream.mts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device } from '../src/tools/inventory/adb.mts';
@@ -196,18 +197,14 @@ if (command === 'run') {
   // What GO Battle League's players run in the league, out of PvPoke's rankings; Training allows for every move.
   const meta = mode.mode === 'gbl' ? await loadMeta(cache(CACHE), data, mode.league) : null;
 
-  // Awake for as long as it runs: a screen gone dark mid-battle reads as nothing recognised and ends the run. The
-  // setting is read first and put back as found on every way out, `restore` and the signal handler in place before it
-  // is changed, and checked to be the number Android stores, since it goes back through the shell.
-  const awake = new TextDecoder().decode(
-    await transport.shell(['settings', 'get', 'global', 'stay_on_while_plugged_in']),
-  );
-  const before = /^\d+$/.test(awake.trim()) ? awake.trim() : '0';
+  // Awake for as long as it runs: the setting is read first and put back as found on every way out, `restore` and the
+  // signal handler in place before it is changed.
+  const before = await readStayOn(transport);
 
   // A phone gone, unplugged mid-battle, cannot be put back: said in a line rather than thrown over the error that
   // stopped the run.
   const restore = () =>
-    transport.shell(['settings', 'put', 'global', 'stay_on_while_plugged_in', before]).then(
+    putStayOn(transport, before).then(
       () => undefined,
       (error: unknown) => console.error(`stay_on_while_plugged_in not put back to ${before}: ${said(error)}`),
     );
@@ -286,7 +283,7 @@ if (command === 'run') {
   signals.forEach((signal) => process.on(signal, stop));
 
   try {
-    await transport.shell(['svc', 'power', 'stayon', 'usb']);
+    await stayOnUsb(transport);
 
     // A screenshot for the screen's size, which the stream takes its shape from.
     const size = streamSize(await device.screenshot());
