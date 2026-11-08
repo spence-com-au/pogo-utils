@@ -64,7 +64,7 @@ pnpm serve
 again before it shows — and an absent `dist/` stops the server naming that command rather than answering every request
 with a 404. The server is [`scripts/serve.mts`](scripts/serve.mts), a `node:http` handler, so nothing is installed for
 it and nothing is served that the build does not publish: an extension with no entry in
-[`scripts/served-types.mts`](scripts/served-types.mts) is a 404 rather than a guessed type.
+[`src/served-types.mts`](src/served-types.mts) is a 404 rather than a guessed type.
 
 That table is the point of serving it this way. Each entry was read off the deployment with `curl -sI` rather than
 chosen here, so a header is the same locally as in production — which is what lets the Events page's **Subscribe** link
@@ -509,7 +509,8 @@ back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or 
 and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
 from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
 costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
-and lists every costume it could be where the artwork does not settle which. Any other species found by the costume
+and lists every costume it could be where the artwork does not settle which, with `""` among them for none wherever it
+could be that too, since the costumes alone would read as settled among them. Any other species found by the costume
 search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
 `--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
 `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
@@ -602,14 +603,15 @@ Nothing read leaves the page. What it fetches carries nothing about the screen: 
 [`fixtures/game-master.json`](src/tools/inventory/fixtures/game-master.json), which the build publishes rather than the
 page fetching the 23 MB it is made from. The screenshot and its reading stay in memory, and leave only as a download.
 
-The corpus is what holds the page to the CLI. `INVENTORY_OCR=wasm pnpm test:corpus` runs
-[`screens.test.mts`](src/tools/inventory/screens.test.mts) under the WebAssembly engine, handed the CLI's model off disk
-so it reaches no network and checked to be the same file the page fetches. Every capture reads the same fields,
-identity, form, level and IVs under both. Three assertions still differ, the three that pin which route a CP took rather
-than what any capture answers: tesseract.js is a fork of Tesseract 5.1 where `apt` installs 5.3.4, and it reads
-`castform-snowy.png`, `deoxys-normal.png` and `deoxys-defense.png`'s CP straight off the label line where the CLI has to
-sweep the region for it, `charizard-gigantamax.png`'s the other way round, and the sweep offers a different stray on
-`castform-sunny.png` and `pikachu-santa-hat.png`. Pinned to the CLI's routes, they are the CLI's to keep.
+The corpus is what holds the page to the CLI, and CI runs [`screens.test.mts`](src/tools/inventory/screens.test.mts)
+both ways: under the CLI, and under the WebAssembly engine with `INVENTORY_OCR=wasm pnpm test:corpus`, handed the CLI's
+model off disk so it reaches no network and checked to be the same file the page fetches. Every capture reads the same
+fields, identity, form, level and IVs under both. What differs is the route a CP took, which is not what any capture
+answers: tesseract.js is its own build of Tesseract, and it reads some captures' CP straight off the label line where
+the CLI has to sweep the region for it, and others the other way round. The two maps of which captures a CP is read off
+and what is offered where it is not are pinned for each engine, so a bump of either that moves a route fails; the test
+that measures the CLI's own sweep is skipped under wasm. The one other difference is pinned where the corpus finds it:
+tesseract.js reads a `yes` into the scenery of `overworld.png`, which `dialogOpen` takes for a dialog (#935).
 
 ## Trainer battles
 
