@@ -16,7 +16,7 @@ import { expect, test } from 'vitest';
 
 import POKEMON from '../pokemon/pokedex.js';
 import { all, any, named, no, yes } from '../testing/search.js';
-import { compose, emptyState, type State } from './query.js';
+import { compose, emptyState, fromFragment, nameFragment, type State } from './query.js';
 import { current, optimise } from './optimise.js';
 import { GROUPS, RANGES, TERMS_BY_ID, type Group as Category } from './terms.js';
 import { leafText, type Leaf, type Node } from './tree.js';
@@ -479,4 +479,18 @@ test('a reduction to nothing is not taken, a blank box beside cards full of pill
     rewrites: [],
     lossy: EXACT,
   });
+});
+
+/**
+ * A name pill comes out of the fragment of a link someone shared, with no bound on its length, and with Shorten on its
+ * text is tried as a dex span on every render. So a long run of digits ending in something other than a digit has to
+ * cost its length rather than its square, which is the shape that backtracks when the two bounds of a span can trade
+ * digits. The budget is generous for linear work and orders of magnitude short of what the quadratic version took.
+ */
+test('a long run of digits from a shared link costs its length, not its square', () => {
+  const text = `${'1'.repeat(40_000)}x`;
+  const started = performance.now();
+
+  expect(current({ ...fromFragment(nameFragment(text)), optimise: true }).query).toBe(text);
+  expect(performance.now() - started).toBeLessThan(1_000);
 });
