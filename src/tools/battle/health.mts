@@ -403,26 +403,33 @@ export const JUMP = 0.1;
 
 /**
  * Each side's HP as decided on from the bars read frame by frame: a reading within `JUMP` of the HP held replaces it at
- * once, and one further out only once the next reading of that bar agrees with it. A misread flickering out between
- * steady readings so never moves what a shield or the opponent's energy is decided on, at the cost of a real hit as
- * large as one waiting a frame to count. A bar not drawn keeps both what is held and what awaits a second reading.
+ * once, and one further out only once the next frame's reading of that bar agrees with it. A misread flickering out
+ * between steady readings so never moves what a shield or the opponent's energy is decided on, at the cost of a real
+ * hit as large as one waiting a frame to count. A bar not drawn keeps both what is held and what awaits a second
+ * reading.
  */
 export class Steady {
   #held: Health = { own: null, opponent: null };
   #pending: Health = { own: null, opponent: null };
 
+  // The frame each side's bar was last read off. The loop comes round faster than frames come, and the screen
+  // standing still sends none, so it hands over the same frame turn after turn, and a misread read again would agree
+  // with itself.
+  #from: Record<keyof Health, Image | undefined> = { own: undefined, opponent: undefined };
+
   get health(): Health {
     return this.#held;
   }
 
-  read(bars: Health): void {
+  read(frame: Image, bars: Health): void {
     for (const side of ['own', 'opponent'] as const) {
       const read = bars[side];
 
-      if (read === null) {
+      if (read === null || this.#from[side] === frame) {
         continue;
       }
 
+      this.#from[side] = frame;
       const near = (hp: number | null) => hp !== null && Math.abs(read - hp) <= JUMP;
 
       if (this.#held[side] === null || near(this.#held[side]) || near(this.#pending[side])) {
@@ -434,9 +441,10 @@ export class Steady {
     }
   }
 
-  /** A side's Pokémon replaced, its bar a new one: the next reading of it is taken as it comes. */
+  /** A side's Pokémon replaced, its bar a new one: its next reading is taken as it comes, the last frame's too. */
   forget(side: keyof Health): void {
     this.#held[side] = null;
     this.#pending[side] = null;
+    this.#from[side] = undefined;
   }
 }

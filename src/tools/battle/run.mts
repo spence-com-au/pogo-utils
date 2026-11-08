@@ -1061,7 +1061,7 @@ export async function run(
       const theirs = steady.health.opponent;
 
       if (bars) {
-        steady.read(bars);
+        steady.read(frame, bars);
       }
 
       const health = steady.health;
