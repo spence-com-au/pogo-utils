@@ -64,7 +64,7 @@ pnpm serve
 again before it shows — and an absent `dist/` stops the server naming that command rather than answering every request
 with a 404. The server is [`scripts/serve.mts`](scripts/serve.mts), a `node:http` handler, so nothing is installed for
 it and nothing is served that the build does not publish: an extension with no entry in
-[`scripts/served-types.mts`](scripts/served-types.mts) is a 404 rather than a guessed type.
+[`src/served-types.mts`](src/served-types.mts) is a 404 rather than a guessed type.
 
 That table is the point of serving it this way. Each entry was read off the deployment with `curl -sI` rather than
 chosen here, so a header is the same locally as in production — which is what lets the Events page's **Subscribe** link
@@ -509,7 +509,8 @@ back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or 
 and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
 from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
 costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
-and lists every costume it could be where the artwork does not settle which. Any other species found by the costume
+and lists every costume it could be where the artwork does not settle which, with `""` among them for none wherever it
+could be that too, since the costumes alone would read as settled among them. Any other species found by the costume
 search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
 `--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
 `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
