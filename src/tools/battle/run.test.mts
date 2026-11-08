@@ -112,10 +112,19 @@ interface Scene {
 
   /** What `uiautomator dump` writes here: the game alone, unless PGSharp's overlay is drawn over it. */
   views?: string;
+
+  /** The screen standing still through the scene, as the phone sends no frame while nothing on it moves: one frame. */
+  still?: boolean;
 }
 
 /** How long a hold takes, in milliseconds: longer than any `scripts/battle.mts` makes on the selection screen. */
 const HOLD_MS = 4000;
+
+/**
+ * How often the phone sends a frame, in milliseconds: 30 a second, as it does throughout a battle, where kept videos of
+ * live runs go no longer than 0.3s without one around a shield prompt.
+ */
+const FRAME_MS = 33;
 
 /** Whether a touch at `at` lands on what is drawn at `target`. */
 const near = (target: Point, at: Point) => Math.abs(target[0] - at[0]) < 0.05 && Math.abs(target[1] - at[1]) < 0.04;
@@ -223,8 +232,20 @@ function scripted(
     return now;
   };
 
+  // The scene's picture, sent afresh every `FRAME_MS` unless the scene stands still, as the stream sends frames: a
+  // frame read twice is one turn of the loop coming round before the next, never a second look at the screen.
+  let sent: { frame: Image; of: Scene; at: number } | undefined;
+
   const phone: Phone = {
-    frame: () => scene().frame,
+    frame: () => {
+      const of = scene();
+
+      if (sent?.of !== of || (!of.still && time - sent.at >= FRAME_MS)) {
+        sent = { frame: { ...of.frame }, of, at: time };
+      }
+
+      return sent.frame;
+    },
     screenshot: () => {
       const { frame, screenshot } = scene();
 
@@ -916,23 +937,25 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
  * into a screen nothing recognises, so a regression ends `Lost` rather than tapping at the prompt for ever.
  *
  * The faint is caught once, on the prompt's first frame, by the prompt and by the Poké Balls it leaves in view, so the
- * frames kept are the prompt's two: the fight's was first seen more than a second before it, and Mamoswine's more than
- * a second after. Each is kept at its time on the run's clock, 6.52s of it the first card's tap for the selection
- * screen, which these scenes never open: looked for twice, then the party screen read afresh.
+ * frames kept are the prompt's two, each scene standing still on one: the fight's was first seen more than a second
+ * before it, and Mamoswine's more than a second after. Each is kept at its time on the run's clock, 6.52s of it the
+ * first card's tap for the selection screen, which these scenes never open: looked for twice, then the party screen
+ * read afresh.
  */
 test('retaps the card it chose when the first tap on the switch prompt does not land', async () => {
   const scenes: Record<string, Scene> = {
     ...battleAndBack(),
     party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
-    fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'fainted' } },
-    fainted: { frame: fixture('switch-glaceon'), lasts: { ms: 600, to: 'again' } },
+    fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'fainted' }, still: true },
+    fainted: { frame: fixture('switch-glaceon'), lasts: { ms: 600, to: 'again' }, still: true },
     again: {
       frame: fixture('switch-glaceon'),
       tap: { at: [0.67, 0.87], to: 'next' },
       lasts: { ms: 3000, to: 'stuck' },
+      still: true,
     },
     stuck: { frame: fixture('other-loss') },
-    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' } },
+    next: { frame: fixture('battle-minigame-mamoswine'), swipes: { count: 10, to: 'won' }, still: true },
   };
   const { phone, clock, taps } = scripted(scenes, 'party');
   const report = recorder();
@@ -3493,13 +3516,52 @@ test('keeps the shield through a prompt whose bar flickers low', async () => {
     frame: () => {
       const frame = phone.frame();
 
-      return frame === high && frames++ % 2 === 1 ? low : frame;
+      return frame?.data === high.data && frames++ % 2 === 1 ? low : frame;
     },
   };
   const report = recorder();
 
   await run(
     flickering,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move',
+  ]);
+});
+
+/**
+ * The same flicker, but each frame reading 9% stays the latest for two turns of the loop, as a frame does whenever the
+ * next takes longer than a turn to come: read again, the misread is no second reading agreeing with it.
+ */
+test('keeps the shield through a prompt whose low frame is read twice', async () => {
+  const high = fixture('shield-charizard-high');
+  const low = fixture('shield-low');
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), ...charizardHit(high, true) }, 'fight');
+  let frames = 0;
+  const lingering: Phone = {
+    ...phone,
+    frame: () => {
+      const frame = phone.frame();
+
+      return frame?.data === high.data && frames++ % 4 >= 2 ? low : frame;
+    },
+  };
+  const report = recorder();
+
+  await run(
+    lingering,
     {
       mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
       data: DATA,
@@ -3709,16 +3771,16 @@ test('takes the cap from the league named until the party screen gives it', asyn
 /**
  * A second either side of the shield prompt is handed to `keep`, each frame once, with when it was first seen: the
  * fight before it and the prompt and the frame after it, but not the lead's three seconds earlier nor a frame first
- * shown past the second.
+ * shown past the second, each scene standing still on one.
  */
 test('keeps the frames a second either side of a shield prompt', async () => {
   const scenes: Record<string, Scene> = {
     ...battleAndBack(),
-    lead: { frame: fixture('battle-latias'), lasts: { ms: 3000, to: 'fight' } },
-    fight: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 500, to: 'prompt' } },
-    prompt: { frame: fixture('shield-charizard-high'), lasts: { ms: 400, to: 'after' } },
-    after: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 800, to: 'later' } },
-    later: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 2000, to: 'won' } },
+    lead: { frame: fixture('battle-latias'), lasts: { ms: 3000, to: 'fight' }, still: true },
+    fight: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 500, to: 'prompt' }, still: true },
+    prompt: { frame: fixture('shield-charizard-high'), lasts: { ms: 400, to: 'after' }, still: true },
+    after: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 800, to: 'later' }, still: true },
+    later: { frame: fixture('battle-charizard-magmar'), lasts: { ms: 2000, to: 'won' }, still: true },
   };
   const { phone, clock } = scripted(scenes, 'lead');
   const kept: [string | undefined, number, string][] = [];

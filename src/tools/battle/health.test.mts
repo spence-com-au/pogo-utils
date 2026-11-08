@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { decodePng } from '../inventory/png.mts';
+import { decodePng, type Image } from '../inventory/png.mts';
 import { readHealth, Steady } from './health.mts';
 
 const read = (name: string) => readHealth(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))));
@@ -114,12 +114,15 @@ test.each([
   expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
 });
 
-/** The HP `Steady` decides on after each of `readings`, each `[own, opponent]`. */
+/** A frame of its own, which is all `Steady` asks of one: its bars are handed over with it. */
+const frame = (): Image => ({ width: 0, height: 0, data: new Uint8Array() });
+
+/** The HP `Steady` decides on after each of `readings`, each `[own, opponent]` off a frame of its own. */
 function steadied(readings: readonly [number | null, number | null][]): [number | null, number | null][] {
   const steady = new Steady();
 
   return readings.map(([own, opponent]) => {
-    steady.read({ own, opponent });
+    steady.read(frame(), { own, opponent });
 
     return [steady.health.own, steady.health.opponent];
   });
@@ -160,6 +163,18 @@ test('a jump read again stands, as a charged move’s hit and a newcomer’s bar
   ]);
 });
 
+test('a jump read again off the same frame does not stand', () => {
+  // The loop reading the latest frame again before the next comes, as it does every turn while the screen stands still.
+  const steady = new Steady();
+  const misread = frame();
+
+  steady.read(frame(), { own: 0.8, opponent: 0.9 });
+  steady.read(misread, { own: 0.3, opponent: 0.9 });
+  steady.read(misread, { own: 0.3, opponent: 0.9 });
+
+  expect(steady.health).toEqual({ own: 0.8, opponent: 0.9 });
+});
+
 test('a bar not drawn keeps both the HP decided on and the jump awaiting a second reading', () => {
   expect(
     steadied([
@@ -179,9 +194,22 @@ test('a bar not drawn keeps both the HP decided on and the jump awaiting a secon
 test('a side forgotten takes its next reading as it comes', () => {
   const steady = new Steady();
 
-  steady.read({ own: 0.2, opponent: 0.5 });
+  steady.read(frame(), { own: 0.2, opponent: 0.5 });
   steady.forget('own');
-  steady.read({ own: 1, opponent: 0.5 });
+  steady.read(frame(), { own: 1, opponent: 0.5 });
 
   expect(steady.health).toEqual({ own: 1, opponent: 0.5 });
+});
+
+test('a side forgotten is read again off the same frame, while the other’s jump awaits another', () => {
+  // A newcomer of ours named while the screen stands still: the frame it was named on is all there is to read it off.
+  const steady = new Steady();
+  const still = frame();
+
+  steady.read(frame(), { own: 0.2, opponent: 0.9 });
+  steady.read(still, { own: 1, opponent: 0.3 });
+  steady.forget('own');
+  steady.read(still, { own: 1, opponent: 0.3 });
+
+  expect(steady.health).toEqual({ own: 1, opponent: 0.9 });
 });
