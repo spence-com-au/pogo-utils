@@ -153,6 +153,61 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
   expect(over.every((action) => action.kind === 'wait')).toBe(true);
 });
 
+/** `count` frames from `from` milliseconds, 33ms apart, each read as `battle` with `bubbles` found on it. */
+const frames = (player: Player, from: number, count: number, bubbles: readonly (readonly [Point, Point])[]) =>
+  Array.from({ length: count }, (_, i) => player.next('battle', from + i * 33, { bubbles }));
+
+const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
+
+// In a kept run, Avalanche's ice chunks were found as its bubbles on 19 frames as they struck the opponent, 1.4s after
+// the last bubble.
+test('leaves alone what is found once the bubbles have been gone a while, the move playing out', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const chunk: [Point, Point] = [
+    [0.6, 0.39],
+    [0.68, 0.41],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 3000, { minigame: true, bubbles: [chain] });
+  frames(player, 3033, 60, [chain]);
+
+  // A moment lost among them is not their end.
+  expect(waits(frames(player, 5000, 9, []))).toBe(true);
+  expect(frames(player, 5300, 20, [chain]).every((action) => action.kind === 'swipe')).toBe(true);
+
+  frames(player, 5960, 42, []);
+
+  expect(waits(frames(player, 7346, 19, [chunk]))).toBe(true);
+});
+
+// Live, an Outrage was taken to be playing before its minigame began, the opponent's faint having hidden our buttons,
+// and the fight was found as its bubbles for 0.8s before `Get Ready!`.
+test('swipes the bubbles of a minigame taken to be playing before it began', () => {
+  const player = new Player(SIZE);
+  const fight: [Point, Point] = [
+    [0.3, 0.45],
+    [0.4, 0.47],
+  ];
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('battle', 3000, { minigame: true, bubbles: [fight] });
+  frames(player, 3033, 24, [fight]);
+
+  expect(waits(frames(player, 3825, 66, []))).toBe(true);
+  expect(frames(player, 6003, 30, [chain]).every((action) => action.kind === 'swipe' && action.from === chain[0])).toBe(
+    true,
+  );
+});
+
 // Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.
 test('sweeps rows where bubbles were found only before the throw was taken to be playing', () => {
   const player = new Player(SIZE);
