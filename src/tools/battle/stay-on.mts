@@ -28,5 +28,11 @@ export async function readStayOn(transport: Shell): Promise<string> {
 /** Keeps the phone awake while it is plugged in, until the setting is put back. */
 export const stayOnUsb = (transport: Shell) => transport.shell(['svc', 'power', 'stayon', 'usb']);
 
-/** Puts the setting back to `value`, one `isStayOn` passes. */
-export const putStayOn = (transport: Shell, value: string) => transport.shell(['settings', 'put', ...SETTING, value]);
+/** Puts the setting back to `value`, or refuses one `isStayOn` does not pass before anything reaches the shell. */
+export async function putStayOn(transport: Shell, value: string): Promise<Uint8Array> {
+  if (!isStayOn(value)) {
+    throw new Error(`refusing to put stay_on_while_plugged_in back to ${JSON.stringify(value)}: not a number`);
+  }
+
+  return transport.shell(['settings', 'put', ...SETTING, value]);
+}
