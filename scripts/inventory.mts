@@ -411,7 +411,7 @@ async function scan(held: Transport) {
     try {
       behind = landmarksBefore(readFileSync(out, 'utf8'), skip);
     } catch (error) {
-      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : (error as Error).message;
+      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : said(error);
       throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${out}, but ${why}`, {
         cause: error,
       });
@@ -647,7 +647,7 @@ async function scan(held: Transport) {
       try {
         off = await land({ read: readDetail, next, back }, behind, (r) => landmarkOf(r.detail, r.overlay), reach);
       } catch (error) {
-        throw new Error(`--skip ${from} could not find where to start: ${(error as Error).message}`, { cause: error });
+        throw new Error(`--skip ${from} could not find where to start: ${said(error)}`, { cause: error });
       }
 
       if (off > 0) {
