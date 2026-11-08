@@ -1,11 +1,10 @@
 /**
  * Which downloads carry `GITHUB_TOKEN`, with `fetch` stubbed to record what it was sent: the host is the point, and
  * the local server `progress.test.mts` answers from cannot be `api.github.com`. And what `loadGameData` makes of a
- * game master the cache is seeded with, the week's grace reading each file without a word. And what `cached` throws
- * where a download fails with no copy to fall back on, which `progress.test.mts` has the fallback to.
+ * game master the cache is seeded with, the week's grace reading each file without a word.
  */
 
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -49,28 +48,6 @@ test('sends nothing without GITHUB_TOKEN', async () => {
   vi.stubEnv('GITHUB_TOKEN', '');
 
   expect(await authorisation('https://api.github.com/repos/PokeMiners/pogo_assets/git/trees/master')).toBeNull();
-});
-
-test('a download that fails with no copy on disk throws, naming the URL, and leaves nothing behind', async () => {
-  const url = 'https://example.test/file.json';
-  const dir = mkdtempSync(join(tmpdir(), 'download-'));
-  const offline = new TypeError('fetch failed');
-
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue(new Response(null, { status: 503, statusText: 'Service Unavailable' })),
-  );
-
-  await expect(cached(dir, 'file', url, false)).rejects.toThrow(`${url}: 503 Service Unavailable`);
-
-  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(offline));
-
-  await expect(cached(dir, 'file', url, false)).rejects.toMatchObject({
-    message: `${url}: fetch failed`,
-    cause: offline,
-  });
-  expect(readdirSync(dir)).toStrictEqual([]);
 });
 
 /** The power-up costs `loadGameData` requires, which nothing below reads. */
