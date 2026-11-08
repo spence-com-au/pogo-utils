@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
+import ts from 'typescript';
 import { BATTLE_WORKER, DIST } from '../src/generated.ts';
 
 const OUT = join(DIST, 'src');
@@ -52,6 +53,16 @@ if (entryPoints.length === 0) {
 // shares with the pages as they do.
 entryPoints.push(sourceOf(BATTLE_WORKER.replace(/\.js$/, ''), 'src/generated.ts'));
 
+// esbuild takes no `target` from `tsconfig.json`, and `tsc` emits declarations only, so its own `target` reaches
+// nothing but the default lib set. The bundle is built for the same one, read from there rather than named a second
+// time and lower-cased because esbuild spells a target that way where `tsc` does not. The JSX pair needs no such step,
+// since esbuild reads it from that file itself.
+const target: unknown = ts.readConfigFile('tsconfig.json', ts.sys.readFile).config?.compilerOptions?.target;
+
+if (typeof target !== 'string') {
+  throw new Error('`tsconfig.json` is unreadable or names no `compilerOptions.target`, which the bundle needs.');
+}
+
 const result = await build({
   entryPoints,
   outdir: OUT,
@@ -68,9 +79,7 @@ const result = await build({
    */
   splitting: true,
 
-  // Kept in step with `target` in `tsconfig.json` by hand: `tsc` emits declarations only, so its own `target` reaches
-  // nothing but the default lib set. The JSX pair needs no such copy, since esbuild reads it from that `tsconfig.json`.
-  target: 'es2023',
+  target: target.toLowerCase(),
 
   platform: 'browser',
 
