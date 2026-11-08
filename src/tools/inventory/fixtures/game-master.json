@@ -3147,8 +3147,8 @@
       "species": "Zubat",
       "form": "Halloween 2026 01",
       "costume": true,
-      "icon": null,
-      "shiny": null,
+      "icon": "pm41.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm41.fHALLOWEEN_2026_01.s.icon.png",
       "types": ["Poison", "Flying"],
       "attack": 83,
       "defense": 73,
@@ -3197,8 +3197,8 @@
       "species": "Golbat",
       "form": "Halloween 2026 01",
       "costume": true,
-      "icon": null,
-      "shiny": null,
+      "icon": "pm42.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm42.fHALLOWEEN_2026_01.s.icon.png",
       "types": ["Poison", "Flying"],
       "attack": 161,
       "defense": 150,
@@ -7597,8 +7597,8 @@
       "species": "Crobat",
       "form": "Halloween 2026 01",
       "costume": true,
-      "icon": null,
-      "shiny": null,
+      "icon": "pm169.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm169.fHALLOWEEN_2026_01.s.icon.png",
       "types": ["Poison", "Flying"],
       "attack": 194,
       "defense": 178,
@@ -7607,6 +7607,7 @@
       "moves": [
         { "name": "Air Slash", "fast": true },
         { "name": "Bite", "fast": true },
+        { "name": "Gust", "fast": true },
         { "name": "Shadow Ball", "fast": false },
         { "name": "Air Cutter", "fast": false },
         { "name": "Sludge Bomb", "fast": false },
@@ -34975,6 +34976,1448 @@
       "shadowOnly": false
     }
   ],
+  "costumes": [
+    {
+      "dex": 1,
+      "name": "Jan 2020",
+      "icon": "pm1.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm1.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 1,
+      "name": "Spring 2020",
+      "icon": "pm1.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm1.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 1, "name": "Fall 2019", "icon": "pm1.fFALL_2019.icon.png", "shiny": "pm1.fFALL_2019.s.icon.png" },
+    {
+      "dex": 2,
+      "name": "Jan 2020",
+      "icon": "pm2.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm2.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 2,
+      "name": "Spring 2020",
+      "icon": "pm2.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm2.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 3,
+      "name": "Jan 2020",
+      "icon": "pm3.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm3.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 3,
+      "name": "Spring 2020",
+      "icon": "pm3.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm3.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 4,
+      "name": "Jan 2020",
+      "icon": "pm4.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm4.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 4,
+      "name": "Spring 2020",
+      "icon": "pm4.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm4.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 4, "name": "Fall 2019", "icon": "pm4.fFALL_2019.icon.png", "shiny": "pm4.fFALL_2019.s.icon.png" },
+    {
+      "dex": 5,
+      "name": "Jan 2020",
+      "icon": "pm5.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm5.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 5,
+      "name": "Spring 2020",
+      "icon": "pm5.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm5.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 6,
+      "name": "Jan 2020",
+      "icon": "pm6.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm6.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 6,
+      "name": "Spring 2020",
+      "icon": "pm6.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm6.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 7,
+      "name": "Jan 2020",
+      "icon": "pm7.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm7.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 7,
+      "name": "Spring 2020",
+      "icon": "pm7.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm7.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 7, "name": "Summer 2018", "icon": "pm7.cSUMMER_2018.icon.png", "shiny": "pm7.cSUMMER_2018.s.icon.png" },
+    { "dex": 7, "name": "Fall 2019", "icon": "pm7.fFALL_2019.icon.png", "shiny": "pm7.fFALL_2019.s.icon.png" },
+    {
+      "dex": 8,
+      "name": "Jan 2020",
+      "icon": "pm8.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm8.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 8,
+      "name": "Spring 2020",
+      "icon": "pm8.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm8.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 8, "name": "Summer 2018", "icon": "pm8.cSUMMER_2018.icon.png", "shiny": "pm8.cSUMMER_2018.s.icon.png" },
+    {
+      "dex": 9,
+      "name": "Jan 2020",
+      "icon": "pm9.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm9.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 9,
+      "name": "Spring 2020",
+      "icon": "pm9.cSPRING_2020_NOEVOLVE.icon.png",
+      "shiny": "pm9.cSPRING_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 9, "name": "Summer 2018", "icon": "pm9.cSUMMER_2018.icon.png", "shiny": "pm9.cSUMMER_2018.s.icon.png" },
+    { "dex": 10, "name": "Gofest 2026", "icon": "pm10.fGOFEST_2026.icon.png", "shiny": "pm10.fGOFEST_2026.s.icon.png" },
+    {
+      "dex": 12,
+      "name": "Fashion 2021",
+      "icon": "pm12.cFASHION_2021_NOEVOLVE.icon.png",
+      "shiny": "pm12.cFASHION_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 20,
+      "name": "Jan 2020",
+      "icon": "pm20.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm20.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2022",
+      "icon": "pm25.cANNIVERSARY_2022_NOEVOLVE.icon.png",
+      "shiny": "pm25.cANNIVERSARY_2022_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 25, "name": "Anniversary", "icon": "pm25.cANNIVERSARY.icon.png", "shiny": "pm25.cANNIVERSARY.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "April 2020",
+      "icon": "pm25.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 25, "name": "Costume 1", "icon": "pm25.cCOSTUME_1.icon.png", "shiny": "pm25.cCOSTUME_1.s.icon.png" },
+    { "dex": 25, "name": "Costume 2", "icon": "pm25.cCOSTUME_2.icon.png", "shiny": "pm25.cCOSTUME_2.s.icon.png" },
+    { "dex": 25, "name": "Fall 2018", "icon": "pm25.cFALL_2018.icon.png", "shiny": "pm25.cFALL_2018.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Fall 2023",
+      "icon": "pm25.cFALL_2023_NOEVOLVE.icon.png",
+      "shiny": "pm25.cFALL_2023_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 25, "name": "Feb 2019", "icon": "pm25.cFEB_2019.icon.png", "shiny": "pm25.cFEB_2019.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Gofest 2021",
+      "icon": "pm25.cGOFEST_2021_NOEVOLVE.icon.png",
+      "shiny": "pm25.cGOFEST_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2022",
+      "icon": "pm25.cGOFEST_2022_NOEVOLVE.icon.png",
+      "shiny": "pm25.cGOFEST_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2023 Bandana",
+      "icon": "pm25.cGOTOUR_2023_BANDANA_NOEVOLVE.icon.png",
+      "shiny": "pm25.cGOTOUR_2023_BANDANA_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2023 Bandana",
+      "icon": "pm25.cGOTOUR_2023_BANDANA.icon.png",
+      "shiny": "pm25.cGOTOUR_2023_BANDANA.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2023 Hat",
+      "icon": "pm25.cGOTOUR_2023_HAT_NOEVOLVE.icon.png",
+      "shiny": "pm25.cGOTOUR_2023_HAT_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2023 Hat",
+      "icon": "pm25.cGOTOUR_2023_HAT.icon.png",
+      "shiny": "pm25.cGOTOUR_2023_HAT.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Halloween 2017",
+      "icon": "pm25.cHALLOWEEN_2017.icon.png",
+      "shiny": "pm25.cHALLOWEEN_2017.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Halloween 2021",
+      "icon": "pm25.cHALLOWEEN_2021_NOEVOLVE.icon.png",
+      "shiny": "pm25.cHALLOWEEN_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Hoenn 2020",
+      "icon": "pm25.cHOENN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cHOENN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Holiday 2016",
+      "icon": "pm25.cHOLIDAY_2016.icon.png",
+      "shiny": "pm25.cHOLIDAY_2016.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Holiday 2023",
+      "icon": "pm25.cHOLIDAY_2023.icon.png",
+      "shiny": "pm25.cHOLIDAY_2023.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Indonesia 2025",
+      "icon": "pm25.cINDONESIA_2025_NOEVOLVE.icon.png",
+      "shiny": "pm25.cINDONESIA_2025_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Jan 2020",
+      "icon": "pm25.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Jan 2023",
+      "icon": "pm25.cJAN_2023_NOEVOLVE.icon.png",
+      "shiny": "pm25.cJAN_2023_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Johto 2020",
+      "icon": "pm25.cJOHTO_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cJOHTO_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Kanto 2020",
+      "icon": "pm25.cKANTO_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cKANTO_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "May 2019",
+      "icon": "pm25.cMAY_2019_NOEVOLVE.icon.png",
+      "shiny": "pm25.cMAY_2019_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "November 2018",
+      "icon": "pm25.cNOVEMBER_2018.icon.png",
+      "shiny": "pm25.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "One Year Anniversary",
+      "icon": "pm25.cONE_YEAR_ANNIVERSARY.icon.png",
+      "shiny": "pm25.cONE_YEAR_ANNIVERSARY.s.icon.png"
+    },
+    { "dex": 25, "name": "Pi", "icon": "pm25.cPI.icon.png", "shiny": "pm25.cPI.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Safari 2020",
+      "icon": "pm25.cSAFARI_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cSAFARI_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Sinnoh 2020",
+      "icon": "pm25.cSINNOH_2020_NOEVOLVE.icon.png",
+      "shiny": "pm25.cSINNOH_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 25, "name": "Spring 2023", "icon": "pm25.cSPRING_2023.icon.png", "shiny": "pm25.cSPRING_2023.s.icon.png" },
+    { "dex": 25, "name": "Summer 2018", "icon": "pm25.cSUMMER_2018.icon.png", "shiny": "pm25.cSUMMER_2018.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Tcg 2022",
+      "icon": "pm25.cTCG_2022_NOEVOLVE.icon.png",
+      "shiny": "pm25.cTCG_2022_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 25, "name": "Winter 2018", "icon": "pm25.cWINTER_2018.icon.png", "shiny": "pm25.cWINTER_2018.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Adventure Hat 2020",
+      "icon": "pm25.fADVENTURE_HAT_2020.icon.png",
+      "shiny": "pm25.fADVENTURE_HAT_2020.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2026 Malaysia 01",
+      "icon": "pm25.fANNIVERSARY_2026_MALAYSIA_01.icon.png",
+      "shiny": "pm25.fANNIVERSARY_2026_MALAYSIA_01.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2026 Philippine 01",
+      "icon": "pm25.fANNIVERSARY_2026_PHILIPPINE_01.icon.png",
+      "shiny": "pm25.fANNIVERSARY_2026_PHILIPPINE_01.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2026 Singapore 01",
+      "icon": "pm25.fANNIVERSARY_2026_SINGAPORE_01.icon.png",
+      "shiny": "pm25.fANNIVERSARY_2026_SINGAPORE_01.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2026 Taiwan 01",
+      "icon": "pm25.fANNIVERSARY_2026_TAIWAN_01.icon.png",
+      "shiny": "pm25.fANNIVERSARY_2026_TAIWAN_01.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Anniversary 2026",
+      "icon": "pm25.fANNIVERSARY_2026.icon.png",
+      "shiny": "pm25.fANNIVERSARY_2026.s.icon.png"
+    },
+    { "dex": 25, "name": "Bb 2026", "icon": "pm25.fBB_2026.icon.png", "shiny": "pm25.fBB_2026.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Costume 2020",
+      "icon": "pm25.fCOSTUME_2020.icon.png",
+      "shiny": "pm25.fCOSTUME_2020.s.icon.png"
+    },
+    { "dex": 25, "name": "Diwali 2024", "icon": "pm25.fDIWALI_2024.icon.png", "shiny": "pm25.fDIWALI_2024.s.icon.png" },
+    { "dex": 25, "name": "Doctor", "icon": "pm25.fDOCTOR.icon.png", "shiny": "pm25.fDOCTOR.s.icon.png" },
+    { "dex": 25, "name": "Fall 2019", "icon": "pm25.fFALL_2019.icon.png", "shiny": "pm25.fFALL_2019.s.icon.png" },
+    { "dex": 25, "name": "Flying 01", "icon": "pm25.fFLYING_01.icon.png", "shiny": "pm25.fFLYING_01.s.icon.png" },
+    { "dex": 25, "name": "Flying 02", "icon": "pm25.fFLYING_02.icon.png", "shiny": "pm25.fFLYING_02.s.icon.png" },
+    { "dex": 25, "name": "Flying 03", "icon": "pm25.fFLYING_03.icon.png", "shiny": "pm25.fFLYING_03.s.icon.png" },
+    { "dex": 25, "name": "Flying 04", "icon": "pm25.fFLYING_04.icon.png", "shiny": "pm25.fFLYING_04.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Flying 5th Anniv",
+      "icon": "pm25.fFLYING_5TH_ANNIV.icon.png",
+      "shiny": "pm25.fFLYING_5TH_ANNIV.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Flying Okinawa",
+      "icon": "pm25.fFLYING_OKINAWA.icon.png",
+      "shiny": "pm25.fFLYING_OKINAWA.s.icon.png"
+    },
+    { "dex": 25, "name": "Fossil 2026", "icon": "pm25.fFOSSIL_2026.icon.png", "shiny": "pm25.fFOSSIL_2026.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Glass Helmet 2026",
+      "icon": "pm25.fGLASS_HELMET_2026.icon.png",
+      "shiny": "pm25.fGLASS_HELMET_2026.s.icon.png"
+    },
+    { "dex": 25, "name": "Gofest 2022", "icon": "pm25.fGOFEST_2022.icon.png", "shiny": "pm25.fGOFEST_2022.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Gofest 2024 Mtiara",
+      "icon": "pm25.fGOFEST_2024_MTIARA.icon.png",
+      "shiny": "pm25.fGOFEST_2024_MTIARA.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2024 Stiara",
+      "icon": "pm25.fGOFEST_2024_STIARA.icon.png",
+      "shiny": "pm25.fGOFEST_2024_STIARA.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Goggles Blue",
+      "icon": "pm25.fGOFEST_2025_GOGGLES_BLUE.icon.png",
+      "shiny": "pm25.fGOFEST_2025_GOGGLES_BLUE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Goggles Red",
+      "icon": "pm25.fGOFEST_2025_GOGGLES_RED.icon.png",
+      "shiny": "pm25.fGOFEST_2025_GOGGLES_RED.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Goggles Yellow",
+      "icon": "pm25.fGOFEST_2025_GOGGLES_YELLOW.icon.png",
+      "shiny": "pm25.fGOFEST_2025_GOGGLES_YELLOW.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Monocle Blue",
+      "icon": "pm25.fGOFEST_2025_MONOCLE_BLUE.icon.png",
+      "shiny": "pm25.fGOFEST_2025_MONOCLE_BLUE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Monocle Red",
+      "icon": "pm25.fGOFEST_2025_MONOCLE_RED.icon.png",
+      "shiny": "pm25.fGOFEST_2025_MONOCLE_RED.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2025 Monocle Yellow",
+      "icon": "pm25.fGOFEST_2025_MONOCLE_YELLOW.icon.png",
+      "shiny": "pm25.fGOFEST_2025_MONOCLE_YELLOW.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2026 Cap Blue",
+      "icon": "pm25.fGOFEST_2026_CAP_BLUE.icon.png",
+      "shiny": "pm25.fGOFEST_2026_CAP_BLUE.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2026 Cap Red",
+      "icon": "pm25.fGOFEST_2026_CAP_RED.icon.png",
+      "shiny": "pm25.fGOFEST_2026_CAP_RED.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gofest 2026 Cap Yellow",
+      "icon": "pm25.fGOFEST_2026_CAP_YELLOW.icon.png",
+      "shiny": "pm25.fGOFEST_2026_CAP_YELLOW.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2024 A 02",
+      "icon": "pm25.fGOTOUR_2024_A_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2024_A_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2024 A",
+      "icon": "pm25.fGOTOUR_2024_A.icon.png",
+      "shiny": "pm25.fGOTOUR_2024_A.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2024 B 02",
+      "icon": "pm25.fGOTOUR_2024_B_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2024_B_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2024 B",
+      "icon": "pm25.fGOTOUR_2024_B.icon.png",
+      "shiny": "pm25.fGOTOUR_2024_B.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2025 A 02",
+      "icon": "pm25.fGOTOUR_2025_A_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2025_A_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2025 A",
+      "icon": "pm25.fGOTOUR_2025_A.icon.png",
+      "shiny": "pm25.fGOTOUR_2025_A.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2025 B 02",
+      "icon": "pm25.fGOTOUR_2025_B_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2025_B_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2025 B",
+      "icon": "pm25.fGOTOUR_2025_B.icon.png",
+      "shiny": "pm25.fGOTOUR_2025_B.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 A 02",
+      "icon": "pm25.fGOTOUR_2026_A_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_A_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 A",
+      "icon": "pm25.fGOTOUR_2026_A.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_A.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 B 02",
+      "icon": "pm25.fGOTOUR_2026_B_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_B_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 B",
+      "icon": "pm25.fGOTOUR_2026_B.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_B.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 C 02",
+      "icon": "pm25.fGOTOUR_2026_C_02.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_C_02.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Gotour 2026 C",
+      "icon": "pm25.fGOTOUR_2026_C.icon.png",
+      "shiny": "pm25.fGOTOUR_2026_C.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Halloween 2026",
+      "icon": "pm25.fHALLOWEEN_2026.icon.png",
+      "shiny": "pm25.fHALLOWEEN_2026.s.icon.png"
+    },
+    { "dex": 25, "name": "Horizons", "icon": "pm25.fHORIZONS.icon.png", "shiny": "pm25.fHORIZONS.s.icon.png" },
+    { "dex": 25, "name": "Jeju", "icon": "pm25.fJEJU.icon.png", "shiny": "pm25.fJEJU.s.icon.png" },
+    { "dex": 25, "name": "K 2026 A 01", "icon": "pm25.fK_2026_A_01.icon.png", "shiny": "pm25.fK_2026_A_01.s.icon.png" },
+    { "dex": 25, "name": "Kariyushi", "icon": "pm25.fKARIYUSHI.icon.png", "shiny": "pm25.fKARIYUSHI.s.icon.png" },
+    { "dex": 25, "name": "Kurta", "icon": "pm25.fKURTA.icon.png", "shiny": "pm25.fKURTA.s.icon.png" },
+    { "dex": 25, "name": "Pop Star", "icon": "pm25.fPOP_STAR.icon.png", "shiny": "pm25.fPOP_STAR.s.icon.png" },
+    { "dex": 25, "name": "Pxp 2026", "icon": "pm25.fPXP_2026.icon.png", "shiny": "pm25.fPXP_2026.s.icon.png" },
+    { "dex": 25, "name": "Rock Star", "icon": "pm25.fROCK_STAR.icon.png", "shiny": "pm25.fROCK_STAR.s.icon.png" },
+    {
+      "dex": 25,
+      "name": "Summer 2023 A",
+      "icon": "pm25.fSUMMER_2023_A.icon.png",
+      "shiny": "pm25.fSUMMER_2023_A.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Summer 2023 B",
+      "icon": "pm25.fSUMMER_2023_B.icon.png",
+      "shiny": "pm25.fSUMMER_2023_B.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Summer 2023 C",
+      "icon": "pm25.fSUMMER_2023_C.icon.png",
+      "shiny": "pm25.fSUMMER_2023_C.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Summer 2023 D",
+      "icon": "pm25.fSUMMER_2023_D.icon.png",
+      "shiny": "pm25.fSUMMER_2023_D.s.icon.png"
+    },
+    {
+      "dex": 25,
+      "name": "Summer 2023 E",
+      "icon": "pm25.fSUMMER_2023_E.icon.png",
+      "shiny": "pm25.fSUMMER_2023_E.s.icon.png"
+    },
+    { "dex": 25, "name": "Tshirt 01", "icon": "pm25.fTSHIRT_01.icon.png", "shiny": "pm25.fTSHIRT_01.s.icon.png" },
+    { "dex": 25, "name": "Tshirt 02", "icon": "pm25.fTSHIRT_02.icon.png", "shiny": "pm25.fTSHIRT_02.s.icon.png" },
+    { "dex": 25, "name": "Tshirt 03", "icon": "pm25.fTSHIRT_03.icon.png", "shiny": "pm25.fTSHIRT_03.s.icon.png" },
+    { "dex": 25, "name": "Visor 2026", "icon": "pm25.fVISOR_2026.icon.png", "shiny": "pm25.fVISOR_2026.s.icon.png" },
+    { "dex": 25, "name": "Vs 2019", "icon": "pm25.fVS_2019.icon.png", "shiny": "pm25.fVS_2019.s.icon.png" },
+    { "dex": 25, "name": "Wcs 2022", "icon": "pm25.fWCS_2022.icon.png", "shiny": "pm25.fWCS_2022.s.icon.png" },
+    { "dex": 25, "name": "Wcs 2023", "icon": "pm25.fWCS_2023.icon.png", "shiny": "pm25.fWCS_2023.s.icon.png" },
+    { "dex": 25, "name": "Wcs 2024", "icon": "pm25.fWCS_2024.icon.png", "shiny": "pm25.fWCS_2024.s.icon.png" },
+    { "dex": 25, "name": "Wcs 2025", "icon": "pm25.fWCS_2025.icon.png", "shiny": "pm25.fWCS_2025.s.icon.png" },
+    { "dex": 25, "name": "Wcs 2026", "icon": "pm25.fWCS_2026.icon.png", "shiny": "pm25.fWCS_2026.s.icon.png" },
+    { "dex": 25, "name": "Winter 2020", "icon": "pm25.fWINTER_2020.icon.png", "shiny": "pm25.fWINTER_2020.s.icon.png" },
+    { "dex": 26, "name": "Anniversary", "icon": "pm26.cANNIVERSARY.icon.png", "shiny": "pm26.cANNIVERSARY.s.icon.png" },
+    { "dex": 26, "name": "Costume 1", "icon": "pm26.cCOSTUME_1.icon.png", "shiny": "pm26.cCOSTUME_1.s.icon.png" },
+    { "dex": 26, "name": "Costume 2", "icon": "pm26.cCOSTUME_2.icon.png", "shiny": "pm26.cCOSTUME_2.s.icon.png" },
+    { "dex": 26, "name": "Fall 2018", "icon": "pm26.cFALL_2018.icon.png", "shiny": "pm26.cFALL_2018.s.icon.png" },
+    { "dex": 26, "name": "Feb 2019", "icon": "pm26.cFEB_2019.icon.png", "shiny": "pm26.cFEB_2019.s.icon.png" },
+    {
+      "dex": 26,
+      "name": "Halloween 2017",
+      "icon": "pm26.cHALLOWEEN_2017.icon.png",
+      "shiny": "pm26.cHALLOWEEN_2017.s.icon.png"
+    },
+    {
+      "dex": 26,
+      "name": "Holiday 2016",
+      "icon": "pm26.cHOLIDAY_2016.icon.png",
+      "shiny": "pm26.cHOLIDAY_2016.s.icon.png"
+    },
+    {
+      "dex": 26,
+      "name": "Holiday 2023",
+      "icon": "pm26.cHOLIDAY_2023.icon.png",
+      "shiny": "pm26.cHOLIDAY_2023.s.icon.png"
+    },
+    {
+      "dex": 26,
+      "name": "November 2018",
+      "icon": "pm26.cNOVEMBER_2018.icon.png",
+      "shiny": "pm26.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 26,
+      "name": "One Year Anniversary",
+      "icon": "pm26.cONE_YEAR_ANNIVERSARY.icon.png",
+      "shiny": "pm26.cONE_YEAR_ANNIVERSARY.s.icon.png"
+    },
+    { "dex": 26, "name": "Pi", "icon": "pm26.cPI.icon.png", "shiny": "pm26.cPI.s.icon.png" },
+    { "dex": 26, "name": "Spring 2023", "icon": "pm26.cSPRING_2023.icon.png", "shiny": "pm26.cSPRING_2023.s.icon.png" },
+    { "dex": 26, "name": "Summer 2018", "icon": "pm26.cSUMMER_2018.icon.png", "shiny": "pm26.cSUMMER_2018.s.icon.png" },
+    { "dex": 26, "name": "Winter 2018", "icon": "pm26.cWINTER_2018.icon.png", "shiny": "pm26.cWINTER_2018.s.icon.png" },
+    { "dex": 31, "name": "Royal", "icon": "pm31.cROYAL_NOEVOLVE.icon.png", "shiny": "pm31.cROYAL_NOEVOLVE.s.icon.png" },
+    {
+      "dex": 33,
+      "name": "Jan 2020",
+      "icon": "pm33.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm33.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 34, "name": "Royal", "icon": "pm34.cROYAL_NOEVOLVE.icon.png", "shiny": "pm34.cROYAL_NOEVOLVE.s.icon.png" },
+    { "dex": 37, "name": "Fall 2022", "icon": "pm37.cFALL_2022.icon.png", "shiny": "pm37.cFALL_2022.s.icon.png" },
+    { "dex": 38, "name": "Fall 2022", "icon": "pm38.cFALL_2022.icon.png", "shiny": "pm38.cFALL_2022.s.icon.png" },
+    { "dex": 39, "name": "Jan 2024", "icon": "pm39.cJAN_2024.icon.png", "shiny": "pm39.cJAN_2024.s.icon.png" },
+    { "dex": 40, "name": "Jan 2024", "icon": "pm40.cJAN_2024.icon.png", "shiny": "pm40.cJAN_2024.s.icon.png" },
+    {
+      "dex": 41,
+      "name": "Halloween 2026 01",
+      "icon": "pm41.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm41.fHALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 42,
+      "name": "Halloween 2026 01",
+      "icon": "pm42.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm42.fHALLOWEEN_2026_01.s.icon.png"
+    },
+    { "dex": 50, "name": "Fall 2022", "icon": "pm50.cFALL_2022.icon.png", "shiny": "pm50.cFALL_2022.s.icon.png" },
+    { "dex": 51, "name": "Fall 2022", "icon": "pm51.cFALL_2022.icon.png", "shiny": "pm51.cFALL_2022.s.icon.png" },
+    {
+      "dex": 54,
+      "name": "Holiday 2023",
+      "icon": "pm54.cHOLIDAY_2023.icon.png",
+      "shiny": "pm54.cHOLIDAY_2023.s.icon.png"
+    },
+    {
+      "dex": 55,
+      "name": "Holiday 2023",
+      "icon": "pm55.cHOLIDAY_2023.icon.png",
+      "shiny": "pm55.cHOLIDAY_2023.s.icon.png"
+    },
+    {
+      "dex": 68,
+      "name": "Wildarea 2026 01",
+      "icon": "pm68.fWILDAREA_2026_01.icon.png",
+      "shiny": "pm68.fWILDAREA_2026_01.s.icon.png"
+    },
+    {
+      "dex": 77,
+      "name": "Spring 2023 Valor",
+      "icon": "pm77.cSPRING_2023_VALOR.icon.png",
+      "shiny": "pm77.cSPRING_2023_VALOR.s.icon.png"
+    },
+    {
+      "dex": 78,
+      "name": "Spring 2023 Valor",
+      "icon": "pm78.cSPRING_2023_VALOR.icon.png",
+      "shiny": "pm78.cSPRING_2023_VALOR.s.icon.png"
+    },
+    { "dex": 79, "name": "Pi", "icon": "pm79.cPI_NOEVOLVE.icon.png", "shiny": "pm79.cPI_NOEVOLVE.s.icon.png" },
+    { "dex": 79, "name": "2020", "icon": "pm79.f2020.icon.png", "shiny": "pm79.f2020.s.icon.png" },
+    { "dex": 80, "name": "2021", "icon": "pm80.f2021.icon.png", "shiny": "pm80.f2021.s.icon.png" },
+    {
+      "dex": 88,
+      "name": "Anniversary 2024",
+      "icon": "pm88.cANNIVERSARY_2024.icon.png",
+      "shiny": "pm88.cANNIVERSARY_2024.s.icon.png"
+    },
+    {
+      "dex": 89,
+      "name": "Anniversary 2024",
+      "icon": "pm89.cANNIVERSARY_2024.icon.png",
+      "shiny": "pm89.cANNIVERSARY_2024.s.icon.png"
+    },
+    {
+      "dex": 94,
+      "name": "Fall 2022",
+      "icon": "pm94.cFALL_2022_NOEVOLVE.icon.png",
+      "shiny": "pm94.cFALL_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 94,
+      "name": "Fall 2023",
+      "icon": "pm94.cFALL_2023_NOEVOLVE.icon.png",
+      "shiny": "pm94.cFALL_2023_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 94,
+      "name": "Jan 2020",
+      "icon": "pm94.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm94.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 94,
+      "name": "Costume 2020",
+      "icon": "pm94.fCOSTUME_2020.icon.png",
+      "shiny": "pm94.fCOSTUME_2020.s.icon.png"
+    },
+    { "dex": 104, "name": "Fall 2023", "icon": "pm104.cFALL_2023.icon.png", "shiny": "pm104.cFALL_2023.s.icon.png" },
+    { "dex": 105, "name": "Fall 2023", "icon": "pm105.cFALL_2023.icon.png", "shiny": "pm105.cFALL_2023.s.icon.png" },
+    {
+      "dex": 113,
+      "name": "November 2018",
+      "icon": "pm113.cNOVEMBER_2018.icon.png",
+      "shiny": "pm113.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 125,
+      "name": "Spring 2023 Instinct",
+      "icon": "pm125.cSPRING_2023_INSTINCT.icon.png",
+      "shiny": "pm125.cSPRING_2023_INSTINCT.s.icon.png"
+    },
+    {
+      "dex": 131,
+      "name": "Spring 2023 Mystic",
+      "icon": "pm131.cSPRING_2023_MYSTIC.icon.png",
+      "shiny": "pm131.cSPRING_2023_MYSTIC.s.icon.png"
+    },
+    {
+      "dex": 131,
+      "name": "Costume 2020",
+      "icon": "pm131.fCOSTUME_2020.icon.png",
+      "shiny": "pm131.fCOSTUME_2020.s.icon.png"
+    },
+    {
+      "dex": 132,
+      "name": "Spring 2026 A",
+      "icon": "pm132.fSPRING_2026_A.icon.png",
+      "shiny": "pm132.fSPRING_2026_A.s.icon.png"
+    },
+    {
+      "dex": 132,
+      "name": "Spring 2026 B",
+      "icon": "pm132.fSPRING_2026_B.icon.png",
+      "shiny": "pm132.fSPRING_2026_B.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "Holiday 2022",
+      "icon": "pm133.cHOLIDAY_2022.icon.png",
+      "shiny": "pm133.cHOLIDAY_2022.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "Jan 2020",
+      "icon": "pm133.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm133.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "November 2018",
+      "icon": "pm133.cNOVEMBER_2018.icon.png",
+      "shiny": "pm133.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "Spring 2023",
+      "icon": "pm133.cSPRING_2023.icon.png",
+      "shiny": "pm133.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "Gofest 2024 Mtiara",
+      "icon": "pm133.fGOFEST_2024_MTIARA.icon.png",
+      "shiny": "pm133.fGOFEST_2024_MTIARA.s.icon.png"
+    },
+    {
+      "dex": 133,
+      "name": "Gofest 2024 Stiara",
+      "icon": "pm133.fGOFEST_2024_STIARA.icon.png",
+      "shiny": "pm133.fGOFEST_2024_STIARA.s.icon.png"
+    },
+    {
+      "dex": 134,
+      "name": "Holiday 2022",
+      "icon": "pm134.cHOLIDAY_2022.icon.png",
+      "shiny": "pm134.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 134, "name": "May 2023", "icon": "pm134.cMAY_2023.icon.png", "shiny": "pm134.cMAY_2023.s.icon.png" },
+    {
+      "dex": 134,
+      "name": "November 2018",
+      "icon": "pm134.cNOVEMBER_2018.icon.png",
+      "shiny": "pm134.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 134,
+      "name": "Spring 2023",
+      "icon": "pm134.cSPRING_2023.icon.png",
+      "shiny": "pm134.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 135,
+      "name": "Holiday 2022",
+      "icon": "pm135.cHOLIDAY_2022.icon.png",
+      "shiny": "pm135.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 135, "name": "May 2023", "icon": "pm135.cMAY_2023.icon.png", "shiny": "pm135.cMAY_2023.s.icon.png" },
+    {
+      "dex": 135,
+      "name": "November 2018",
+      "icon": "pm135.cNOVEMBER_2018.icon.png",
+      "shiny": "pm135.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 135,
+      "name": "Spring 2023",
+      "icon": "pm135.cSPRING_2023.icon.png",
+      "shiny": "pm135.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 136,
+      "name": "Holiday 2022",
+      "icon": "pm136.cHOLIDAY_2022.icon.png",
+      "shiny": "pm136.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 136, "name": "May 2023", "icon": "pm136.cMAY_2023.icon.png", "shiny": "pm136.cMAY_2023.s.icon.png" },
+    {
+      "dex": 136,
+      "name": "November 2018",
+      "icon": "pm136.cNOVEMBER_2018.icon.png",
+      "shiny": "pm136.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 136,
+      "name": "Spring 2023",
+      "icon": "pm136.cSPRING_2023.icon.png",
+      "shiny": "pm136.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 142,
+      "name": "Summer 2023",
+      "icon": "pm142.fSUMMER_2023.icon.png",
+      "shiny": "pm142.fSUMMER_2023.s.icon.png"
+    },
+    {
+      "dex": 143,
+      "name": "Gofest 2022",
+      "icon": "pm143.cGOFEST_2022_NOEVOLVE.icon.png",
+      "shiny": "pm143.cGOFEST_2022_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 143, "name": "Nightcap", "icon": "pm143.cNIGHTCAP.icon.png", "shiny": "pm143.cNIGHTCAP.s.icon.png" },
+    {
+      "dex": 143,
+      "name": "Wildarea 2024",
+      "icon": "pm143.fWILDAREA_2024.icon.png",
+      "shiny": "pm143.fWILDAREA_2024.s.icon.png"
+    },
+    { "dex": 149, "name": "Fall 2023", "icon": "pm149.cFALL_2023.icon.png", "shiny": "pm149.cFALL_2023.s.icon.png" },
+    {
+      "dex": 150,
+      "name": "One Year Anniversary",
+      "icon": "pm150.cONE_YEAR_ANNIVERSARY.icon.png",
+      "shiny": "pm150.cONE_YEAR_ANNIVERSARY.s.icon.png"
+    },
+    { "dex": 150, "name": "A", "icon": "pm150.fA.icon.png", "shiny": "pm150.fA.s.icon.png" },
+    {
+      "dex": 163,
+      "name": "Jan 2022",
+      "icon": "pm163.cJAN_2022_NOEVOLVE.icon.png",
+      "shiny": "pm163.cJAN_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 164,
+      "name": "Jan 2022",
+      "icon": "pm164.cJAN_2022_NOEVOLVE.icon.png",
+      "shiny": "pm164.cJAN_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 169,
+      "name": "Halloween 2026 01",
+      "icon": "pm169.fHALLOWEEN_2026_01.icon.png",
+      "shiny": "pm169.fHALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "Anniversary",
+      "icon": "pm172.cANNIVERSARY.icon.png",
+      "shiny": "pm172.cANNIVERSARY.s.icon.png"
+    },
+    { "dex": 172, "name": "Costume 2", "icon": "pm172.cCOSTUME_2.icon.png", "shiny": "pm172.cCOSTUME_2.s.icon.png" },
+    { "dex": 172, "name": "Fall 2018", "icon": "pm172.cFALL_2018.icon.png", "shiny": "pm172.cFALL_2018.s.icon.png" },
+    {
+      "dex": 172,
+      "name": "Halloween 2017",
+      "icon": "pm172.cHALLOWEEN_2017.icon.png",
+      "shiny": "pm172.cHALLOWEEN_2017.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "Holiday 2016",
+      "icon": "pm172.cHOLIDAY_2016.icon.png",
+      "shiny": "pm172.cHOLIDAY_2016.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "November 2018",
+      "icon": "pm172.cNOVEMBER_2018.icon.png",
+      "shiny": "pm172.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "One Year Anniversary",
+      "icon": "pm172.cONE_YEAR_ANNIVERSARY.icon.png",
+      "shiny": "pm172.cONE_YEAR_ANNIVERSARY.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "Spring 2023",
+      "icon": "pm172.cSPRING_2023.icon.png",
+      "shiny": "pm172.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "Summer 2018",
+      "icon": "pm172.cSUMMER_2018.icon.png",
+      "shiny": "pm172.cSUMMER_2018.s.icon.png"
+    },
+    {
+      "dex": 172,
+      "name": "Winter 2018",
+      "icon": "pm172.cWINTER_2018.icon.png",
+      "shiny": "pm172.cWINTER_2018.s.icon.png"
+    },
+    {
+      "dex": 175,
+      "name": "April 2020",
+      "icon": "pm175.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm175.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 176,
+      "name": "April 2020",
+      "icon": "pm176.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm176.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 185,
+      "name": "Winter 2025",
+      "icon": "pm185.fWINTER_2025.icon.png",
+      "shiny": "pm185.fWINTER_2025.s.icon.png"
+    },
+    { "dex": 194, "name": "Fall 2023", "icon": "pm194.cFALL_2023.icon.png", "shiny": "pm194.cFALL_2023.s.icon.png" },
+    { "dex": 195, "name": "Fall 2023", "icon": "pm195.cFALL_2023.icon.png", "shiny": "pm195.cFALL_2023.s.icon.png" },
+    {
+      "dex": 196,
+      "name": "Holiday 2022",
+      "icon": "pm196.cHOLIDAY_2022.icon.png",
+      "shiny": "pm196.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 196, "name": "May 2023", "icon": "pm196.cMAY_2023.icon.png", "shiny": "pm196.cMAY_2023.s.icon.png" },
+    {
+      "dex": 196,
+      "name": "November 2018",
+      "icon": "pm196.cNOVEMBER_2018.icon.png",
+      "shiny": "pm196.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 196,
+      "name": "Spring 2023",
+      "icon": "pm196.cSPRING_2023.icon.png",
+      "shiny": "pm196.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 196,
+      "name": "Gofest 2024 Sscarf",
+      "icon": "pm196.fGOFEST_2024_SSCARF.icon.png",
+      "shiny": "pm196.fGOFEST_2024_SSCARF.s.icon.png"
+    },
+    {
+      "dex": 197,
+      "name": "Holiday 2022",
+      "icon": "pm197.cHOLIDAY_2022.icon.png",
+      "shiny": "pm197.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 197, "name": "May 2023", "icon": "pm197.cMAY_2023.icon.png", "shiny": "pm197.cMAY_2023.s.icon.png" },
+    {
+      "dex": 197,
+      "name": "November 2018",
+      "icon": "pm197.cNOVEMBER_2018.icon.png",
+      "shiny": "pm197.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 197,
+      "name": "Spring 2023",
+      "icon": "pm197.cSPRING_2023.icon.png",
+      "shiny": "pm197.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 197,
+      "name": "Gofest 2024 Mscarf",
+      "icon": "pm197.fGOFEST_2024_MSCARF.icon.png",
+      "shiny": "pm197.fGOFEST_2024_MSCARF.s.icon.png"
+    },
+    { "dex": 199, "name": "2022", "icon": "pm199.f2022.icon.png", "shiny": "pm199.f2022.s.icon.png" },
+    {
+      "dex": 202,
+      "name": "Jan 2020",
+      "icon": "pm202.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm202.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 215,
+      "name": "Fashion 2021",
+      "icon": "pm215.cFASHION_2021_NOEVOLVE.icon.png",
+      "shiny": "pm215.cFASHION_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 216,
+      "name": "Halloween 2025",
+      "icon": "pm216.cHALLOWEEN_2025.icon.png",
+      "shiny": "pm216.cHALLOWEEN_2025.s.icon.png"
+    },
+    {
+      "dex": 217,
+      "name": "Halloween 2025",
+      "icon": "pm217.cHALLOWEEN_2025.icon.png",
+      "shiny": "pm217.cHALLOWEEN_2025.s.icon.png"
+    },
+    {
+      "dex": 222,
+      "name": "Spring 2026",
+      "icon": "pm222.fSPRING_2026.icon.png",
+      "shiny": "pm222.fSPRING_2026.s.icon.png"
+    },
+    {
+      "dex": 225,
+      "name": "Winter 2020",
+      "icon": "pm225.fWINTER_2020.icon.png",
+      "shiny": "pm225.fWINTER_2020.s.icon.png"
+    },
+    {
+      "dex": 234,
+      "name": "Winter 2018",
+      "icon": "pm234.cWINTER_2018.icon.png",
+      "shiny": "pm234.cWINTER_2018.s.icon.png"
+    },
+    {
+      "dex": 238,
+      "name": "Fall 2020",
+      "icon": "pm238.cFALL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm238.cFALL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 239,
+      "name": "Spring 2023 Instinct",
+      "icon": "pm239.cSPRING_2023_INSTINCT.icon.png",
+      "shiny": "pm239.cSPRING_2023_INSTINCT.s.icon.png"
+    },
+    {
+      "dex": 242,
+      "name": "November 2018",
+      "icon": "pm242.cNOVEMBER_2018.icon.png",
+      "shiny": "pm242.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 249,
+      "name": "One Year Anniversary",
+      "icon": "pm249.cONE_YEAR_ANNIVERSARY.icon.png",
+      "shiny": "pm249.cONE_YEAR_ANNIVERSARY.s.icon.png"
+    },
+    {
+      "dex": 265,
+      "name": "Jan 2020",
+      "icon": "pm265.cJAN_2020_NOEVOLVE.icon.png",
+      "shiny": "pm265.cJAN_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 281,
+      "name": "Fall 2020",
+      "icon": "pm281.cFALL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm281.cFALL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 282,
+      "name": "Gofest 2021",
+      "icon": "pm282.cGOFEST_2021_NOEVOLVE.icon.png",
+      "shiny": "pm282.cGOFEST_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 287,
+      "name": "Summer 2024",
+      "icon": "pm287.cSUMMER_2024.icon.png",
+      "shiny": "pm287.cSUMMER_2024.s.icon.png"
+    },
+    {
+      "dex": 288,
+      "name": "Summer 2024",
+      "icon": "pm288.cSUMMER_2024.icon.png",
+      "shiny": "pm288.cSUMMER_2024.s.icon.png"
+    },
+    {
+      "dex": 289,
+      "name": "Summer 2024",
+      "icon": "pm289.cSUMMER_2024.icon.png",
+      "shiny": "pm289.cSUMMER_2024.s.icon.png"
+    },
+    {
+      "dex": 302,
+      "name": "Costume 2020",
+      "icon": "pm302.fCOSTUME_2020.icon.png",
+      "shiny": "pm302.fCOSTUME_2020.s.icon.png"
+    },
+    {
+      "dex": 330,
+      "name": "Gofest 2021",
+      "icon": "pm330.cGOFEST_2021_NOEVOLVE.icon.png",
+      "shiny": "pm330.cGOFEST_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 355,
+      "name": "Fall 2022",
+      "icon": "pm355.cFALL_2022_NOEVOLVE.icon.png",
+      "shiny": "pm355.cFALL_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 356,
+      "name": "Fall 2022",
+      "icon": "pm356.cFALL_2022_NOEVOLVE.icon.png",
+      "shiny": "pm356.cFALL_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 359,
+      "name": "Fall 2022",
+      "icon": "pm359.cFALL_2022_NOEVOLVE.icon.png",
+      "shiny": "pm359.cFALL_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 363,
+      "name": "Holiday 2021",
+      "icon": "pm363.cHOLIDAY_2021_NOEVOLVE.icon.png",
+      "shiny": "pm363.cHOLIDAY_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 387,
+      "name": "Gems 1 2021",
+      "icon": "pm387.cGEMS_1_2021_NOEVOLVE.icon.png",
+      "shiny": "pm387.cGEMS_1_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 387,
+      "name": "Gems 2 2021",
+      "icon": "pm387.cGEMS_2_2021_NOEVOLVE.icon.png",
+      "shiny": "pm387.cGEMS_2_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 390,
+      "name": "Gems 1 2021",
+      "icon": "pm390.cGEMS_1_2021_NOEVOLVE.icon.png",
+      "shiny": "pm390.cGEMS_1_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 390,
+      "name": "Gems 2 2021",
+      "icon": "pm390.cGEMS_2_2021_NOEVOLVE.icon.png",
+      "shiny": "pm390.cGEMS_2_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 393,
+      "name": "Gems 1 2021",
+      "icon": "pm393.cGEMS_1_2021_NOEVOLVE.icon.png",
+      "shiny": "pm393.cGEMS_1_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 393,
+      "name": "Gems 2 2021",
+      "icon": "pm393.cGEMS_2_2021_NOEVOLVE.icon.png",
+      "shiny": "pm393.cGEMS_2_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 393,
+      "name": "Halloween 2021",
+      "icon": "pm393.cHALLOWEEN_2021_NOEVOLVE.icon.png",
+      "shiny": "pm393.cHALLOWEEN_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 403,
+      "name": "Fall 2020",
+      "icon": "pm403.cFALL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm403.cFALL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 426,
+      "name": "Halloween 2021",
+      "icon": "pm426.cHALLOWEEN_2021_NOEVOLVE.icon.png",
+      "shiny": "pm426.cHALLOWEEN_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 427,
+      "name": "April 2020",
+      "icon": "pm427.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm427.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 428,
+      "name": "April 2020",
+      "icon": "pm428.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm428.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 440,
+      "name": "November 2018",
+      "icon": "pm440.cNOVEMBER_2018.icon.png",
+      "shiny": "pm440.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 453,
+      "name": "Fall 2020",
+      "icon": "pm453.cFALL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm453.cFALL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 454,
+      "name": "Fall 2020",
+      "icon": "pm454.cFALL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm454.cFALL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 466,
+      "name": "Spring 2023 Instinct",
+      "icon": "pm466.cSPRING_2023_INSTINCT.icon.png",
+      "shiny": "pm466.cSPRING_2023_INSTINCT.s.icon.png"
+    },
+    {
+      "dex": 468,
+      "name": "April 2020",
+      "icon": "pm468.cAPRIL_2020_NOEVOLVE.icon.png",
+      "shiny": "pm468.cAPRIL_2020_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 470,
+      "name": "Holiday 2022",
+      "icon": "pm470.cHOLIDAY_2022.icon.png",
+      "shiny": "pm470.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 470, "name": "May 2023", "icon": "pm470.cMAY_2023.icon.png", "shiny": "pm470.cMAY_2023.s.icon.png" },
+    {
+      "dex": 470,
+      "name": "November 2018",
+      "icon": "pm470.cNOVEMBER_2018.icon.png",
+      "shiny": "pm470.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 470,
+      "name": "Spring 2023",
+      "icon": "pm470.cSPRING_2023.icon.png",
+      "shiny": "pm470.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 471,
+      "name": "Holiday 2021",
+      "icon": "pm471.cHOLIDAY_2021_NOEVOLVE.icon.png",
+      "shiny": "pm471.cHOLIDAY_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 471,
+      "name": "Holiday 2022",
+      "icon": "pm471.cHOLIDAY_2022.icon.png",
+      "shiny": "pm471.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 471, "name": "May 2023", "icon": "pm471.cMAY_2023.icon.png", "shiny": "pm471.cMAY_2023.s.icon.png" },
+    {
+      "dex": 471,
+      "name": "November 2018",
+      "icon": "pm471.cNOVEMBER_2018.icon.png",
+      "shiny": "pm471.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 471,
+      "name": "Spring 2023",
+      "icon": "pm471.cSPRING_2023.icon.png",
+      "shiny": "pm471.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 477,
+      "name": "Fall 2022",
+      "icon": "pm477.cFALL_2022_NOEVOLVE.icon.png",
+      "shiny": "pm477.cFALL_2022_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 522,
+      "name": "Fashion 2021",
+      "icon": "pm522.cFASHION_2021_NOEVOLVE.icon.png",
+      "shiny": "pm522.cFASHION_2021_NOEVOLVE.s.icon.png"
+    },
+    {
+      "dex": 546,
+      "name": "Spring 2024",
+      "icon": "pm546.cSPRING_2024.icon.png",
+      "shiny": "pm546.cSPRING_2024.s.icon.png"
+    },
+    {
+      "dex": 547,
+      "name": "Spring 2024",
+      "icon": "pm547.cSPRING_2024.icon.png",
+      "shiny": "pm547.cSPRING_2024.s.icon.png"
+    },
+    {
+      "dex": 572,
+      "name": "Fashion 2025",
+      "icon": "pm572.cFASHION_2025.icon.png",
+      "shiny": "pm572.cFASHION_2025.s.icon.png"
+    },
+    {
+      "dex": 573,
+      "name": "Fashion 2025",
+      "icon": "pm573.cFASHION_2025.icon.png",
+      "shiny": "pm573.cFASHION_2025.s.icon.png"
+    },
+    {
+      "dex": 613,
+      "name": "Winter 2020",
+      "icon": "pm613.fWINTER_2020.icon.png",
+      "shiny": "pm613.fWINTER_2020.s.icon.png"
+    },
+    {
+      "dex": 614,
+      "name": "Winter 2020",
+      "icon": "pm614.fWINTER_2020.icon.png",
+      "shiny": "pm614.fWINTER_2020.s.icon.png"
+    },
+    { "dex": 656, "name": "Fall 2024", "icon": "pm656.cFALL_2024.icon.png", "shiny": "pm656.cFALL_2024.s.icon.png" },
+    { "dex": 657, "name": "Fall 2024", "icon": "pm657.cFALL_2024.icon.png", "shiny": "pm657.cFALL_2024.s.icon.png" },
+    { "dex": 658, "name": "Fall 2024", "icon": "pm658.cFALL_2024.icon.png", "shiny": "pm658.cFALL_2024.s.icon.png" },
+    {
+      "dex": 700,
+      "name": "Holiday 2022",
+      "icon": "pm700.cHOLIDAY_2022.icon.png",
+      "shiny": "pm700.cHOLIDAY_2022.s.icon.png"
+    },
+    { "dex": 700, "name": "May 2023", "icon": "pm700.cMAY_2023.icon.png", "shiny": "pm700.cMAY_2023.s.icon.png" },
+    {
+      "dex": 700,
+      "name": "November 2018",
+      "icon": "pm700.cNOVEMBER_2018.icon.png",
+      "shiny": "pm700.cNOVEMBER_2018.s.icon.png"
+    },
+    {
+      "dex": 700,
+      "name": "Spring 2023",
+      "icon": "pm700.cSPRING_2023.icon.png",
+      "shiny": "pm700.cSPRING_2023.s.icon.png"
+    },
+    {
+      "dex": 702,
+      "name": "Winter 2024",
+      "icon": "pm702.cWINTER_2024.icon.png",
+      "shiny": "pm702.cWINTER_2024.s.icon.png"
+    },
+    {
+      "dex": 714,
+      "name": "Halloween 2025",
+      "icon": "pm714.cHALLOWEEN_2025.icon.png",
+      "shiny": "pm714.cHALLOWEEN_2025.s.icon.png"
+    },
+    {
+      "dex": 715,
+      "name": "Halloween 2025",
+      "icon": "pm715.cHALLOWEEN_2025.icon.png",
+      "shiny": "pm715.cHALLOWEEN_2025.s.icon.png"
+    },
+    { "dex": 722, "name": "Fall 2024", "icon": "pm722.cFALL_2024.icon.png", "shiny": "pm722.cFALL_2024.s.icon.png" },
+    { "dex": 723, "name": "Fall 2024", "icon": "pm723.cFALL_2024.icon.png", "shiny": "pm723.cFALL_2024.s.icon.png" },
+    { "dex": 724, "name": "Fall 2024", "icon": "pm724.cFALL_2024.icon.png", "shiny": "pm724.cFALL_2024.s.icon.png" },
+    {
+      "dex": 737,
+      "name": "Winter 2025",
+      "icon": "pm737.fWINTER_2025.icon.png",
+      "shiny": "pm737.fWINTER_2025.s.icon.png"
+    },
+    {
+      "dex": 738,
+      "name": "Winter 2025",
+      "icon": "pm738.fWINTER_2025.icon.png",
+      "shiny": "pm738.fWINTER_2025.s.icon.png"
+    },
+    {
+      "dex": 760,
+      "name": "Wildarea 2025",
+      "icon": "pm760.fWILDAREA_2025.icon.png",
+      "shiny": "pm760.fWILDAREA_2025.s.icon.png"
+    },
+    {
+      "dex": 831,
+      "name": "Winter 2024",
+      "icon": "pm831.cWINTER_2024.icon.png",
+      "shiny": "pm831.cWINTER_2024.s.icon.png"
+    },
+    {
+      "dex": 832,
+      "name": "Winter 2024",
+      "icon": "pm832.cWINTER_2024.icon.png",
+      "shiny": "pm832.cWINTER_2024.s.icon.png"
+    },
+    {
+      "dex": 854,
+      "name": "A Halloween 2026 01",
+      "icon": "pm854.fA_HALLOWEEN_2026_01.icon.png",
+      "shiny": "pm854.fA_HALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 854,
+      "name": "P Halloween 2026 01",
+      "icon": "pm854.fP_HALLOWEEN_2026_01.icon.png",
+      "shiny": "pm854.fP_HALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 855,
+      "name": "A Halloween 2026 01",
+      "icon": "pm855.fA_HALLOWEEN_2026_01.icon.png",
+      "shiny": "pm855.fA_HALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 855,
+      "name": "P Halloween 2026 01",
+      "icon": "pm855.fP_HALLOWEEN_2026_01.icon.png",
+      "shiny": "pm855.fP_HALLOWEEN_2026_01.s.icon.png"
+    },
+    {
+      "dex": 870,
+      "name": "Gofest 2025 Train Conductor",
+      "icon": "pm870.fGOFEST_2025_TRAIN_CONDUCTOR.icon.png",
+      "shiny": "pm870.fGOFEST_2025_TRAIN_CONDUCTOR.s.icon.png"
+    },
+    {
+      "dex": 901,
+      "name": "Halloween 2025",
+      "icon": "pm901.cHALLOWEEN_2025.icon.png",
+      "shiny": "pm901.cHALLOWEEN_2025.s.icon.png"
+    },
+    {
+      "dex": 907,
+      "name": "Horizons 2025",
+      "icon": "pm907.cHORIZONS_2025_NOEVOLVE.icon.png",
+      "shiny": "pm907.cHORIZONS_2025_NOEVOLVE.s.icon.png"
+    },
+    { "dex": 999, "name": "Coin A1", "icon": "pm999.fCOIN_A1.icon.png", "shiny": "pm999.fCOIN_A1.s.icon.png" },
+    {
+      "dex": 999,
+      "name": "Coin A2 2026",
+      "icon": "pm999.fCOIN_A2_2026.icon.png",
+      "shiny": "pm999.fCOIN_A2_2026.s.icon.png"
+    }
+  ],
   "moves": [
     { "name": "Wrap", "fast": false },
     { "name": "Hyper Beam", "fast": false },
@@ -35303,7 +36746,8 @@
     { "name": "Snipe Shot", "fast": false },
     { "name": "Dive", "fast": false },
     { "name": "Gulp Missile Gulping", "fast": false },
-    { "name": "Gulp Missile Gorging", "fast": false }
+    { "name": "Gulp Missile Gorging", "fast": false },
+    { "name": "Kowtow Cleave", "fast": false }
   ],
   "species": [
     "Bulbasaur",
@@ -37262,7 +38706,8 @@
       "energy": 0,
       "turns": 1,
       "buffs": { "chance": 1, "theirAttack": -2 }
-    }
+    },
+    "Kowtow Cleave": { "type": "Dark", "power": 75, "energy": -40, "turns": 1 }
   },
   "effectiveness": {
     "Bug": {

@@ -89,7 +89,6 @@ export interface Row {
   gender: Detail['gender'];
   favourite: boolean;
   tags: string[];
-  costume: Mark;
   shiny: Mark;
   lucky: Mark;
   size: Detail['size'];
@@ -105,6 +104,12 @@ export interface Row {
   height: number | null;
   types: string[];
   notes: string[];
+
+  /**
+   * The costume's name, every one it could be where the screen does not settle which, empty for none, and null where
+   * nothing answered: no `costume` search ran, and this is not a Pikachu whose artwork was read.
+   */
+  costume: string[] | null;
 }
 
 /**

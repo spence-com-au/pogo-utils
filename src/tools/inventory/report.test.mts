@@ -23,6 +23,7 @@ const APPLIN: Form = {
 const READING: Reading = {
   lines: [],
   whole: [],
+  costume: null,
   detail: {
     cp: null,
     cps: [286],

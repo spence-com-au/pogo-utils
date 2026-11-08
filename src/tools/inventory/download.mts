@@ -11,8 +11,8 @@ import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
 import { signaturesFor, signatureOfIcon, type Colourings } from './artwork.mts';
-import { MAX_LEVEL, type Form, type GameData, type Move } from './game-master.mts';
-import { decodePng } from './png.mts';
+import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from './game-master.mts';
+import { decodePng, type Image } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -416,6 +416,21 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  // The game master's costumes and the ones only the artwork knows, as `Costume` describes. `_NOEVOLVE` is a second
+  // icon for a costume the game also hands out unable to evolve, which is nothing the column says.
+  const shinyOf = (icon: string) => (index.has(shinyIcon(icon)) ? shinyIcon(icon) : null);
+  const costumed: Costume[] = forms.flatMap((f) =>
+    f.costume && f.form !== null && f.icon !== null ? [{ dex: f.dex, name: f.form, icon: f.icon, shiny: f.shiny }] : [],
+  );
+
+  for (const icon of index) {
+    const match = /^pm(\d+)\.c([A-Z0-9_]+?)(?:_NOEVOLVE)?\.icon\.png$/.exec(icon);
+
+    if (match) {
+      costumed.push({ dex: Number(match[1]), name: titleise(match[2] ?? ''), icon, shiny: shinyOf(icon) });
+    }
+  }
+
   const table = templates.find((t) => t.data.playerLevel)?.data.playerLevel?.cpMultiplier ?? [];
   const cpm: [number, number][] = [];
 
@@ -444,6 +459,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
   return {
     forms: forms.sort((a, b) => a.dex - b.dex),
+    costumes: costumed.sort((a, b) => a.dex - b.dex || a.icon.localeCompare(b.icon)),
     moves,
     species: [...new Set(forms.map((f) => f.species))],
     types: [...new Set(forms.flatMap((f) => f.types))],
@@ -566,3 +582,9 @@ export function iconsFor(dir: string, data: GameData, refresh = false): Promise<
     cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, (bytes) => signatureOfIcon(decodePng(bytes))),
   );
 }
+
+/** An icon out of the cache beside the game master, downloaded the first time it is asked for. */
+export const cachedIcon =
+  (dir: string, refresh = false) =>
+  (file: string): Promise<Image> =>
+    cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, decodePng);

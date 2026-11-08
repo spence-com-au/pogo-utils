@@ -507,22 +507,24 @@ so the script works it out from the HP, IVs and types against the base stats in
 [the game master](https://github.com/alexelgt/game_masters), which is also how a nicknamed Pokémon gets its species
 back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or Gigantamax from the row under the weight
 and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
-from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `--search TERM` scans
-only what storage's own search matches, `--search '25,133&cp1500-'` for example, and narrows the flag passes to it too.
-Expect several seconds per Pokémon. `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the
-game master and form icons again rather than using the week-old cache. The icons are found through GitHub's API, which
-answers an address without a token 60 times an hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that
-where it runs out. The swipe from one Pokémon to the next goes through a touchscreen the scan makes on the phone, as
-`pnpm battle` does, since `input swipe` drops about one in ten on some phones and a dropped swipe looks just like the
-end of storage; where the phone will not make one it says so and falls back to `input swipe`. Each pass is held to the
-count the game shows for it, the `🔍(N)` of a search or the `N / M` under POKÉMON: a pass that seems to reach the end
-short of it takes the last swipe as dropped and swipes again, and one that still stops short fails rather than writing a
-short run as complete; a full pass that does says which `--skip` carries on from where it stopped. Pokémon GO is
-launched only where it is not already the app in front, so a run started over an open storage screen picks up from there
-rather than waiting out a cold start. A phone with a work profile can hold a copy of the game in each profile, signed in
-to different trainers, so the launch is for the copy in front, or the only one installed; with a copy in both and
-neither in front the scan stops and asks, and `--user 10` (or `"user": 10` in a `--config` file) names the work
-profile's.
+from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
+costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
+and lists every costume it could be where the artwork does not settle which. Any other species found by the costume
+search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
+`--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
+`--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
+rather than using the week-old cache. The icons are found through GitHub's API, which answers an address without a token
+60 times an hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. The swipe from
+one Pokémon to the next goes through a touchscreen the scan makes on the phone, as `pnpm battle` does, since
+`input swipe` drops about one in ten on some phones and a dropped swipe looks just like the end of storage; where the
+phone will not make one it says so and falls back to `input swipe`. Each pass is held to the count the game shows for
+it, the `🔍(N)` of a search or the `N / M` under POKÉMON: a pass that seems to reach the end short of it takes the last
+swipe as dropped and swipes again, and one that still stops short fails rather than writing a short run as complete; a
+full pass that does says which `--skip` carries on from where it stopped. Pokémon GO is launched only where it is not
+already the app in front, so a run started over an open storage screen picks up from there rather than waiting out a
+cold start. A phone with a work profile can hold a copy of the game in each profile, signed in to different trainers, so
+the launch is for the copy in front, or the only one installed; with a copy in both and neither in front the scan stops
+and asks, and `--user 10` (or `"user": 10` in a `--config` file) names the work profile's.
 
 A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
 into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any

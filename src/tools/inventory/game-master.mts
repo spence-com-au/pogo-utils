@@ -54,7 +54,7 @@ export interface Form {
    * Every move this form can hold: the ordinary pools, the elite ones a legacy Pokémon may carry, Rayquaza's
    * untradeable Dragon Ascent, the Frustration and Return a shadow or purified one has, and what a change into the form
    * hands over, as Black Kyurem's Freeze Shock, or a grant kept by hand where the game master records no change, as
-   * Origin Forme Palkia's Spacial Rend. Reading a move against this rather than all 328 is the difference between
+   * Origin Forme Palkia's Spacial Rend. Reading a move against this rather than all 329 is the difference between
    * choosing among three and among hundreds.
    */
   moves: readonly Move[];
@@ -78,6 +78,22 @@ export interface Form {
 export interface Move {
   name: string;
   fast: boolean;
+}
+
+/**
+ * A costume the game draws a species in, which the `costume` column names. Two kinds, one list: the game master's own
+ * `isCostume` forms, whose artwork is `pm25.fGOFEST_2026_CAP_RED.icon.png`, and the older costumes the game master has
+ * no form for at all and `pogo_assets` draws as `pm25.cHOLIDAY_2016.icon.png` — Pikachu's Santa hat, Ash's cap and 32
+ * more of its own. Neither shows in the Pokédex, which is what keeps them out of `form`.
+ */
+export interface Costume {
+  dex: number;
+
+  /** `Gofest 2026 Cap Red` for a form, as `Form.form` spells it; `Holiday 2016` for one the game master lacks. */
+  name: string;
+
+  icon: string;
+  shiny: string | null;
 }
 
 /** A move as trainer battles have it, which is not as raids do: Aqua Tail is 55 power here and 50 there. */
@@ -116,6 +132,7 @@ export const MAX_LEVEL = 51;
 
 export interface GameData {
   forms: Form[];
+  costumes: Costume[];
   moves: Move[];
   species: string[];
   types: string[];

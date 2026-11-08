@@ -106,7 +106,7 @@ test('the engine is installed and the icons read once, for every screen after th
   expect(mocks.useEngine).toHaveBeenCalledTimes(1);
   expect(mocks.signaturesFor).toHaveBeenCalledTimes(1);
   expect(mocks.readScreen).toHaveBeenCalledTimes(3);
-  expect(mocks.readScreen).toHaveBeenLastCalledWith(image, data, new Map());
+  expect(mocks.readScreen).toHaveBeenLastCalledWith(image, data, new Map(), undefined, expect.any(Function));
 });
 
 test('a read whose game master failed to arrive tries it again on the next, installing the engine again too', async () => {

@@ -5,7 +5,8 @@
  * walk for `scan` and `snap --search`.
  */
 
-import { signatureOf, type Colourings } from './artwork.mts';
+import { ARTWORK_FROM, signatureOf, type Colourings } from './artwork.mts';
+import { costumeOf, DEX, type Wardrobe } from './costume.mts';
 import { parseDetail, powerUpOn, readLines, type Detail } from './detail.mts';
 import { type Form, type GameData } from './game-master.mts';
 import { identify, settledForm, type Identity } from './identify.mts';
@@ -22,6 +23,12 @@ export interface Reading {
   overlay: Overlay | null;
   identity: Identity;
 
+  /**
+   * The costume a Pikachu wears, as `costumeOf` answers it: empty for none, several where the screen does not settle
+   * which. Null for any other species, and for a Pikachu read with no icons to match its costume against.
+   */
+  costume: string[] | null;
+
   /** The lines read off the screen, which every reader but the moves was given. */
   lines: Line[];
 
@@ -35,9 +42,44 @@ export interface Reading {
  * phone's.
  */
 export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyMap<Form, Colourings>) {
-  const signature = signatureOf(image, box ? box.y + box.height : undefined);
+  const signature = signatureOf(image, artworkFrom(box));
 
   return signature ? { signature, icons } : undefined;
+}
+
+/** Where the artwork starts, as a fraction of the height: below PGSharp's box where one was found. */
+export const artworkFrom = (box: OverlayBox | null) => (box ? box.y + box.height : ARTWORK_FROM);
+
+/**
+ * The costume a Pikachu wears, as `costumeOf` answers it, or null for any other species, for a Pikachu read with no
+ * wardrobe, and for one whose costume could not be read — which `note` then says why of. `wardrobe` is asked for only
+ * here, and not where the search already said there is none, since it is some 200 icons that no other screen needs.
+ * `costumed` is what the scan's `costume` search said, where it ran.
+ */
+export async function costumeIn(
+  image: Image,
+  box: OverlayBox | null,
+  identity: Identity,
+  wardrobe?: () => Promise<Wardrobe | null>,
+  costumed: boolean | null = null,
+): Promise<{ costume: string[] | null; note: string | null }> {
+  if (identity.form?.dex !== DEX || !wardrobe) {
+    return { costume: null, note: null };
+  }
+
+  if (costumed === false) {
+    return { costume: [], note: null };
+  }
+
+  const drawn = await wardrobe();
+
+  if (!drawn) {
+    return { costume: null, note: "Pikachu's own icon could not be had, so its costume was not read" };
+  }
+
+  const costume = costumeOf(image, artworkFrom(box), drawn, costumed);
+
+  return { costume, note: costume ? null : 'no Pikachu found in the artwork to read its costume off' };
 }
 
 /**
@@ -52,13 +94,15 @@ export function artworkIn(image: Image, box: OverlayBox | null, icons: ReadonlyM
  * So one pass each, which costs a second Tesseract run on a stitch and nothing on a screen: `screenIn` hands back the
  * very image it was given where there is no `Viewport`, and that identity is what `===` tests here.
  *
- * `configured` is a box for the overlay taken on trust rather than found, which is what `--config` gives the CLI.
+ * `configured` is a box for the overlay taken on trust rather than found, which is what `--config` gives the CLI, and
+ * `wardrobe` is what a Pikachu's costume is read with, as `costumeIn` asks for it.
  */
 export async function readScreen(
   image: Image,
   data: GameData,
   icons: ReadonlyMap<Form, Colourings>,
   configured?: OverlayBox,
+  wardrobe?: () => Promise<Wardrobe | null>,
 ): Promise<Reading> {
   const screen = screenIn(image);
 
@@ -78,9 +122,12 @@ export async function readScreen(
   const box = found?.box ?? null;
   const overlay = found?.overlay ?? null;
   const identity = identify(data, detail, overlay, artworkIn(screen, box, icons));
-  const moves = await parseMoves(whole, data, identity.form, image);
+  const [moves, costume] = await Promise.all([
+    parseMoves(whole, data, identity.form, image),
+    costumeIn(screen, box, identity, wardrobe).then(({ costume }) => costume),
+  ]);
 
-  return { lines, whole, detail, moves, box, overlay, identity };
+  return { lines, whole, detail, moves, box, overlay, identity, costume };
 }
 
 /**
@@ -152,7 +199,7 @@ export interface Fact {
  * only the fallback, and a disagreement between the two is already a note. `detail.cps` is never shown, being
  * documented as not to be trusted. What `alternatives` and `unseparated` hold reaches the notes as sentences already.
  */
-export function answer({ detail, moves, overlay, identity }: Reading): { facts: Fact[]; notes: string[] } {
+export function answer({ detail, moves, overlay, identity, costume }: Reading): { facts: Fact[]; notes: string[] } {
   const { form } = identity;
   const settled = settledForm(identity);
   const fact = (label: string, value: string | number | null | undefined, source: Source): Fact =>
@@ -163,6 +210,7 @@ export function answer({ detail, moves, overlay, identity }: Reading): { facts: 
   const facts = [
     fact('species', form?.species, 'worked out'),
     ...(settled || identity.unseparated.length > 0 ? [fact('form', settled, 'worked out')] : []),
+    ...(costume ? [fact('costume', costume.length === 0 ? 'none' : costume.join(' | '), 'worked out')] : []),
     ...(identity.nickname ? [fact('nickname', identity.nickname, 'read')] : []),
     ...(detail.max ? [fact('max', detail.max, 'read')] : []),
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
