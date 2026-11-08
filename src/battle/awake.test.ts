@@ -45,6 +45,30 @@ function phone(serial: string, before = '1') {
   return reached;
 }
 
+/**
+ * Stores `value` for `serial` where `keepAwake` keeps what it found, as anything else on the origin might have. The
+ * database and store are named as `awake.ts` names them, which a test storing a number with this and finding it put
+ * back fails to do if they drift.
+ */
+async function store(serial: string, value: unknown) {
+  const opening = indexedDB.open('pogo-utils-battle', 1);
+  opening.onupgradeneeded = () => opening.result.createObjectStore('stay-on-while-plugged-in');
+
+  const database = await new Promise<IDBDatabase>((resolve, reject) => {
+    opening.onsuccess = () => resolve(opening.result);
+    opening.onerror = () => reject(opening.error);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction('stay-on-while-plugged-in', 'readwrite');
+    transaction.objectStore('stay-on-while-plugged-in').put(value, serial);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+
+  database.close();
+}
+
 beforeEach(() => {
   vi.stubGlobal('indexedDB', new IDBFactory());
 });
@@ -132,6 +156,29 @@ test('reads a setting Android does not answer with a number as off, as `pnpm bat
   await restore();
 
   expect(pixel.ran.at(-1)).toBe('settings put global stay_on_while_plugged_in 0');
+});
+
+test.each(['1; reboot', 5])('never puts a kept %j back, which is not the number Android stores', async (value) => {
+  // The control: a number stored the same way is put back, so the value below is stored where `putBack` reads.
+  await store('pixel', '3');
+  const control = phone('pixel', '2');
+  await putBack(control);
+  expect(control.ran, 'a kept number, stored by `store`').toEqual(['settings put global stay_on_while_plugged_in 3']);
+
+  await store('pixel', value);
+  const connected = phone('pixel', '2');
+  await putBack(connected);
+  expect(connected.ran, 'nothing put back').toEqual([]);
+
+  const pixel = phone('pixel', '1');
+  const restore = await keepAwake('pixel', pixel.transport, () => {});
+  await restore();
+
+  expect(pixel.ran, 'the setting read instead, and put back').toEqual([
+    'settings get global stay_on_while_plugged_in',
+    'svc power stayon usb',
+    'settings put global stay_on_while_plugged_in 1',
+  ]);
 });
 
 test('runs where nothing can be kept, saying a closed tab leaves the phone awake, and still puts it back', async () => {
