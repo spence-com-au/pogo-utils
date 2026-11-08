@@ -14,7 +14,7 @@
 
 import { expect, test } from 'vitest';
 
-import { GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, TERMS_BY_ID } from './terms.js';
+import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, TERMS_BY_ID } from './terms.js';
 
 const ticks = (text: string) => [...text].filter((character) => character === '`').length;
 
@@ -82,7 +82,11 @@ test('every shortcut stands for a span of a range that exists, within that range
   const found = SHORTCUTS.map((one) => {
     const range = RANGES.find((entry) => entry.id === one.range);
 
-    return { phrase: one.phrase, named: range !== undefined, inside: range !== undefined && one.from <= range.max };
+    return {
+      phrase: one.phrase,
+      named: range !== undefined,
+      inside: range !== undefined && bounded(one.from, range) === one.from,
+    };
   });
 
   expect({ found, some: SHORTCUTS.length > 0 }).toEqual({

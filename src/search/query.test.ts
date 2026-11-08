@@ -154,11 +154,15 @@ test('an arrangement survives the round trip', () => {
 test('a name carries the characters the token stream uses for itself', () => {
   // `_` separates the tokens and `encodeURIComponent` leaves it alone, so a nickname holding one would otherwise end
   // its token early and the rest of the name would read as a pill of its own. `#` is both the game's "has any tag"
-  // and the character a fragment begins with, and `&` separates the fragment's own parts.
-  for (const text of ['my_shiny', 'a_b_c', '#', 'tag&more', 'half%', 'é 50%_x']) {
-    const chosen = state(all(named(text)));
+  // and the character a fragment begins with, and `&` separates the fragment's own parts. `!` at a token's head rules
+  // the pill out, so a name typed as `!pikachu` would otherwise come back as a ruled-out `pikachu`, and a lone `!` as
+  // no pill at all.
+  for (const text of ['my_shiny', 'a_b_c', '#', 'tag&more', 'half%', 'é 50%_x', '!pikachu', '!', 'a!b']) {
+    for (const negated of [false, true]) {
+      const chosen = state(all(named(text, negated)));
 
-    expect({ text, back: roundTrip(chosen).tree }).toEqual({ text, back: chosen.tree });
+      expect({ text, negated, back: roundTrip(chosen).tree }).toEqual({ text, negated, back: chosen.tree });
+    }
   }
 });
 
