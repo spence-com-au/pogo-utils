@@ -9,7 +9,7 @@ import { type Device } from '../inventory/adb.mts';
 import { type Image } from '../inventory/png.mts';
 import { replaceSearch } from '../inventory/storage.mts';
 import { type Touchscreen } from '../inventory/touchscreen.mts';
-import { type Point } from './play.mts';
+import { type Point } from './layout.mts';
 import { type Screen } from './screen.mts';
 
 export interface Phone {

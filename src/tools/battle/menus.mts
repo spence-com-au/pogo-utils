@@ -15,9 +15,8 @@
 
 import { fold, ocr, type Line } from '../inventory/ocr.mts';
 import { crop, rgb, type Image } from '../inventory/png.mts';
-import { around, BOTTOM, down, place, tall, TOP, type Area, type Box, type Size } from './layout.mts';
+import { around, BOTTOM, down, place, tall, TOP, type Area, type Box, type Point, type Size } from './layout.mts';
 import { readCps } from './party.mts';
-import { type Point } from './play.mts';
 
 export const LEADERS = ['blanche', 'candela', 'spark'] as const;
 export type Leader = (typeof LEADERS)[number];

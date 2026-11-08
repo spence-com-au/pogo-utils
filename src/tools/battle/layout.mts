@@ -26,6 +26,8 @@ export interface Size {
   height: number;
 }
 
+export type Point = readonly [x: number, y: number];
+
 /** A distance down `screen` of `widths` of its width, as a fraction of its height. */
 export function tall(widths: number, { width, height }: Size): number {
   return (widths * width) / height;
