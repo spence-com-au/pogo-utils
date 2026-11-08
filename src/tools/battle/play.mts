@@ -86,7 +86,7 @@ export interface Choices {
   /**
    * Whether the caller takes a throw of ours to be playing on this frame, swiped as a minigame from then until the throw
    * plays though no tap here began it: a throw the opponent's came ahead of plays after theirs with no tap of its own,
-   * and a frame of no fight early in a minigame ends the one a tap began.
+   * and its prompt, or the HUD hidden past `LEAD_IN_MS`, ends the minigame a tap began.
    */
   minigame?: boolean;
 
@@ -193,6 +193,14 @@ const RETAP_MS = 1000;
  */
 const HOLD_MS = 700;
 
+/**
+ * How long the fight's own frames must run unbroken to end a minigame, in milliseconds. A move can play out with the HUD
+ * up throughout: live, after Close Combat the fight came back with nothing hiding it, and the minigame, still waited on,
+ * left 2.6s of it unplayed. Over 20 kept runs, a frame of a charged move under way read as the fight for 4 frames at a
+ * time at most, the white of Kyogre's jaw through its own minigame among them, and a button tapped dims for 3.
+ */
+const FIGHT_MS = 300;
+
 export class Player {
   readonly #taps: { shield: Point; switch: Point };
   #state: State | undefined;
@@ -207,7 +215,8 @@ export class Player {
   /**
    * The stretch of the minigame under way that its bubbles have been found over, unbroken by `OVER_MS`, since its throw
    * was taken to be playing, after which a frame with none is its bubbles over rather than missed. The move then plays
-   * out, read as `battle` until a frame of it that hides the HUD, with nothing to pop and no fast move to fire: in a
+   * out, read as `playing` until a frame of it that hides the HUD or the fight is back, with nothing to pop and no fast
+   * move to fire: in a
    * kept run, `bubbleSwipes` found Avalanche's bubbles from 114.14s to 119.35s, never losing them for more than 0.3s,
    * and rows were swept on from there through `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no
    * minigame's: live, after an Outrage tapped went unthrown, Kyurem having fainted to our fast move, the shards of its
@@ -217,6 +226,9 @@ export class Player {
 
   /** Whether the bubbles found have been gone `OVER_MS` after `BUBBLES_MS` of them, after which none are swiped. */
   #over = false;
+
+  /** Since when the frames have read as the fight, unbroken, which `FIGHT_MS` of ends a minigame. */
+  #fighting: number | undefined;
 
   /** When each lit charged-move button lit, by its x, for as long as it stays lit. */
   readonly #lit = new Map<number, number>();
@@ -266,9 +278,16 @@ export class Player {
       }
     }
 
-    // A charged move thrown is the minigame next, inside frames that read as `battle` throughout, and over once the
-    // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
-    if (state !== 'battle' && state !== 'charged') {
+    // A charged move thrown is the minigame next, inside frames that read as `playing` throughout, and over once the
+    // throw itself plays and hides the HUD or the fight is back; as is a frame the caller says is a minigame, though no
+    // tap here began it. The HUD hidden within `LEAD_IN_MS` of the tap is the throw beginning: live, Avalanche's wave of
+    // ice hid it for two frames a second after the tap, and its minigame, ended there, went unswiped for 2.5s. A prompt
+    // ends it whenever, the opponent's throw having come first.
+    const begun = this.#tapped?.state === 'charged' && now - this.#tapped.at < LEAD_IN_MS;
+    this.#fighting = state === 'battle' || state === 'charged' ? (this.#fighting ?? now) : undefined;
+    const back = this.#fighting !== undefined && now - this.#fighting >= FIGHT_MS;
+
+    if (state === 'shield' || state === 'switch' || (state === 'other' && !begun) || back) {
       this.forget();
     } else if (minigame) {
       this.#minigame = true;
@@ -282,7 +301,14 @@ export class Player {
       return { kind: 'tap', at: bench, what: 'bench' };
     }
 
-    if (state === 'battle' || (state === 'charged' && throwable.length === 0)) {
+    if (state === 'battle' || state === 'playing' || (state === 'charged' && throwable.length === 0)) {
+      // A charged move under way other than our minigame — the opponent's, or ours yet to come behind it — fires no
+      // fast move and draws no bubbles: in a kept run, swipes landed through Garchomp's Sand Tomb and through the
+      // `Get Ready!` of our throw held behind it.
+      if (state === 'playing' && !this.#minigame) {
+        return { kind: 'wait' };
+      }
+
       if (this.#tapped?.state === 'charged' && now - this.#tapped.at < HOLD_MS) {
         return { kind: 'wait' };
       }
@@ -335,6 +361,7 @@ export class Player {
     this.forget();
     this.#tapped = { state, at: now };
     this.#minigame = true;
+    this.#fighting = undefined;
 
     return { kind: 'tap', at: first, what: state };
   }

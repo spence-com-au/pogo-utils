@@ -5,8 +5,9 @@
  * which is what keeps a loosened threshold from passing unnoticed.
  *
  * `charge.h264` is five seconds of one battle re-encoded at the stream's size, run through the decoder a battle runs
- * on rather than a still: a fight, a charged move coming ready, and its throw — the button going dark for a third of a
- * second before the screen gives way to the throw, 12 frames that half-second samples of the same footage stepped over.
+ * on rather than a still: a fight, a charged move coming ready, and its throw — the button dimming for a tenth of a
+ * second, still the fight, and then fading out with its name, a charged move under way for a third of a second before
+ * the screen gives way to the throw: 13 frames that half-second samples of the same footage stepped over.
  */
 
 import { decodePng } from '../inventory/png.mts';
@@ -45,7 +46,7 @@ test.each(menus)('%s is other', (name) => {
 });
 
 test('covers every state', () => {
-  const states: State[] = ['battle', 'charged', 'shield', 'switch', 'other'];
+  const states: State[] = ['battle', 'charged', 'playing', 'shield', 'switch', 'other'];
 
   expect(new Set(stills.map((name) => name.split('-')[0]))).toEqual(new Set(states));
 });
@@ -61,8 +62,8 @@ test.each([
   ['charged-pixel8', [0.499]],
   ['battle-pixel8', []],
   ['battle-two-unlit', []],
-  ['battle-minigame-kyogre-great', []],
-  ['battle-minigame-kyogre-excellent', []],
+  ['playing-minigame-kyogre-great', []],
+  ['playing-minigame-kyogre-excellent', []],
 ])('%s has buttons lit at %j', (name, xs) => {
   const lit = readyButtons(decodePng(readFileSync(`${FIXTURES}${name}.png`)));
 
@@ -95,13 +96,13 @@ test('follows a charged move coming ready and being thrown through the decoder',
     }
   }
 
-  expect(runs).toEqual(['battle', 'charged', 'battle', 'other']);
+  expect(runs).toEqual(['battle', 'charged', 'battle', 'playing', 'other']);
 });
 
 test.each([
   ['battle-latias', 2],
   ['battle-night', 2],
-  ['battle-shield-blocked', 1],
+  ['playing-shield-blocked', 1],
   ['battle-two-unlit', 0],
   ['charged-two-both', 2],
   ['battle-pixel8', 2],
@@ -112,11 +113,11 @@ test.each([
 test.each([
   ['battle-latias', 2],
   ['battle-pixel8', 2],
-  ['battle-banner', 1],
+  ['playing-banner', 1],
   ['battle-two-unlit', 1],
   ['battle-one-shield', 1],
   ['charged-shadow-sneak', 0],
-  ['battle-shields-spent', 0],
+  ['playing-shields-spent', 0],
 ])('%s: we have %i shields left', (name, shields) => {
   expect(ownShields(decodePng(readFileSync(`${FIXTURES}${name}.png`)))).toBe(shields);
 });
@@ -132,8 +133,8 @@ test.each<[string, number | null, number | null]>([
   ['charged-shadow-sneak', 2, 1],
   ['battle-pixel8', 3, 3],
   ['switch-pixel8', 2, 3],
-  ['battle-slate-night', 3, 3],
-  ['battle-banner-pixel8-groudon', 3, 3],
+  ['playing-slate-night', 3, 3],
+  ['playing-banner-pixel8-groudon', 3, 3],
   ['shield-glaceon', null, null],
   ['shield-pixel8', null, null],
 ])('%s: we have %s Pokémon left and the opponent %s', (name, own, opponent) => {

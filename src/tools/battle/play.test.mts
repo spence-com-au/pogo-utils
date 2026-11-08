@@ -44,6 +44,13 @@ test('swipes through the fight, clear of the bench and the charged-move buttons'
   }
 });
 
+test('touches nothing through a charged move under way that is not ours, and fights once the buttons are back', () => {
+  const actions = play(['battle', ...Array<State>(30).fill('playing'), 'battle']);
+
+  expect(actions.slice(1, -1).every((action) => action.kind === 'wait')).toBe(true);
+  expect(actions.at(-1)).toMatchObject({ kind: 'swipe', from: [0.7, 0.5] });
+});
+
 test('throws a charged move once it has held for two frames, and once only', () => {
   const actions = play(Array(20).fill('charged'));
 
@@ -116,8 +123,8 @@ test('forgets when a button lit once it goes out', () => {
 test('swipes the lower field after a charged move, until the throw plays', () => {
   const player = new Player(SIZE);
   const fight = swipes(play(Array(4).fill('battle'), player));
-  const minigame = swipes(play(['charged', 'charged', ...Array<State>(40).fill('battle')], player, 1000));
-  const after = swipes(play(['other', ...Array<State>(4).fill('battle')], player, 3000));
+  const minigame = swipes(play(['charged', 'charged', ...Array<State>(40).fill('playing')], player, 1000));
+  const after = swipes(play(['other', ...Array<State>(4).fill('battle')], player, 7000));
 
   const lowest = (actions: readonly { from: Point; to: Point }[]) =>
     Math.max(...actions.flatMap(({ from, to }) => [from[1], to[1]]));
@@ -137,25 +144,25 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
   play(['charged', 'charged'], player);
 
   // Past the hold after the tap, still in the minigame.
-  expect(player.next('battle', 1000, { bubbles: [] })).toEqual({ kind: 'wait' });
-  expect(player.next('battle', 1033, { bubbles: [chain] })).toEqual({
+  expect(player.next('playing', 1000, { bubbles: [] })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 1033, { bubbles: [chain] })).toEqual({
     kind: 'swipe',
     from: chain[0],
     to: chain[1],
     ms: 80,
   });
 
-  // Found again once the throw is taken to be playing, then the move playing out once its bubbles are over, read as
-  // the fight until a frame hides the HUD.
-  player.next('battle', 2000, { minigame: true, bubbles: [chain] });
-  const over = Array.from({ length: 60 }, (_, i) => player.next('battle', 3000 + i * 33, { bubbles: [] }));
+  // Found again once the throw is taken to be playing, then the move playing out once its bubbles are over, until a
+  // frame hides the HUD.
+  player.next('playing', 2000, { minigame: true, bubbles: [chain] });
+  const over = Array.from({ length: 60 }, (_, i) => player.next('playing', 3000 + i * 33, { bubbles: [] }));
 
   expect(over.every((action) => action.kind === 'wait')).toBe(true);
 });
 
 /** `count` frames from `from` milliseconds, 33ms apart, each read as `battle` with `bubbles` found on it. */
 const frames = (player: Player, from: number, count: number, bubbles: readonly (readonly [Point, Point])[]) =>
-  Array.from({ length: count }, (_, i) => player.next('battle', from + i * 33, { bubbles }));
+  Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles }));
 
 const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
 
@@ -173,7 +180,7 @@ test('leaves alone what is found once the bubbles have been gone a while, the mo
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 3000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
   frames(player, 3033, 60, [chain]);
 
   // A moment lost among them is not their end.
@@ -199,7 +206,7 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 3000, { minigame: true, bubbles: [fight] });
+  player.next('playing', 3000, { minigame: true, bubbles: [fight] });
   frames(player, 3033, 24, [fight]);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
@@ -208,12 +215,71 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   );
 });
 
+// Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
+// unswiped until the run took the throw to be playing, 2.5s of its bubbles lost; a prompt still ends it.
+test('keeps the minigame a tap began through the HUD hidden as it begins, but not through a prompt', () => {
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const hidden = new Player(SIZE);
+
+  play(['charged', 'charged', 'playing', 'other', 'other', 'playing'], hidden);
+
+  expect(hidden.next('playing', 2000, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+
+  const prompted = new Player(SIZE);
+
+  play(['charged', 'charged', 'playing', 'shield', 'other', 'playing'], prompted);
+
+  expect(prompted.next('playing', 2000, { bubbles: [chain] })).toEqual({ kind: 'wait' });
+});
+
+// Live, Close Combat played out with the HUD up throughout, and the minigame, still waited on, left 2.6s of the fight
+// unplayed once it was back; the fight read for a frame or two inside the minigame ends nothing.
+test('ends the minigame once the fight has held for a moment, though nothing hid the HUD', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: [chain] });
+  player.next('battle', 1033, { bubbles: [] });
+  player.next('battle', 1066, { bubbles: [] });
+
+  expect(player.next('playing', 1100, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+
+  const back = Array.from({ length: 11 }, (_, i) => player.next('battle', 5000 + i * 33, { bubbles: [] }));
+
+  expect(back.slice(0, 9).every((action) => action.kind === 'wait')).toBe(true);
+  expect(back.at(-1)).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
+  expect(player.minigame).toBe(false);
+});
+
+// The run says a throw is playing on one frame only, which can be one of the few inside a charged move that read as
+// the fight: the minigame begins all the same, or the rest of it would be waited through.
+test('begins a minigame that no tap here began on the frame it is told of, though it reads as the fight', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+
+  play(['charged', 'charged', 'shield', 'other'], player);
+  player.next('playing', 12_000);
+  player.next('battle', 12_033, { minigame: true, bubbles: [] });
+
+  expect(player.next('playing', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+});
+
 // Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.
 test('sweeps rows where bubbles were found only before the throw was taken to be playing', () => {
   const player = new Player(SIZE);
 
   play(['charged', 'charged'], player);
-  player.next('battle', 1500, {
+  player.next('playing', 1500, {
     bubbles: [
       [
         [0.17, 0.59],
@@ -222,7 +288,7 @@ test('sweeps rows where bubbles were found only before the throw was taken to be
     ],
   });
 
-  const late = player.next('battle', 3000, { bubbles: [] });
+  const late = player.next('playing', 3000, { bubbles: [] });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });
@@ -235,11 +301,11 @@ test('sweeps rows through a minigame whose bubbles are never found, though the l
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 1000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 1000, { minigame: true, bubbles: [chain] });
   play(['other', 'battle', 'charged', 'charged'], player, 2000);
 
   // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
-  const late = player.next('battle', 5000, { bubbles: [] });
+  const late = player.next('playing', 5000, { bubbles: [] });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });
@@ -252,8 +318,8 @@ test('fights once told to forget a minigame that is not coming, whatever was fou
   ];
 
   play(['charged', 'charged'], player);
-  player.next('battle', 3000, { minigame: true, bubbles: [chain] });
-  expect(player.next('battle', 3033, { bubbles: [] })).toEqual({ kind: 'wait' });
+  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
+  expect(player.next('playing', 3033, { bubbles: [] })).toEqual({ kind: 'wait' });
 
   player.forget();
 
@@ -261,8 +327,9 @@ test('fights once told to forget a minigame that is not coming, whatever was fou
   expect(player.next('battle', 3066)).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
 });
 
-// A throw the opponent's came ahead of plays after theirs, its minigame coming long after the tap that began the last.
-test('swipes a minigame that no tap here began, until the throw plays', () => {
+// A throw the opponent's came ahead of plays after theirs, its minigame coming long after the tap that began the last,
+// and their move and our `Get Ready!` before it touched not at all.
+test('waits out the opponent’s move, then swipes a minigame that no tap here began, until the throw plays', () => {
   const player = new Player(SIZE);
   const chain: [Point, Point] = [
     [0.4, 0.5],
@@ -271,9 +338,9 @@ test('swipes a minigame that no tap here began, until the throw plays', () => {
 
   play(['charged', 'charged', 'shield', 'other'], player);
 
-  expect(player.next('battle', 12_000, { bubbles: [chain] })).toMatchObject({ kind: 'swipe', from: [0.15, 0.42] });
-  expect(player.next('battle', 12_033, { minigame: true, bubbles: [chain] })).toMatchObject({ from: chain[0] });
-  expect(player.next('battle', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 12_000, { bubbles: [chain] })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 12_033, { minigame: true, bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
   expect(player.minigame).toBe(true);
 
   player.next('other', 20_000);
@@ -309,7 +376,7 @@ test('sends in the card it is told to', () => {
   expect(taps(actions)).toEqual([{ kind: 'tap', at: card, what: 'switch' }]);
 });
 
-test('taps the bench card it is told to in place of a swipe or a lit move, but not through the minigame', () => {
+test('taps the bench card it is told to in place of a swipe or a lit move, but not through a charged move', () => {
   const player = new Player(SIZE);
   const bench = place(BENCH[0], BENCH_ANCHOR, SIZE);
 
@@ -318,6 +385,8 @@ test('taps the bench card it is told to in place of a swipe or a lit move, but n
   expect(player.next('charged', 66, { ready: [CENTRE], bench }), 'the energy kept').toMatchObject({ what: 'bench' });
   expect(player.next('charged', 99, { ready: [CENTRE] })).toMatchObject({ what: 'charged' });
   expect(player.next('battle', 1000, { bench }), 'the minigame').toMatchObject({ kind: 'swipe' });
+  player.forget();
+  expect(player.next('playing', 2000, { bench }), 'a charged move under way').toEqual({ kind: 'wait' });
 });
 
 test('leaves a declined shield prompt to run out, and does not swipe at it', () => {

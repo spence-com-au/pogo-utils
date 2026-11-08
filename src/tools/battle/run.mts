@@ -143,15 +143,25 @@ const NEWCOMER = 0.1;
 const THROWN = 3;
 
 /**
- * How long the fight must show none of our charged-move buttons lit, unbroken, for a throw tapped to be playing, in
+ * How long the HUD must show none of our charged-move buttons lit, unbroken, for a throw tapped to be playing, in
  * milliseconds: its minigame draws none, from `Get Ready!` on. Over the 11 GO Battle League battles the user recorded
  * on a Pixel 8 Pro, every minigame ran 5.1s at the least and mostly 8–11s, and nothing else after a tap ran longer than
  * 2.4s, the banner after the opponent's move the longest. The opponent picking its next after fainting to our fast move
  * runs longer, 6s live, but its Poké Ball going grey tells it apart. The minigame's bubbles are no sign of their own:
  * Fly's are found on its own lit button in `charged-pixel8-fly`, and on the sky behind
- * `battle-banner-pixel8-charizard`.
+ * `playing-banner-pixel8-charizard`.
  */
 const PLAYING_MS = 3_500;
+
+/**
+ * How long after the fight's last frame one with none of our charged moves' names drawn is still the fight, in
+ * milliseconds. A fast move's flash can wash out the foot of the screen, names and all, as the fight goes on: Lugia's did
+ * for up to 0.46s at a time in a kept run. A charged move under way straight from the fight, the opponent's `Attack
+ * incoming!` or a faint, is played as the fight for as long, its swipes and the energy counted meanwhile for nothing; one
+ * after a prompt or the HUD hidden, as the opponent's move after a shield is, is told at once, and so is one of our own
+ * minigame, which our tap begins as its button goes.
+ */
+const FLASH_MS = 600;
 
 /**
  * How long the button of a throw tapped must stay lit and untapped, once the opponent's move or any other frame that
@@ -247,6 +257,9 @@ interface Bank {
 /** Pokémon left by the Poké Balls, a faint being for good: the lower of the count before and a read, either if null. */
 const fewer = (was: number | null, read: number | null) =>
   read === null ? was : was === null ? read : Math.min(was, read);
+
+/** Whether a frame shows the HUD: the fight, or a charged move under way. */
+const hudUp = (state: State) => state === 'battle' || state === 'charged' || state === 'playing';
 
 /** A read run beside the battle: `done` once it has finished, or failed, the failure thrown where the read is used. */
 interface Reading<T> {
@@ -603,6 +616,10 @@ export async function run(
   // The state of the frame before, which the shield prompt's showing is told from: the opponent's charged move.
   let last: State = 'other';
 
+  // When `recognise` last read the fight, which a frame with none of our buttons' names drawn within `FLASH_MS` of is
+  // taken to go on, unless anything else came between.
+  let foughtAt = -Infinity;
+
   // The shield prompt showing, if one is, and why its shield is taken or kept: told once it is answered, by a tap or
   // by the prompt going untapped.
   let offered: { why: string; taken: boolean } | undefined;
@@ -613,8 +630,8 @@ export async function run(
   // Our charged move tapped and not yet seen to play, by its button's x, and why it was tapped: told as thrown, and its
   // stats moved, only once it plays. The opponent's move on the same turn can drop the tap, its button lighting again
   // with the energy kept, or hold the throw back until after theirs, its minigame coming with no tap of its own; and a
-  // faint of either side's before it plays loses it. Since when the fight has shown none of our buttons lit, unbroken,
-  // as a minigame does throughout, and since when the button tapped has shown lit again, untapped.
+  // faint of either side's before it plays loses it. Since when the HUD has shown none of our buttons lit, unbroken, as
+  // a minigame does throughout, and since when the button tapped has shown lit again, untapped.
   let pending: { move: string | undefined; x: number; why: string | undefined } | undefined;
   let unlit: number | undefined;
   let relit: number | undefined;
@@ -731,7 +748,15 @@ export async function run(
     const recognised = reads.recognise(frame);
     const ours = battling ? fewer(left.own, reads.pokemonLeft(frame).own) : null;
     const owed = prompt !== undefined || (ours !== null && ours < promptedAt);
-    const state = recognised === 'switch' && !owed ? 'other' : recognised;
+
+    if (recognised === 'battle' || recognised === 'charged') {
+      foughtAt = clock.now();
+    } else if (recognised !== 'playing') {
+      foughtAt = -Infinity;
+    }
+
+    const flash = recognised === 'playing' && clock.now() - foughtAt < FLASH_MS && !player.minigame;
+    const state = recognised === 'switch' && !owed ? 'other' : flash ? 'battle' : recognised;
     const theirName = () => seen.opponent ?? 'the opponent';
 
     if (state === 'shield' && last !== 'shield') {
@@ -745,15 +770,24 @@ export async function run(
     }
 
     last = state;
-    unlit = state === 'battle' ? (unlit ?? clock.now()) : undefined;
+    unlit = state === 'battle' || state === 'playing' ? (unlit ?? clock.now()) : undefined;
 
     if (battling) {
       const now = clock.now();
 
       // A button lit is the fight, whatever `Player` waits on: the minigame draws none, and a throw tapped and still lit
-      // is waiting on a fast move or was dropped. Live, a dropped Overheat's lit button was told as its minigame.
-      const part =
-        state === 'charged' ? undefined : state === 'battle' ? (player.minigame ? 'minigame' : undefined) : state;
+      // is waiting on a fast move or was dropped. Live, a dropped Overheat's lit button was told as its minigame. A
+      // charged move under way is told as the HUD hidden is, a move often hiding it for part of its playing.
+      const part = (
+        {
+          battle: player.minigame ? 'minigame' : undefined,
+          charged: undefined,
+          playing: player.minigame ? 'minigame' : 'other',
+          shield: 'shield',
+          switch: 'switch',
+          other: 'other',
+        } as const
+      )[state];
       const [first] = off;
 
       if (!part) {
@@ -769,8 +803,9 @@ export async function run(
         off = [];
       } else if (part !== off.at(-1)?.state) {
         // What the screen shows besides the battle and its prompts says nothing of itself, so is named by what came
-        // before it: with nothing before it and no shield of ours left, it is most likely the opponent's charged move,
-        // which puts up no prompt once there is no shield to answer it with.
+        // before it: with nothing before it, the HUD up is a throw on its way or a faint, and the HUD hidden with no
+        // shield of ours left most likely the opponent's charged move, which puts up no prompt once there is no shield
+        // to answer it with.
         const before = off.at(-1)?.state;
         const what = {
           minigame: `the minigame for our ${(pending ? pending.move : thrown) ?? 'charged move'}`,
@@ -781,9 +816,11 @@ export async function run(
               ? 'the next of ours coming in'
               : before
                 ? 'the charged move playing'
-                : ourShields === 0
-                  ? `likely ${theirName()}'s charged move, none of our shields left to prompt for`
-                  : 'neither the battle nor a prompt',
+                : state === 'playing'
+                  ? 'our charged moves hidden'
+                  : ourShields === 0
+                    ? `likely ${theirName()}'s charged move, none of our shields left to prompt for`
+                    : 'neither the battle nor a prompt',
         }[part];
 
         off.push({ state: part, what, from: now });
@@ -802,7 +839,7 @@ export async function run(
     // what was recognised as `other`, not of a switch prompt taken for `other` above, which carries one of its own.
     const countingDown = battling && recognised === 'other' && ourShields === 0 && reads.countdown(frame);
 
-    unprompted = state === 'battle' || state === 'charged' ? 0 : unprompted + (countingDown ? 1 : 0);
+    unprompted = hudUp(state) ? 0 : unprompted + (countingDown ? 1 : 0);
 
     // The countdown hides the HUD, so it and the animation after it read as `other`: it is the battle going on, however
     // many throws in a row, and each of its frames holds off `LOST_MS` as the fight's do.
@@ -917,7 +954,7 @@ export async function run(
 
       // Never more than the last count, a shield once spent staying spent: a banner over the HUD reads as one of theirs
       // held, and leaves ours unread.
-      if (state === 'battle' || state === 'charged') {
+      if (hudUp(state)) {
         const held = Math.min(theirShields, reads.opponentShields(frame));
 
         if (held < theirShields) {
@@ -1107,12 +1144,7 @@ export async function run(
 
       // One read at a time, but for one dropped as of the Pokémon before, which is left to finish unmerged as the next
       // begins.
-      if (
-        sighting?.from !== seen &&
-        (state === 'battle' || state === 'charged') &&
-        !player.minigame &&
-        clock.now() - readAt >= READ_MS
-      ) {
+      if (sighting?.from !== seen && hudUp(state) && !player.minigame && clock.now() - readAt >= READ_MS) {
         readAt = clock.now();
         sighting = { at: readAt, from: seen };
 
@@ -1184,15 +1216,24 @@ export async function run(
 
       matchup = facing;
 
-      // Only the fight's own frames count hits: the shield prompt, the minigame and a switch pause it. A frame of the
-      // fight with our bar not found does neither, the drop across it still the fight's. A frame that did find it counts
-      // the HP decided on, a misread's drop and the rise back from it being no hits.
+      // Only the fight's own frames count our fast moves: the shield prompt, a charged move under way and a switch pause
+      // them. In a kept run, our energy was counted from 52 to 91 through Garchomp's Sand Tomb and the `Get Ready!` of
+      // ours after it. The opponent's hits on our bar are counted through a charged move under way too, bar our
+      // minigame: ours sent in shows no button until it has flown in, and in a kept run Tyranitar's fast move landed on
+      // Dragonite 0.2s before its button was drawn. A frame with our bar not found does neither, the drop across it
+      // still the fight's. A frame that did find it counts the HP decided on, a misread's drop and the rise back from it
+      // being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
       const theirBar = bars && bars.opponent !== null ? health.opponent : null;
       const fighting = (state === 'battle' || state === 'charged') && !player.minigame;
 
-      if (!fighting) {
+      if (!hudUp(state) || player.minigame) {
         energy.pause();
+      } else if (bar !== null) {
+        energy.read(clock.now(), bar, facing);
+      }
+
+      if (!fighting) {
         hits.pause();
         ourEnergy.pause();
       } else {
@@ -1201,10 +1242,6 @@ export async function run(
           ourEnergy.read(slot, clock.now());
         } else {
           ourEnergy.pause();
-        }
-
-        if (bar !== null) {
-          energy.read(clock.now(), bar, facing);
         }
 
         if (theirBar !== null) {

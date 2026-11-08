@@ -1,7 +1,7 @@
 /**
  * Each side's HP read off committed frames, against the fill's length measured by hand on the bar's middle row as a
  * share of the distance from its start to the outline at its right. `shield-low`, `battle-one-shield` and
- * `battle-shields-spent` are screenshots of a GO Battle League run scaled down to the stream's 360 wide; the rest are
+ * `playing-shields-spent` are screenshots of a GO Battle League run scaled down to the stream's 360 wide; the rest are
  * stream frames.
  */
 
@@ -37,7 +37,7 @@ test.each([
   // bar's outline below it for its own; and just left of the bar, where one of its 2 pixels' shading passed for the
   // outline, at 2%.
   ['other-pixel8-countdown-xerneas-foliage', 0.43, 0.24],
-  ['battle-pixel8-xerneas-foliage', 0.6, 0.98],
+  ['playing-pixel8-xerneas-foliage', 0.6, 0.98],
 ])('%s: %f of ours left and %f of theirs', (name, own, opponent) => {
   const health = read(name);
 
@@ -49,12 +49,14 @@ test.each([
  * Frames whose bars are not there to read, or not told whose: the minigame draws none, the camera on our Charizard
  * leaves both off the screen, and the shield going up centres ours where neither side's bar starts.
  */
-test.each(['battle-minigame-kyogre-great', 'battle-minigame-mewtwo', 'battle-shields-spent', 'battle-shield-going-up'])(
-  '%s: reads neither',
-  (name) => {
-    expect(read(name)).toEqual({ own: null, opponent: null });
-  },
-);
+test.each([
+  'playing-minigame-kyogre-great',
+  'playing-minigame-mewtwo',
+  'playing-shields-spent',
+  'playing-shield-going-up',
+])('%s: reads neither', (name) => {
+  expect(read(name)).toEqual({ own: null, opponent: null });
+});
 
 test('artwork inside a bar where its fill has gone leaves the bar read', () => {
   // Red painted where the opponent's 42% has gone, inside the outline, as their own artwork, PGSharp's star and the
@@ -134,7 +136,7 @@ test.each([
   'battle-charizard-magmar',
 
   // The backdrop of a Pixel 8 Pro's "Attack incoming!" over the right of our bar, read 45% where it is 87%.
-  'battle-pixel8-attack-incoming',
+  'playing-pixel8-attack-incoming',
 ])('%s: a bar whose fill runs on dimmed under something translucent goes unread', (name) => {
   expect(read(name).own).toBeNull();
 });

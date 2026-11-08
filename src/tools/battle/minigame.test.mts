@@ -30,13 +30,13 @@ test('a type’s bubbles are the commonest colour of its icon, the white emblem 
 });
 
 test.each([
-  ['battle-minigame-kyogre-excellent', 'WATER', [0.68, 0.33, 0.95, 0.4]],
-  ['battle-minigame-swampert', 'WATER', [0.45, 0.6, 0.6, 0.68]],
-  ['battle-minigame-mamoswine', 'ICE', [0.45, 0.53, 0.72, 0.6]],
-  ['battle-minigame-giratina', 'GHOST', [0.4, 0.8, 0.5, 0.84]],
-  ['battle-minigame-tyranitar', 'DARK', [0.2, 0.5, 0.56, 0.6]],
-  ['battle-minigame-mewtwo', 'PSYCHIC', [0.65, 0.6, 0.9, 0.8]],
-  ['battle-minigame-pixel8-dark', 'DARK', [0.11, 0.59, 0.44, 0.81]],
+  ['playing-minigame-kyogre-excellent', 'WATER', [0.68, 0.33, 0.95, 0.4]],
+  ['playing-minigame-swampert', 'WATER', [0.45, 0.6, 0.6, 0.68]],
+  ['playing-minigame-mamoswine', 'ICE', [0.45, 0.53, 0.72, 0.6]],
+  ['playing-minigame-giratina', 'GHOST', [0.4, 0.8, 0.5, 0.84]],
+  ['playing-minigame-tyranitar', 'DARK', [0.2, 0.5, 0.56, 0.6]],
+  ['playing-minigame-mewtwo', 'PSYCHIC', [0.65, 0.6, 0.9, 0.8]],
+  ['playing-minigame-pixel8-dark', 'DARK', [0.11, 0.59, 0.44, 0.81]],
 ] as const)('%s: the first swipe crosses the %s bubbles', (name, type, box) => {
   const [first] = bubbleSwipes(png(name), colour(type));
 
@@ -49,8 +49,8 @@ test.each([
  * Swampert's of six, shaded so that under full white its blue does not agree with its red and green.
  */
 test.each([
-  ['battle-minigame-tyranitar', 'DARK', 0.35],
-  ['battle-minigame-swampert', 'WATER', 0.6],
+  ['playing-minigame-tyranitar', 'DARK', 0.35],
+  ['playing-minigame-swampert', 'WATER', 0.6],
 ] as const)('%s: a chain is swiped along its length', (name, type, length) => {
   const [first] = bubbleSwipes(png(name), colour(type));
   const across = first ? Math.abs(first[1][0] - first[0][0]) : 0;
@@ -59,11 +59,11 @@ test.each([
 });
 
 test('the Get Ready! before the bubbles has none to swipe', () => {
-  expect(bubbleSwipes(png('battle-minigame-ready'), colour('DARK'))).toEqual([]);
+  expect(bubbleSwipes(png('playing-minigame-ready'), colour('DARK'))).toEqual([]);
 });
 
 test('a Pokémon the colour of its bubbles is not taken for them', () => {
-  const swipes = bubbleSwipes(png('battle-minigame-kyogre-excellent'), colour('WATER'));
+  const swipes = bubbleSwipes(png('playing-minigame-kyogre-excellent'), colour('WATER'));
 
   // Kyogre's body, the same blue, fills the bottom left of the frame below y 0.6.
   expect(swipes.every(([from, to]) => !crosses([from, to], [0, 0.65, 0.5, 1]))).toBe(true);
@@ -71,11 +71,11 @@ test('a Pokémon the colour of its bubbles is not taken for them', () => {
 
 /** Mewtwo's lavender holds Psychic's share of pink in green and blue, though not in red. */
 test('a Pokémon only partly the colour of its bubbles is not taken for them once they are gone', () => {
-  expect(bubbleSwipes(png('battle-minigame-mewtwo-over'), colour('PSYCHIC'))).toEqual([]);
+  expect(bubbleSwipes(png('playing-minigame-mewtwo-over'), colour('PSYCHIC'))).toEqual([]);
 });
 
 test('no swipe starts or ends on an edge Android takes for its own gestures', () => {
-  const swipes = bubbleSwipes(png('battle-minigame-mewtwo'), colour('PSYCHIC'));
+  const swipes = bubbleSwipes(png('playing-minigame-mewtwo'), colour('PSYCHIC'));
 
   expect(swipes.length).toBeGreaterThan(0);
   expect(swipes.flat().every(([x, y]) => x >= 0.05 && x <= 0.95 && y <= 0.92)).toBe(true);
