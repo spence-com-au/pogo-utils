@@ -21,6 +21,7 @@ import {
   VENDORED,
 } from './artifact.mts';
 import { TESSERACT_VENDOR } from './generated.ts';
+import { SERVED_TYPES } from '../scripts/served-types.mts';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -170,6 +171,25 @@ test('a file of a kind the site does not serve is refused', () => {
       .map((path) => path.slice(dist.length + 1))
       .sort(),
   ).toEqual(['src/main.js.map', 'tsconfig.tsbuildinfo']);
+});
+
+/*
+ * `assemble.mts` asks with no list, so the kinds it allows are whatever the server's table holds. A kind added to the
+ * table here is the one a copy of the list could not know about.
+ */
+test('the kinds the site serves are the ones the server has a type for', () => {
+  const dist = tree({ 'index.html': '', 'sample.zzz': '' });
+  const unserved = () => unservedFiles(dist).map((path) => path.slice(dist.length + 1));
+
+  expect(unserved()).toEqual(['sample.zzz']);
+
+  SERVED_TYPES['.zzz'] = 'application/x-zzz';
+
+  try {
+    expect(unserved()).toEqual([]);
+  } finally {
+    delete SERVED_TYPES['.zzz'];
+  }
 });
 
 test('a Git LFS pointer is found wherever it was copied, and a file that only mentions one is not', () => {
