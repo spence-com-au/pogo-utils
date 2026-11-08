@@ -438,7 +438,7 @@ const BUDDY_LEVELS: readonly string[] = [
  * filled from the range's own `min` or `max`, so one box filled writes `cp3000-`; `tree.js` says why.
  *
  * `max` bounds the input so a typo cannot write a range nothing can match, and is the ceiling the game itself has where
- * there is one — 1025 is the dex, and no Pokémon reaches 500 HP.
+ * there is one — the dex ends where the last of `GENERATIONS` does, and no Pokémon reaches 500 HP.
  *
  * **Where the game documents no ceiling, `max` is generous rather than tight.** `bounded` below *clamps* rather than
  * refuses, so a ceiling set under what a search can really ask for turns that search into a different one in silence:
@@ -471,7 +471,7 @@ const BUDDY_LEVELS: readonly string[] = [
 const RANGE_TABLE = [
   { id: 'cp', prefix: 'cp', label: 'CP', max: 99999 },
   { id: 'hp', prefix: 'hp', label: 'HP', max: 500 },
-  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: 1025 },
+  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: Math.max(...GENERATIONS.map(({ last }) => last)) },
   { id: 'ivattack', prefix: '', suffix: 'attack', label: 'Attack IV', max: 4 },
   { id: 'ivdefense', prefix: '', suffix: 'defense', label: 'Defence IV', max: 4 },
   { id: 'ivhp', prefix: '', suffix: 'hp', label: 'HP IV', max: 4 },
