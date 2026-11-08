@@ -5,6 +5,7 @@
 
 import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -208,6 +209,26 @@ test.each([
 
   expect(code).toBe(1);
   expect(stderr).toContain(`screenrecord failed: ${reason}`);
+});
+
+// A FIFO stands for any OUT that is not a regular file, such as `/dev/stdout` piped to a player, which reading back
+// once the recording is done would wait on for good. Not `/dev/stdout` itself, which `execFile` makes a socket that
+// cannot be opened by that name.
+test.each([
+  ['h264', 0, ''],
+  ['', 1, 'screenrecord failed: refused\n'],
+])('records %j into a FIFO and exits %i', async (recorded, expectedCode, failure) => {
+  const bin = fakeAdb(
+    () => `[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\nprintf '${recorded}'\necho refused >&2\n`,
+  );
+  const out = join(bin, 'out.h264');
+  await promisify(execFile)('mkfifo', [out]);
+
+  const [read, { code, stderr }] = await Promise.all([readFile(out, 'utf8'), record(bin, out)]);
+
+  expect(code).toBe(expectedCode);
+  expect(read).toBe(recorded);
+  expect(stderr).toBe(`recording 1s to ${out}\n${failure}`);
 });
 
 test('refuses a recording with nowhere to go', async () => {
