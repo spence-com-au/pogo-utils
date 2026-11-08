@@ -224,27 +224,35 @@ test('the clear is longer than every search the scan sends', () => {
 
 /**
  * Walks a storage of `keys` the way a phone would: a swipe past either end goes nowhere. Answers the position each
- * Pokémon was visited at, so a walk that visits the right keys from the wrong place is caught as well. The first read
- * of each position in `missed` comes back unread, as a screen OCR misses once does. Each swipe forward whose number,
- * counting from 0, is in `dropped` goes nowhere, as #581's phone dropped one in ten, and `total` is the count the
- * game shows for the walk. The second read of each position in `again` reads as that entry says, as a screen whose
- * overlay or name reads another way on a second look.
+ * Pokémon was visited at, so a walk that visits the right keys from the wrong place is caught as well. A null key is a
+ * screen that never reads, and the first read of each position in `missed` comes back unread, as a screen OCR misses
+ * once does. Each swipe forward whose number, counting from 0, is in `dropped` goes nowhere, as #581's phone dropped
+ * one in ten, or each swipe `dropped` answers true for, given which way it goes and how many went that way before it.
+ * `total` is the count the game shows for the walk. The second read of each position in `again` reads as that entry
+ * says, as a screen whose overlay or name reads another way on a second look.
  */
 async function walked(
-  keys: readonly string[],
+  keys: readonly (string | null)[],
   max = Infinity,
   from = 0,
   missed: readonly number[] = [],
-  dropped: readonly number[] = [],
+  dropped: readonly number[] | ((move: 1 | -1, before: number) => boolean) = [],
   total: number | null = null,
   again: Readonly<Record<number, string>> = {},
 ) {
   let at = from;
-  let forward = 0;
+  const swiped = { [1]: 0, [-1]: 0 };
   const unread = new Set(missed);
   const reads = new Map<number, number>();
-  const drops = new Set(dropped);
+  const drops =
+    typeof dropped === 'function' ? dropped : (move: 1 | -1, n: number) => move === 1 && dropped.includes(n);
   const visited: [string | null, number][] = [];
+
+  const swipe = (move: 1 | -1) => {
+    if (!drops(move, swiped[move]++)) {
+      at = Math.min(Math.max(at + move, 0), keys.length - 1);
+    }
+  };
 
   await walk(
     {
@@ -257,8 +265,8 @@ async function walked(
 
         return { key: (reads.get(at) === 2 ? again[at] : undefined) ?? keys[at] ?? null };
       },
-      next: async () => void (at = drops.has(forward++) ? at : Math.min(at + 1, keys.length - 1)),
-      back: async () => void (at = Math.max(at - 1, 0)),
+      next: async () => swipe(1),
+      back: async () => swipe(-1),
     },
     async ({ key }) => void visited.push([key, at]),
     max,
@@ -319,7 +327,7 @@ test('a miss just before a run that ends storage does not visit the last Pokémo
 test('a third unreadable screen in a row stops the pass, and two do not', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2])).toEqual([
+  expect(await walked(['a', null, null, 'd', 'e'])).toEqual([
     ['a', 0],
     [null, 1],
     [null, 2],
@@ -328,7 +336,7 @@ test('a third unreadable screen in a row stops the pass, and two do not', async 
   ]);
   expect(error).not.toHaveBeenCalledWith(expect.stringContaining('three unreadable screens'));
 
-  expect(await walked(['a', 'b', 'c', 'd', 'e'], Infinity, 0, [1, 2, 3])).toEqual([
+  expect(await walked(['a', null, null, null, 'e'])).toEqual([
     ['a', 0],
     [null, 1],
     [null, 2],
@@ -352,13 +360,14 @@ test('a screen read two different ways, leaving no end to storage it fits, stops
   error.mockRestore();
 });
 
-test('a miss on the last Pokémon in storage ends the walk there', async () => {
+// The look back that tells the miss from the Pokémon before it ends where it began, reading the miss again.
+test('a miss on the last Pokémon in storage is read again, and ends the walk there', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   expect(await walked(['o', 'p', 'q'], Infinity, 0, [2])).toEqual([
     ['o', 0],
     ['p', 1],
-    [null, 2],
+    ['q', 2],
   ]);
   expect(error).not.toHaveBeenCalled();
 });
@@ -486,6 +495,56 @@ test.for([
   expect(error).toHaveBeenCalledWith(expect.stringContaining('went nowhere'));
 });
 
+/**
+ * #820: the swipe on to a Pokémon went nowhere, and so did a swipe of the look back for it. Where that was the swipe
+ * back, the look read the screen it left and took the Pokémon before for a twin, which the read where the look came
+ * back does not fit. Each case drops the third swipe forward, and a swipe of the look back that follows it.
+ */
+test.for([
+  ['swipe back', (move: 1 | -1, n: number) => (move === 1 ? n === 2 : n === 0)],
+  ['swipe forward again', (move: 1 | -1, n: number) => move === 1 && (n === 2 || n === 3)],
+] as const)('a look for a dropped swipe whose %s goes nowhere too visits every Pokémon once', async ([, dropped]) => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const keys = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
+});
+
+/** Mulberry32: numbers in [0, 1) that are the same for the same seed, so a walk the phone botched can be run again. */
+function seeded(seed: number) {
+  let state = seed;
+
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * #820's phone dropped 9 of the 106 swipes on, and swipes back can go nowhere as well. With every swipe going nowhere
+ * at that rate, a walk seldom reaches the count having visited a Pokémon twice or out of place, which nothing after it
+ * would catch. Before #820, 31 walks in these 100 did, and 55 visited every Pokémon right.
+ */
+test('swipes going nowhere at random, either way, seldom cost a walk its place unseen', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const keys = Array.from({ length: 60 }, (_, i) => `pikachu|${50 + (i % 7)}|${(5 + i / 100).toFixed(2)}|0.41|`);
+  let unseen = 0;
+  let whole = 0;
+
+  for (let seed = 1; seed <= 100; seed++) {
+    const random = seeded(seed);
+    const visited = await walked(keys, Infinity, 0, [], () => random() < 0.08, keys.length);
+    const right = visited.every(([key, at], i) => key === keys[i] && at === i);
+    unseen += Number(!right && visited.length === keys.length);
+    whole += Number(right && visited.length === keys.length);
+  }
+
+  expect(unseen).toBeLessThanOrEqual(3);
+  expect(whole).toBeGreaterThanOrEqual(80);
+});
+
 test('a walk skipped into storage counts its retries against the whole of storage', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -554,11 +613,11 @@ test('a walk skipped to the last Pokémon in storage ends there, by a look back 
 
 test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
   // Storage going on lands on the IV-less read first, and each IV key agrees with it but not with the other.
-  const worlds = new Map([
-    [Infinity, { at: 5, known: new Map([[4, blind('a')]]) }],
-    [3, { at: 3, known: new Map([[2, iv('a')]]) }],
-    [2, { at: 2, known: new Map([[1, 'a|50|1.5|0.4|1/2/3']]) }],
-  ]);
+  const worlds = [
+    { at: 5, known: new Map([[4, blind('a')]]) },
+    { at: 3, known: new Map([[2, iv('a')]]) },
+    { at: 2, known: new Map([[1, 'a|50|1.5|0.4|1/2/3']]) },
+  ];
 
   expect(distance(worlds, 5)).toBe(1);
 });

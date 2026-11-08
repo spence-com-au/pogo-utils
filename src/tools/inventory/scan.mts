@@ -451,23 +451,35 @@ export interface Steps<R extends { key: string | null }> {
 /** One thing a walk did: a swipe forward or back, or a read and the key it answered. */
 type Step = { move: 1 | -1 } | { key: string | null };
 
-/** Where a walk would be, and what each place in storage read, had storage ended at one place. */
+/**
+ * One way the swipes a walk sent may have gone: the place storage ends, `Infinity` while it goes on, and which of the
+ * swipes went nowhere, by their place in the walk's log.
+ */
+interface Story {
+  end: number;
+  dropped: readonly number[];
+}
+
+/** Where a walk would be, and what each place in storage read, had its swipes gone as one story has them. */
 export interface World {
   at: number;
   known: Map<number, string>;
 }
 
 /**
- * Plays `log` over a storage whose last Pokémon is at `end`, where a swipe past either end goes nowhere: the world the
- * walk was in if that is where storage ends, or null if it would have read one place two different ways.
+ * Plays `log` over a storage whose last Pokémon is at `end`, where a swipe past either end goes nowhere and so does each
+ * swipe `dropped` names: the world the walk was in if its swipes went that way, or null if it would have read one place
+ * two different ways.
  */
-function replay(log: readonly Step[], from: number, end: number): World | null {
+function replay(log: readonly Step[], from: number, { end, dropped }: Story): World | null {
   const known = new Map<number, string>();
   let at = from;
 
-  for (const step of log) {
+  for (const [i, step] of log.entries()) {
     if ('move' in step) {
-      at = Math.min(Math.max(at + step.move, 0), end);
+      if (!dropped.includes(i)) {
+        at = Math.min(Math.max(at + step.move, 0), end);
+      }
     } else if (step.key !== null) {
       const before = known.get(at) ?? step.key;
 
@@ -483,29 +495,67 @@ function replay(log: readonly Step[], from: number, end: number): World | null {
   return { at, known };
 }
 
+/** The swipes on that the end of storage stopped, in the world `story` tells. */
+function stopped(log: readonly Step[], from: number, { end, dropped }: Story): number[] {
+  let at = from;
+
+  return log.flatMap((step, i) => {
+    if (!('move' in step) || dropped.includes(i)) {
+      return [];
+    }
+
+    const was = at;
+    at = Math.min(Math.max(at + step.move, 0), end);
+    return step.move === 1 && at === was ? [i] : [];
+  });
+}
+
 /**
- * How far to swipe back to tell the worlds apart, if any distance can: the shortest at which storage still going on
- * and every place it might have ended would land on Pokémon already read differently, failing that the shortest at
- * which a read could rule any of them out. No further than `index`, so storage still going on never lands on its
- * start, and the same distance forward brings the walk back to where it was in every world.
+ * What a story costs, the likelier of two costing less: one for each swipe it has go nowhere and one for storage
+ * ending, and two for each two neighbours its world reads alike. A dropped swipe is the likelier way to read one screen
+ * twice: #581's phone dropped one swipe in ten, where two of one species alike in HP, weight, height and IVs are rare.
  */
-export function distance(worlds: ReadonlyMap<number, World>, index: number): number | undefined {
+function cost({ end, dropped }: Story, { known }: World): number {
+  const twins = [...known].filter(([place, key]) => {
+    const after = known.get(place + 1);
+    return after !== undefined && agree(key, after);
+  });
+
+  return dropped.length + Number(end !== Infinity) + 2 * twins.length;
+}
+
+/** Every set of at most `most` of `items`, the empty one first. */
+function subsets<T>(items: readonly T[], most: number): T[][] {
+  if (most < 1) {
+    return [[]];
+  }
+
+  return [[], ...items.flatMap((item, i) => subsets(items.slice(i + 1), most - 1).map((rest) => [item, ...rest]))];
+}
+
+/**
+ * How far to swipe back to tell the worlds apart, if any distance can: the shortest at which every two that put the
+ * walk in different places would land on Pokémon already read differently, failing that the shortest at which a read
+ * could rule any of them out. No further than `index`, so storage still going on never lands on its start.
+ */
+export function distance(worlds: readonly World[], index: number): number | undefined {
   let fallback: number | undefined;
 
   for (let k = 1; k <= index; k++) {
-    const landed = new Map([...worlds].map(([end, { at, known }]) => [end, known.get(Math.max(at - k, 0))]));
-    const open = landed.get(Infinity);
-    const ended = [...landed].filter(([end]) => end !== Infinity).map(([, key]) => key);
+    const landed = worlds.map(({ at, known }) => known.get(Math.max(at - k, 0)));
 
-    if (open !== undefined && ended.every((key) => key !== undefined && !agree(key, open))) {
+    const told = (i: number, j: number) => {
+      const [a, b] = [landed[i], landed[j]];
+      return a !== undefined && b !== undefined && !agree(a, b);
+    };
+
+    if (worlds.every((w, i) => worlds.every((v, j) => w.at === v.at || told(i, j)))) {
       return k;
     }
 
-    const keys = [...landed.values()];
-
     // A read rules out a world only where it lands on a Pokémon already read, and differently from it. Pairwise, since
     // `agree` is not transitive: two keys with different IVs each agree with one that missed them.
-    if (fallback === undefined && keys.some((a) => keys.some((b) => !same(a, b)))) {
+    if (fallback === undefined && landed.some((a) => landed.some((b) => !same(a, b)))) {
       fallback = k;
     }
   }
@@ -520,8 +570,14 @@ function same(a: string | undefined, b: string | undefined): boolean {
 /** How many times a look back reads a screen that would end the walk on nothing it has read before. */
 const LOOKS = 3;
 
-/** How many times in a row `walk` sends again a swipe forward it takes to have been dropped. */
+/** How many times in a row `walk` sends again a swipe it takes to have gone nowhere. */
 export const DROP_RETRIES = 3;
+
+/**
+ * How many of the swipes since the last visit a story may have gone nowhere: three, a swipe on to a Pokémon, the swipe
+ * back that looked for it and the swipe that came back, two of which #820's phone dropped one after the other.
+ */
+const DROPS = 3;
 
 /**
  * Hands `visit` each Pokémon from the one open at `from`, `first` being that one's reading where it has already been
@@ -531,33 +587,40 @@ export const DROP_RETRIES = 3;
  * positional, and the next Pokémon can be a genuine twin of the last: storage sorts a species' duplicates together, and
  * HP, weight and height are read at the precision the game prints them. Nor does a screen OCR missed say what it was,
  * so the Pokémon read after one may be that one read again. So the walk keeps every swipe and read it has made, and
- * each place storage might have ended — every one it has visited, until a read rules it out by reading that place two
- * ways. Where one is left beside storage going on, it swipes back to where the two would land on Pokémon it read
- * differently, reads, and swipes forward again.
+ * each story of how they went that fits them: where storage ended, each place it has visited or nowhere yet, until a
+ * read rules it out by reading a place two ways. Where the stories left put the phone in different places, it swipes
+ * back to where they would land on Pokémon it read differently, reads, swipes forward again and reads where it came
+ * back to.
  *
- * A look back that rules out storage going on is believed at once where it confirms a Pokémon read before. Where it
- * confirms nothing — every world it leaves landing on a place not yet read, as after `from` skipped past everything
- * before it — it may as well be a misread of the Pokémon storage going on expects, the overlay lost or a name read
- * another way. So the walk looks again, up to {@link LOOKS} times in all: a look that keeps storage going on wins, the
- * same reading every time is believed, and readings that disagree among themselves are taken for misreads, so the walk
- * goes on.
+ * A look back that rules out the stories that would visit is believed at once where it confirms a Pokémon read before.
+ * Where it confirms nothing — every story it leaves landing on a place not yet read, as after `from` skipped past
+ * everything before it — it may as well be a misread of the Pokémon those stories expect, the overlay lost or a name
+ * read another way. So the walk looks again, up to {@link LOOKS} times in all: a look that keeps a story that would
+ * visit wins, the same reading every time is believed, and readings that disagree among themselves are taken for
+ * misreads, so the walk goes on.
  *
- * Where nothing it has read can tell them apart — a run of twins from the start of the pass, the first Pokémon in
- * storage or one `from` skipped to, with nothing known before it — the walk stops and says so rather than visit a
+ * Any swipe can go nowhere, too: #581's phone dropped one in ten, and #820's dropped a swipe on and then the swipe back
+ * that looked for it, so that the look read the screen it left and took the Pokémon before for a twin. The read where
+ * the look came back is what such a story does not fit, a swipe dropped on the way putting the phone somewhere else.
+ * Where a read leaves no story standing, the walk tells the log again from the last visit, with up to {@link DROPS} of
+ * the swipes since gone nowhere, and keeps the stories that `cost` least. Where none fits even then, it stops rather
+ * than visit a Pokémon from a place it cannot name. What it cannot tell from a twin is all three of a look's swipes
+ * dropped, the swipe on included, which leaves every read since the last visit the same screen.
+ *
+ * The walk visits the last screen it read where a story puts the phone on the next Pokémon. Where nothing it has read
+ * can tell that from the phone being on the last one again — a run of twins from the start of the pass, the first
+ * Pokémon in storage or one `from` skipped to, with nothing known before it — it stops and says so rather than visit a
  * Pokémon it may already have written. A screen that may be new, unread or reading differently from the last, it
  * visits all the same: a wrong guess there writes again only a Pokémon whose screen once went unread, and says so when
  * the end comes.
  *
- * A swipe the phone drops looks like the end too: the look-back finds the Pokémon before the last where storage going
- * on would have put the last, and rules out storage going on. `total`, the count the game shows for what is walked,
- * says whether that end is real, and without one the walk ends there as before. Where it is not — the end found at the
- * last Pokémon visited, short of `total` — the swipe forward is taken as dropped rather than the end: struck from what
- * the walk has done, as though never sent, and sent again, up to `DROP_RETRIES` times in a row, so that a count read
- * too high costs a few swipes at the real end. Struck rather than the end merely set aside, which would take the screen
- * read again for a twin: one Pokémon written twice and the next one skipped. An end found further back, past an unread
- * screen, is not retried, and is left to `shortfall` to report, as is a drop on the first swipe of a pass: with nothing
- * read before the first Pokémon, the look-back cannot tell a drop from a twin, and the walk stops as it does for twins
- * there.
+ * Where the stories put the phone on the last Pokémon again, the end and a dropped swipe read alike, and `total`, the
+ * count the game shows for what is walked, says which: short of it, the swipe is sent again, up to `DROP_RETRIES` times
+ * in a row, so that a count read too high costs a few swipes at the real end. Storage going on with the swipes the end
+ * stopped struck as dropped then becomes a story beside the end, so that a swipe sent again onto a twin of the last
+ * Pokémon is not taken for one more gone nowhere. Without a count the walk ends there, for `shortfall` to report if it
+ * was short, as it does where storage may have ended further back, past an unread screen. Where the stories put the
+ * phone past the next Pokémon, the swipe back that looked for it went nowhere, and the walk swipes back to it.
  *
  * Nor does the walk visit past `total`, where it has one. The swipe on from the last Pokémon goes nowhere, and only a
  * read that `agree`s with the last tells that from a new Pokémon: a scroll back up from the moves that stopped short
@@ -573,11 +636,14 @@ export async function walk<R extends { key: string | null }>(
   total: number | null = null,
 ) {
   const log: Step[] = [];
-  let ends = [Infinity];
-  let pending = first;
+  let stories: Story[] = [{ end: Infinity, dropped: [] }];
   let latest: string | null = null;
   let misses = 0;
   let retries = 0;
+
+  // The stories the last visit left and where in the log it left them, which the walk tells again from.
+  let left = stories;
+  let since = 0;
 
   const swipe = async (move: 1 | -1, times: number) => {
     for (let i = 0; i < times; i++) {
@@ -586,33 +652,57 @@ export async function walk<R extends { key: string | null }>(
     }
   };
 
-  const worlds = () =>
-    new Map(
-      ends.flatMap((end) => {
-        const world = replay(log, from, end);
-        return world ? [[end, world] as const] : [];
+  const worlds = () => stories.map((story) => ({ story, world: replay(log, from, story) as World }));
+
+  const note = (key: string | null) => {
+    log.push({ key });
+    stories = stories.filter((story) => replay(log, from, story) !== null);
+  };
+
+  /** Where no story fits any more, the ones costing least of those that do with swipes since the last visit dropped. */
+  const explain = () => {
+    if (stories.length > 0) {
+      return;
+    }
+
+    const swipes = log.flatMap((step, i) => (i >= since && 'move' in step ? [i] : []));
+
+    const told = left.flatMap((story) =>
+      subsets(swipes, DROPS).flatMap((dropped) => {
+        const retold = { end: story.end, dropped: [...story.dropped, ...dropped] };
+        const world = replay(log, from, retold);
+        return world ? [{ story: retold, cost: cost(retold, world) }] : [];
       }),
     );
 
-  /** Reads the Pokémon a look back landed on, `landed` being what each world had already read there. */
-  const look = async (landed: Map<number, string | undefined>) => {
+    const least = Math.min(...told.map(({ cost }) => cost));
+    stories = told.filter(({ cost }) => cost === least).map(({ story }) => story);
+  };
+
+  /** Reads the Pokémon a look back landed on, `visiting` being the stories that would visit the screen it left. */
+  const look = async (visiting: readonly Story[]) => {
     const looks: string[] = [];
 
     for (let i = 0; i < LOOKS; i++) {
       const { key } = await read();
-      log.push({ key });
+      const before = stories;
+      note(key);
 
       if (key === null) {
         return key;
       }
 
-      const after = worlds();
+      const confirmed = stories.some((story) => {
+        const world = replay(log.slice(0, -1), from, story);
+        return world?.known.has(world.at);
+      });
 
-      if (after.has(Infinity) || [...after.keys()].some((end) => landed.get(end) !== undefined)) {
+      if (confirmed || stories.some((story) => visiting.includes(story))) {
         return key;
       }
 
       log.pop();
+      stories = before;
       looks.push(key);
     }
 
@@ -620,100 +710,144 @@ export async function walk<R extends { key: string | null }>(
 
     // Pairwise, since `agree` is not transitive: two looks with different IVs each agree with one that missed them.
     if (head !== null && looks.every((a) => looks.every((b) => agree(a, b)))) {
-      log.push({ key: head });
+      note(head);
       return head;
     }
 
     console.error(`  a look back read ${looks.join(', ')}; taking it for a misread and going on`);
-    log.push({ key: null });
+    note(null);
     return null;
   };
 
+  const take = async () => {
+    const reading = await read();
+    note(reading.key);
+    explain();
+    return reading;
+  };
+
+  let reading = first;
+
+  if (reading) {
+    note(reading.key);
+  }
+
   const last = Math.min(from + max, total ?? Infinity);
 
-  for (let index = from; index < last; index++) {
-    // The swipe forward that brought the walk here, the last step taken, where this is not the first Pokémon.
-    const forward = log.length - 1;
-    const before = { ends: [...ends], misses };
-    const reading = pending ?? (await read());
-    pending = undefined;
-    log.push({ key: reading.key });
-    misses = reading.key === null ? misses + 1 : 0;
+  for (let index = from; index < last;) {
+    reading ??= await take();
 
-    if (misses >= 3) {
+    if (reading.key === null && misses >= 2) {
       console.error('  three unreadable screens in a row; stopping this pass');
       break;
     }
 
-    let possible = worlds();
+    // A look that leaves every story as it found them would be made again from the same place, and learn as little: a
+    // read that missed the overlay, say, where the stories differ only in IVs.
+    const looked = new Set<string>();
 
-    while (possible.has(Infinity) && possible.size > 1) {
-      const k = distance(possible, index);
+    for (;;) {
+      const possible = worlds();
+      const state = JSON.stringify(possible.map(({ world }) => [world.at, [...world.known]]));
+      const open = possible.filter(({ story }) => story.end === Infinity);
+
+      if (open.length === 0 || new Set(possible.map(({ world }) => world.at)).size < 2 || looked.has(state)) {
+        break;
+      }
+
+      const k = distance(
+        possible.map(({ world }) => world),
+        index,
+      );
 
       if (k === undefined) {
         break;
       }
 
-      const landed = new Map([...possible].map(([end, { at, known }]) => [end, known.get(Math.max(at - k, 0))]));
+      looked.add(state);
+      const visiting = open.filter(({ world }) => world.at === index).map(({ story }) => story);
       await swipe(-1, k);
-      const key = await look(landed);
+      const key = await look(visiting);
+      explain();
       await swipe(1, k);
-      ends = [...possible.keys()];
-      const left = possible.size;
-      possible = worlds();
+      const again = await take();
+      reading = again.key === null ? reading : again;
 
       if (key === null) {
         break;
       }
-
-      // A look that rules out no world and teaches none of them anything leaves the walk where it was, and the next
-      // look would land on the same place: a read that missed the overlay, say, where the worlds differ only in IVs.
-      const learnt = [...possible].some(([end, { at, known }]) => known.get(Math.max(at - k, 0)) !== landed.get(end));
-
-      if (possible.size === left && !learnt) {
-        break;
-      }
     }
 
-    ends = [...possible.keys()];
+    const possible = worlds();
 
-    if (ends.length === 0) {
+    if (possible.length === 0) {
       console.error('  one screen read two different ways, so this pass cannot tell where it is; stopping it');
       break;
     }
 
-    if (!possible.has(Infinity)) {
-      if (total !== null && Math.min(...ends) === index - 1 && index < total && retries < DROP_RETRIES) {
-        console.error(`  the swipe to #${index + 1} went nowhere, short of the ${total} counted; swiping again`);
+    const here = possible.filter(({ story, world }) => story.end === Infinity && world.at === index);
+
+    if (here.length > 0) {
+      if (here.length < possible.length && reading.key !== null && latest !== null && agree(reading.key, latest)) {
+        console.error(
+          `  ${reading.key} may be the last Pokémon read again, so its end cannot be told; stopping this pass`,
+        );
+        break;
+      }
+
+      latest = reading.key ?? latest;
+      misses = reading.key === null ? misses + 1 : 0;
+      retries = 0;
+      await visit(reading, index);
+      stories = [...stories, ...here.map(({ story }) => ({ end: index, dropped: story.dropped }))];
+      left = stories;
+      since = log.length;
+      index++;
+      await swipe(1, 1);
+      reading = undefined;
+      continue;
+    }
+
+    const places = possible.map(({ world }) => world.at);
+    const [place = index] = places;
+    const ends = possible.flatMap(({ story }) => (story.end === Infinity ? [] : [story.end]));
+
+    if (places.every((p) => p === place) && retries < DROP_RETRIES) {
+      if (place > index) {
+        console.error(`  the walk went past #${index + 1}; swiping back to it`);
         retries++;
-        log.splice(forward, 1);
-        ({ ends, misses } = before);
-        await swipe(1, 1);
-        index--;
+        await swipe(-1, 1);
+        reading = undefined;
         continue;
       }
 
-      const repeats = index - 1 - Math.min(...ends);
+      if (total !== null && index < total && ends.every((end) => end === index - 1)) {
+        console.error(`  the swipe to #${index + 1} went nowhere, short of the ${total} counted; swiping again`);
+        retries++;
 
-      if (repeats > 0) {
-        console.error(`  storage may have ended ${repeats} Pokémon ago, past a screen that would not read`);
+        // Beside each end, storage going on with the swipes it stopped struck as dropped, so that a swipe sent again
+        // onto a twin of the last Pokémon is not taken for one more swipe gone nowhere.
+        const named = new Set(stories.map((story) => JSON.stringify(story)));
+
+        const struck = possible.flatMap(({ story }) => {
+          const going = { end: Infinity, dropped: [...story.dropped, ...stopped(log, from, story)] };
+          return story.end === Infinity || named.has(JSON.stringify(going)) ? [] : [going];
+        });
+
+        stories = [...stories, ...struck];
+        await swipe(1, 1);
+        reading = undefined;
+        continue;
       }
-
-      break;
     }
 
-    if (possible.size > 1 && reading.key !== null && latest !== null && agree(reading.key, latest)) {
-      console.error(
-        `  ${reading.key} may be the last Pokémon read again, so its end cannot be told; stopping this pass`,
-      );
-      break;
+    const repeats = index - 1 - Math.min(...places);
+
+    if (repeats > 0) {
+      console.error(`  storage may have ended ${repeats} Pokémon ago, past a screen that would not read`);
     }
 
-    latest = reading.key ?? latest;
-    retries = 0;
-    await visit(reading, index);
-    ends.push(index);
-    await swipe(1, 1);
+    break;
   }
 }
 
