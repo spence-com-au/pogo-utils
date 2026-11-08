@@ -167,8 +167,7 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 - **`name` is the event's name, not the headline.** Niantic writes headlines as marketing
   (`PokéXciting! Comes to KLCC Park — Get Ready, Kuala Lumpur!`); the entry gets the name the event goes by
   (`PokéXciting! — Kuala Lumpur`). The article body usually states it plainly as a heading above the dates.
-- **Where one article announces several events, each gets its own entry**, with a `link` that may be shared. The four
-  `30th-anniversary-*` entries all link to one article.
+- **Where one article announces several events, each gets its own entry**, with a `link` that may be shared.
 
 ### Choosing between a floating time and a UTC instant
 
@@ -179,14 +178,13 @@ the phrase "local time", which appears in single-city announcements too and so d
 - **An event in one place with stated hours is one worldwide instant**, so convert its local wall clock to UTC and write
   a trailing `Z`. Brisbane, Marseille, Munich, Lisbon, Rio and Boston City Safari all started at `10:00` local on the
   same day and were stored as six different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00`.
-  `gowa-global-meetup-karlsruhe-2026` and `pokemon-center-bangkok-2026` are like this.
 - **An event running in several zones at once is a floating time**, so write the wall clock with no zone and no `Z`:
   `2026-10-02T10:00:00.000`. 10am wherever the reader is, which is what such an announcement means and what an iCalendar
-  floating time expresses. `european-space-agency-2026` and `30th-anniversary-stamp-rally-2026` are like this.
+  floating time expresses. A partnership running across Europe or a stamp rally across several countries is like this.
 - **An event given only as whole days is a floating time too, even in one place**, starting at `T00:00:00.000` on its
   first day. With no clock to convert, writing the venue's midnight as UTC would make a calendar west of it draw the
-  event starting a day early, inventing precision the announcement never gave. Many entries are like this, among them
-  every `mall-exploration-*` and `pokemon-run-30-*` venue and the UK-only `national-trust-2026`.
+  event starting a day early, inventing precision the announcement never gave. A mall tour's venues, a run's city
+  weekends and a UK-only season are like this.
 
 So a mall tour across three countries takes floating times even though it names exact hours, a one-city festival takes
 instants even though it says "local time", and one mall's window given as dates takes floating times although it is in
