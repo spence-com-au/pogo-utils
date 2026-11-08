@@ -71,7 +71,8 @@ const SIZE = ((): Size => {
 async function* decode(h264: ReadableStream<Uint8Array>): AsyncGenerator<Image> {
   const ffmpeg = spawn('ffmpeg', [
     ...['-loglevel', 'error', '-flags', 'low_delay', '-probesize', '32', '-threads', '1'],
-    ...['-f', 'h264', '-i', 'pipe:0', '-f', 'rawvideo', '-pix_fmt', 'rgba', 'pipe:1'],
+    ...['-f', 'h264', '-i', 'pipe:0'],
+    ...['-threads', '1', '-f', 'rawvideo', '-pix_fmt', 'rgba', 'pipe:1'],
   ]);
 
   void (async () => {
