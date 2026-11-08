@@ -309,8 +309,11 @@ test('copies of one covered term are not the whole of what a union covers', () =
 
   expect(union?.covers).toContain(first);
 
-  // Two copies of one covered term are that term, not the union of it and the one beside it.
-  expect(short(all(yes(first), yes(first)))).not.toBe(term('background'));
+  // Two copies of one covered term are that term, not the union of it and the one beside it. Each junction is given the
+  // side its reduction reaches — required terms in an `any`, refused ones in an `all` — since the other side returns
+  // before the count is made.
+  expect(short(any(yes(first), yes(first)))).toBe(term(first));
+  expect(short(all(no(first), no(first)))).toBe(`!${term(first)}`);
 });
 
 test('an any of all but some of a partition is written as the complement where that is shorter', () => {
