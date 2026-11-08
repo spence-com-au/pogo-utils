@@ -15,10 +15,9 @@
  * time they load the page after the Vend workflow commits it.
  */
 
-import { useEffect, useState } from 'preact/hooks';
-
 import { said } from './errors.js';
 import type { Release, VendedRelease } from './release.js';
+import { Store, useStore } from './store.js';
 
 /**
  * The release a vend script last wrote to `path`, its URL put back through the same `check` the vend did, so whatever
@@ -55,12 +54,9 @@ export async function fetchVendedRelease(path: string, check: (url: string) => R
  * The release, and who to tell when it lands or is acknowledged. A class rather than module state so a test can start
  * from nothing, and so each app gets one of its own.
  */
-export class ReleaseStore {
+export class ReleaseStore extends Store {
   /** Null until a load lands, and after one that found nothing it could trust. */
   release: VendedRelease | null = null;
-
-  /** How many times the store has emitted, so a reader that subscribes late can tell it missed one. */
-  emits = 0;
 
   /**
    * Under `KEY_PREFIX`, so `src/backup.ts`'s sweep carries it. Stored as a JSON string rather than the bare version,
@@ -69,10 +65,10 @@ export class ReleaseStore {
   readonly acknowledgedKey: string;
 
   readonly #fetchRelease: () => Promise<VendedRelease | null>;
-  readonly #listeners = new Set<() => void>();
   #loaded: Promise<void> | null = null;
 
   constructor(acknowledgedKey: string, fetch: () => Promise<VendedRelease | null>) {
+    super();
     this.acknowledgedKey = acknowledgedKey;
     this.#fetchRelease = fetch;
   }
@@ -101,22 +97,6 @@ export class ReleaseStore {
     if (this.release !== null) {
       this.#writeAcknowledged(this.release.version);
       this.emit();
-    }
-  }
-
-  subscribe(listener: () => void) {
-    this.#listeners.add(listener);
-
-    return () => {
-      this.#listeners.delete(listener);
-    };
-  }
-
-  emit() {
-    this.emits++;
-
-    for (const listener of this.#listeners) {
-      listener();
     }
   }
 
@@ -163,20 +143,5 @@ export class ReleaseStore {
 
 /** `store`, with the calling component redrawn whenever it changes. */
 export function useReleaseStore(store: ReleaseStore) {
-  const [, redraw] = useState(0);
-  const rendered = store.emits;
-
-  useEffect(() => {
-    const update = () => redraw((count) => count + 1);
-    const unsubscribe = store.subscribe(update);
-
-    // Preact runs this after paint, so an emit since the render reached no listener here.
-    if (store.emits !== rendered) {
-      update();
-    }
-
-    return unsubscribe;
-  }, [store]);
-
-  return store;
+  return useStore(store);
 }
