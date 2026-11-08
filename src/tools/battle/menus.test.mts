@@ -470,11 +470,26 @@ test('stops after so many swipes where the carousel never shows an end', () => {
   const search = carousel();
   const swipe = (n: number) => searchParty(search, n % 2 === 0 ? 'test 4' : 'test 3', 'GBL');
 
-  for (let n = 0; n < 24; n++) {
+  for (let n = 0; n < 26; n++) {
     swipe(n);
   }
 
-  expect(() => swipe(24)).toThrow('no party named GBL saved for this league');
+  expect(() => swipe(26)).toThrow('no party named GBL saved for this league');
+});
+
+// The most swipes a search takes are enough for a dozen parties there and back, each end shown by two in a row.
+test('searches a dozen parties there and back before it stops', () => {
+  const parties = Array.from({ length: 12 }, (_, i) => `test ${i + 1}`);
+  const back = parties.slice(0, -1).reverse();
+  const search = carousel();
+
+  for (const title of [...parties, 'test 12', 'test 12', ...back, 'test 1']) {
+    searchParty(search, title, 'Great');
+  }
+
+  expect(() => searchParty(search, 'test 1', 'Great')).toThrow(
+    `no party named Great saved for this league: ${[...parties, ...back].join(', ')}`,
+  );
 });
 
 // Stream frames from a Pixel 4 XL and a Pixel 8 Pro, and the full-size screenshots of the result a run reads it off.

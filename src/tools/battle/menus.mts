@@ -294,10 +294,11 @@ export interface Carousel {
 export const carousel = (): Carousel => ({ way: 'next', turned: false, retried: false, seen: [], steps: 0 });
 
 /**
- * How many swipes a search of the carousel takes at most: there and back across a dozen parties. Its ends are what
- * stop it otherwise, and a title misread differently swipe after swipe would never show one.
+ * How many swipes a search of the carousel takes at most: there and back across a dozen parties, eleven swipes each way
+ * and two at each end. Its ends are what stop it otherwise, and a title misread differently swipe after swipe would
+ * never show one.
  */
-const CAROUSEL_STEPS = 24;
+const CAROUSEL_STEPS = 26;
 
 /**
  * What to do next about the party carousel showing `title`, to use the party named `name`: use it, swipe on, or wait for
