@@ -24,7 +24,7 @@
 
 import { said } from '../../errors.ts';
 import { type Form, type GameData } from './game-master.mts';
-import { rgb, type Image } from './png.mts';
+import { luminance, rgb, type Image } from './png.mts';
 import { progress } from './progress.mts';
 
 /** How many hue bins a signature holds. Coarse on purpose: the model is lit and posed, where the icon is flat art. */
@@ -285,7 +285,7 @@ export function signatureOf(image: Image, from = ARTWORK_FROM): Signature | null
 
   // Read once rather than per neighbour, since each pixel is compared against four others — and whether it carries a
   // hue, which `subject` ranks runs by, falls out of the same read.
-  const luminance = new Float64Array(width * height);
+  const luminances = new Float64Array(width * height);
   const colour = new Uint8Array(width * height);
 
   for (let y = 0; y < height; y++) {
@@ -297,7 +297,7 @@ export function signatureOf(image: Image, from = ARTWORK_FROM): Signature | null
       const [, saturation, value] = hsv(r, g, b);
       const p = y * width + x;
 
-      luminance[p] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      luminances[p] = luminance(r, g, b);
       colour[p] = hued(saturation, value) ? 1 : 0;
     }
   }
@@ -309,12 +309,12 @@ export function signatureOf(image: Image, from = ARTWORK_FROM): Signature | null
   for (let y = EDGE_RADIUS; y < height - EDGE_RADIUS; y++) {
     for (let x = EDGE_RADIUS; x < width - EDGE_RADIUS; x++) {
       const p = y * width + x;
-      const here = luminance[p] ?? 0;
+      const here = luminances[p] ?? 0;
       const gap = Math.max(
-        Math.abs(here - (luminance[p - EDGE_RADIUS] ?? 0)),
-        Math.abs(here - (luminance[p + EDGE_RADIUS] ?? 0)),
-        Math.abs(here - (luminance[p - EDGE_RADIUS * width] ?? 0)),
-        Math.abs(here - (luminance[p + EDGE_RADIUS * width] ?? 0)),
+        Math.abs(here - (luminances[p - EDGE_RADIUS] ?? 0)),
+        Math.abs(here - (luminances[p + EDGE_RADIUS] ?? 0)),
+        Math.abs(here - (luminances[p - EDGE_RADIUS * width] ?? 0)),
+        Math.abs(here - (luminances[p + EDGE_RADIUS * width] ?? 0)),
       );
 
       if (gap >= EDGE) {
