@@ -48,11 +48,13 @@ test('haversine is symmetric', () => {
 });
 
 /**
- * Melbourne to Sydney against a figure worked out independently rather than read off this function: 713,427.48 m, which
- * is the published great-circle distance to the kilometre.
+ * Melbourne to Sydney against a figure worked out by a different formula rather than read off this function: the angle
+ * between the two points' unit vectors, `atan2(|a × b|, a · b)`, times the radius, which is 713,427.48 m to the
+ * centimetre. The assertion is held to that centimetre and no finer, since any digits past it would be this function's
+ * own.
  */
 test('haversine agrees with an independently computed distance', () => {
-  expect(haversine([-37.8136, 144.9631], [-33.8688, 151.2093])).toBeCloseTo(713427.4807201239, 6);
+  expect(haversine([-37.8136, 144.9631], [-33.8688, 151.2093])).toBeCloseTo(713427.48, 2);
 });
 
 /**
@@ -65,7 +67,10 @@ test('routeDistance sums every leg', () => {
   const sydney = [-33.8688, 151.2093] as const;
   const brisbane = [-27.4698, 153.0251] as const;
 
-  expect(routeDistance([melbourne, sydney, brisbane])).toBeCloseTo(1445806.2954271198, 6);
+  expect(routeDistance([melbourne, sydney, brisbane])).toBeCloseTo(
+    haversine(melbourne, sydney) + haversine(sydney, brisbane),
+    6,
+  );
   expect(routeDistance([melbourne, sydney, brisbane])).toBeGreaterThan(haversine(melbourne, brisbane));
 });
 

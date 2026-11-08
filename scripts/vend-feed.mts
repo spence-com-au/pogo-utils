@@ -37,8 +37,9 @@ if (!res.ok) {
   throw new Error(`${UPSTREAM_URL}: ${res.status} ${res.statusText}`);
 }
 
-// The previous copy's stamp first, then a local entry's for an ID upstream has only now picked up: the event was on the
-// page already, so arriving in the feed does not make it new. A later entry in the `Map` wins, hence the order.
+// The previous copy's stamp wins, with a local entry's standing in for an ID that upstream has only now picked up: the
+// event was on the page already, so arriving in the feed does not make it new. A later entry in the `Map` wins, hence
+// the previous copy is spread last.
 const events = stamp(vendable(await res.json()), new Map([...stampsOf(local), ...stampsOf(previous)]), now);
 
 // Two-space and newline-terminated because `prettier --check .` reads this file like any other, `data/` being no part
