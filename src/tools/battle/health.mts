@@ -108,10 +108,10 @@ const LIT = 0.1;
 
 /**
  * The longest a strip just above or below a longer one is taken for artwork at, as a fraction of a full bar. In the 26
- * GO Battle League runs kept with video, 167 pictures had one framed strip of a side's within 8 rows of another's top or
- * bottom: in 161 the shorter was 2–8%, the map seen between the letters of "NOT VERY EFFECTIVE..." or "BLOCKED!", which
- * the game writes just above a bar; in the other 6 it was 22–46%, two bars drawn one above the other at the start of a
- * charged move, each its Pokémon's.
+ * GO Battle League runs kept with video, 167 pairs of a side's framed strips lay one within 8 rows above the other: in
+ * 161 the shorter was 2–8%, the map seen between the letters of "NOT VERY EFFECTIVE..." or "BLOCKED!", which the game
+ * writes just above a bar; in the other 6 it was 22–46%, two bars drawn one above the other at the start of a charged
+ * move, each its Pokémon's.
  */
 const SLIVER = 0.1;
 
