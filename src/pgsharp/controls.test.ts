@@ -54,8 +54,8 @@ test('the radar filter reaches the device as one string whose field order is as 
 
   // Parsed back rather than compared as an object, because the string is what PGSharp stores and `JSON.stringify`
   // writes keys in insertion order: rearranging `scan-config.js` hands the device a string it did not write while
-  // leaving every field equal to what it was. This list is therefore the assertion that module's own "must not be
-  // rearranged" asks for.
+  // leaving every field equal to what it was. This list is therefore what holds the order that module's header says is
+  // part of the value.
   expect(Object.keys(scan)).toEqual([
     'shiny',
     'minlv',
