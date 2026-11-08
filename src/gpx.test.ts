@@ -93,6 +93,24 @@ test('extText answers null for an element with no extensions block', () => {
 });
 
 /**
+ * Matched as the validator matches, on namespace and local name: a foreign tool's field of the same name, first in
+ * document order so a reader going by name alone would find it, is not one the validator checked.
+ */
+test('extText reads the pgr namespace under any prefix, and nothing else', () => {
+  const doc = gpx(
+    '<wpt lat="1" lon="2"><name>Here</name><extensions>' +
+      '<x:country xmlns:x="urn:other">Atlantis</x:country>' +
+      '<p:country xmlns:p="https://spence.com.au/pogo-utils/gpx/1">Australia</p:country>' +
+      '<x:event xmlns:x="urn:other">gone</x:event>' +
+      '</extensions></wpt>',
+  );
+  const wpt = first(doc, 'wpt');
+
+  expect(extText(wpt, 'country')).toBe('Australia');
+  expect(extText(wpt, 'event')).toBeNull();
+});
+
+/**
  * `coordStr` is the file's own text rather than the parsed pair printed back, which is what lets the copy button hand
  * over exactly what the file said — trailing zeroes and all, where `${lat},${lng}` would have dropped them.
  */
