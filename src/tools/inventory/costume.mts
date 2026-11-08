@@ -558,7 +558,8 @@ let kept: ReturnType<typeof decoded> | null = null;
  *
  * `costumed` is the answer the scan's `costume` search gave, where it ran: a Pikachu it did not find wears none, and
  * one it found cannot be the plain one. A list naming several leaves no costume out rather than saying it, there being
- * no name for it in a column that names costumes.
+ * no name for it in a column that names costumes, but one naming a single costume keeps it beside that as `''`, since
+ * the costume alone would read as settled.
  */
 export function costumeOf(
   image: Image,
@@ -600,7 +601,7 @@ export function costumeOf(
 
   const named = [...new Set(answer)].filter((costume) => costume !== '');
 
-  return answer.length === 1 ? named : named.sort();
+  return answer.length === 1 ? named : (named.length > 1 ? named : answer).sort();
 }
 
 /** The icon files a Pikachu's wardrobe is drawn from: the plain form's, then every costume's, ordinary then shiny. */

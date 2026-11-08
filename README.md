@@ -509,7 +509,8 @@ back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or 
 and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
 from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
 costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
-and lists every costume it could be where the artwork does not settle which. Any other species found by the costume
+and lists every costume it could be where the artwork does not settle which, with `""` for none where it could be that
+or a single costume, since that costume alone would read as the settled one. Any other species found by the costume
 search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
 `--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
 `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
