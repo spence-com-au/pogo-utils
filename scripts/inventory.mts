@@ -1332,6 +1332,6 @@ if (command === 'scan') {
     await report(decodePng(readFileSync(path)), data, icons);
   }
 } else {
-  console.error(USAGE);
+  (command === 'help' ? console.log : console.error)(USAGE);
   process.exit(command === 'help' ? 0 : 1);
 }
