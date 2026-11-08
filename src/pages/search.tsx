@@ -340,14 +340,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    */
   useEffect(() => {
     setState(arrived(fragment));
-    setTyping('');
-    setMarking('');
-    setTagging('');
-    setTypedBound(null);
-    setTyped('');
-    setTypedError(null);
-    settle();
-    closeSuggestions();
+    resetBoxes();
   }, [fragment]);
 
   /**
@@ -366,6 +359,26 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   function closeSuggestions() {
     setOffered([]);
     setActive(-1);
+  }
+
+  /** The sheet's box emptied, and the suggestions under it closed. */
+  function clearName() {
+    setTyping('');
+    closeSuggestions();
+  }
+
+  /**
+   * Every text box on the page emptied, and the pause before the Advanced box is read called off. A new box is emptied
+   * here too, or a pasted link and Clear would each leave it holding what it held before.
+   */
+  function resetBoxes() {
+    clearName();
+    setMarking('');
+    setTagging('');
+    setTypedBound(null);
+    setTyped('');
+    setTypedError(null);
+    settle();
   }
 
   /**
@@ -411,8 +424,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    */
   function openSheet(at: number) {
     setAdding(at);
-    setTyping('');
-    closeSuggestions();
+    clearName();
     sheetRef.current?.showModal();
   }
 
@@ -446,14 +458,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    */
   function clear() {
     setState((was) => ({ ...emptyState(), optimise: was.optimise }));
-    setTyping('');
-    setMarking('');
-    setTagging('');
-    setTypedBound(null);
-    setTyped('');
-    setTypedError(null);
-    settle();
-    closeSuggestions();
+    resetBoxes();
   }
 
   async function copy() {
@@ -626,8 +631,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       }
     }
 
-    setTyping('');
-    closeSuggestions();
+    clearName();
   }
 
   /**
@@ -1204,8 +1208,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
         aria-labelledby="sheetLabel"
         onClose={() => {
           setAdding(null);
-          setTyping('');
-          closeSuggestions();
+          clearName();
         }}
         onClick={(event) => {
           if (event.target === event.currentTarget) {
