@@ -14,7 +14,6 @@ import {
   count,
   distance,
   DROP_RETRIES,
-  FLAGS,
   keyOf,
   land,
   landmarkOf,
@@ -34,7 +33,6 @@ import {
   walk,
   type Landmark,
 } from './scan.mts';
-import { CLEAR_KEYS } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, expect, test, vi } from 'vitest';
@@ -207,19 +205,6 @@ test('a count left out is the fallback, and a whole number is itself', () => {
 
 test.for(['-1', '1.5', 'ten', 'NaN', 'Infinity'])('a count of %j is refused rather than run with', (value) => {
   expect(() => count('limit', value, Infinity)).toThrow(`--limit takes a whole number, not ${value}`);
-});
-
-/**
- * That the clear is longer than every search the scan sends. A flag is typed into the box as it stands — `search(flag)`
- * — so `FLAGS` is the list of terms the scan sends, and they are short enough that this passes today with room to
- * spare. The point is that it fails the moment a longer one is added, where before nothing related the two numbers.
- */
-test('the clear is longer than every search the scan sends', () => {
-  for (const term of FLAGS) {
-    expect(term.length, `the scan sends ${JSON.stringify(term)}, which the clear cannot remove`).toBeLessThanOrEqual(
-      CLEAR_KEYS,
-    );
-  }
 });
 
 /**

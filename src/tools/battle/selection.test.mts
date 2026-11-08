@@ -11,7 +11,7 @@ import { type GameData } from '../inventory/game-master.mts';
 import { ocr, type Line } from '../inventory/ocr.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
 import { useWasmEngine } from '../inventory/test-engine.mts';
-import { type Point } from './play.mts';
+import { type Point } from './layout.mts';
 import { isSelection, pinkCell, query, readCard, readPanel, searched, type Hands } from './selection.mts';
 
 afterAll(useWasmEngine());
