@@ -5,7 +5,7 @@
  * renamed id or a moved ceiling leaves a test asserting nothing, and that reads exactly like a pass.
  */
 
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import { all, any, named, range, shape, yes } from '../testing/search.js';
 import { bounded, TERMS_BY_ID } from './terms.js';
@@ -117,6 +117,26 @@ test('an edit answering null takes the node out', () => {
   // The root is the one node that cannot go: the cards have to have something to be the parts of, and an empty root
   // group is how a query says nothing.
   expect(shape(update(tree, [], () => null))).toEqual(shape(tree));
+});
+
+test('a path gone stale changes nothing, however it went stale', () => {
+  const tree = all(yes('shiny'), any(yes('fire'), yes('water')), yes('lucky'));
+  const change = vi.fn(() => null);
+
+  // Past the end of the root's parts, which is where a path points once something before it has been taken out: the
+  // root comes back as it was, and `change` is never handed a node that is not there.
+  expect(update(tree, [3], change)).toBe(tree);
+
+  // The same one level down, and through a pill, which has no parts to index. The spine above is rebuilt on the way
+  // back up, so it is the shape that is asserted rather than the identity.
+  expect(shape(update(tree, [1, 2], change))).toEqual(shape(tree));
+  expect(shape(update(tree, [0, 0], change))).toEqual(shape(tree));
+
+  // And a root that is itself a pill, which a path of any length is past the end of.
+  const leaf = yes('shiny');
+
+  expect(update(leaf, [0], change)).toBe(leaf);
+  expect(change).not.toHaveBeenCalled();
 });
 
 test('an empty tree is a group with nothing in it, joined the way the game joins its clauses', () => {
