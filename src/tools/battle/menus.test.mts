@@ -439,9 +439,14 @@ test('searches the carousel on from the party it opens on', () => {
   expect(walk(['test 4', 'test 3', 'gbl'], 'GBL')).toEqual(['next', 'next', 'use']);
 });
 
-// A swipe that leaves the same party in front is the end of the carousel, and the search turns back from it.
+// Two swipes in a row leaving the same party in front are the end of the carousel, and the search turns back from it.
 test('turns back at the end of the carousel to find a party before it', () => {
-  expect(walk(['gbl', 'gbl', 'test 3', 'test 4'], 'Test 4')).toEqual(['next', 'back', 'back', 'use']);
+  expect(walk(['gbl', 'gbl', 'gbl', 'test 3', 'test 4'], 'Test 4')).toEqual(['next', 'next', 'back', 'back', 'use']);
+});
+
+// One swipe that leaves the same party in front could be a swipe the phone dropped, so it is made again.
+test('swipes again where a swipe left the party in front, rather than turn back short of the end', () => {
+  expect(walk(['test 4', 'test 4', 'test 3', 'gbl'], 'GBL')).toEqual(['next', 'next', 'next', 'use']);
 });
 
 test('waits for a read of the title rather than swipe past what it could not read', () => {
@@ -451,7 +456,7 @@ test('waits for a read of the title rather than swipe past what it could not rea
 test('stops at the second end without the party, naming those it passed', () => {
   const search = carousel();
 
-  for (const title of ['test 4', 'test 3', 'gbl', 'gbl', 'test 3', 'test 4']) {
+  for (const title of ['test 4', 'test 3', 'gbl', 'gbl', 'gbl', 'test 3', 'test 4', 'test 4']) {
     searchParty(search, title, 'Great');
   }
 
