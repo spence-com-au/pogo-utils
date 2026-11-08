@@ -1682,24 +1682,13 @@ async function fightThen(after: Record<string, Scene>) {
   const report = recorder();
   const told: { screen: string; energy: number | undefined }[] = [];
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'master' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
+  await play(phone, { mode: { mode: 'training', leader: 'blanche', league: 'master' }, count: 1 }, clock, {
+    ...report,
+    status: (status) => {
+      report.status(status);
+      told.push({ screen: status.screen, energy: status.fight?.ourEnergy?.energy });
     },
-    clock,
-    {
-      ...report,
-      status: (status) => {
-        report.status(status);
-        told.push({ screen: status.screen, energy: status.fight?.ourEnergy?.energy });
-      },
-    },
-  );
+  });
 
   return { strokes, told };
 }
