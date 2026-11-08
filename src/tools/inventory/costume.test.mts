@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test, vi } from 'vitest';
-import { costumeOf, measure, wardrobeFor, type Wardrobe } from './costume.mts';
+import { costumeOf, measure, wardrobeFor, wardrobeOf, type Wardrobe } from './costume.mts';
 import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
 import { type Identity } from './identify.mts';
@@ -71,6 +71,32 @@ test.each(['Red', 'Yellow', 'Blue'])('a Pikachu in the %s GO Fest 2026 cap is re
     `Gofest 2026 Cap ${colour}`,
   ]);
 });
+
+// The labelled pick is vetoed by the icons, which list every costume near their best. A costume drawn with the plain
+// icon ties with none exactly, so none stays in the list beside every such costume: cut to the costumes alone, the list
+// would read as settled among them.
+test.each([[['Twin']], [['Twin', 'Twin2']]])(
+  'a Pikachu that could be in no costume or in %j is read as any of them',
+  async (twins) => {
+    const image = decodePng(readFileSync(new URL('fixtures/pikachu.png', import.meta.url)));
+    const plain = await fixture(PLAIN);
+    const [capture] = REFERENCES.captures;
+
+    if (!HAT || !capture) {
+      throw new Error('no Holiday 2016 costume or no labelled capture to pick it with');
+    }
+
+    const drawn = wardrobeOf([
+      { costume: '', colourings: [plain] },
+      ...twins.map((costume) => ({ costume, colourings: [plain] })),
+      { costume: HAT.name, colourings: [await fixture(HAT.icon)] },
+    ]);
+    const from = artworkFrom((await findOverlay(image))?.box ?? null);
+    const references = { captures: [{ ...capture, costume: HAT.name }], behind: {} };
+
+    expect(costumeOf(image, from, drawn, null, references)).toStrictEqual(['', ...twins]);
+  },
+);
 
 const pikachu = { form: DATA.forms.find((f) => f.dex === 25 && f.form === null) } as Identity;
 const image = { width: 1, height: 1, data: new Uint8Array(4) };

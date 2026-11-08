@@ -169,13 +169,13 @@ test('a row read in full takes the entry it equals, leaving the one with a blank
   expect(marks.take(detail({ weight: 7.2 }), overlay(15, 15, 15)), 'the blank entry went to the first row').toBe(true);
 });
 
-test('a screen with no key is neither marked nor matched', () => {
+test('a screen with no key is neither marked nor answered', () => {
   const marks = new Marks();
 
   marks.add(detail({ hp: null }), null);
 
   expect(marks.size).toBe(0);
-  expect(marks.take(detail({ hp: null }), null)).toBe(false);
+  expect(marks.take(detail({ hp: null }), null), 'a `false` nothing checked').toBeNull();
 });
 
 test('a Pokémon the search did not find is not marked', () => {

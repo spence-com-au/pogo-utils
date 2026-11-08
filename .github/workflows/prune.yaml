@@ -38,8 +38,12 @@ jobs:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
+      # `master` rather than the default `github.sha`, as in `vend.yaml`: that commit is fixed when the run is created
+      # rather than when it starts, so a run that waited in the `master` group behind one that pushed would prune a
+      # commit behind `master` and have its push rejected as a non-fast-forward.
       - uses: 'actions/checkout@v7.0.1'
         with:
+          ref: 'master'
           token: '${{ steps.token.outputs.token }}'
 
       - uses: 'pnpm/setup@v3.1.2'
