@@ -11,10 +11,10 @@
  */
 
 import { areas as healthAreas } from './health.mts';
-import { tall, type Area, type Box, type Size } from './layout.mts';
+import { tall, type Area, type Box, type Point, type Size } from './layout.mts';
 import { FINGER, areas as menuAreas } from './menus.mts';
 import { areas as partyAreas } from './party.mts';
-import { areas as playAreas, type Point } from './play.mts';
+import { areas as playAreas } from './play.mts';
 import { areas as readAreas } from './read.mts';
 import { areas as recogniseAreas } from './recognise.mts';
 import { areas as selectionAreas } from './selection.mts';

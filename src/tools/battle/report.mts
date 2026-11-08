@@ -1,5 +1,5 @@
 import { type Image } from '../inventory/png.mts';
-import { columnsFor, ERASE, type Pictures } from './kitty.mts';
+import { columnsFor, ERASE, type Graphics } from './kitty.mts';
 import { energyOf, PARTY, summary, type Fight, type Reporter, type Side, type Status } from './reporter.mts';
 
 /**
@@ -236,7 +236,7 @@ function last(lines: readonly string[], rows: number, blank: string): string[] {
  */
 export function live(
   stream: NodeJS.WriteStream,
-  phone?: { pictures: Pictures; frame: () => Image | undefined },
+  phone?: { pictures: Graphics; frame: () => Image | undefined },
 ): Reporter & { done(): void } {
   const sides: { line: string; side: 'own' | 'opponent'; why: string | undefined }[] = [];
   const runs: string[] = [];

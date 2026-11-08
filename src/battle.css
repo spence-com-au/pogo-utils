@@ -80,19 +80,10 @@ body[data-page='battle'] {
     gap: 8px;
   }
 
+  /* The rest of `.run` is chrome.css's; this pads it as wide as the Stop beside it. */
+
   .run {
     padding: 9px 18px;
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: #fff;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .run:hover:not(:disabled) {
-    filter: brightness(1.05);
   }
 
   .ghost {
@@ -110,7 +101,6 @@ body[data-page='battle'] {
     color: var(--track);
   }
 
-  .run:disabled,
   .ghost:disabled {
     opacity: 0.5;
     cursor: default;

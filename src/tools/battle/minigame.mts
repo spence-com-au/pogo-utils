@@ -14,7 +14,7 @@
  */
 
 import { scale, type Image } from '../inventory/png.mts';
-import { type Point } from './play.mts';
+import { type Point } from './layout.mts';
 
 export type Colour = readonly [r: number, g: number, b: number];
 

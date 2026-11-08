@@ -60,10 +60,15 @@ function useRoute(): Arrival {
  * `null` while it is in flight, which is a frame or two from cache and a round trip on a first visit. The load is
  * guarded by the page it was started for: switching tabs twice quickly resolves the two imports in whichever order the
  * network gives them, and without the check the first to arrive would paint over the page the reader is actually on.
+ *
+ * A failure is kept with its page too: the effect that clears it runs only after the next page has painted, which would
+ * otherwise name the next page beside the last one's error. Every arrival loads again, not only one at a new page, so a
+ * page whose chunk failed is retried by arriving at it again rather than only by leaving it and coming back. A page
+ * already loaded gets the same module straight back.
  */
-function usePageComponent(page: Page) {
+function usePageComponent({ page, query, visit }: Arrival) {
   const [loaded, setLoaded] = useState<{ page: Page; Component: PageComponent } | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ page: Page; error: string } | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -78,16 +83,19 @@ function usePageComponent(page: Page) {
       })
       .catch((error: unknown) => {
         if (current) {
-          setFailed(said(error));
+          setFailed({ page, error: said(error) });
         }
       });
 
     return () => {
       current = false;
     };
-  }, [page]);
+  }, [page, query, visit]);
 
-  return { Component: loaded?.page === page ? loaded.Component : null, failed };
+  return {
+    Component: loaded?.page === page ? loaded.Component : null,
+    failed: failed?.page === page ? failed.error : null,
+  };
 }
 
 /**
@@ -105,8 +113,9 @@ function useDocument(page: Page) {
 }
 
 export function Shell() {
-  const { page, query, visit } = useRoute();
-  const { Component, failed } = usePageComponent(page);
+  const route = useRoute();
+  const { page, query, visit } = route;
+  const { Component, failed } = usePageComponent(route);
 
   useDocument(page);
 

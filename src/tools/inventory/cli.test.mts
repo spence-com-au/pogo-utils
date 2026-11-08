@@ -1,5 +1,5 @@
 /**
- * The command line itself, driven as a subprocess. `scripts/inventory.mts` is the one part of the scanner no test
+ * The command line itself, driven as a subprocess. `scripts/inventory.mts` is the one part of the scanner no unit test
  * reaches — nothing imports it, so the whole suite passes a script that cannot start, a `parseArgs` that rejects a flag
  * the usage advertises, and a usage block the script can no longer find in its own source.
  *
@@ -8,7 +8,8 @@
  * also the interface a person uses.
  *
  * Nothing here reaches the network or a phone. `reads` builds the cache the readers would otherwise download, and
- * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do.
+ * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do. `scan` and
+ * `snap`, which do need a phone, are driven the same way against a stand-in for one in `phone.test.mts`.
  */
 
 import { ICON_CACHE } from './download.mts';
@@ -82,9 +83,9 @@ const HONOURED = new Map(
  * before: `--serial` sat on the `scan` line alone while `snap` honoured it, and nothing could say so.
  */
 const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
-  ({ stderr }) =>
+  ({ stdout }) =>
     new Map(
-      stderr
+      stdout
         .split(/^ {2}pnpm inventory /m)
         .slice(1)
         .map((chunk) => {
@@ -102,16 +103,19 @@ const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
 
 /**
  * That `help` answers at all, which is less obvious than it looks: the synopsis is cut out of the script's own source
- * with a regular expression, and `?.[0]` on a miss makes `console.error(undefined)` print `undefined` and exit 0. So a
+ * with a regular expression, and `?.[0]` on a miss makes `console.log(undefined)` print `undefined` and exit 0. So a
  * usage block reworded past that pattern breaks the help text and reports success.
+ *
+ * On stdout, as `pnpm adb` and `pnpm battle` print theirs, so that `help | less` or `help > usage.txt` has it to read;
+ * the usage beside a refusal goes to stderr with the refusal.
  */
 test('`help` prints the synopsis and exits 0', async () => {
   const { stdout, stderr } = await run(process.execPath, [SCRIPT, 'help']);
 
-  expect(stderr).toContain('pnpm inventory scan');
-  expect(stderr).toContain('pnpm inventory snap');
-  expect(stderr).toContain('pnpm inventory parse');
-  expect(stdout).toBe('');
+  expect(stdout).toContain('pnpm inventory scan');
+  expect(stdout).toContain('pnpm inventory snap');
+  expect(stdout).toContain('pnpm inventory parse');
+  expect(stderr).toBe('');
 });
 
 /** `--help` is `help` wherever it goes, rather than a flag refused because the command beside it does not act on it. */
@@ -120,8 +124,8 @@ test.each([[[]], [['scan']], [['parse', 'x.png']]])(
   async (args) => {
     const { stdout, stderr } = await run(process.execPath, [SCRIPT, ...args, '--help']);
 
-    expect(stderr).toContain('pnpm inventory scan');
-    expect(stdout).toBe('');
+    expect(stdout).toContain('pnpm inventory scan');
+    expect(stderr).toBe('');
   },
 );
 
@@ -298,9 +302,9 @@ test('`scan` refuses a `--search` that only a flag pass would overflow, before i
  * is never checked.
  */
 test('`--help` prints the usage even beside a `--search` that would be refused', async () => {
-  const { stderr } = await run(process.execPath, [SCRIPT, 'snap', '--help', '--search', '']);
+  const { stdout } = await run(process.execPath, [SCRIPT, 'snap', '--help', '--search', '']);
 
-  expect(stderr).toContain('pnpm inventory snap');
+  expect(stdout).toContain('pnpm inventory snap');
 });
 
 /**

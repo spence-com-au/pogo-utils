@@ -9,8 +9,8 @@
  * `pokemon_name_0019` is `Rattata` for the Alolan one as much as the Kantonian — so `Alolan Rattata` answers to
  * nothing, and the Regional forms chips are how a reader asks for that.
  *
- * A family is written rather than expanded: `+charmander` goes to the game as it stands, which three species that is
- * being something `pokedex.js` cannot say, carrying forms, regions and rarity but no evolution links.
+ * A family is written rather than expanded: `+charmander` goes to the game as it stands, since `pokedex.js` carries
+ * forms, regions and rarity but no evolution links, and so cannot say which species a family holds.
  */
 
 import { fold, nameOf } from '../pokemon/names.js';

@@ -18,7 +18,7 @@ import { read } from './parse.js';
 import { GROUPS, PRESETS, RANGES, type Range } from './terms.js';
 import { range } from '../testing/search.js';
 import { unsearchable } from '../tools/inventory/storage.mts';
-import { boxText, marked, pickable, rangeTitle, readBound, spans, unmarked } from './controls.js';
+import { answered, boxText, marked, pickable, rangeTitle, readBound, spans, unmarked, type Sent } from './controls.js';
 
 /**
  * Both halves of what `spans` promises, for any message at all: an odd number of pieces, so the last one is prose and
@@ -95,11 +95,11 @@ test('the digits stay in the box they were typed into', () => {
 
 test('a range chip names its own phrase, whichever end the phrase sits on', () => {
   /*
-   * The tooltip used to be spelled at the chip as `range.prefix || 'a dex span'`, which was true while the dex was the
-   * only range with an empty prefix. The three IVs carry their phrase in `suffix` and so have an empty prefix too, and
-   * every one of them advertised itself as a dex span — the shape being read off the wrong end of the range.
+   * A tooltip spelled at the chip as `range.prefix || 'a dex span'` is true only while the dex is the only range with
+   * an empty prefix. The three IVs carry their phrase in `suffix` and so have an empty prefix too, and every one of
+   * them would advertise itself as a dex span — the shape being read off the wrong end of the range.
    *
-   * Over the whole table rather than over the IVs by name, since the fault was a fallback catching a case nobody had
+   * Over the whole table rather than over the IVs by name, since the fault is a fallback catching a case nobody has
    * added yet. The dex is the one range with a phrase at neither end, so it is the only one the words are for.
    */
   const shapes = Object.fromEntries(RANGES.map((entry) => [entry.id, rangeTitle(entry).split(' — ')[0]]));
@@ -118,7 +118,7 @@ test('a range chip names its own phrase, whichever end the phrase sits on', () =
     maxmove: 'maxmove{N}',
   });
 
-  // And no other range borrows the dex's words, which is the whole of what went wrong.
+  // And no other range borrows the dex's words, which is the whole of what that fallback would get wrong.
   expect(RANGES.filter((entry) => shapes[entry.id] === 'a dex span').map((entry) => entry.id)).toEqual(['dex']);
 });
 
@@ -385,6 +385,30 @@ test('a bound already set is offered at the end showing it', () => {
     ceilingSet: has('to', which.max, which.max),
     ceilingUnset: has('to', which.max, null),
   }).toEqual({ floorSet: true, floorUnset: false, floorElsewhere: false, ceilingSet: true, ceilingUnset: false });
+});
+
+test('a send is answered for as long as the string on the page is the one sent', () => {
+  const sent = (kind: Sent['kind']): Sent => ({ query: 'shiny', kind, message: kind });
+
+  expect(answered(null, 'shiny', true)).toBeNull();
+  expect(answered(sent('done'), 'shiny', true)).toEqual(sent('done'));
+  expect(answered(sent('failed'), 'shiny', true)).toEqual(sent('failed'));
+  expect(answered(sent('done'), 'shiny&xxl', true)).toBeNull();
+  expect(answered(sent('failed'), 'shiny&xxl', true)).toBeNull();
+});
+
+test('a send in flight is answered for whatever the string has become', () => {
+  const busy: Sent = { query: 'shiny', kind: 'busy', message: 'Searching…' };
+
+  expect(answered(busy, 'shiny&xxl', true)).toEqual(busy);
+});
+
+test('a press with no phone is answered for until a phone is held, and not after, the string unchanged', () => {
+  const unheld: Sent = { query: 'shiny', kind: 'unheld', message: 'No phone is connected.' };
+
+  expect(answered(unheld, 'shiny', false)).toEqual(unheld);
+  expect(answered(unheld, 'shiny', true)).toBeNull();
+  expect(answered(unheld, 'shiny&xxl', false)).toBeNull();
 });
 
 /**

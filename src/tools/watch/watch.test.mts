@@ -331,6 +331,23 @@ test('a notification for a spawn with no despawn time says so rather than giving
   );
 });
 
+test('an XXS is tagged a mouse and rings below a shiny', () => {
+  const magikarp = spawn({ dex_id: 129, iv_percent: 40, size: 1 });
+
+  expect(reasonsFor(magikarp, false)).toStrictEqual(['XXS']);
+  expect(notificationFor(magikarp, reasonsFor(magikarp, false), DATA, NOW, 'UTC')).toMatchObject({
+    title: 'XXS Magikarp',
+    tags: ['mouse'],
+    priority: 4,
+  });
+});
+
+test('the IV percentage is worked out from the IVs when the spawn gives none', () => {
+  const dratini = spawn({ dex_id: 147, iv_attack: 14, iv_defense: 14, iv_stamina: 14, iv_percent: null });
+
+  expect(notificationFor(dratini, [], DATA, NOW, 'UTC').message).toMatch(/^IV 14\/14\/14 \(93%\)\n/);
+});
+
 test('the ordinary form is left unnamed', () => {
   expect(namesOf(spawn({ dex_id: 19, form: 45 }), DATA)).toStrictEqual({ species: 'Rattata', form: null });
   expect(namesOf(spawn({ dex_id: 19, form: 0 }), DATA)).toStrictEqual({ species: 'Rattata', form: null });

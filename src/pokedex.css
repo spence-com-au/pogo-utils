@@ -186,7 +186,8 @@ body[data-page='pokedex'] {
 
   .dexhead .stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
     gap: 4px;
     padding: 6px 14px 16px;
     border-radius: 0 0 24px 24px;

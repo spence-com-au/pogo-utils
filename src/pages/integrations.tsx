@@ -28,7 +28,7 @@ import { gpxFavourites, type Point, type Route } from '../pgsharp/favourites.js'
 import { backupSummary, buildBackup } from '../pgsharp/pgsdata.js';
 import { coinBagReleaseStore } from '../coin-bag/release-store.js';
 import { APK_ASSET, assetUrl, IPA_ASSET, LATEST_URL, REPO_URL, WEB_APP_URL } from '../coin-bag/release.js';
-import { releaseStore } from '../pgsharp/release-store.js';
+import { pgsharpReleaseStore } from '../pgsharp/release-store.js';
 import { DOWNLOAD_URL } from '../pgsharp/release.js';
 import { currentPlatform } from '../platform.js';
 import { useReleaseStore } from '../release-store.js';
@@ -125,11 +125,11 @@ export default function IntegrationsPage() {
   const builds = COIN_BAG_BUILDS[allBuilds ? 'other' : platform];
 
   // The top bar has usually asked for both already, in which case this is handed the same loads.
-  const { release } = useReleaseStore(releaseStore);
+  const { release } = useReleaseStore(pgsharpReleaseStore);
   const { release: coinBag } = useReleaseStore(coinBagReleaseStore);
 
   useEffect(() => {
-    void releaseStore.ensureLoaded();
+    void pgsharpReleaseStore.ensureLoaded();
     void coinBagReleaseStore.ensureLoaded();
   }, []);
 

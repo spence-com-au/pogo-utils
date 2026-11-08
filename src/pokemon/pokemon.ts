@@ -62,14 +62,7 @@ export default class Pokemon {
 
   /** One form, as `addForms` with a single name. The callback is handed that form and the target stays put. */
   addForm(name: string, configure?: (form: Pokemon) => void) {
-    const variant = this.#target.#createForm(name);
-    this.#declared = [variant];
-
-    if (configure) {
-      configure(variant);
-    }
-
-    return this;
+    return this.#declare(this.#target.#createForm(name), configure);
   }
 
   /**
@@ -83,14 +76,7 @@ export default class Pokemon {
 
   /** One region, as `addRegions` with a single region. The callback is handed that variant and the target stays put. */
   addRegion(region: string, configure?: (variant: Pokemon) => void) {
-    const variant = this.#target.#createRegion(region);
-    this.#declared = [variant];
-
-    if (configure) {
-      configure(variant);
-    }
-
-    return this;
+    return this.#declare(this.#target.#createRegion(region), configure);
   }
 
   /** The regions this species has a variant in, as peers of one another. To descend into one, use `withRegion`. */
@@ -102,12 +88,8 @@ export default class Pokemon {
   /** One form to descend into, so what follows lands on it rather than the species — for a form carrying its own. */
   withForm(name: string, configure?: (form: Pokemon) => void) {
     const variant = this.#target.#createForm(name);
-    this.#declared = [variant];
 
-    if (configure) {
-      configure(variant);
-    }
-
+    this.#declare(variant, configure);
     this.#target = variant;
     return this;
   }
@@ -121,144 +103,92 @@ export default class Pokemon {
    */
   withRegion(region: string, configure?: (variant: Pokemon) => void) {
     const variant = this.#target.#createRegion(region);
-    this.#declared = [variant];
 
-    if (configure) {
-      configure(variant);
-    }
-
+    this.#declare(variant, configure);
     this.#target = variant;
     return this;
   }
 
   isReleased() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#released = true;
-    }
-
-    return this;
+    });
   }
 
   isNotReleased() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#released = false;
-    }
-
-    return this;
+    });
   }
 
   isShinyEligible() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#shinyEligible = true;
-    }
-
-    return this;
+    });
   }
 
   isNotShinyEligible() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#shinyEligible = false;
-    }
-
-    return this;
+    });
   }
 
   doesSpawn() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#spawns = true;
-    }
-
-    return this;
+    });
   }
 
   doesNotSpawn() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#spawns = false;
-    }
-
-    return this;
+    });
   }
 
   /** Hatched from an egg and never met in the wild, so it stops spawning too. */
   isBaby() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#baby = true;
       variant.#spawns = false;
-    }
-
-    return this;
+    });
   }
 
   /** The wild never turns one up, so it stops spawning too. */
   isLegendary() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#legendary = true;
       variant.#spawns = false;
-    }
-
-    return this;
+    });
   }
 
   /** The same, Meltan being the one that spawns anyway and saying `doesSpawn` after to put it back. */
   isMythical() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#mythical = true;
       variant.#spawns = false;
-    }
-
-    return this;
+    });
   }
 
   /** One the wild turns up only in its own part of the world. It still spawns, so this leaves `#spawns` alone. */
   isRegional() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#regional = true;
-    }
-
-    return this;
+    });
   }
 
   /** For a form that turns up anywhere, so a Regional species can hand one back to the wild at large. */
   isNotRegional() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#regional = false;
-    }
-
-    return this;
+    });
   }
 
   /** The wild never turns one up, so it stops spawning too. */
   isUltraBeast() {
-    this.#assertMutable();
-
-    for (const variant of this.#declared) {
+    return this.#mark((variant) => {
       variant.#ultraBeast = true;
       variant.#spawns = false;
-    }
-
-    return this;
+    });
   }
 
   /** Names this species for the errors below, from the constant it is bound to, and renames its forms with it. */
@@ -391,6 +321,24 @@ export default class Pokemon {
     if (this.#frozen) {
       throw new Error(`${this.#name} is frozen; set its state in pokedex.js, before the dex is frozen`);
     }
+  }
+
+  /** Applies a marker to everything declared last, which is what makes `addForms` one declaration and not several. */
+  #mark(apply: (variant: Pokemon) => void) {
+    this.#assertMutable();
+
+    for (const variant of this.#declared) {
+      apply(variant);
+    }
+
+    return this;
+  }
+
+  /** Makes the variant just created the cursor, handing it to the callback to say what is true of it. */
+  #declare(variant: Pokemon, configure?: (variant: Pokemon) => void) {
+    this.#declared = [variant];
+    configure?.(variant);
+    return this;
   }
 
   /**

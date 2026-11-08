@@ -15,7 +15,7 @@ import { ICON_BASE } from '../pokedex/icons.js';
 import { Device, type Transport } from '../tools/inventory/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../tools/inventory/artwork.mts';
 import { DEFAULTS } from '../tools/inventory/config.mts';
-import { wardrobeFor, type Wardrobe } from '../tools/inventory/costume.mts';
+import { wardrobeFor } from '../tools/inventory/costume.mts';
 import { type Form, type GameData } from '../tools/inventory/game-master.mts';
 import { useEngine } from '../tools/inventory/ocr.mts';
 import { MODEL, tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
@@ -35,11 +35,6 @@ interface Kit {
   data: GameData;
   icons: ReadonlyMap<Form, Colourings>;
 }
-
-let gameMaster: Promise<GameData> | null = null;
-let tables: Promise<GameData> | null = null;
-let kit: Promise<Kit> | null = null;
-let wardrobe: Promise<Wardrobe | null> | null = null;
 
 /**
  * Why this page cannot read a screenshot, or null where it can. The OCR model is checked against its hash before it
@@ -61,19 +56,48 @@ export async function fetchOk(url: string): Promise<Response> {
   }
 }
 
+/** What `url` serves, the bytes of it. */
+export async function fetchBytes(url: string): Promise<Uint8Array> {
+  return new Uint8Array(await (await fetchOk(url)).arrayBuffer());
+}
+
+/**
+ * `make`, run by the first call with its arguments, and the promise it made answered to every call after. A promise
+ * that rejected is let go, so the next call runs `make` again rather than answering every later one with the network
+ * as it was the first time, and so is one whose value `keeps` refuses.
+ */
+function once<Args extends unknown[], Value>(
+  make: (...args: Args) => Promise<Value>,
+  keeps: (value: Value) => boolean = () => true,
+): (...args: Args) => Promise<Value> {
+  let kept: Promise<Value> | null = null;
+
+  return (...args) => {
+    if (kept === null) {
+      const promise = (kept = make(...args));
+
+      const forget = () => {
+        if (kept === promise) {
+          kept = null;
+        }
+      };
+
+      promise.then((value) => {
+        if (!keeps(value)) {
+          forget();
+        }
+      }, forget);
+    }
+
+    return kept;
+  };
+}
+
 /**
  * The vended game master, fetched once for every page that reads the screen against it: this one's reads and the
- * battle tool's. A failure is not kept, for the reason `ready` gives.
+ * battle tool's.
  */
-export function gameData(): Promise<GameData> {
-  gameMaster ??= fetchOk(GAME_MASTER).then((response) => response.json() as Promise<GameData>);
-
-  gameMaster.catch(() => {
-    gameMaster = null;
-  });
-
-  return gameMaster;
-}
+export const gameData = once(async (): Promise<GameData> => (await fetchOk(GAME_MASTER)).json() as Promise<GameData>);
 
 /**
  * The WebAssembly Tesseract, its worker and cores found against `base`, the page's URL. Tesseract.js resolves a
@@ -93,64 +117,38 @@ export function wasmEngine(base: string, progress?: (fraction: number) => void) 
 
 /**
  * The engine installed and the game master loaded, once: all a storage search needs, the game master being what tells
- * a detail screen from the map, and the first half of a read. A failure is not kept, so the next call tries again
- * rather than answering every later one with the network as it was the first time.
+ * a detail screen from the map, and the first half of a read.
  *
  * `onModel` hears how far the model's first download has got — 4 MB, and the one wait worth a progress bar.
  */
-function ready(onModel: (fraction: number) => void): Promise<GameData> {
-  tables ??= (async () => {
-    // The CLI narrates the icons it is about to read, which a page has no terminal for.
-    showProgress(false);
+const ready = once(async (onModel: (fraction: number) => void): Promise<GameData> => {
+  // The CLI narrates the icons it is about to read, which a page has no terminal for.
+  showProgress(false);
 
-    useEngine(wasmEngine(location.href, onModel));
+  useEngine(wasmEngine(location.href, onModel));
 
-    return gameData();
-  })();
-
-  tables.catch(() => {
-    tables = null;
-  });
-
-  return tables;
-}
+  return gameData();
+});
 
 /** And the icons a read picks a form by, once and on the same terms. */
-function prepare(onModel: (fraction: number) => void): Promise<Kit> {
-  kit ??= (async () => {
-    const data = await ready(onModel);
-    const icons = await signaturesFor(data, async (file) =>
-      signatureOfIcon(decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer()))),
-    );
+const prepare = once(async (onModel: (fraction: number) => void): Promise<Kit> => {
+  const data = await ready(onModel);
+  const icons = await signaturesFor(data, async (file) =>
+    signatureOfIcon(decodePng(await fetchBytes(ICON_BASE + file))),
+  );
 
-    return { data, icons };
-  })();
-
-  kit.catch(() => {
-    kit = null;
-  });
-
-  return kit;
-}
+  return { data, icons };
+});
 
 /**
  * Pikachu's icons drawn into one frame for its costume, fetched the first time a Pikachu is read rather than with the
  * kit: some 200 icons that no other screen wants. One that could not be had leaves its costume out, and a wardrobe
- * short of the plain icon is not kept, for the reason `ready` gives.
+ * short of the plain icon is not kept.
  */
-function wardrobeOn(data: GameData): Promise<Wardrobe | null> {
-  const fetching = (wardrobe ??= wardrobeFor(data, async (file) =>
-    decodePng(new Uint8Array(await (await fetchOk(ICON_BASE + file)).arrayBuffer())),
-  ));
-
-  void fetching.then((drawn) => {
-    if (!drawn && wardrobe === fetching) {
-      wardrobe = null;
-    }
-  });
-
-  return fetching;
-}
+const wardrobeOn = once(
+  (data: GameData) => wardrobeFor(data, async (file) => decodePng(await fetchBytes(ICON_BASE + file))),
+  (drawn) => drawn !== null,
+);
 
 /** Every reader over one screenshot, as `parse` would read it. */
 export async function read(image: Image, onModel: (fraction: number) => void): Promise<Reading> {
