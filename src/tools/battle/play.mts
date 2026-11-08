@@ -103,7 +103,8 @@ export interface Choices {
    * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
    * waits through the minigame's lead-in, there being nothing to pop yet, and once this minigame's have been found since
    * its throw was taken to be playing, there being none left; otherwise it sweeps rows, the finder perhaps missing the
-   * move's bubbles. Undefined, where the bubbles' colour is not known, sweeps rows throughout.
+   * move's bubbles. Those found once they have been gone `OVER_MS` are waited through too, being the move playing out.
+   * Undefined, where the bubbles' colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
 }
@@ -146,6 +147,23 @@ const MINIGAME: readonly (readonly [Point, Point])[] = [0.4, 0.52, 0.64, 0.76, 0
  */
 const LEAD_IN_MS = 2_500;
 
+/**
+ * How long the minigame's bubbles go unfound before they are over, in milliseconds, once found for `BUBBLES_MS`:
+ * anything found after is the move playing out, which strikes the opponent with things of its type's colour —
+ * Avalanche's ice chunks, Outrage's smoke, Thunderbolt's lightning. Over 218 throws of 17 kept runs, no stretch of
+ * bubbles was broken for more than 0.36s, and 129 had the move found 0.5s or more after the last of them, each looked
+ * at under its `used` banner or just before it. Found sooner, it is swiped as before.
+ */
+const OVER_MS = 500;
+
+/**
+ * How long the bubbles have to have been found, unbroken by `OVER_MS`, for that to end them, in milliseconds. A throw
+ * can be taken to be playing before its minigame begins, as when the opponent's faint hides our buttons, and whatever
+ * the fight shows meanwhile is found as bubbles: 0.8s and 1.3s of it in kept runs, and the `Get Ready!` after, with
+ * none found, would have ended a minigame not yet begun. Every stretch the move came after ran 2.5s at the least.
+ */
+const BUBBLES_MS = 2_000;
+
 /** How long one swipe takes, in milliseconds: short, so a fast move fires about six times a second. */
 const SWIPE_MS = 80;
 
@@ -187,14 +205,18 @@ export class Player {
   #playing = false;
 
   /**
-   * Whether the minigame under way has had its bubbles found since its throw was taken to be playing, after which a
-   * frame with none is its bubbles over rather than missed. The move then plays out, read as `battle` until a frame of
-   * it that hides the HUD, with nothing to pop and no fast move to fire: in a kept run, `bubbleSwipes` found Avalanche's
-   * bubbles from 114.14s to 119.35s, never losing them for more than 0.3s, and rows were swept on from there through
-   * `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no minigame's: live, after an Outrage tapped
-   * went unthrown, Kyurem having fainted to our fast move, the shards of its faint were found as Outrage's bubbles.
+   * The stretch of the minigame under way that its bubbles have been found over, unbroken by `OVER_MS`, since its throw
+   * was taken to be playing, after which a frame with none is its bubbles over rather than missed. The move then plays
+   * out, read as `battle` until a frame of it that hides the HUD, with nothing to pop and no fast move to fire: in a
+   * kept run, `bubbleSwipes` found Avalanche's bubbles from 114.14s to 119.35s, never losing them for more than 0.3s,
+   * and rows were swept on from there through `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no
+   * minigame's: live, after an Outrage tapped went unthrown, Kyurem having fainted to our fast move, the shards of its
+   * faint were found as Outrage's bubbles.
    */
-  #found = false;
+  #found: { from: number; to: number } | undefined;
+
+  /** Whether the bubbles found have been gone `OVER_MS` after `BUBBLES_MS` of them, after which none are swiped. */
+  #over = false;
 
   /** When each lit charged-move button lit, by its x, for as long as it stays lit. */
   readonly #lit = new Map<number, number>();
@@ -218,7 +240,8 @@ export class Player {
   forget(): void {
     this.#minigame = false;
     this.#playing = false;
-    this.#found = false;
+    this.#found = undefined;
+    this.#over = false;
   }
 
   /** What to do about a frame read as `state`, at `now` milliseconds. */
@@ -245,9 +268,7 @@ export class Player {
     // A charged move thrown is the minigame next, inside frames that read as `battle` throughout, and over once the
     // throw itself plays, which does not; as is a frame the caller says is a minigame, though no tap here began it.
     if (state !== 'battle' && state !== 'charged') {
-      this.#minigame = false;
-      this.#playing = false;
-      this.#found = false;
+      this.forget();
     } else if (minigame) {
       this.#minigame = true;
       this.#playing = true;
@@ -265,13 +286,20 @@ export class Player {
         return { kind: 'wait' };
       }
 
-      const [through] = this.#minigame ? (bubbles ?? []) : [];
+      const [through] = this.#minigame && !this.#over ? (bubbles ?? []) : [];
 
       if (through) {
-        this.#found ||= this.#playing;
+        if (this.#playing) {
+          this.#found =
+            this.#found && now - this.#found.to < OVER_MS ? { ...this.#found, to: now } : { from: now, to: now };
+        }
 
         return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
       }
+
+      // Judged on a frame with none found, so that a loop held up for a moment does not end the bubbles on its own.
+      this.#over ||=
+        this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS && now - this.#found.to >= OVER_MS;
 
       if (this.#minigame && bubbles && (this.#found || (this.#tapped && now - this.#tapped.at < LEAD_IN_MS))) {
         return { kind: 'wait' };
@@ -303,10 +331,9 @@ export class Player {
       return { kind: 'wait' };
     }
 
+    this.forget();
     this.#tapped = { state, at: now };
     this.#minigame = true;
-    this.#playing = false;
-    this.#found = false;
 
     return { kind: 'tap', at: first, what: state };
   }
