@@ -603,14 +603,15 @@ Nothing read leaves the page. What it fetches carries nothing about the screen: 
 [`fixtures/game-master.json`](src/tools/inventory/fixtures/game-master.json), which the build publishes rather than the
 page fetching the 23 MB it is made from. The screenshot and its reading stay in memory, and leave only as a download.
 
-The corpus is what holds the page to the CLI. `INVENTORY_OCR=wasm pnpm test:corpus` runs
-[`screens.test.mts`](src/tools/inventory/screens.test.mts) under the WebAssembly engine, handed the CLI's model off disk
-so it reaches no network and checked to be the same file the page fetches. Every capture reads the same fields,
-identity, form, level and IVs under both. Three assertions still differ, the three that pin which route a CP took rather
-than what any capture answers: tesseract.js is a fork of Tesseract 5.1 where `apt` installs 5.3.4, and it reads
-`castform-snowy.png`, `deoxys-normal.png` and `deoxys-defense.png`'s CP straight off the label line where the CLI has to
-sweep the region for it, `charizard-gigantamax.png`'s the other way round, and the sweep offers a different stray on
-`castform-sunny.png` and `pikachu-santa-hat.png`. Pinned to the CLI's routes, they are the CLI's to keep.
+The corpus is what holds the page to the CLI, and CI runs [`screens.test.mts`](src/tools/inventory/screens.test.mts)
+both ways: under the CLI, and under the WebAssembly engine with `INVENTORY_OCR=wasm pnpm test:corpus`, handed the CLI's
+model off disk so it reaches no network and checked to be the same file the page fetches. Every capture reads the same
+fields, identity, form, level and IVs under both. What differs is the route a CP took, which is not what any capture
+answers: tesseract.js is its own build of Tesseract, and it reads some captures' CP straight off the label line where
+the CLI has to sweep the region for it, and others the other way round. The two maps of which captures a CP is read off
+and what is offered where it is not are pinned for each engine, so a bump of either that moves a route fails; the test
+that measures the CLI's own sweep is skipped under wasm. The one other difference is pinned where the corpus finds it:
+tesseract.js reads a `yes` into the scenery of `overworld.png`, which `dialogOpen` takes for a dialog (#935).
 
 ## Trainer battles
 
