@@ -34,13 +34,13 @@ const newRouteState = () => ({
  * The two favourite schemas, one per key. Here rather than in `src/types.d.ts` because these have an owner: nothing
  * outside the PGSharp page reads or writes either.
  *
- * Three fields are optional because the code allows each — `tz` is written by `applyTimezones`, and `mode` and `state`
- * are what `encodeRoutes` falls back for. A route point is a fixed triple rather than a list of numbers, which is what
- * `encodeRoutes` re-emits positionally.
+ * `tz` is optional because `applyTimezones` writes it after the fact. A Route holds only what the GPX says: the `mode`
+ * and `state` PGSharp wants beside every route are the same for all of them, so `encodeRoutes` writes them. A route
+ * point is a fixed triple rather than a list of numbers, which is what `encodeRoutes` re-emits positionally.
  */
 type RoutePoint = [number, number, number];
 export type Point = { name: string; lat: number; lng: number; tz?: string };
-export type Route = { name: string; points: RoutePoint[]; mode?: number; state?: ReturnType<typeof newRouteState> };
+export type Route = { name: string; points: RoutePoint[] };
 
 /**
  * Gson's JSON spelling: no spaces, forward slashes escaped. Points escape non-ASCII as \uXXXX (what "hlfavor"
@@ -70,8 +70,8 @@ export function encodePoints(entries: readonly Point[]) {
 export function encodeRoutes(entries: readonly Route[]) {
   const arr = entries.map((e) => ({
     points: e.points,
-    mode: e.mode ?? ROUTE_MODE,
-    state: e.state || newRouteState(),
+    mode: ROUTE_MODE,
+    state: newRouteState(),
     name: e.name,
   }));
   return escSlashes(JSON.stringify(arr));
@@ -150,7 +150,7 @@ export function gpxFavourites(doc: Document) {
       pts.push([lat, lng, ROUTE_POINT_FLAG]);
     }
 
-    routes.push({ name: flaggedName(trk), points: pts, mode: ROUTE_MODE, state: newRouteState() });
+    routes.push({ name: flaggedName(trk), points: pts });
   }
 
   return { points, routes };

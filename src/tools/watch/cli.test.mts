@@ -189,6 +189,19 @@ test('polls once per interval, logs in again when refused, writes nothing and no
   expect(again - refused).toBeLessThan(1000);
   expect(retried - refused).toBeLessThan(1000);
 
+  // The server's 1s refresh is held to the page's 5s floor between one poll and the next: the first and the refused
+  // second, then the second's retry and the third. Neither the raw second nor none at all, and not the 15s default a
+  // config without the field gets either.
+  const at = (index: number) => map.requests[index]?.at ?? NaN;
+
+  for (const [from, to] of [
+    [5, 6],
+    [8, 9],
+  ] as const) {
+    expect(at(to) - at(from)).toBeGreaterThanOrEqual(4_900);
+    expect(at(to) - at(from)).toBeLessThan(9_000);
+  }
+
   // The login carries the credentials the environment gave it, and nothing after it does.
   expect(map.requests[2]?.body).toStrictEqual({ username: 'watcher', password: PASSWORD });
 
