@@ -20,15 +20,25 @@ jobs:
         run: 'exit 1'
 
   test:
-    name: '${{ matrix.project }}'
+    name: '${{ matrix.name }}'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 30
+    env:
+      INVENTORY_OCR: '${{ matrix.ocr }}'
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - 'corpus'
-          - 'default'
+        include:
+          - name: 'corpus'
+            project: 'corpus'
+
+          # The Inventory page reads with tesseract.js, not the CLI's Tesseract, so the corpus is read with it too.
+          - name: 'corpus (wasm)'
+            project: 'corpus'
+            ocr: 'wasm'
+
+          - name: 'default'
+            project: 'default'
     steps:
       - uses: 'actions/checkout@v7.0.1'
         with:
