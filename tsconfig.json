@@ -1,4 +1,5 @@
-// The browser half. Pages serves the compiler's output rather than these files, so this is where the build lives.
+// The browser half. Pages serves what `scripts/bundle.mts` makes of these files, and this project is where they are
+// checked.
 {
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
@@ -51,9 +52,10 @@
     // skipped rather than lending this project Node's globals to resolve one name nothing here passes.
     "skipLibCheck": true,
 
-    // Pages serves what this emits, and a browser has no loader to erase anything for it, so a construct needing one is
-    // not available here at all — the same rejection `scripts/` takes for Node's type stripping, for a different
-    // reason.
+    // esbuild would erase an `enum`, a `namespace` or a parameter property for the browser without complaint, so the
+    // bundle does not need this. It is the rejection `scripts/` takes for Node's type stripping, held here as well so
+    // that a module can move between this project, the shared one and `scripts/` — the inventory readers below already
+    // sit in two of them — without being rewritten first.
     "erasableSyntaxOnly": true,
 
     // The inventory readers are `.mts` files written for Node, which names a module by its own extension, and they name
