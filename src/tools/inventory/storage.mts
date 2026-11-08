@@ -188,8 +188,18 @@ export function storage(
   };
 
   /**
-   * The first Pokémon's CP label in a grid, which doubles as how a grid is told from the suggestions panel drawn over
-   * it: the panel carries no CP anywhere.
+   * The lines below the search box that read as `CP_LABEL`, which is how a grid is told from the suggestions panel
+   * drawn over it: the panel carries no `CP` anywhere. These alone, without the numbers `tileLabel` takes besides,
+   * since the panel has numbers too: a count under each Recommended chip, and `362`, `631`, `405` and `296` at one
+   * height are a row of labels to `tileLabel` (`storage/suggestions.png`, #816). Every grid committed has a `CP` that
+   * reads, the two whose first row misread among them.
+   */
+  const cpLabels = (lines: readonly Line[]) =>
+    lines.filter((l) => l.top > (searchBox?.[1] ?? 0) && fold(l.text).search(CP_LABEL) === 0);
+
+  /**
+   * The first Pokémon's CP label in a grid, and only in a grid: on the suggestions panel it finds a row in the counts,
+   * which is why `cpLabels` is what tells the two apart.
    *
    * A label is one that reads as `CP_LABEL`, or one that ends in a CP-sized number where another line bears it out:
    * one ending in a number at the same height, or one reading as `CP_LABEL` further down. Whichever is higher up. The
@@ -210,7 +220,7 @@ export function storage(
   const tileLabel = (lines: readonly Line[]) => {
     const below = lines.filter((l) => l.top > (searchBox?.[1] ?? 0));
     const numbered = below.filter((l) => /(?<![\d/]\s*)\d{2,5}$/.test(l.text.trim()));
-    const labelled = below.filter((l) => fold(l.text).search(CP_LABEL) === 0);
+    const labelled = cpLabels(lines);
     const level = (a: Line, b: Line) => Math.abs(a.top - b.top) < Math.min(a.height, b.height) / 2;
 
     return below
@@ -393,12 +403,12 @@ export function storage(
     lines = await readLines(await device.screenshot());
 
     // Clearing the box uncovers the Recent and Recommended suggestions, and Enter only takes the keyboard away; Back
-    // closes them and leaves the unfiltered grid behind. An empty search matches everything, so a grid with nothing in
-    // it is that panel and can be nothing else — which is a surer test than the panel's own headings, since PGSharp's
-    // toolbar sits down the left edge over their first letters and `Recent` reads as `serccemt` behind it. Getting
-    // this wrong is expensive rather than merely unhelpful: `firstTile` then falls back to its blind tap, which lands
-    // on the first Recent chip and quietly opens whatever was searched for last.
-    if (term === '' && !tileLabel(lines)) {
+    // closes them and leaves the unfiltered grid behind. An empty search matches everything, so a screen with no `CP`
+    // on it is that panel and can be nothing else — which is a surer test than the panel's own headings, since
+    // PGSharp's toolbar sits down the left edge over their first letters and `Recent` reads as `serccemt` behind it.
+    // Getting this wrong is expensive rather than merely unhelpful: `firstTile` then taps the panel, and a tap on a
+    // Recent chip quietly opens whatever was searched for last.
+    if (term === '' && cpLabels(lines).length === 0) {
       await device.key(KEY.BACK);
       await sleep(config.waits.search);
       lines = await readLines(await device.screenshot());
