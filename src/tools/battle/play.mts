@@ -232,10 +232,11 @@ export class Player {
   }
 
   /**
-   * Forgets the minigame of a charged move tapped that will not be thrown, ours having fainted first with no prompt to
-   * end it, as when the last of ours is sent in. The next of ours fights on frames read as `battle` throughout: live,
-   * Kyogre fainted moments after tapping Avalanche, and Dragonite stood through 5s of the fight, a single frame as it
-   * was sent in, 1.5s after the tap, having been found as Avalanche's bubbles.
+   * Forgets the minigame of a charged move tapped that will not be thrown, either side having fainted first with no
+   * prompt to end it: ours as when the last of ours is sent in, or the opponent's as it picks its next. The fight goes
+   * on in frames read as `battle` throughout: live, Kyogre fainted moments after tapping Avalanche, and Dragonite stood
+   * through 5s of the fight, a single frame as it was sent in, 1.5s after the tap, having been found as Avalanche's
+   * bubbles.
    */
   forget(): void {
     this.#minigame = false;

@@ -146,8 +146,10 @@ const THROWN = 3;
  * How long the fight must show none of our charged-move buttons lit, unbroken, for a throw tapped to be playing, in
  * milliseconds: its minigame draws none, from `Get Ready!` on. Over the 11 GO Battle League battles the user recorded
  * on a Pixel 8 Pro, every minigame ran 5.1s at the least and mostly 8–11s, and nothing else after a tap ran longer than
- * 2.4s, the banner after the opponent's move the longest. The minigame's bubbles are no sign of their own: Fly's are
- * found on its own lit button in `charged-pixel8-fly`, and on the sky behind `battle-banner-pixel8-charizard`.
+ * 2.4s, the banner after the opponent's move the longest. The opponent picking its next after fainting to our fast move
+ * runs longer, 6s live, but its Poké Ball going grey tells it apart. The minigame's bubbles are no sign of their own:
+ * Fly's are found on its own lit button in `charged-pixel8-fly`, and on the sky behind
+ * `battle-banner-pixel8-charizard`.
  */
 const PLAYING_MS = 3_500;
 
@@ -157,6 +159,14 @@ const PLAYING_MS = 3_500;
  * ahead of, and that plays after theirs, shows its button lit for a tenth of a second as the HUD comes back.
  */
 const RELIT_MS = 1_000;
+
+/**
+ * How long after one of the opponent's Poké Balls goes grey no charged move of ours is thrown, in milliseconds: its
+ * faint hides our buttons while it picks its next, and a button tapped as it fades out is a throw that never plays.
+ * Live, Metagross's went grey on a frame with Outrage still lit, the next 51ms later showing none, and Outrage tapped
+ * on it was told as thrown 3.5s into the pick. Through the rest of the pick nothing is lit to throw.
+ */
+const FADING_MS = 500;
 
 /**
  * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
@@ -603,11 +613,14 @@ export async function run(
   // Our charged move tapped and not yet seen to play, by its button's x, and why it was tapped: told as thrown, and its
   // stats moved, only once it plays. The opponent's move on the same turn can drop the tap, its button lighting again
   // with the energy kept, or hold the throw back until after theirs, its minigame coming with no tap of its own; and a
-  // faint of ours before it plays loses it. Since when the fight has shown none of our buttons lit, unbroken, as a
-  // minigame does throughout, and since when the button tapped has shown lit again, untapped.
+  // faint of either side's before it plays loses it. Since when the fight has shown none of our buttons lit, unbroken,
+  // as a minigame does throughout, and since when the button tapped has shown lit again, untapped.
   let pending: { move: string | undefined; x: number; why: string | undefined } | undefined;
   let unlit: number | undefined;
   let relit: number | undefined;
+
+  // When one of the opponent's Poké Balls last went grey, its faint hiding our buttons while it picks its next.
+  let theirFaintAt = -Infinity;
 
   // The move chosen that lowers our defense, held until the opponent's charged move has landed: how long since the hold
   // began, which a release and a second hold before a throw both keep, of this move or another, our energy growing
@@ -861,6 +874,7 @@ export async function run(
         offered = undefined;
         thrown = undefined;
         pending = undefined;
+        theirFaintAt = -Infinity;
         player = new Player(frame);
         seen = unseen();
         readAt = -Infinity;
@@ -922,6 +936,19 @@ export async function run(
         for (const side of ['own', 'opponent'] as const) {
           if ((counted[side] ?? Infinity) < (left[side] ?? -Infinity)) {
             around(`faint-${side}`);
+          }
+        }
+
+        // The opponent fainting begins its pick, and a throw of ours still to play, tapped before our fast move fainted
+        // it, never plays: its button lights again once the newcomer is in. Live, Dragonite tapped Outrage at 867.0s,
+        // Mewtwo's Poké Ball went grey at 867.5s and Outrage lit again as Kyogre came in at 873.3s, the pick taken for
+        // its minigame and told as thrown at 870.8s.
+        if ((counted.opponent ?? Infinity) < (left.opponent ?? -Infinity)) {
+          theirFaintAt = clock.now();
+
+          if (pending) {
+            drop(`${theirName()} fainted first`);
+            player.forget();
           }
         }
 
@@ -1683,6 +1710,7 @@ export async function run(
       }
 
       const flying = counter !== undefined && clock.now() < landing;
+      const fading = clock.now() - theirFaintAt < FADING_MS;
       const card = prompt?.card;
 
       // The bubbles swiped around PGSharp's overlay, those it covers at both ends left out before one is chosen.
@@ -1692,7 +1720,7 @@ export async function run(
           : undefined;
 
       const played = player.next(state, clock.now(), {
-        ready: spared === undefined && !naming && !flying && !hold?.held ? ready : [],
+        ready: spared === undefined && !naming && !flying && !hold?.held && !fading ? ready : [],
         best,
         shield,
         minigame: playing,

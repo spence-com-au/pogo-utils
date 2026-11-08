@@ -1398,12 +1398,18 @@ function pasted(image: Image, from: Image, [left = 0, top = 0, right = 0, bottom
 /** Where our first Poké Ball is on the Pixel 4 XL's frames, as a box for `painted`. */
 const FIRST_BALL = [0.045, 0.19, 0.071, 0.215];
 
+/** Where the opponent's Poké Balls are on the Pixel 4 XL's frames, as boxes for `painted`. */
+const THEIR_BALLS = [0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+
 /** The red of a bar's fill as the stream draws it, for painting a bar low enough to turn red. */
 const RED = [230, 106, 96];
 
-/** The minigame of `battleAndBack` with our first Poké Ball painted red, as the frames thrown from are. */
+/**
+ * The minigame of `battleAndBack` with our first Poké Ball and all the opponent's painted red, as the frames thrown
+ * from are: one grey on either side would be read as a faint, the opponent's taking the throw for one that never plays.
+ */
 const minigameNoneFainted = (): Scene => ({
-  frame: painted(fixture('battle-minigame-giratina'), [200, 60, 60], FIRST_BALL),
+  frame: painted(fixture('battle-minigame-giratina'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS),
   swipes: { count: 40, to: 'won' },
 });
 
@@ -1727,6 +1733,7 @@ test.each([
   const { phone, clock } = scripted(
     {
       ...battleAndBack(),
+      minigame: minigameNoneFainted(),
       fight: { frame: ours(before), lasts: { ms: 400, to: 'hit' } },
       hit: { frame: ours(after), tap: { at: [0.69, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
     },
@@ -2630,9 +2637,6 @@ const SNEAK_DROPS: GameData = {
   } as GameData['combat'],
 };
 
-/** Where the opponent's Poké Balls are on the Pixel 4 XL's frames, as boxes for `painted`. */
-const THEIR_BALLS = [0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
-
 const CLEARING =
   "own: switching to Mamoswine against Mamoswine, banking Shadow Sneak: clearing −2 attack; Mamoswine is safe from Mamoswine's moves";
 
@@ -2951,6 +2955,61 @@ test('fights on where ours faints with a throw tapped and no prompt', async () =
   expect(report.events).toContain('own: Shadow Sneak not thrown: Giratina fainted first');
   expect(after.length).toBeGreaterThan(10);
   expect(after.filter(({ from }) => from[0] !== 0.15 && from[0] !== 0.7)).toEqual([]);
+});
+
+/**
+ * Mamoswine faints to Giratina's fast move with Shadow Sneak tapped, or still lit, its first Poké Ball going grey: the
+ * game hides our buttons while the opponent picks its next, for longer than a minigame's `PLAYING_MS`, with no
+ * minigame, and lights Shadow Sneak again once the newcomer is in, its energy kept. Taken to be playing 3.5s into the
+ * pick, the one throw would be told twice, and the pick told as its minigame; tapped as its button fades out, the
+ * throw would be taken to be playing as well.
+ */
+test.each([
+  [
+    'tapped',
+    true,
+    ['fight', 'relit'],
+    ['own: Shadow Sneak not thrown: Mamoswine fainted first', 'own: threw Shadow Sneak'],
+  ],
+  ['still lit', false, ['relit'], ['own: threw Shadow Sneak']],
+])('throws once, lit again, where the opponent faints with our move %s', async (_, tappedFirst, tapped, said) => {
+  const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...THEIR_BALLS);
+  const fainted = painted(balls, [105, 65, 68], THEIR_BALLS[0] ?? []);
+  const unlit = (image: Image) => painted(image, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const lead: Record<string, Scene> = tappedFirst
+    ? { fight: { frame: balls, tap: { at: [0.499, 0.889], to: 'picking' } } }
+    : {
+        fight: { frame: unlit(balls), lasts: { ms: 1000, to: 'fainting' } },
+        fainting: { frame: fainted, lasts: { ms: 300, to: 'picking' } },
+      };
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      ...lead,
+      picking: { frame: unlit(fainted), lasts: { ms: 6000, to: 'relit' } },
+      relit: { frame: fainted, tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: minigameNoneFainted(),
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(taps.filter((scene) => ['fight', 'fainting', 'picking', 'relit'].includes(scene))).toEqual(tapped);
+  expect(report.events.filter((line) => /^own: (threw|Shadow Sneak|tap Shadow Sneak)/.test(line))).toEqual(said);
+  expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([]);
 });
 
 /**

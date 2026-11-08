@@ -216,7 +216,12 @@ for text and done every few seconds.
    button and on the sky. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the
    tap dropped, logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw
    retried. A faint or a switch of ours before it plays drops it too, and a faint with no switch prompt, as when the
-   last of ours is sent in, has `Player` forget the minigame it was waiting for, the next of ours fighting at once.
+   last of ours is sent in, has `Player` forget the minigame it was waiting for, the next of ours fighting at once. So
+   does the opponent fainting to our fast move, one of its Poké Balls going grey,
+   `Outrage not thrown: Mewtwo fainted first`: the game hides our buttons while it picks its next, 6s live, longer than
+   the 3.5s a throw waits to be taken as playing, and lights the button again once the newcomer is in, its energy kept.
+   Nor is anything thrown for half a second after the Poké Ball goes grey, a button tapped as it fades out being a throw
+   that never plays.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
    `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is
