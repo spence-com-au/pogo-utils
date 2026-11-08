@@ -150,8 +150,8 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 - **`eventID` is yours to choose and is not the article slug.** It is a short, stable name ending in the event's year:
   `citysafari-brisbane-2026` for an article slugged `brisbane`, `30th-anniversary-kuala-lumpur-2026` for one slugged
   `event-kuala-lumpur-30th-anniversary-2026`. Group siblings under a shared prefix so a family of events sorts and reads
-  together, and keep it unique — GPX files reference these IDs in `<pgr:event>`, and `pnpm lint` rejects one that names
-  an ID this file does not have.
+  together, and keep it unique — GPX files reference these IDs in `<pgr:event>`, and `pnpm lint` rejects an ID this file
+  repeats, as it does a `<pgr:event>` naming one this file does not have.
 - **`name` is the event's name, not the headline.** Niantic writes headlines as marketing
   (`PokéXciting! Comes to KLCC Park — Get Ready, Kuala Lumpur!`); the entry gets the name the event goes by
   (`PokéXciting! — Kuala Lumpur`). The article body usually states it plainly as a heading above the dates.
@@ -191,7 +191,8 @@ Once the proposal is approved:
    that way by hand — including after correcting an existing entry's dates, which can move it.
 2. **Run `npx prettier --write data/events.json`.** `pnpm lint` checks this file's formatting and will fail on it
    otherwise.
-3. **Run `pnpm lint`** to confirm nothing else broke.
+3. **Run `pnpm lint`** to confirm nothing else broke. It reads this file's `eventID`s and dates too, so an `end` that is
+   a date with no time, which would fail the daily prune for every entry, is refused here rather than after the merge.
 4. **Commit `data/events.json` alone and land it through a pull request.** The entry is the whole of the change, so
    stage that one path rather than the tree. `master` rejects a direct push, so branch and open the pull request the way
    the repository's `CLAUDE.md` says every change lands, rather than from a copy of its rules here that would drift.
