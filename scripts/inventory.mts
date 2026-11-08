@@ -705,11 +705,6 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
     marked.set(flag, marks);
   }
 
-  // Emptied of an earlier scan's rows, a skip adding to them instead.
-  if (skip === 0) {
-    writeFileSync(out, '');
-  }
-
   const grid = await search(term ?? '');
   const first = await openFirst(grid);
 
@@ -717,6 +712,12 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
     const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
 
     throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
+  }
+
+  // Emptied of an earlier scan's rows, a skip adding to them instead. Only once the full pass has a first Pokémon open,
+  // so that a run which cannot start leaves the earlier scan where it was.
+  if (skip === 0) {
+    writeFileSync(out, '');
   }
 
   let written = 0;
@@ -734,7 +735,8 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
       const iv = overlay?.iv ?? null;
       keep(`${name}-detail`, image);
 
-      // Null for a flag not asked for, or one whose pass would not read, rather than a `false` nothing checked.
+      // Null for a flag not asked for, one whose pass would not read or a screen with no key to match it by, rather
+      // than a `false` nothing checked.
       const flag = (f: Flag): Mark => marked.get(f)?.take(detail, overlay) ?? null;
 
       // Each pass's flag taken once, since `take` uses the match up.
