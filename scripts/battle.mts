@@ -378,10 +378,12 @@ if (command === 'run') {
 
   console.error(`recording ${seconds}s to ${out}`);
 
+  const file = createWriteStream(out);
+
   // An OUT that cannot be written fails here, with `adb` still recording into a pipe nobody reads, which would keep the
   // script alive until `--seconds` ran out.
   try {
-    await pipeline(recording.stdout, createWriteStream(out));
+    await pipeline(recording.stdout, file);
   } catch (error) {
     recording.kill();
     console.error(`could not write ${out}: ${said(error)}`);
@@ -390,8 +392,10 @@ if (command === 'run') {
 
   const code = await exited;
 
-  // `screenrecord` refuses with exit 0 and its reason on stderr, so an empty file is the failure to look for too.
-  if (code !== 0 || readFileSync(out).length === 0) {
+  // `screenrecord` refuses with exit 0 and its reason on stderr, so nothing written is the failure to look for too. The
+  // bytes are counted on the way out rather than read back, since OUT can be a pipe, which reading back would wait on
+  // for good while this script holds its write end.
+  if (code !== 0 || file.bytesWritten === 0) {
     console.error(`screenrecord failed: ${stderr.trim() || `exit ${code}, nothing recorded`}`);
     process.exit(1);
   }
