@@ -180,6 +180,6 @@ export function matches(entry: Entry, state: State) {
 
   // Reading the slot rather than testing `has` first, since nothing at the type level joins the two lookups. An id no
   // toggle answers to is a bug rather than a case — `fromFragment` drops them and the chips only ever add their own —
-  // and an empty grid says so where the `TypeError` this used to throw took the page down.
+  // and an empty grid says so, where calling `test` on nothing would throw a `TypeError` and take the page down.
   return [...state.flags].every((id) => TOGGLES.get(id)?.test(entry));
 }

@@ -95,11 +95,11 @@ test('the digits stay in the box they were typed into', () => {
 
 test('a range chip names its own phrase, whichever end the phrase sits on', () => {
   /*
-   * The tooltip used to be spelled at the chip as `range.prefix || 'a dex span'`, which was true while the dex was the
-   * only range with an empty prefix. The three IVs carry their phrase in `suffix` and so have an empty prefix too, and
-   * every one of them advertised itself as a dex span — the shape being read off the wrong end of the range.
+   * A tooltip spelled at the chip as `range.prefix || 'a dex span'` is true only while the dex is the only range with
+   * an empty prefix. The three IVs carry their phrase in `suffix` and so have an empty prefix too, and every one of
+   * them would advertise itself as a dex span — the shape being read off the wrong end of the range.
    *
-   * Over the whole table rather than over the IVs by name, since the fault was a fallback catching a case nobody had
+   * Over the whole table rather than over the IVs by name, since the fault is a fallback catching a case nobody has
    * added yet. The dex is the one range with a phrase at neither end, so it is the only one the words are for.
    */
   const shapes = Object.fromEntries(RANGES.map((entry) => [entry.id, rangeTitle(entry).split(' — ')[0]]));
@@ -118,7 +118,7 @@ test('a range chip names its own phrase, whichever end the phrase sits on', () =
     maxmove: 'maxmove{N}',
   });
 
-  // And no other range borrows the dex's words, which is the whole of what went wrong.
+  // And no other range borrows the dex's words, which is the whole of what that fallback would get wrong.
   expect(RANGES.filter((entry) => shapes[entry.id] === 'a dex span').map((entry) => entry.id)).toEqual(['dex']);
 });
 
