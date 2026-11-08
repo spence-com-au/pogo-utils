@@ -21,7 +21,7 @@
  */
 
 import { said } from '../errors.js';
-import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, SPAN, type Range } from './terms.js';
+import { bounded, IDS_BY_TERM, RANGES, RANGES_BY_ID, SHORTCUTS, SPAN, type Range } from './terms.js';
 import { group, NESTING, type Junction, type Leaf, type Node } from './tree.js';
 
 /** The punctuation, and what each piece of it is. Everything else is part of a term. */
@@ -40,9 +40,6 @@ interface Token {
   kind: Junction | 'not' | 'open' | 'close' | 'term';
   text: string;
 }
-
-/** Every catalogue term by the text the game reads it as, which is what a reader will have typed. */
-const IDS_BY_TERM = new Map(GROUPS.flatMap((category) => category.terms).map((term) => [term.term, term.id]));
 
 /** What a typed query came to, for the page to put on the cards or to complain about. */
 export interface Read {

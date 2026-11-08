@@ -11,17 +11,16 @@
  * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do.
  */
 
-import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
-import { encodePng } from './png.mts';
+import { ICON_CACHE } from './download.mts';
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 import { typeable } from './adb.mts';
 import { CLEAR_KEYS } from './storage.mts';
+import { reads } from './test-cache.mts';
 
 const run = promisify(execFile);
 
@@ -33,56 +32,6 @@ const CAPTURE = fileURLToPath(new URL('fixtures/overworld.png', import.meta.url)
 const DUMP = /^ {2}\d+,\d+ \d+×\d+ +/;
 
 const dumpRows = (text: string) => text.split('\n').filter((line) => DUMP.test(line));
-
-/**
- * A working directory holding the cache the scanner would otherwise download, so a run reaches no network. The
- * scanner's `CACHE` is relative, which is why this works at all: the directory a subprocess runs in decides where its
- * cache is, so no flag or stub is needed to move it.
- *
- * All three files are load-bearing, measured rather than reasoned about — seeded with the game master alone, a `parse`
- * run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP multiplier for
- * every level or without the power-up costs, where an empty icon index and string table it takes in its stride. That
- * emptiness is what lets the stderr below be asserted — no form means no icon to fetch, so an empty stderr is exactly
- * the claim that the seeded cache was read rather than merely present.
- *
- * `extra` is appended to those templates for the tests that need a form to exist, and defaults to none so every other
- * caller keeps that emptiness. `icons` names what the index holds and writes each file beside it: the index is what
- * carries a name onto a form, deciding whether a family counts as drawn, and the files are what keep a drawn one off
- * the network. Their contents are arbitrary but they have to decode, an icon that does not being reported.
- */
-function reads(extra: readonly unknown[] = [], icons: readonly string[] = []): string {
-  const dir = mkdtempSync(join(tmpdir(), 'inventory-cli-'));
-  const cache = join(dir, '.cache', 'inventory');
-  const levels = Array.from({ length: 100 }, (_, i) => 0.1 + i / 100);
-
-  mkdirSync(cache, { recursive: true });
-  writeFileSync(
-    join(cache, GAME_MASTER_CACHE),
-    JSON.stringify([
-      { templateId: 'PLAYER_LEVEL_SETTINGS', data: { playerLevel: { cpMultiplier: levels } } },
-      {
-        templateId: 'POKEMON_UPGRADE_SETTINGS',
-        data: { pokemonUpgrades: { stardustCost: [], shadowStardustMultiplier: 1.2, purifiedStardustMultiplier: 0.9 } },
-      },
-      { templateId: 'LUCKY_POKEMON_SETTINGS', data: { luckyPokemonSettings: { powerUpStardustDiscountPercent: 0.5 } } },
-      ...extra,
-    ]),
-  );
-  writeFileSync(join(cache, 'english.json'), JSON.stringify({ data: [] }));
-  writeFileSync(join(cache, ICON_CACHE), JSON.stringify({ tree: icons.map((path) => ({ path })) }));
-
-  if (icons.length > 0) {
-    mkdirSync(join(cache, 'icons'), { recursive: true });
-
-    for (const [at, name] of icons.entries()) {
-      const pixel = Uint8Array.of(at % 2 === 0 ? 255 : 0, 0, at % 2 === 0 ? 0 : 255, 255);
-
-      writeFileSync(join(cache, 'icons', name), encodePng({ width: 1, height: 1, data: pixel }));
-    }
-  }
-
-  return dir;
-}
 
 /**
  * The `options` block of the script's own `parseArgs` call, and the flag names in it. Read off the source because the

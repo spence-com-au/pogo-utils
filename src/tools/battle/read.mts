@@ -4,8 +4,8 @@
  *
  * Read off a stream frame, 360 wide, by cropping each band and scaling it up for Tesseract. Measured on the committed
  * frames, each name and each move comes out whole, lit buttons and unlit alike, where OCR of the whole frame drops
- * most of them into the artwork around them. About 220ms for both bands, so it is done every few seconds rather than
- * every frame.
+ * most of them into the artwork around them. About 35ms a band, so it is done every few seconds rather than every
+ * frame.
  */
 
 import { closest, distance, type GameData } from '../inventory/game-master.mts';

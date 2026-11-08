@@ -1,15 +1,20 @@
 /**
  * `scripts/battle.mts` driven as a subprocess, which is the one way a test reaches it: nothing imports it, and importing
- * it would run it. Only what is refused before a phone is asked for, so nothing here needs `adb` or a device.
+ * it would run it. What is refused before a phone is asked for needs no `adb` or device, and a run that changes the
+ * phone's setting and then fails or is stopped is driven against a fake `adb` on the `PATH`, which answers as a phone
+ * does and logs what it was asked.
  */
 
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
+import { reads } from '../inventory/test-cache.mts';
+import { tessdata } from '../inventory/test-engine.mts';
 
 const SCRIPT = fileURLToPath(new URL('../../../scripts/battle.mts', import.meta.url));
 
@@ -159,9 +164,169 @@ test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and st
   }
 });
 
+// A FIFO stands for any OUT that is not a regular file, such as `/dev/stdout` piped to a player, which reading back
+// once the recording is done would wait on for good. Not `/dev/stdout` itself, which `execFile` makes a socket that
+// cannot be opened by that name.
+test.each([
+  ['h264', 0, ''],
+  ['', 1, 'screenrecord failed: refused\n'],
+])('records %j into a FIFO and exits %i', async (recorded, expectedCode, failure) => {
+  const bin = mkdtempSync(join(tmpdir(), 'battle-adb-'));
+  const out = join(bin, 'out.h264');
+  const adb = `#!/bin/sh\n[ "$1" = shell ] && echo "Physical size: 1440x3040" && exit\nprintf '${recorded}'\necho refused >&2\n`;
+  writeFileSync(join(bin, 'adb'), adb, { mode: 0o755 });
+  await promisify(execFile)('mkfifo', [out]);
+
+  const [read, { code, stderr }] = await Promise.all([
+    readFile(out, 'utf8'),
+    promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', out], {
+      env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
+      timeout: 10_000,
+    }).then(
+      ({ stderr }) => ({ code: 0, stderr }),
+      (error: { code: number; stderr: string }) => error,
+    ),
+  ]);
+
+  expect(code).toBe(expectedCode);
+  expect(read).toBe(recorded);
+  expect(stderr).toBe(`recording 1s to ${out}\n${failure}`);
+});
+
 test('refuses a recording with nowhere to go', async () => {
   const { code, stderr } = await battle('record');
 
   expect(code).toBe(1);
   expect(stderr).toContain('record takes one OUT file');
+});
+
+/**
+ * A working directory holding the cache `run` would otherwise download, so that a run reaches no network. The game
+ * master is the least that loads and still names one form, because a run with no form icon to outline stops before it
+ * changes the phone; its icon is a single pixel, which outlines as readily as any. The model is the installed
+ * Tesseract's own, the one file that cannot be made up, since `run` holds it to the hash of `tessdata_fast` 4.1.0.
+ */
+function seeded(): string {
+  const bulbasaur = {
+    templateId: 'V0001_POKEMON_BULBASAUR',
+    data: { pokemonSettings: { pokemonId: 'BULBASAUR', stats: {} } },
+  };
+  const dir = reads([bulbasaur], ['pm1.icon.png']);
+  const model = join(dir, '.cache', 'inventory', 'tessdata');
+
+  mkdirSync(model);
+  copyFileSync(join(tessdata(), 'eng.traineddata'), join(model, 'eng.traineddata'));
+
+  return dir;
+}
+
+/**
+ * An `adb` that logs each call's arguments to `$LOG`, one line apiece, and answers as a phone does: the setting as
+ * `$SETTING`, and a screenshot that fails, the first thing a run asks of the screen. With `$HANG` it fails only once a
+ * `settings put` has been logged, so that a run held at its screenshot is stopped by the test and not by the fake. The
+ * `put` takes its time after logging, so that a second one a run started would be logged well before the first ended.
+ */
+const ADB = `#!/bin/sh
+echo "$*" >> "$LOG"
+case "$*" in
+  get-state) echo device ;;
+  'shell settings get '*) echo "$SETTING" ;;
+  'shell settings put '*) sleep 0.3 ;;
+  shell) cat > /dev/null ;;
+  'exec-out screencap -p')
+    i=0
+    while [ -n "$HANG" ] && ! grep -q 'settings put' "$LOG" && [ $i -lt 200 ]; do sleep 0.05; i=$((i + 1)); done
+    echo 'screencap: no display' >&2
+    exit 1 ;;
+esac
+`;
+
+/**
+ * `run` against that `adb`, the setting reading `setting`. Its working directory is the child's own, so a relative
+ * `--keep-video` lands there. `calls` is what the `adb` has been asked so far, and `changes` in the result the part of
+ * that which changes the phone, taken once the run is over and its directory removed.
+ */
+function drive(setting: string, args: string[] = [], hang = false) {
+  const dir = seeded();
+  const bin = join(dir, 'bin');
+  const log = join(dir, 'adb.log');
+
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'adb'), ADB, { mode: 0o755 });
+  writeFileSync(log, '');
+
+  const child = promisify(execFile)('node', [SCRIPT, 'run', '--leader', 'spark', '--league', 'great', ...args], {
+    cwd: dir,
+    env: {
+      ...process.env,
+      PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}`,
+      LOG: log,
+      SETTING: setting,
+      HANG: hang ? '1' : '',
+    },
+    timeout: 30_000,
+  });
+  const calls = () => readFileSync(log, 'utf8').split('\n').filter(Boolean);
+
+  return {
+    process: child.child,
+    calls,
+    result: child
+      .then(
+        ({ stderr }) => ({ code: 0, stderr }),
+        (error: { code: number; stderr: string }) => error,
+      )
+      .then(({ code, stderr }) => {
+        const changes = calls().filter((call) => /^shell (svc|settings put) /.test(call));
+        rmSync(dir, { recursive: true, force: true });
+
+        return { code, stderr, changes };
+      }),
+  };
+}
+
+test.each([
+  ['2', '2'],
+
+  // What `awake.test.ts` holds the Battle tab to as well: a setting Android answers with no number is read as off.
+  ['null', '0'],
+])('puts stay_on_while_plugged_in, found as %j, back as %s where the run fails', async (found, back) => {
+  const { code, stderr, changes } = await drive(found).result;
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('screencap: no display');
+  expect(stderr, 'the seeded cache was not read, so the run went to the network').not.toContain('Downloading');
+  expect(changes).toEqual(['shell svc power stayon usb', `shell settings put global stay_on_while_plugged_in ${back}`]);
+});
+
+test('puts the setting back once where a signal stops the run, and exits as the signal does', async () => {
+  const { calls, process: child, result } = drive('2', [], true);
+
+  // The handler is in place before the phone is changed, which comes before its screen is asked for.
+  await expect.poll(() => calls().some((call) => call.startsWith('exec-out')), { timeout: 20_000 }).toBe(true);
+  child.kill('SIGTERM');
+
+  // The screenshot fails once the `put` is logged, so the run's own way out follows the handler's; it is the handler's
+  // alone that puts the setting back.
+  const { code, changes } = await result;
+
+  expect(code, '128 and the signal').toBe(143);
+  expect(changes).toEqual(['shell svc power stayon usb', 'shell settings put global stay_on_while_plugged_in 2']);
+});
+
+test('tells a --keep-video nothing reached, and still puts the setting back', async () => {
+  const { code, stderr, changes } = await drive('2', ['--keep-video', 'video.ts']).result;
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('no picture of the screen came, so video.ts is empty');
+  expect(changes.at(-1)).toBe('shell settings put global stay_on_while_plugged_in 2');
+});
+
+test('refuses a --keep-video it cannot open before the phone is changed', async () => {
+  // Under the fake `adb`, which is no directory.
+  const { code, stderr, changes } = await drive('2', ['--keep-video', 'bin/adb/video.ts']).result;
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('could not write bin/adb/video.ts');
+  expect(changes).toEqual([]);
 });

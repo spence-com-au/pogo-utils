@@ -438,7 +438,7 @@ const BUDDY_LEVELS: readonly string[] = [
  * filled from the range's own `min` or `max`, so one box filled writes `cp3000-`; `tree.js` says why.
  *
  * `max` bounds the input so a typo cannot write a range nothing can match, and is the ceiling the game itself has where
- * there is one — 1025 is the dex, and no Pokémon reaches 500 HP.
+ * there is one — the dex ends where the last of `GENERATIONS` does, and no Pokémon reaches 500 HP.
  *
  * **Where the game documents no ceiling, `max` is generous rather than tight.** `bounded` below *clamps* rather than
  * refuses, so a ceiling set under what a search can really ask for turns that search into a different one in silence:
@@ -471,7 +471,7 @@ const BUDDY_LEVELS: readonly string[] = [
 const RANGE_TABLE = [
   { id: 'cp', prefix: 'cp', label: 'CP', max: 99999 },
   { id: 'hp', prefix: 'hp', label: 'HP', max: 500 },
-  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: 1025 },
+  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: Math.max(...GENERATIONS.map(({ last }) => last)) },
   { id: 'ivattack', prefix: '', suffix: 'attack', label: 'Attack IV', max: 4 },
   { id: 'ivdefense', prefix: '', suffix: 'defense', label: 'Defence IV', max: 4 },
   { id: 'ivhp', prefix: '', suffix: 'hp', label: 'HP IV', max: 4 },
@@ -543,8 +543,12 @@ export const SHORTCUTS: readonly { phrase: string; range: RangeId; from: number;
  * would silently stop recognising what the writer had just produced. What the readers do with an open end is still
  * theirs to decide, and they differ: `parse.js` leaves it open, where a span in `optimise.js` is a closed interval and
  * closes it against the dex.
+ *
+ * The bound after the dash sits inside the dash's own group, so a run of digits with no dash can only be the first
+ * bound. With both bounds free to stand alone, a long run ending in anything but a digit is tried at every split
+ * between them, which costs the square of its length on every render of a name pill read out of a shared link.
  */
-export const SPAN = /^(\d+)?(-)?(\d+)?$/;
+export const SPAN = /^(\d+)?(?:(-)(\d+)?)?$/;
 
 /**
  * A number inside a range's own limits, which is the whole of what `max` above bounds.
@@ -615,4 +619,12 @@ export const RANGES_BY_ID: ReadonlyMap<string, Range> = new Map(RANGES.map((rang
  */
 export const TERMS_BY_ID: ReadonlyMap<string, Term> = new Map(
   GROUPS.flatMap((group) => group.terms).map((term) => [term.id, term]),
+);
+
+/**
+ * Every term's id by the text the game reads it as, for the query reader and the optimiser. The game tells no chip from
+ * the same word typed, so a typed `dark` is the Dark type, and so is a name pill holding it.
+ */
+export const IDS_BY_TERM: ReadonlyMap<string, string> = new Map(
+  GROUPS.flatMap((group) => group.terms).map((term) => [term.term, term.id]),
 );
