@@ -9,9 +9,9 @@
  */
 
 import { said } from '../errors.js';
+import { isStayOn, putStayOn, readStayOn, stayOnUsb } from '../tools/battle/stay-on.mts';
 import { type Transport } from '../tools/inventory/adb.mts';
 
-const SETTING = ['global', 'stay_on_while_plugged_in'] as const;
 const DATABASE = 'pogo-utils-battle';
 const STORE = 'stay-on-while-plugged-in';
 
@@ -50,16 +50,13 @@ async function kept(serial: string): Promise<string | undefined> {
   try {
     const value: unknown = await inStore('readonly', (store) => store.get(serial));
 
-    // Checked to be the number Android stores, as it goes back through the shell.
-    return typeof value === 'string' && /^\d+$/.test(value) ? value : undefined;
+    return isStayOn(value) ? value : undefined;
   } catch {
     return undefined;
   }
 }
 
 const forget = (serial: string) => inStore('readwrite', (store) => store.delete(serial));
-
-const put = (transport: Shell, value: string) => transport.shell(['settings', 'put', ...SETTING, value]);
 
 /**
  * Keeps the phone `serial` names awake through `transport`, answering how to put it back as it was found, which says
@@ -74,8 +71,7 @@ export async function keepAwake(
   let before = await kept(serial);
 
   if (before === undefined) {
-    const read = new TextDecoder().decode(await transport.shell(['settings', 'get', ...SETTING])).trim();
-    before = /^\d+$/.test(read) ? read : '0';
+    before = await readStayOn(transport);
 
     try {
       await inStore('readwrite', (store) => store.put(before, serial));
@@ -88,7 +84,7 @@ export async function keepAwake(
 
   const restore = async () => {
     try {
-      await put(transport, found);
+      await putStayOn(transport, found);
     } catch (error) {
       say(`stay_on_while_plugged_in not put back to ${found} until the phone is next connected: ${said(error)}`);
       return;
@@ -99,7 +95,7 @@ export async function keepAwake(
   };
 
   try {
-    await transport.shell(['svc', 'power', 'stayon', 'usb']);
+    await stayOnUsb(transport);
   } catch (error) {
     await restore();
     throw error;
@@ -116,7 +112,7 @@ export async function putBack(phone: { serial: string; transport: Shell }): Prom
   const before = await kept(phone.serial);
 
   if (before !== undefined) {
-    await put(phone.transport, before);
+    await putStayOn(phone.transport, before);
     await forget(phone.serial);
   }
 }
