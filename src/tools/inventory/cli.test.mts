@@ -1,5 +1,5 @@
 /**
- * The command line itself, driven as a subprocess. `scripts/inventory.mts` is the one part of the scanner no test
+ * The command line itself, driven as a subprocess. `scripts/inventory.mts` is the one part of the scanner no unit test
  * reaches — nothing imports it, so the whole suite passes a script that cannot start, a `parseArgs` that rejects a flag
  * the usage advertises, and a usage block the script can no longer find in its own source.
  *
@@ -8,7 +8,8 @@
  * also the interface a person uses.
  *
  * Nothing here reaches the network or a phone. `reads` builds the cache the readers would otherwise download, and
- * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do.
+ * `parse` needs neither `adb` nor a device. Tesseract it does need, as the capture readers beside it do. `scan` and
+ * `snap`, which do need a phone, are driven the same way against a stand-in for one in `phone.test.mts`.
  */
 
 import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
