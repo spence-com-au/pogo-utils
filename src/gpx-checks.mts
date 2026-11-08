@@ -146,18 +146,22 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
       let eventId = null;
 
       for (const field of ext ? elementChildren(ext) : []) {
+        /**
+         * A foreign element from another tool is not ours to judge, even one called `event` or `country` — the viewer
+         * leaves it be, and so does this. Skipped on namespace rather than on name because `eventRefs` matches on
+         * namespace: a lookalike read here would put an event it never checked into data/entries-by-event.json.
+         */
+        if (field.namespaceURI !== PGR_NS) {
+          continue;
+        }
+
         // xmldom types `localName` as nullable on every node rather than narrowing it on `Element`. `''` stands in
         // because it is in no branch below, exactly as `null` would be.
         const name = field.localName ?? '';
 
-        // A `pgr`-namespace element the viewer has no field for is a misspelling. A foreign element from another tool
-        // is not ours to judge — the viewer leaves it be, and so does this.
-        if (field.namespaceURI === PGR_NS && !PGR_FIELD_NAMES.has(name)) {
-          report(fileName, field, `<${field.tagName}> is not a pgr field — expected ${PGR_EXPECTED}`);
-          continue;
-        }
-
+        // A `pgr`-namespace element the viewer has no field for is a misspelling.
         if (!PGR_FIELD_NAMES.has(name)) {
+          report(fileName, field, `<${field.tagName}> is not a pgr field — expected ${PGR_EXPECTED}`);
           continue;
         }
 

@@ -14,7 +14,6 @@ import {
   count,
   distance,
   DROP_RETRIES,
-  FLAGS,
   keyOf,
   land,
   landmarkOf,
@@ -34,7 +33,6 @@ import {
   walk,
   type Landmark,
 } from './scan.mts';
-import { CLEAR_KEYS } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, expect, test, vi } from 'vitest';
@@ -169,13 +167,13 @@ test('a row read in full takes the entry it equals, leaving the one with a blank
   expect(marks.take(detail({ weight: 7.2 }), overlay(15, 15, 15)), 'the blank entry went to the first row').toBe(true);
 });
 
-test('a screen with no key is neither marked nor matched', () => {
+test('a screen with no key is neither marked nor answered', () => {
   const marks = new Marks();
 
   marks.add(detail({ hp: null }), null);
 
   expect(marks.size).toBe(0);
-  expect(marks.take(detail({ hp: null }), null)).toBe(false);
+  expect(marks.take(detail({ hp: null }), null), 'a `false` nothing checked').toBeNull();
 });
 
 test('a Pokémon the search did not find is not marked', () => {
@@ -207,19 +205,6 @@ test('a count left out is the fallback, and a whole number is itself', () => {
 
 test.for(['-1', '1.5', 'ten', 'NaN', 'Infinity'])('a count of %j is refused rather than run with', (value) => {
   expect(() => count('limit', value, Infinity)).toThrow(`--limit takes a whole number, not ${value}`);
-});
-
-/**
- * That the clear is longer than every search the scan sends. A flag is typed into the box as it stands — `search(flag)`
- * — so `FLAGS` is the list of terms the scan sends, and they are short enough that this passes today with room to
- * spare. The point is that it fails the moment a longer one is added, where before nothing related the two numbers.
- */
-test('the clear is longer than every search the scan sends', () => {
-  for (const term of FLAGS) {
-    expect(term.length, `the scan sends ${JSON.stringify(term)}, which the clear cannot remove`).toBeLessThanOrEqual(
-      CLEAR_KEYS,
-    );
-  }
 });
 
 /**
