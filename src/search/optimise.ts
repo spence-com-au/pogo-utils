@@ -26,7 +26,7 @@
 
 import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
-import { GROUPS, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
+import { GROUPS, IDS_BY_TERM, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
 import { compose, type State } from './query.js';
 
@@ -60,12 +60,6 @@ const SPECIES = Object.entries(POKEMON).map(([constant, species]) => ({
   dex: Number(species),
   name: nameOf(constant).toLowerCase(),
 }));
-
-/**
- * Every catalogue term as the text the game reads it as. The game draws no distinction between a chip and the same word
- * typed into the name box, so a name pill holding one of these is that term and no name to shorten.
- */
-const TERM_TEXTS = new Set(GROUPS.flatMap((category) => category.terms).map((term) => term.term));
 
 /** The dex range's own floor and ceiling, which is the span that says nothing and so earns no pill. */
 const DEX = RANGES_BY_ID.get('dex');
@@ -188,7 +182,7 @@ function shortName(token: string, negated: boolean): { text: string; spans: Span
 
   // `dark` is the Dark type, where read as a name it reaches Darkrai alone and would be written `491` — so a ruled-out
   // `!dark` would let every other Dark type through.
-  if (TERM_TEXTS.has(token)) {
+  if (IDS_BY_TERM.has(token)) {
     return { text: token, spans: null, numbered: false };
   }
 
