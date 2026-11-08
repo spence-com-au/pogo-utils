@@ -64,7 +64,7 @@ pnpm serve
 again before it shows — and an absent `dist/` stops the server naming that command rather than answering every request
 with a 404. The server is [`scripts/serve.mts`](scripts/serve.mts), a `node:http` handler, so nothing is installed for
 it and nothing is served that the build does not publish: an extension with no entry in
-[`scripts/served-types.mts`](scripts/served-types.mts) is a 404 rather than a guessed type.
+[`src/served-types.mts`](src/served-types.mts) is a 404 rather than a guessed type.
 
 That table is the point of serving it this way. Each entry was read off the deployment with `curl -sI` rather than
 chosen here, so a header is the same locally as in production — which is what lets the Events page's **Subscribe** link
