@@ -21,7 +21,7 @@ import {
   VENDORED,
 } from './artifact.mts';
 import { TESSERACT_VENDOR } from './generated.ts';
-import { SERVED_TYPES } from '../scripts/served-types.mts';
+import { SERVED_TYPES } from './served-types.mts';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
