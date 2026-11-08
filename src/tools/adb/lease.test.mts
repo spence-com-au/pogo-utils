@@ -165,6 +165,25 @@ test('leases each phone apart', async () => {
   expect(await adb(a, '-s', 'OTHER', 'shell', 'true')).toMatchObject({ code: 1 });
 });
 
+test('refuses what acts on every phone while another session holds any, taking none itself', async () => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, '-s', 'OTHER', 'shell', 'true');
+
+  const { code, stderr } = await adb(b, 'kill-server');
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('the phone OTHER is in use by the Claude session pogo-utils-a');
+  expect(await adb(b, '-s', 'PHONE', 'disconnect')).toMatchObject({ code: 1 });
+  expect(await adb(a, 'kill-server')).toMatchObject({ code: 0 });
+
+  hook(a, 'end');
+
+  expect(await adb(b, 'disconnect')).toMatchObject({ code: 0 });
+  expect(await adb(a, 'shell', 'true')).toMatchObject({ code: 0 });
+  expect(ran()).toStrictEqual(['-s OTHER shell true', 'kill-server', 'disconnect', 'shell true']);
+});
+
 test('leaves alone what reaches no phone, and a shell outside any session', async () => {
   const a = await session('pogo-utils-a');
   const b = await session('pogo-utils-b');

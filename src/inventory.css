@@ -79,26 +79,6 @@ body[data-page='inventory'] {
     gap: 8px;
   }
 
-  .run {
-    padding: 9px 14px;
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: #fff;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .run:hover:not(:disabled) {
-    filter: brightness(1.05);
-  }
-
-  .run:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
   .file input {
     max-width: 100%;
     font-size: 13px;

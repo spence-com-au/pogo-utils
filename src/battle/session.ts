@@ -4,10 +4,9 @@
  * and what it has told so far. One run at a time, a phone being lent to one Worker at a time.
  */
 
-import { useEffect, useState } from 'preact/hooks';
-
 import { said } from '../errors.js';
 import { type PhoneStore } from '../phone-store.js';
+import { Store, useStore } from '../store.js';
 import { ending, type Reporter, type Status } from '../tools/battle/reporter.mts';
 import { type Mode } from '../tools/battle/menus.mts';
 import { lend, type Run } from './client.js';
@@ -31,24 +30,22 @@ export type Phase =
 /** Events kept, the oldest let go: far more than the tab shows, as `live` keeps more than a terminal is tall. */
 const KEPT = 1_000;
 
-export class Session {
+export class Session extends Store {
   phase: Phase = { kind: 'idle' };
 
   /** How the run stands as last told, and what it did, oldest first, kept once it is over until the next starts. */
   status: Status | undefined;
   told: Told[] = [];
 
-  readonly #listeners = new Set<() => void>();
-
   readonly #report: Reporter = {
     event: (line, side, why) => {
       this.told.push({ line, side, why });
       this.told.splice(0, this.told.length - KEPT);
-      this.#emit();
+      this.emit();
     },
     status: (status) => {
       this.status = status;
-      this.#emit();
+      this.emit();
     },
   };
 
@@ -99,23 +96,9 @@ export class Session {
     }
   }
 
-  subscribe(listener: () => void): () => void {
-    this.#listeners.add(listener);
-
-    return () => {
-      this.#listeners.delete(listener);
-    };
-  }
-
   #set(phase: Phase) {
     this.phase = phase;
-    this.#emit();
-  }
-
-  #emit() {
-    for (const listener of this.#listeners) {
-      listener();
-    }
+    this.emit();
   }
 }
 
@@ -127,26 +110,5 @@ export const session = new Session();
  * phone's 30 frames a second, and not at all while the page is hidden, where no frame is drawn.
  */
 export function useSession(): Session {
-  const [, redraw] = useState(0);
-
-  useEffect(() => {
-    let pending: number | undefined;
-
-    const unsubscribe = session.subscribe(() => {
-      pending ??= requestAnimationFrame(() => {
-        pending = undefined;
-        redraw((count) => count + 1);
-      });
-    });
-
-    return () => {
-      unsubscribe();
-
-      if (pending !== undefined) {
-        cancelAnimationFrame(pending);
-      }
-    };
-  }, []);
-
-  return session;
+  return useStore(session, { perFrame: true });
 }

@@ -12,8 +12,6 @@
  * the Events page keeps its own ten-minute refetch, and that refetch lands here too.
  */
 
-import { useEffect, useState } from 'preact/hooks';
-
 import { LOCAL_EVENTS, VENDED_EVENTS } from './event-feed.js';
 import {
   forgetUnsaved,
@@ -28,6 +26,7 @@ import {
 } from './event-prefs.js';
 import { mergeEvents, statusOf, type ParsedEvent } from './event-schedule.js';
 import { said } from './errors.js';
+import { Store, useStore } from './store.js';
 
 import type { FeedEvent } from './types.js';
 
@@ -199,11 +198,12 @@ export async function fetchEvents(url: string): Promise<readonly FeedEvent[]> {
 }
 
 /**
- * The feed, the preferences and the cards view's filters, and who to tell when any of them moves.
+ * The feed, the preferences and the cards view's filters, and who to tell when any of them moves: every writer below
+ * emits, and so does a page that has written to `prefs` directly.
  *
  * A class rather than module state so a test can start from nothing; the document has the one instance below.
  */
-export class EventStore {
+export class EventStore extends Store {
   /**
    * The feed entries, merged and sorted by start. Empty until a load finds either file; a later load that finds neither
    * leaves the last ones in place.
@@ -226,7 +226,6 @@ export class EventStore {
   restores = 0;
 
   readonly #fetchList: (url: string) => Promise<readonly FeedEvent[]>;
-  readonly #listeners = new Set<() => void>();
   #prefs: Prefs | null = null;
   #filter: CardsFilter | null = null;
   #inflight: Promise<void> | null = null;
@@ -240,6 +239,7 @@ export class EventStore {
   #whole = false;
 
   constructor(fetchList = fetchEvents) {
+    super();
     this.#fetchList = fetchList;
   }
 
@@ -276,24 +276,6 @@ export class EventStore {
   /** The events every tab reports as new, which is the same list the Events page marks. */
   newlyVisible() {
     return newlyVisible(this.events, this.prefs, this.filter);
-  }
-
-  subscribe(listener: () => void) {
-    this.#listeners.add(listener);
-
-    return () => {
-      this.#listeners.delete(listener);
-    };
-  }
-
-  /**
-   * Tell everyone reading the store that it has changed. Every writer below calls it, and so does a page that has
-   * written to `prefs` directly.
-   */
-  emit() {
-    for (const listener of this.#listeners) {
-      listener();
-    }
   }
 
   /**
@@ -421,9 +403,5 @@ export const eventStore = new EventStore();
 
 /** The store, with the calling component redrawn whenever it changes. */
 export function useEventStore() {
-  const [, redraw] = useState(0);
-
-  useEffect(() => eventStore.subscribe(() => redraw((count) => count + 1)), []);
-
-  return eventStore;
+  return useStore(eventStore);
 }

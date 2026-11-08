@@ -55,7 +55,7 @@ function agrees(node: Node, terms: readonly string[]) {
 }
 
 test('an any of two alls asks what the arrangement asked', () => {
-  // The search the earlier fixed builder could not say at all: a shiny Pikachu or an XXL Pumpkaboo.
+  // A shiny Fire type or an XXL Water type: an `any` of two `all`s.
   agrees(any(all(yes('shiny'), yes('fire')), all(yes('xxl'), yes('water'))), ['shiny', 'fire', 'xxl', 'water']);
 });
 
@@ -147,8 +147,7 @@ test('no cards at all is a query for everything rather than a broken one', () =>
  * `count` OR'd pairs of pills unique to `at`, which spread to two to the power of `count` clauses between them.
  *
  * Name pills rather than term pills, because a term pill is written through `terms.js` and an id that table does not
- * carry writes nothing at all — the first draft of this made two hundred pending pills and no clauses, which is a
- * perfectly good answer to a question it was not asking.
+ * carry writes nothing at all, leaving pills pending and no clauses to count.
  */
 const pairs = (count: number, at = 0) =>
   any(...Array.from({ length: count }, (_, index) => all(named(`g${at}a${index}`), named(`g${at}b${index}`))));

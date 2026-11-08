@@ -1,11 +1,10 @@
 /**
  * The reductions, and the arrangements they are deliberately silent about.
  *
- * Every one of them is local to one junction node, which is what the canvas changed: the earlier builder AND'd one
- * clause per category, so "this category's terms" and "the terms AND'd with the rest" were the same set. An
- * arrangement can put a category's terms in two groups, or inside an `any` the rest of the query is not AND'd with, so
- * each case below says which junction it is about — and the pair of cases per reduction, one for each junction, is
- * where the work is.
+ * Every one of them is local to one junction node. An arrangement can put a category's terms in two groups, or inside
+ * an `any` the rest of the query is not AND'd with, so "this category's terms" and "the terms AND'd with the rest" are
+ * not the same set, and each case below says which junction it is about — and the pair of cases per reduction, one for
+ * each junction, is where the work is.
  *
  * Every expectation is derived from `terms.js` and pinned against it first. A test that spells out `shadow&!purified`
  * is asserting that two ids still exist and still sit in a category declaring exclusivity; a renamed id would leave it
@@ -144,7 +143,7 @@ test('dex spans AND’d collapse into their overlap, and OR’d into their union
   expect([gen1, gen2]).toEqual(['1-151', '152-251']);
   expect(category('generation').exclusive).toBeUndefined();
 
-  // An `any` of two generations is the span they cover between them, which is what the fixed builder always wrote.
+  // An `any` of two generations is the span they cover between them.
   expect(short(any(yes('gen1'), yes('gen2')))).toBe('1-251');
 
   // An `all` of them is nothing at all — no species is in two generations — so the pills stay as the two clauses they

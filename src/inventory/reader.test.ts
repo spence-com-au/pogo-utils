@@ -80,6 +80,14 @@ test('a response that is not ok fails, naming the URL and the status', async () 
   );
 });
 
+test('the bytes of a response are read whole', async () => {
+  const { fetchBytes } = await load();
+
+  fetch.mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
+
+  expect(await fetchBytes('https://example.test/icon.png')).toEqual(new Uint8Array([1, 2, 3]));
+});
+
 test('the game master is fetched once, however many ask', async () => {
   const { gameData } = await load();
 
@@ -168,18 +176,6 @@ test('a wardrobe that arrived is kept, and asked for once however many Pikachu a
   await expect(ask()).resolves.toBe(wardrobe);
   expect(mocks.wardrobeFor).toHaveBeenCalledTimes(1);
   expect(mocks.wardrobeFor).toHaveBeenCalledWith(data, expect.any(Function));
-});
-
-test('a wardrobe short of the plain icon is not kept, and the next Pikachu asks for it again', async () => {
-  const wardrobe = { costumes: 'drawn' };
-  const ask = await pikachu();
-
-  mocks.wardrobeFor.mockResolvedValueOnce(null).mockResolvedValueOnce(wardrobe);
-
-  await expect(ask()).resolves.toBeNull();
-  await expect(ask()).resolves.toBe(wardrobe);
-  await expect(ask()).resolves.toBe(wardrobe);
-  expect(mocks.wardrobeFor).toHaveBeenCalledTimes(2);
 });
 
 test.each([
@@ -272,4 +268,31 @@ test('a storage search and a read share the engine and game master, installed an
   await expect(searchStorage(transport(), 'pikachu', vi.fn(), vi.fn())).resolves.toBeNull();
   expect(mocks.useEngine).toHaveBeenCalledTimes(1);
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test('a wardrobe that failed or fell short is drawn again by the next read, and a whole one is kept', async () => {
+  const { read } = await load();
+  const whole = { costumes: 'drawn' };
+
+  const wardrobe = async () => {
+    await read(image, vi.fn());
+
+    const [, , , , draw] = mocks.readScreen.mock.lastCall as [
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      () => Promise<unknown>,
+    ];
+
+    return draw();
+  };
+
+  mocks.wardrobeFor.mockRejectedValueOnce(new Error('icons')).mockResolvedValueOnce(null).mockResolvedValue(whole);
+
+  await expect(wardrobe()).rejects.toThrow('icons');
+  await expect(wardrobe()).resolves.toBeNull();
+  await expect(wardrobe()).resolves.toBe(whole);
+  await expect(wardrobe()).resolves.toBe(whole);
+  expect(mocks.wardrobeFor).toHaveBeenCalledTimes(3);
 });

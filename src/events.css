@@ -35,6 +35,18 @@ body[data-page='events'] {
    */
   --content-w: 1100px;
 
+  /**
+   * Everything the page shows and hides is toggled with `hidden`, and an author `display` beats the UA stylesheet's
+   * `[hidden] {display: none}` — `.newly`, `.filters`, `.chip` and `.grid` all carry one, so each would be laid out
+   * regardless. Keyed on `[hidden]` rather than on a `:not([hidden])` beside each `display`, so that it also outranks
+   * any later `display` a media query gives them, and `!important` because the keying alone only outranks a bare class:
+   * a second one ties it and wins on order, which is the bug `.pane[hidden]` in `search.css` carries the account of.
+   */
+
+  [hidden] {
+    display: none !important;
+  }
+
   header.page .sub {
     margin: 4px 0 0;
     font-size: 12px;
@@ -51,19 +63,6 @@ body[data-page='events'] {
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  /**
-   * The rule above is what makes this one necessary: an author `display` beats the UA stylesheet's `[hidden] {display:
-   * none}`, so the `hidden` the page sets whenever the count is zero would lay the line out regardless — leaving Mark
-   * all as seen on screen with nothing to mark, and on every page load, since the markup ships hidden with an empty
-   * count. Keyed on `[hidden]` rather than folded into a `:not([hidden])` above so that it also outranks any later
-   * `display` a media query gives `.newly`, and `!important` because the keying alone only outranks a bare class: a
-   * second one ties it and wins on order, which is the bug `.pane[hidden]` in `search.css` carries the account of.
-   */
-
-  .newly[hidden] {
-    display: none !important;
   }
 
   /**
@@ -214,19 +213,6 @@ body[data-page='events'] {
     padding: 12px 22px 0;
   }
 
-  /**
-   * The `display: flex` above is what makes this one necessary: an author `display` beats the UA stylesheet's
-   * `[hidden] {display: none}`, so the `hidden` the component sets while the filters are closed would lay the panel out
-   * regardless — putting the whole thing on screen on every page load, which is the one thing it must not do. Keyed on
-   * `[hidden]` rather than folded into a `:not([hidden])` above so that it also outranks any later `display` a media
-   * query gives `.filters`, and `!important` because the keying alone only outranks a bare class: a second one ties it
-   * and wins on order, which is the bug `.pane[hidden]` in `search.css` carries the account of.
-   */
-
-  .filters[hidden] {
-    display: none !important;
-  }
-
   .type-filters {
     display: flex;
     flex-wrap: wrap;
@@ -271,20 +257,6 @@ body[data-page='events'] {
     font-size: 12px;
     cursor: pointer;
     user-select: none;
-  }
-
-  /**
-   * The `display: inline-flex` above is what makes this one necessary: an author `display` beats the UA stylesheet's
-   * `[hidden] {display: none}`, so the `hidden` that `hidden={cardsOnly && view !== 'cards'}` puts on two of the
-   * reveals outside the cards view would lay them out regardless — leaving Ended and Undated on screen in the calendar
-   * and tracks views, where neither reveals anything. Keyed on `[hidden]` rather than folded into a `:not([hidden])`
-   * above so that it also outranks any later `display` a media query gives `.chip`, and `!important` because the keying
-   * alone only outranks a bare class: a second one ties it and wins on order, which is the bug `.pane[hidden]` in
-   * `search.css` carries the account of.
-   */
-
-  .chip[hidden] {
-    display: none !important;
   }
 
   .chip:hover {
@@ -403,15 +375,6 @@ body[data-page='events'] {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
-  }
-
-  /**
-   * The `display: grid` above beats the UA stylesheet's `[hidden] {display: none}`, so a bucket its heading folds would
-   * stay on screen. `!important` for the reason `.filters[hidden]` gives.
-   */
-
-  .grid[hidden] {
-    display: none !important;
   }
 
   /**
@@ -625,6 +588,10 @@ body[data-page='events'] {
     --type-color: #db2777;
   }
 
+  .type-timed-research {
+    --type-color: #059669;
+  }
+
   .type-wild-area {
     --type-color: #65a30d;
   }
@@ -688,6 +655,10 @@ body[data-page='events'] {
 
     .type-pokemon-spotlight-hour {
       --type-color: #f472b6;
+    }
+
+    .type-timed-research {
+      --type-color: #34d399;
     }
 
     .type-wild-area {

@@ -25,7 +25,7 @@ const escape = (keys: string, path = '') => `\x1b_G${keys},q=2;${Buffer.from(pat
 /** The picture taken off the screen. */
 export const ERASE = escape(`a=d,d=I,i=${ID}`);
 
-export interface Pictures {
+export interface Graphics {
   /** The size of one cell in pixels, which says how many columns a picture so many rows tall takes. */
   cell: Size;
 
@@ -44,7 +44,7 @@ export interface Pictures {
  * protocol advises: a query for a 1×1 picture in a file, the cell's size, and then the primary device attributes, which
  * every terminal answers, so one that has said nothing of the first two by then is known not to draw.
  */
-export async function pictures(input: NodeJS.ReadStream, output: NodeJS.WriteStream): Promise<Pictures | undefined> {
+export async function pictures(input: NodeJS.ReadStream, output: NodeJS.WriteStream): Promise<Graphics | undefined> {
   // The terminal deletes each file once read, and only from a path naming the protocol, so that an escape cannot be
   // used to delete anything else.
   const dir = mkdtempSync(join(tmpdir(), 'tty-graphics-protocol-'));
