@@ -696,11 +696,6 @@ async function scan(held: Transport) {
     marked.set(flag, marks);
   }
 
-  // Emptied of an earlier scan's rows, a skip adding to them instead.
-  if (skip === 0) {
-    writeFileSync(out, '');
-  }
-
   const grid = await search(term ?? '');
   const first = await openFirst(grid);
 
@@ -708,6 +703,12 @@ async function scan(held: Transport) {
     const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
 
     throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
+  }
+
+  // Emptied of an earlier scan's rows, a skip adding to them instead. Only once the full pass has a first Pokémon open,
+  // so that a run which cannot start leaves the earlier scan where it was.
+  if (skip === 0) {
+    writeFileSync(out, '');
   }
 
   let written = 0;
