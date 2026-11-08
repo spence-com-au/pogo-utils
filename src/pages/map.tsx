@@ -20,6 +20,7 @@ import COUNTRIES from '../countries.js';
 import { byKey, fmtDist, gpxEntries, routeDistance, type Route, type Waypoint } from '../routes.js';
 import { copyText, el } from '../dom.js';
 import { LOCAL_EVENTS } from '../event-feed.js';
+import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
 import { said } from '../errors.js';
@@ -66,14 +67,9 @@ async function loadGpxFile(file: string): Promise<{ routes: Route[]; waypoints: 
   let res;
 
   try {
-    res = await fetch(encodeURI(file));
+    res = await fetchOk(encodeURI(file));
   } catch (e) {
     throw new FetchError(said(e));
-  }
-
-  if (!res.ok) {
-    // HTTP/2 sends no reason phrase, so a bare status is all there is to say — trim rather than print a trailing space.
-    throw new FetchError(`${res.status} ${res.statusText}`.trim());
   }
 
   return gpxEntries(parseGpxDocument(await res.text()));
@@ -90,11 +86,7 @@ async function loadEventNames(): Promise<ReadonlyMap<string, string>> {
   const names = new Map<string, string>();
 
   try {
-    const res = await fetch(LOCAL_EVENTS);
-
-    if (!res.ok) {
-      throw new Error(`${res.status} ${res.statusText}`.trim());
-    }
+    const res = await fetchOk(LOCAL_EVENTS);
 
     for (const event of await res.json()) {
       names.set(event.eventID, event.name);

@@ -16,6 +16,7 @@
  */
 
 import { said } from './errors.js';
+import { fetchOk } from './fetch-ok.js';
 import type { Release, VendedRelease } from './release.js';
 import { Store, useStore } from './store.js';
 
@@ -26,12 +27,7 @@ import { Store, useStore } from './store.js';
  */
 export async function fetchVendedRelease(path: string, check: (url: string) => Release): Promise<VendedRelease | null> {
   try {
-    const res = await fetch(path, { cache: 'default' });
-
-    if (!res.ok) {
-      throw new Error(`${res.status} ${res.statusText}`);
-    }
-
+    const res = await fetchOk(path, { cache: 'default' });
     const raw: Partial<VendedRelease> = await res.json();
 
     if (typeof raw.url !== 'string') {

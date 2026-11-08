@@ -27,6 +27,7 @@ import {
   type State,
 } from '../pokedex/state.js';
 import { said } from '../errors.js';
+import { fetchOk } from '../fetch-ok.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
 import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
@@ -79,13 +80,7 @@ function useTable<T extends object>(path: string, without: string): T | Record<s
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch(path);
-
-        if (!res.ok) {
-          throw new Error(`${res.status} ${res.statusText}`.trim());
-        }
-
-        setTable(await res.json());
+        setTable(await (await fetchOk(path)).json());
       } catch (e) {
         console.error(`${path}: ${said(e)} — ${without}`);
       }

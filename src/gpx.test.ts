@@ -181,8 +181,8 @@ test('eachTrack pairs a track with its points from every segment', () => {
 
 /**
  * `loadManifest` needs a global rather than a tree, so the tree-based cases above cannot reach it. The stub is `fetch`
- * itself because that is what the function names: a parameter would be a seam the page does not have, and what the
- * guard is about is a response this repository's own build wrote going wrong.
+ * itself because that is what `fetchOk` names: a parameter would be a seam the page does not have, and what the guard
+ * is about is a response this repository's own build wrote going wrong.
  */
 const respondWith = (body: unknown, init?: { ok?: boolean; status?: number; statusText?: string }) => {
   vi.stubGlobal('fetch', () =>

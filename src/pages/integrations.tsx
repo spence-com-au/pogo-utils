@@ -19,6 +19,7 @@ import { useEffect, useState } from 'preact/hooks';
 
 import { copyText, download } from '../dom.js';
 import { said } from '../errors.js';
+import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
 import { displayFilterText, shinyHuntFilter } from '../livepokemap/display-filter.js';
@@ -54,13 +55,11 @@ async function buildRepoFavourites() {
 
   const texts = await Promise.all(
     files.map(async (file): Promise<[string, string]> => {
-      const res = await fetch(encodeURI(file));
-
-      if (!res.ok) {
-        throw new Error(`${file}: ${res.status} ${res.statusText}`);
+      try {
+        return [file, await (await fetchOk(encodeURI(file))).text()];
+      } catch (e) {
+        throw new Error(`${file}: ${said(e)}`, { cause: e });
       }
-
-      return [file, await res.text()];
     }),
   );
 

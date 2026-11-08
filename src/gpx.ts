@@ -4,6 +4,7 @@
  * so handing one entry to the clipboard means writing a file for it.
  */
 
+import { fetchOk } from './fetch-ok.js';
 import { GPX_PATHS } from './generated.js';
 import { GPX_NS, PGR_NS, type PgrField } from './gpx-dialect.js';
 
@@ -18,12 +19,7 @@ const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
  * the `some`, so the return type is a claim this function's own throw enforces rather than one the checker verified.
  */
 export async function loadManifest(): Promise<readonly string[]> {
-  const res = await fetch(GPX_PATHS);
-
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
-  }
-
+  const res = await fetchOk(GPX_PATHS);
   const files: unknown = await res.json();
 
   if (!Array.isArray(files) || files.some((f) => typeof f !== 'string')) {
