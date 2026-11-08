@@ -8,14 +8,17 @@
 
 import { type Transport } from '../inventory/adb.mts';
 
-type Shell = Pick<Transport, 'shell'>;
+export type Shell = Pick<Transport, 'shell'>;
 
 const SETTING = ['global', 'stay_on_while_plugged_in'] as const;
 
 /** Whether `value` is the number Android stores, which is all that may go back through the shell, unquoted there. */
 export const isStayOn = (value: unknown): value is string => typeof value === 'string' && /^\d+$/.test(value);
 
-/** The setting as found, or `0`, off, where Android answers with anything but a number, as `null` where it is unset. */
+/**
+ * The setting as found, or `0`, off, where Android answers with anything but a number, such as the text `null` for a
+ * setting that is unset.
+ */
 export async function readStayOn(transport: Shell): Promise<string> {
   const read = new TextDecoder().decode(await transport.shell(['settings', 'get', ...SETTING])).trim();
 

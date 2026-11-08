@@ -9,13 +9,10 @@
  */
 
 import { said } from '../errors.js';
-import { isStayOn, putStayOn, readStayOn, stayOnUsb } from '../tools/battle/stay-on.mts';
-import { type Transport } from '../tools/inventory/adb.mts';
+import { isStayOn, putStayOn, readStayOn, stayOnUsb, type Shell } from '../tools/battle/stay-on.mts';
 
 const DATABASE = 'pogo-utils-battle';
 const STORE = 'stay-on-while-plugged-in';
-
-type Shell = Pick<Transport, 'shell'>;
 
 /** What `act` asks of the store, once the transaction it was asked in has committed. */
 async function inStore<T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
