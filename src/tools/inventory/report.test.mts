@@ -111,6 +111,14 @@ test('a form nothing on the screen settles is unknown, not the first of its cand
   expect(unsettled(null, 'Roaming')).toStrictEqual({ label: 'form', value: 'unknown', source: null });
 });
 
+/** `costumeOf` lists none as `''` beside a single costume it cannot tell from it, which reads as none, not as blank. */
+test('a costume that could be none says so', () =>
+  expect(answer({ ...READING, costume: ['', 'Holiday 2016'] }).facts).toContainEqual({
+    label: 'costume',
+    value: 'none | Holiday 2016',
+    source: 'worked out',
+  }));
+
 /** Nothing identified and no overlay: every field is unknown and claims no source. */
 test('a screen that read nothing answers unknown, from nowhere', () => {
   const { facts } = answer({
