@@ -12,7 +12,7 @@
 
 import { cached, cachedAs } from './download.mts';
 import { showProgress } from './progress.mts';
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -137,6 +137,43 @@ test('a stale copy read because the download failed names the file, quietly or n
       'the copy from before',
     );
     expect(said).toStrictEqual([`Downloading ${url}`, `  ${url}: 503 Service Unavailable; using the copy from before`]);
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+/**
+ * And the other side of that `catch`: with no copy to fall back on, a failed download throws, naming the URL and why,
+ * and leaves nothing in the cache for the week's grace to read. A status and a connection dropped before any answer
+ * both, the second keeping what `fetch` threw as its `cause`.
+ */
+test('a download that fails with no copy to fall back on throws, naming the URL, and leaves nothing behind', async () => {
+  const dir = cacheDir();
+  const url = `${base}file.json`;
+  const failure = () => cached(dir, 'file.json', url, false).catch((error: unknown) => error);
+
+  try {
+    showProgress(false);
+
+    answer = (response) => {
+      response.statusCode = 503;
+      response.end();
+    };
+
+    const [refused, said] = await stderrOf(failure);
+
+    expect(refused).toMatchObject({ message: `${url}: 503 Service Unavailable` });
+    expect(said, 'a copy from before was claimed where there is none').toStrictEqual([`Downloading ${url}`]);
+
+    answer = (response) => response.destroy();
+
+    const [dropped] = await stderrOf(failure);
+
+    expect(dropped).toMatchObject({
+      message: `${url}: fetch failed`,
+      cause: expect.objectContaining({ name: 'TypeError', message: 'fetch failed' }),
+    });
+    expect(readdirSync(dir)).toStrictEqual([]);
   } finally {
     rmSync(dir, { recursive: true });
   }

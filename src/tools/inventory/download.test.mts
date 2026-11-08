@@ -357,3 +357,81 @@ test('a truncated artwork listing narrows no form', async () => {
   expect(forms.map(({ icon }) => icon)).toStrictEqual([null]);
   expect(error).toHaveBeenCalledWith(expect.stringContaining('the listing is truncated'));
 });
+
+test('a form takes the shiny the listing names beside its artwork, and none where it names none', async () => {
+  const listing = {
+    tree: ['pm1.fALOLA.icon.png', 'pm1.fALOLA.s.icon.png', 'pm2.fALOLA.icon.png', 'pm3.fALOLA.s.icon.png'].map(
+      (path) => ({ path }),
+    ),
+  };
+  const form = (dex: number) => species(`V000${dex}_POKEMON_FOO_ALOLA`, { form: 'FOO_ALOLA' });
+
+  const forms = await formsOf([form(1), form(2), form(3), form(4)], { listing });
+
+  // Dex 3 is listed with a shiny and no icon: the shiny follows from the form's own icon, not from the listing alone.
+  expect(forms.map(({ dex, icon, shiny }) => [dex, icon, shiny])).toStrictEqual([
+    [1, 'pm1.fALOLA.icon.png', 'pm1.fALOLA.s.icon.png'],
+    [2, 'pm2.fALOLA.icon.png', null],
+    [3, null, null],
+    [4, null, null],
+  ]);
+});
+
+/**
+ * The `isCostume` forms that have artwork, beside the costumes only the artwork knows (`pm25.cHOLIDAY_2016.icon.png`).
+ * `costume.test.mts` reads the vended fixture, which is this function's own output, so a change here would move the two
+ * together and pass.
+ */
+test('a costume is a marked form with artwork or artwork alone, sorted by dex and then icon', async () => {
+  const pikachu = (name: string) =>
+    species(`V0025_POKEMON_PIKACHU_${name}`, { pokemonId: 'PIKACHU', form: `PIKACHU_${name}` });
+
+  const listing = {
+    tree: [
+      // Out of order, and the marked form's costume is made before the artwork-only ones: only the sort orders them.
+      'pm172.cWINTER_2020_NOEVOLVE.icon.png',
+      'pm25.cHOLIDAY_2016.icon.png',
+      'pm25.cHOLIDAY_2016.s.icon.png',
+      'pm10.cFLOWER_CROWN.icon.png',
+      'pm25.fGOFEST_2026_CAP_RED.icon.png',
+      'pm25.fGOFEST_2026_CAP_RED.s.icon.png',
+      'pm25.fNORMAL.icon.png',
+    ].map((path) => ({ path })),
+  };
+
+  const { costumes } = await load(
+    [
+      PLAYER_LEVEL,
+      ...POWER_UP,
+      {
+        templateId: 'FORMS_V0025_POKEMON_PIKACHU',
+        data: {
+          formSettings: {
+            pokemon: 'PIKACHU',
+            forms: [
+              { form: 'PIKACHU_NORMAL' },
+              { form: 'PIKACHU_GOFEST_2026_CAP_RED', isCostume: true },
+              { form: 'PIKACHU_NO_ARTWORK', isCostume: true },
+            ],
+          },
+        },
+      },
+      pikachu('NORMAL'),
+      pikachu('GOFEST_2026_CAP_RED'),
+      pikachu('NO_ARTWORK'),
+    ],
+    { listing },
+  );
+
+  expect(costumes).toStrictEqual([
+    { dex: 10, name: 'Flower Crown', icon: 'pm10.cFLOWER_CROWN.icon.png', shiny: null },
+    { dex: 25, name: 'Holiday 2016', icon: 'pm25.cHOLIDAY_2016.icon.png', shiny: 'pm25.cHOLIDAY_2016.s.icon.png' },
+    {
+      dex: 25,
+      name: 'Gofest 2026 Cap Red',
+      icon: 'pm25.fGOFEST_2026_CAP_RED.icon.png',
+      shiny: 'pm25.fGOFEST_2026_CAP_RED.s.icon.png',
+    },
+    { dex: 172, name: 'Winter 2020', icon: 'pm172.cWINTER_2020_NOEVOLVE.icon.png', shiny: null },
+  ]);
+});
