@@ -30,6 +30,19 @@ function matrix(workflow: string, key: string): string[] {
   return [...(block ?? '').matchAll(/'([\w-]+)'/g)].map(([, name = '']) => name);
 }
 
+/**
+ * The `project` of each entry in `test.yaml`'s matrix, which lists them under `include` rather than as a plain list so
+ * that one entry can carry the OCR engine the corpus is read with.
+ */
+function projectsRun(): string[] {
+  const workflow = '.github/workflows/test.yaml';
+  const block = /^ +matrix:\n +include:\n([\s\S]*?)\n {4}\w/m.exec(read(workflow))?.[1];
+
+  expect(block, `\`include\` matrix in ${workflow}`).toBeDefined();
+
+  return [...(block ?? '').matchAll(/^ +project: '([\w-]+)'$/gm)].map(([, name = '']) => name);
+}
+
 /** The `<prefix>:<name>` scripts `package.json` defines, less the `:fix` variants, which rewrite rather than check. */
 const scriptsOf = (prefix: string) =>
   Object.keys(scripts)
@@ -44,6 +57,6 @@ test('`test.yaml` runs every vitest project, each of which has a `test:*` script
   const projects = [...read('vitest.config.mjs').matchAll(/^ +name: '([\w-]+)',$/gm)].map(([, name]) => name);
 
   expect(projects.length).toBeGreaterThan(0);
-  expect(new Set(matrix('.github/workflows/test.yaml', 'project'))).toStrictEqual(new Set(projects));
+  expect(new Set(projectsRun())).toStrictEqual(new Set(projects));
   expect(scriptsOf('test')).toStrictEqual(expect.arrayContaining(projects));
 });
