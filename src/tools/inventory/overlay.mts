@@ -393,7 +393,7 @@ export async function findOverlay(image: Image): Promise<{ box: OverlayBox; over
   // A whole sweep per pass rather than every pass per band, which matters only for the clock: the first pass finds the
   // overlay on all but a handful, and trying them all at every band cost the suite 60% more wall time.
   //
-  // Within a pass, a core's worth of bands at a time, `ocr.mts` holding each Tesseract process to one thread. The
+  // Within a pass, a core's worth of bands at a time, `ocr-cli.mts` holding each Tesseract process to one thread. The
   // bands of a batch are still taken top first, so the answer is the one a band-by-band sweep gives.
   for (const treat of OVERLAY_TREATMENTS) {
     for (let at = 0; at < tops.length; at += SWEEP_BATCH) {
