@@ -8,8 +8,8 @@
 /**
  * Every page, with what the tab bar calls it and what the document is titled while it is open, in tab order.
  *
- * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the seven literals rather than widening to
- * `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
+ * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the seven literals rather than widening
+ * to `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
  */
 export const PAGES = [
   { name: 'events', label: 'Events', icon: '📅', title: 'Events' },
@@ -28,7 +28,7 @@ export const HOME: Page = 'events';
 
 /**
  * The fragment for a route, which is what every link and every `replaceState` in the app is built from — and the
- * manifest's shortcuts. A page with no state of its own gets no `?`, so a tab arrived at by clicking reads `#/map`
- * rather than `#/map?`.
+ * manifest's shortcuts and the calendar feed's links to the map. A page with no state of its own gets no `?`, so a tab
+ * arrived at by clicking reads `#/map` rather than `#/map?`.
  */
 export const toHash = (page: Page, query = '') => (query ? `#/${page}?${query}` : `#/${page}`);

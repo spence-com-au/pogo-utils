@@ -28,7 +28,7 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, test } from 'vitest';
-import { SERVED_TYPES } from '../scripts/served-types.mts';
+import { SERVED_TYPES } from './served-types.mts';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/serve.mts', import.meta.url));
 
