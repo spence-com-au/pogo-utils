@@ -403,12 +403,14 @@ test.for([
  * Each storage screen under real OCR, given the empty search a scan without `--search` types, and whether it sent the
  * Back that closes the suggestions panel. `suggestions.png` is the panel a scan started from the map stopped on, its
  * Recommended chips each carrying a count — `362`, `631`, `405` and `296` at one height, which `tileLabel` takes for a
- * row of labels whose `CP`s misread — so the Back was skipped and the first tile tapped beneath `Normal` (#816). The
- * grids are the other half, where a Back closes storage, and the two whose first row of labels misread are the ones
- * that could be taken for the panel.
+ * row of labels whose `CP`s misread — so the Back was skipped and the first tile tapped beneath `Normal` (#816).
+ * `recent-cp.png` is the panel again with `cp-1500` the first of its Recent searches, which reads as a line of its own
+ * and as a CP label (#829). The grids are the other half, where a Back closes storage, and the two whose first row of
+ * labels misread are the ones that could be taken for the panel.
  */
 test.for([
   ['suggestions', true],
+  ['recent-cp', true],
   ['grid', false],
   ['searched', false],
   ['sparkles', false],

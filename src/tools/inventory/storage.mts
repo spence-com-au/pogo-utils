@@ -108,6 +108,14 @@ function isStorage(lines: readonly Line[]): boolean {
  */
 const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
 
+/**
+ * Whether storage's suggestions panel is showing, by a heading only it has as a line of its own: `Recent`,
+ * `Recommended` or the `See More` beside the first. Not the panel's only sign, since PGSharp's toolbar sits down the
+ * left edge over the first letters of two of them and `Recent` reads as `serccemt` behind it, but `See More` sits at
+ * the right, clear of it.
+ */
+const isSuggestions = (lines: readonly Line[]) => findLine(lines, /^(recent|see more|recommended)$/) !== undefined;
+
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Replaces what the focused search box holds with `term`: cleared by `CLEAR_KEYS`, typed unless empty, and entered. */
@@ -189,10 +197,11 @@ export function storage(
 
   /**
    * The lines below the search box that read as `CP_LABEL`, which is how a grid is told from the suggestions panel
-   * drawn over it: the panel carries no `CP` anywhere. These alone, without the numbers `tileLabel` takes besides,
-   * since the panel has numbers too: a count under each Recommended chip, and `362`, `631`, `405` and `296` at one
-   * height are a row of labels to `tileLabel` (`storage/suggestions.png`, #816). Every grid committed has a `CP` that
-   * reads, the two whose first row misread among them.
+   * drawn over it: the panel carries no `CP` but in a Recent search that begins with one, which is what `isSuggestions`
+   * is for (`storage/recent-cp.png`, #829). These alone, without the numbers `tileLabel` takes besides, since the panel
+   * has numbers too: a count under each Recommended chip, and `362`, `631`, `405` and `296` at one height are a row of
+   * labels to `tileLabel` (`storage/suggestions.png`, #816). Every grid committed has a `CP` that reads, the two whose
+   * first row misread among them.
    */
   const cpLabels = (lines: readonly Line[]) =>
     lines.filter((l) => l.top > (searchBox?.[1] ?? 0) && fold(l.text).search(CP_LABEL) === 0);
@@ -213,9 +222,10 @@ export function storage(
    * Two at one height are a row of labels, and the `96%` under each tile ends in its `%` rather than a digit. One above
    * a `CP` label is no nickname of that label's row or any after it, each sitting beneath its own row's labels, and
    * could be one only of a row whose labels all failed, where the first label to read is a row down anyway; nor is it a
-   * suggestion, the panel carrying no `CP`. Nor a number after a `/`, which is a count rather than a CP: the tabs'
-   * `12800 / 12825` and `12/12` sit at one height too, and nothing keeps them out where no search has found the box
-   * yet. The term in the box can end in a number too, `shiny&363`, which the box keeps out: only below it is a tile.
+   * suggestion, `search` closing the panel before a grid is read. Nor a number after a `/`, which is a count rather
+   * than a CP: the tabs' `12800 / 12825` and `12/12` sit at one height too, and nothing keeps them out where no search
+   * has found the box yet. The term in the box can end in a number too, `shiny&363`, which the box keeps out: only
+   * below it is a tile.
    */
   const tileLabel = (lines: readonly Line[]) => {
     const below = lines.filter((l) => l.top > (searchBox?.[1] ?? 0));
@@ -402,13 +412,14 @@ export function storage(
     await sleep(config.waits.search);
     lines = await readLines(await device.screenshot());
 
-    // Clearing the box uncovers the Recent and Recommended suggestions, and Enter only takes the keyboard away; Back
-    // closes them and leaves the unfiltered grid behind. An empty search matches everything, so a screen with no `CP`
-    // on it is that panel and can be nothing else — which is a surer test than the panel's own headings, since
-    // PGSharp's toolbar sits down the left edge over their first letters and `Recent` reads as `serccemt` behind it.
-    // Getting this wrong is expensive rather than merely unhelpful: `firstTile` then taps the panel, and a tap on a
-    // Recent chip quietly opens whatever was searched for last.
-    if (term === '' && cpLabels(lines).length === 0) {
+    // Tapping an empty box opens the Recent and Recommended suggestions, and Enter only takes the keyboard away; Back
+    // closes them and leaves the unfiltered grid behind. A box that held a term leaves that grid once cleared, with no
+    // panel over it. An empty search matches everything, so a screen with no `CP` on it is that panel and can be
+    // nothing else, and so is one whose headings read: a Recent search can begin with a `CP` of its own, as `cp-1500`
+    // does. Each covers the other's gap, the headings being the ones PGSharp's toolbar sits over. Getting this wrong is
+    // expensive rather than merely unhelpful: `firstTile` then taps the panel, and a tap on a Recent chip quietly opens
+    // whatever was searched for last.
+    if (term === '' && (cpLabels(lines).length === 0 || isSuggestions(lines))) {
       await device.key(KEY.BACK);
       await sleep(config.waits.search);
       lines = await readLines(await device.screenshot());
