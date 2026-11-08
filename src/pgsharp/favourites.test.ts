@@ -48,8 +48,6 @@ test('a <wpt> becomes a flagged Point and a <trk> a Route of triples', () => {
         [-37.8, 144.97, 65536],
         [-37.81, 144.98, 65536],
       ],
-      mode: 2,
-      state: { direction: 1, nextNodePos: 0, preNodePos: -1, loopcount: 0, lat: 0, lng: 0 },
     },
   ]);
 });
@@ -137,18 +135,10 @@ test('encodePoints omits an absent timezone', () => {
  * do not share an encoder. The slash escaping is common to both.
  */
 test('encodeRoutes leaves non-ASCII literal and still escapes slashes', () => {
-  expect(encodeRoutes([{ name: 'São/Paulo', points: [[1, 2, 65536]], mode: 2, state: undefined }])).toBe(
+  expect(encodeRoutes([{ name: 'São/Paulo', points: [[1, 2, 65536]] }])).toBe(
     '[{"points":[[1,2,65536]],"mode":2,' +
       '"state":{"direction":1,"nextNodePos":0,"preNodePos":-1,"loopcount":0,"lat":0,"lng":0},' +
       '"name":"São\\/Paulo"}]',
-  );
-});
-
-/** A route that names neither falls back to the walked-nothing state and the playback mode PGSharp writes. */
-test('encodeRoutes fills in a missing mode and state', () => {
-  expect(encodeRoutes([{ name: 'A', points: [] }])).toBe(
-    '[{"points":[],"mode":2,' +
-      '"state":{"direction":1,"nextNodePos":0,"preNodePos":-1,"loopcount":0,"lat":0,"lng":0},"name":"A"}]',
   );
 });
 
