@@ -1,8 +1,8 @@
 /**
  * What `screenrecord` is asked for, apart from the `adb` process `stream.mts` runs it in, so that a page streaming over
  * WebUSB asks for exactly the same picture: `stream.mts` reaches Node's `child_process`, and this reaches nothing. And
- * what `ffmpeg` is asked to decode it with, so that a test decoding where the page's WebCodecs would decodes as `pnpm
- * battle` does.
+ * what `ffmpeg` is asked to decode it with, so that a test using `ffmpeg` in place of the page's WebCodecs decodes
+ * exactly as `pnpm battle` does.
  */
 
 import { type Size } from './layout.mts';
