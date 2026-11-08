@@ -94,6 +94,9 @@ const CHANNELS: Record<number, number> = { 0: 1, 2: 3, 4: 2, 6: 4 };
 /** The most deflate can expand by: a 258-byte match coded in as few as two bits. */
 const MAX_INFLATION = 1032;
 
+/** What zlib wraps a deflate stream in, a two-byte header and a four-byte checksum, none of it pixels. */
+const ZLIB_FRAMING = 6;
+
 /** Why a screenshot cannot be read, with where to look, since a damaged one is far likelier than a damaged codec. */
 const refuse = (why: string): Error =>
   new Error(`${why} (did the screenshot fail? run \`adb exec-out screencap -p\` by hand to see)`);
@@ -173,7 +176,11 @@ export function decodePng(bytes: Uint8Array): Image {
   // Sized from the IHDR, which a forger writes along with honest CRCs, so it is held to what the stream could possibly
   // hold before anything is allocated on its word. A hundred bytes declaring 30000×30000 would otherwise ask for
   // gigabytes, and a zlib bomb would have the inflate ask for them itself.
-  if (needed > compressed.length * MAX_INFLATION) {
+  //
+  // Counted inside the zlib framing, which is what refuses a stream with nothing in it: fflate answers an empty deflate
+  // stream by handing back the buffer it was given, zero-filled and full length, so an IDAT cut down to its zlib header
+  // would read as a blank image rather than as no image at all.
+  if (needed > (compressed.length - ZLIB_FRAMING) * MAX_INFLATION) {
     throw refuse(
       `corrupt PNG: ${compressed.length} bytes of IDAT cannot hold the ${needed} that ${width}×${height} needs`,
     );

@@ -57,12 +57,11 @@ export interface Area {
   need?: number;
 }
 
+/** A box as `spanning` takes it: left and right as fractions of the width, top and bottom as widths from an anchor. */
+export type AnchoredBox = readonly [left: number, top: number, right: number, bottom: number];
+
 /** The box `left` to `right` across `screen` and `top` to `bottom` widths from `anchor` down it, as fractions of it. */
-export function spanning(
-  [left, top, right, bottom]: readonly [number, number, number, number],
-  anchor: number,
-  screen: Size,
-): Box {
+export function spanning([left, top, right, bottom]: AnchoredBox, anchor: number, screen: Size): Box {
   return [left, down(top, anchor, screen), right, down(bottom, anchor, screen)];
 }
 

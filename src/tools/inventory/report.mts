@@ -25,7 +25,8 @@ export interface Reading {
 
   /**
    * The costume a Pikachu wears, as `costumeOf` answers it: empty for none, several where the screen does not settle
-   * which. Null for any other species, and for a Pikachu read with no icons to match its costume against.
+   * which, `''` among them being none. Null for any other species, and for a Pikachu read with no icons to match its
+   * costume against.
    */
   costume: string[] | null;
 
@@ -210,7 +211,9 @@ export function answer({ detail, moves, overlay, identity, costume }: Reading): 
   const facts = [
     fact('species', form?.species, 'worked out'),
     ...(settled || identity.unseparated.length > 0 ? [fact('form', settled, 'worked out')] : []),
-    ...(costume ? [fact('costume', costume.length === 0 ? 'none' : costume.join(' | '), 'worked out')] : []),
+    ...(costume
+      ? [fact('costume', costume.length === 0 ? 'none' : costume.map((c) => c || 'none').join(' | '), 'worked out')]
+      : []),
     ...(identity.nickname ? [fact('nickname', identity.nickname, 'read')] : []),
     ...(detail.max ? [fact('max', detail.max, 'read')] : []),
     identity.cp === null ? fact('cp', detail.cp, 'read') : fact('cp', identity.cp, 'worked out'),
