@@ -63,8 +63,8 @@ importers:
         specifier: ^17.14.0
         version: 17.14.0
       html-validate:
-        specifier: 11.17.0
-        version: 11.17.0(@vitest/expect@4.1.11)(vitest@5.0.5)
+        specifier: 11.18.0
+        version: 11.18.0(@vitest/expect@4.1.11)(vitest@5.0.5)
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -1122,8 +1122,8 @@ packages:
     resolution: {integrity: sha512-n6l5uca7/y5joxZ3LUePhzmBFUJ+U2YWzhMa8XUTecSeSlQiZdF5XAd/Q3/WUl0VsXgUwWi8I7CNIwdI5WN1SQ==}
     engines: {node: '>=20.10'}
 
-  html-validate@11.17.0:
-    resolution: {integrity: sha512-DTUTxSFbiYnFOMsjsMaW5X4tT4a/k/bG3P7W9vdyxGC6L1LGtXCnL1e3pc9QMIEVkD9kk9AQIMjyJTs+2Yu0Kw==}
+  html-validate@11.18.0:
+    resolution: {integrity: sha512-9+cP5LyLG2blk1W8pYACmgTuFnqOuMZS8rt7G0q72wH7xqdduKE0qyV1qhwsKr/tjqmqscq81yyE6mNUuUex3Q==}
     engines: {node: ^22.22.0 || >= 24.8.0}
     hasBin: true
     peerDependencies:
@@ -1662,11 +1662,6 @@ packages:
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
-
-  semver@7.8.5:
-    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   semver@7.8.6:
     resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
@@ -2844,14 +2839,14 @@ snapshots:
 
   html-tags@5.1.0: {}
 
-  html-validate@11.17.0(@vitest/expect@4.1.11)(vitest@5.0.5):
+  html-validate@11.18.0(@vitest/expect@4.1.11)(vitest@5.0.5):
     dependencies:
       '@html-validate/stylish': 6.0.0
       '@sidvind/better-ajv-errors': 7.0.0(ajv@8.20.0)
       ajv: 8.20.0
       kleur: 4.1.5
       prompts: 2.4.2
-      semver: 7.8.5
+      semver: 7.8.6
     optionalDependencies:
       '@vitest/expect': 4.1.11
       vitest: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(vite@8.3.1(@types/node@24.19.2)(esbuild@0.28.2))
@@ -3160,8 +3155,6 @@ snapshots:
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
-
-  semver@7.8.5: {}
 
   semver@7.8.6: {}
 
