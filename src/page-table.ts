@@ -8,8 +8,8 @@
 /**
  * Every page, with what the tab bar calls it and what the document is titled while it is open, in tab order.
  *
- * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the seven literals rather than widening to
- * `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
+ * `satisfies` rather than an annotation so `PAGES[n].name` stays the union of the seven literals rather than widening
+ * to `string`: that union is `Page`, and it is what makes a misspelt page a type error at every use below.
  */
 export const PAGES = [
   { name: 'events', label: 'Events', icon: '📅', title: 'Events' },
