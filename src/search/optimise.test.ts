@@ -125,6 +125,18 @@ test('a name is matched as the game spells it, punctuation and all', () => {
   expect(short(all(named('+sandy shocks')))).toBe('+sandy s');
 });
 
+test('a name pill holding a catalogue term is that term to the game, and is not shortened as a name', () => {
+  // `dark` is the Dark type, and Darkrai the only species whose name holds it, so read as a name it would go out as
+  // `491` — and a ruled-out `!dark` as `!491`, every other Dark type let into a transfer string.
+  expect(term('dark')).toBe('dark');
+  expect(short(all(named('darkrai')))).toBe(`${Number(POKEMON.DARKRAI)}`);
+  expect(told(all(named('dark', true)))).toEqual({ query: '!dark', rewrites: [], lossy: EXACT });
+
+  for (const { term: text } of GROUPS.flatMap((entry) => entry.terms)) {
+    expect(told(all(named(text)))).toEqual({ query: text, rewrites: [], lossy: EXACT });
+  }
+});
+
 test('dex spans AND’d collapse into their overlap, and OR’d into their union', () => {
   const gen1 = term('gen1');
   const gen2 = term('gen2');
