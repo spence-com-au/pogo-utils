@@ -33,7 +33,7 @@ const RECURRING = new Set(RECURRING_TYPES);
 export const FEED = {
   file: join(DIST, EVENTS_FEED),
   name: 'Pokémon GO Events',
-  description: 'Current and upcoming Pokémon GO events, without the weekly hourly-cadence ones.',
+  description: 'Current and upcoming Pokémon GO events, without Spotlight Hours, Raid Hours, Max Mondays or seasons.',
 };
 
 /**
