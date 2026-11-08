@@ -87,6 +87,16 @@ const near = (colour: Colour, target: Colour, within: number) =>
  * sky's prompt has none, and a night sky's no more than 7% where its strips fail anyway. A dark screen is dark all
  * over, hence the ceiling.
  *
+ * The text is grey, though, and sky can be as dark: the blue between clouds. Cloud over both strips, 223/244/252 before
+ * a GO Battle League battle on a Pixel 4 XL, showed it through up to a quarter of the names' line, and the HUD read as
+ * up for the two seconds before it was drawn. That blue is 160 to 200 in chroma at its median, and the names' text no
+ * more than 105 on any committed frame and 107 at its median in a battle against Lugia, so the floor counts only what
+ * is no more than 120; at 100, that battle's names fell under 8%. The ceiling still counts every colour, a dark screen
+ * being dark whatever its colour: held to grey alone, Dazzling Gleam's magenta flash read as the HUD, and so did
+ * Xerneas's antlers. Replayed through 513,000 frames of 26 recorded runs, the floor turns only frames with no HUD drawn
+ * away from it — the field before a battle, a move's animation, the countdown to an opponent's charged move, which now
+ * reads as the shield prompt where it offers one — and the HUD fading in or out.
+ *
  * The sky between the panels is the rest of the test, and is what two near misses fail. The map's notifications are a
  * bar straight across the top, and `96% found a Candy!` measured 249/253/243 in the right strip and 204/214/209 in the
  * gap — no sky there, its green over both its red and its blue. The fade into a battle failed the same way, 211/231/227
@@ -109,20 +119,26 @@ const HUD_NAMES: readonly Box[] = [
   [0.6, 0.1478, 0.97, 0.1816],
 ];
 const HUD_GAP: Box = [0.44, 0.1794, 0.56, 0.2006];
-const TEXT = { dark: 180, least: 0.08, most: 0.3 } as const;
+const TEXT = { dark: 180, grey: 120, least: 0.08, most: 0.3 } as const;
 
 const panel = (colour: Colour) => Math.min(...colour) >= 195 && chroma(...colour) <= 52;
 
-/** The share of a box darker than `TEXT.dark`. */
-function darkIn(image: Image, box: Box): number {
-  let [dark, n] = [0, 0];
+/** The shares of a box darker than `TEXT.dark`: of any colour, and of no more colour than `TEXT.grey`. */
+function darkIn(image: Image, box: Box): { dark: number; grey: number } {
+  let [dark, grey, n] = [0, 0, 0];
 
   for (const colour of pixels(image, box, TOP)) {
-    dark += luminance(...colour) < TEXT.dark ? 1 : 0;
+    if (luminance(...colour) < TEXT.dark) {
+      dark++;
+      grey += chroma(...colour) <= TEXT.grey ? 1 : 0;
+    }
+
     n++;
   }
 
-  return dark / Math.max(n, 1);
+  n = Math.max(n, 1);
+
+  return { dark: dark / n, grey: grey / n };
 }
 
 function showsHud(image: Image): boolean {
@@ -132,8 +148,8 @@ function showsHud(image: Image): boolean {
     green <= Math.max(red, blue) &&
     HUD.every((box) => panel(medianColour(image, box, TOP))) &&
     HUD_NAMES.every((box) => {
-      const text = darkIn(image, box);
-      return text >= TEXT.least && text <= TEXT.most;
+      const { dark, grey } = darkIn(image, box);
+      return grey >= TEXT.least && dark <= TEXT.most;
     })
   );
 }
