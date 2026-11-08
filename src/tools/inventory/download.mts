@@ -38,8 +38,7 @@ const ICON_INDEX =
 /**
  * Where that listing is cached, derived from `ICON_DIR` rather than written down beside it. `cached` keys on the file
  * name and a week's grace alone, so a fixed name across a change of directory answers the new URL with the old
- * directory's listing until the week is out — the same staleness `ICON_DIR` was changed to fix, arriving through the
- * cache instead of upstream.
+ * directory's listing until the week is out.
  *
  * Exported for `cli.test.mts` and `phone.test.mts`, which seed a cache to keep themselves off the network: a name
  * transcribed there would seed a file the reader no longer asks for, and the test would pass on a download it meant to

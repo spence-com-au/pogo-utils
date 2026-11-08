@@ -66,9 +66,9 @@ test('the flags are read off `parseArgs` whole, not some readable subset of it',
  * keys matched inside it for the reasons the options block above is, and the key pattern names no command, so a command
  * this test has never heard of is read rather than skipped.
  *
- * Naming the three was the hole: a `watch:` entry added to the table was checked by nothing, the pattern not seeing it
- * and the union below being taken over only what the pattern read. The same fail-open shape — a reader that matches
- * less is compared against less.
+ * Naming the commands would fail open: a `watch:` entry added to the table would be checked by nothing, the pattern not
+ * seeing it and the union below being taken over only what the pattern read. A reader that matches less is compared
+ * against less.
  */
 const TABLE = /\nconst HONOURED[^=]*= \{\n([\s\S]*?)\n\};\n/.exec(SOURCE)?.[1] ?? '';
 const HONOURED = new Map(
@@ -80,8 +80,8 @@ const HONOURED = new Map(
 
 /**
  * The flags the synopsis offers each command, parsed once out of one `help` run. Split on the command lines rather than
- * read whole, which is what makes the comparison per command rather than a flat set — and a flat set was the hole here
- * before: `--serial` sat on the `scan` line alone while `snap` honoured it, and nothing could say so.
+ * read whole, which is what makes the comparison per command rather than a flat set, which would pass a `--serial`
+ * offered on the `scan` line alone while `snap` honoured it.
  */
 const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
   ({ stdout }) =>

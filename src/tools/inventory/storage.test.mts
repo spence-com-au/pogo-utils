@@ -1,7 +1,7 @@
 /**
  * The walk to storage and the search typed into it, driven end to end through the two seams it reaches the world by: a
  * `Transport` standing in for the phone, recording what it is sent, and an OCR `Engine` answering every read with the
- * one storage screen. No test reached this while it lived in `scripts/inventory.mts`, which nothing can import.
+ * one storage screen.
  */
 
 import { Device, KEY, type Transport } from './adb.mts';

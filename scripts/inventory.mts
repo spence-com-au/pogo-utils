@@ -128,7 +128,7 @@ const SETTLE_ATTEMPTS = 4;
 
 /**
  * How long a swipe from one Pokémon to the next takes, in milliseconds: `input swipe`'s own, which is what
- * `config.swipes.next` and `config.waits.swipe` were measured with, now given to the touchscreen instead.
+ * `config.swipes.next` and `config.waits.swipe` were measured with, and so what the touchscreen is given too.
  */
 const NEXT_MS = 300;
 
@@ -204,8 +204,8 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
  *
  * `--config` is on all three but splits two ways: `scan` and `snap` drive the phone out of it, reading `swipes`,
  * `waits` and `scrollBand`, where `parse` reaches `overlay` alone and only through `report`. The fields are named so
- * the claim can be grepped for, this sentence having been wrong twice already. `--serial` and `--user` stop at `snap`
- * because `parse` opens no device. `--scroll` is the scan's alone, a `snap` taking a scroll capture every time.
+ * the claim can be grepped for. `--serial` and `--user` stop at `snap` because `parse` opens no device. `--scroll` is
+ * the scan's alone, a `snap` taking a scroll capture every time.
  */
 const HONOURED: Record<string, readonly string[]> = {
   scan: [
@@ -544,10 +544,10 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
    * then separate is exactly the one worth looking at twice.
    *
    * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
-   * reading kept is `bestOf`'s and not this loop's: a reading accepted before is now read again, a second look can come
-   * back worse, and one whose HP goes unread has no key at all — three of those in a row stop the pass. That decision
-   * sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan driven against recordings
-   * shows what it wrote and not how many looks it took to get there.
+   * reading kept is `bestOf`'s and not this loop's: a stricter test reads again what a looser one would have accepted,
+   * a second look can come back worse, and one whose HP goes unread has no key at all — three of those in a row stop
+   * the pass. That decision sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan
+   * driven against recordings shows what it wrote and not how many looks it took to get there.
    */
   const readDetail = async (): Promise<Reading> => {
     let latest: Image | null = null;
@@ -789,7 +789,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
             //
             // Under the plain name, the stitch being the capture and `-detail` above the frame the row was read from.
             // `name` here is the scan's own index, so a capture kept for the corpus is still renamed to the Pokémon it
-            // shows; what the plain name buys is that the suffix is no longer part of what has to come off.
+            // shows; what the plain name buys is that the suffix is not part of what has to come off.
             const capture = await scrollFrames(device, latest);
             scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
             shown = capture.frames.at(-1) ?? latest;
