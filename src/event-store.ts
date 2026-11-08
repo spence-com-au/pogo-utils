@@ -28,6 +28,7 @@ import {
 } from './event-prefs.js';
 import { mergeEvents, statusOf, type ParsedEvent } from './event-schedule.js';
 import { said } from './errors.js';
+import { fetchOk } from './fetch-ok.js';
 
 import type { FeedEvent } from './types.js';
 
@@ -183,12 +184,7 @@ export function settleSeen(prefs: Prefs, settled: readonly ParsedEvent[]) {
  * doing something with it.
  */
 export async function fetchEvents(url: string): Promise<readonly FeedEvent[]> {
-  const res = await fetch(url, { cache: 'default' });
-
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
-  }
-
+  const res = await fetchOk(url, { cache: 'default' });
   const raw: unknown = await res.json();
 
   if (!Array.isArray(raw)) {

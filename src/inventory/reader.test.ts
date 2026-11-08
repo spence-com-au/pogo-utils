@@ -70,6 +70,15 @@ test('a response that is not ok fails, naming the URL and the status', async () 
   );
 });
 
+/** HTTP/2 sends no reason phrase, and the status then ends the message rather than a space after it. */
+test('a status without a reason phrase is named as the bare number', async () => {
+  const { fetchOk } = await load();
+
+  fetch.mockResolvedValueOnce(new Response('', { status: 404 }));
+
+  await expect(fetchOk('https://example.test/icon.png')).rejects.toThrow(/^https:\/\/example\.test\/icon\.png: 404$/);
+});
+
 test('the game master is fetched once, however many ask', async () => {
   const { gameData } = await load();
 

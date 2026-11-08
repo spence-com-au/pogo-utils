@@ -40,6 +40,7 @@ import {
   useEventStore,
   type Reveals,
 } from '../event-store.js';
+import { fetchOk } from '../fetch-ok.js';
 import { ENTRIES_BY_EVENT, EVENTS_FEED } from '../generated.js';
 import { toHash } from '../router.js';
 
@@ -208,13 +209,7 @@ function eventBar(
  * tree in step. A card tolerates a miss either way: an event the index does not name simply gets no map link.
  */
 async function fetchRouteIndex(): Promise<RouteIndex> {
-  const res = await fetch(ENTRIES_BY_EVENT);
-
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
-  }
-
-  return res.json();
+  return (await fetchOk(ENTRIES_BY_EVENT)).json();
 }
 
 export default function EventsPage({ query: fragment }: { query: string }) {

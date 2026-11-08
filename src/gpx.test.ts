@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 
 import { eachTrack, entryCoords, entryCountry, entryGpx, extText, loadManifest, placeName } from './gpx.js';
 import { parseXml } from './testing/xml.js';
@@ -154,8 +154,8 @@ test('eachTrack pairs a track with its points from every segment', () => {
 
 /**
  * `loadManifest` is the one reader here that needs a global rather than a tree, so the tree-based cases above cannot
- * reach it. The stub is `fetch` itself because that is what the function names: a parameter would be a seam the page
- * does not have, and what the guard is about is a response this repository's own build wrote going wrong.
+ * reach it. The stub is `fetch` itself because that is what `fetchOk` names: a parameter would be a seam the page does
+ * not have, and what the guard is about is a response this repository's own build wrote going wrong.
  *
  * `parseGpxDocument` is the one reader no test here reaches, and deliberately: it tells a malformed file apart by
  * `querySelector('parsererror')`, a browser convention `@xmldom/xmldom` does not implement at all — it throws from
@@ -163,17 +163,18 @@ test('eachTrack pairs a track with its points from every segment', () => {
  * what covers it.
  */
 const respondWith = (body: unknown, init?: { ok?: boolean; status?: number; statusText?: string }) => {
-  globalThis.fetch = () =>
+  vi.stubGlobal('fetch', () =>
     Promise.resolve({
       ok: init?.ok ?? true,
       status: init?.status ?? 200,
       statusText: init?.statusText ?? 'OK',
       json: () => Promise.resolve(body),
-    } as Response);
+    } as Response),
+  );
 };
 
 afterEach(() => {
-  Reflect.deleteProperty(globalThis, 'fetch');
+  vi.unstubAllGlobals();
 });
 
 test('loadManifest answers the list of paths the build wrote', async () => {

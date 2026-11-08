@@ -8,6 +8,8 @@
  * anything about the screen; the screenshot and what it reads as stay in memory here, and leave only as a download.
  */
 
+import { said } from '../errors.js';
+import { fetchOk as fetchStatus } from '../fetch-ok.js';
 import { GAME_MASTER, TESSERACT_VENDOR } from '../generated.js';
 import { ICON_BASE } from '../pokedex/icons.js';
 import { Device, type Transport } from '../tools/inventory/adb.mts';
@@ -50,14 +52,13 @@ export function unreadable(): string | null {
     : 'Reading a screenshot needs a secure context too: open this page from localhost or the published site.';
 }
 
+/** The shared `fetchOk`, naming the URL in whatever it throws: the readers that call it report a failure as thrown. */
 export async function fetchOk(url: string): Promise<Response> {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`${url}: ${response.status} ${response.statusText}`);
+  try {
+    return await fetchStatus(url);
+  } catch (e) {
+    throw new Error(`${url}: ${said(e)}`, { cause: e });
   }
-
-  return response;
 }
 
 /**
