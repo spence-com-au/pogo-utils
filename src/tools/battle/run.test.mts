@@ -1574,8 +1574,8 @@ const HOLDING =
  * Giratina's energy takes to fill from 50 at 8 a second, as any of its fast moves gains: 6.25s of the fight, the 3s off
  * the field between `lit` and `relit` not counting, so after the 6s the two last and before `late`, 0.5s after them,
  * ends. Or as a finish, Mamoswine's shields painted spent, takes its place, which ends the hold. Or as our bar, at 4%,
- * comes within one of Mamoswine's fast moves, `fastFaints`'s fear named with the charged move the drop, counted as its
- * hits, now affords. Never on `lit` or `relit`, which take no tap.
+ * comes within one of Mamoswine's fast moves, `fastFaints`'s fear named with the charged move the count affords before
+ * the drop has come to rest and been counted. Never on `lit` or `relit`, which take no tap.
  */
 test.each([
   [
@@ -1617,7 +1617,7 @@ test.each([
     'low',
     [
       HOLDING,
-      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left; Bulldoze would faint us, 108 energy affords it',
+      'own: no longer holding Shadow Sneak: their next fast move would faint us, one taking ~4% with 4% left; Ancient Power would faint us, 48 energy affords it',
       'own: threw Shadow Sneak',
     ],
   ],
@@ -3403,6 +3403,46 @@ test('counts no hit off our bar while a touch’s ring crosses it', async () => 
   );
 
   expect(new Set(report.fights.flatMap(({ energy }) => (energy ? [energy.energy] : [])))).toEqual(new Set([0]));
+});
+
+/**
+ * Giratina against Mamoswine as `sneaking` paints them, three of Mamoswine's Powder Snow taking 4 points of our bar
+ * each from 96%, and each read for a frame 5 points short of where it leaves the bar, as our Kyogre's read 35% for a
+ * frame where Snorlax's Lick left it at 40%. Each counts to where the bar rests, 8 energy a Powder Snow; counted to the
+ * short frame, the first left the low there, below where the second left the bar.
+ */
+test('counts each hit off our bar to where it rests, past a frame reading it short as the hit lands', async () => {
+  const { scenes, ours } = sneaking([96], {});
+  const unlit = (px: number) => painted(ours(px), [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const { phone, clock } = scripted(
+    {
+      ...scenes,
+      fight: { frame: unlit(96), lasts: { ms: 1000, to: 'short1' } },
+      short1: { frame: unlit(87), lasts: { ms: 100, to: 'hit1' } },
+      hit1: { frame: unlit(92), lasts: { ms: 1000, to: 'short2' } },
+      short2: { frame: unlit(83), lasts: { ms: 100, to: 'hit2' } },
+      hit2: { frame: unlit(88), lasts: { ms: 1000, to: 'short3' } },
+      short3: { frame: unlit(79), lasts: { ms: 100, to: 'hit3' } },
+      hit3: { frame: unlit(84), lasts: { ms: 1000, to: 'won' } },
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await run(
+    phone,
+    {
+      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      data: DATA,
+      icons: ICONS,
+      typeIcons: TYPE_ICONS,
+      count: 1,
+    },
+    clock,
+    report,
+  );
+
+  expect(report.fights.at(-1)?.energy).toEqual({ energy: 24, fast: 'Powder Snow' });
 });
 
 /**
