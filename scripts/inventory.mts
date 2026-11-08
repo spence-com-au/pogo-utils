@@ -393,14 +393,13 @@ async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Col
 }
 
 /**
- * `held` is the shell the touchscreen is made on, which the caller closes once the scan is over, however it ends.
+ * The rows a scan covers, read ahead of the phone so that a typo fails before anything is driven — or leased, the
+ * caller opening the scan's held shell only once this has returned: `adb shell` takes the phone's lease the moment it
+ * starts, which a run refused for its flags has no business taking from another session.
  */
-async function scan(held: Transport) {
-  // Ahead of the phone, so a typo fails before anything is driven.
+function scanRange() {
   const limit = count('limit', options.limit, Infinity);
   const skip = count('skip', options.skip, 0);
-  const out = options.out;
-  const term = options.search;
 
   // The rows a skip has to land just past, read before the phone is driven, since a skip with nothing to check its
   // landing against is one that lands short by every swipe it dropped and says nothing: the rows written next repeat
@@ -409,14 +408,24 @@ async function scan(held: Transport) {
 
   if (skip > 0) {
     try {
-      behind = landmarksBefore(readFileSync(out, 'utf8'), skip);
+      behind = landmarksBefore(readFileSync(options.out, 'utf8'), skip);
     } catch (error) {
       const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : (error as Error).message;
-      throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${out}, but ${why}`, {
+      throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${options.out}, but ${why}`, {
         cause: error,
       });
     }
   }
+
+  return { limit, skip, behind };
+}
+
+/**
+ * `held` is the shell the touchscreen is made on, which the caller closes once the scan is over, however it ends.
+ */
+async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof scanRange>) {
+  const out = options.out;
+  const term = options.search;
 
   const device = new Device(adbCli(options.serial));
   await device.check();
@@ -1307,12 +1316,14 @@ async function snap() {
 
 // Last, so that everything above is initialised before anything runs.
 if (command === 'scan') {
+  const range = scanRange();
+
   // Held open for the scan's touchscreen, which goes with it, and so closed however the scan ends: open, it would keep
   // the process waiting on it after the last row.
   const held = adbHeld(options.serial);
 
   try {
-    await scan(held);
+    await scan(held, range);
   } finally {
     held.close();
   }

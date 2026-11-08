@@ -375,6 +375,37 @@ test.for([
 });
 
 /**
+ * A `--limit` or `--skip` a scan cannot use is refused before the phone is opened too. Watched through an `adb` of the
+ * test's own first on the path, which marks that it ran, rather than through what the run printed: the held shell a
+ * scan swipes on starts `adb shell` the moment it is made, which takes the phone's lease from any other session, and
+ * nothing says so on a run that then throws. The `--skip` is refused for want of the `--out` it checks its landing
+ * against, which the empty working directory does not have.
+ */
+test.for([
+  ['--limit', 'abc', '--limit takes a whole number, not abc'],
+  ['--skip', '3', 'it does not exist'],
+] as const)('`scan` refuses `%s %s`, before it opens the phone', async ([flag, value, refusal]) => {
+  const cwd = mkdtempSync(join(tmpdir(), 'inventory-cli-'));
+  const ran = join(cwd, 'adb-ran');
+
+  writeFileSync(join(cwd, 'adb'), `#!/bin/sh\n: > '${ran}'\n`, { mode: 0o755 });
+
+  try {
+    const failure = await run(process.execPath, [SCRIPT, 'scan', flag, value], {
+      cwd,
+      env: { ...process.env, PATH: `${cwd}:${process.env.PATH}` },
+    }).catch((error: unknown) => error);
+    const { stderr } = failure as { stderr: string };
+
+    expect(failure).toMatchObject({ code: 1 });
+    expect(stderr).toContain(refusal);
+    expect(existsSync(ran), 'the phone was reached before the flag was checked').toBe(false);
+  } finally {
+    rmSync(cwd, { recursive: true });
+  }
+});
+
+/**
  * `parse` of the capture with and without `--verbose`, side by side in `cwd`, each run to its end before either's
  * failure is thrown. `Promise.all` rejects at the first, and the caller's `finally` then deletes `cwd` from under the
  * other — whose recursive `mkdirSync` of the relative cache path never returns once its directory is gone, on Node 24 at
