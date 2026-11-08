@@ -7,6 +7,7 @@
 
 import { byCodeUnit, HAS_ZONE, routeSummary, webLink } from './event-feed.ts';
 import { DIST, EVENTS_FEED } from './generated.ts';
+import { toHash } from './page-table.ts';
 import RECURRING_TYPES from './recurring-types.ts';
 import type { FeedEvent, RouteIndex } from './types.js';
 import { join } from 'node:path';
@@ -146,7 +147,7 @@ export function vevent(ev: FeedEvent, index: RouteIndex): string[] {
   const link = webLink(ev.link);
 
   if (here) {
-    description.push(`${routeSummary(here)} here: ${SITE}/#/map?event=${encodeURIComponent(ev.eventID)}`);
+    description.push(`${routeSummary(here)} here: ${SITE}/${toHash('map', `event=${encodeURIComponent(ev.eventID)}`)}`);
   }
 
   if (link) {
