@@ -537,10 +537,10 @@ shield spent early costs less than a Pokémon lost. Each shield taken or kept is
 Neither the opponent's energy nor its fast move is on screen, so both are counted off our own HP bar
 ([`energy.mts`](energy.mts)):
 
-- **Hits.** Each of their fast moves that lands takes a step off our bar. A _clean_ step is a drop between two readings
-  less than 500ms apart, too close for two hits. The median clean step is what one hit takes, so the HP lost ÷ that is
-  the number of hits. That needs no guess at IVs or a shadow bonus, and missed frames don't matter, because only the
-  total lost counts.
+- **Hits.** Each of their fast moves that lands takes a step off our bar. A _clean_ step is a drop coming to rest less
+  than 500ms after the bar was last read above it, too close for two hits. The median clean step is what one hit takes,
+  so the HP lost ÷ that is the number of hits. That needs no guess at IVs or a shadow bonus, and missed frames don't
+  matter, because only the total lost counts.
 - **Which fast move.** The damage model says which of the species' allowed fast moves a step that size is, and so how
   much energy each hit gains. Before any clean step, the count uses PvPoke's recommended fast move (or, in Training, the
   one gaining energy fastest), at the smallest hit any build would land. That counts the most hits, erring towards more
@@ -561,6 +561,10 @@ Neither the opponent's energy nor its fast move is on screen, so both are counte
   - Nor is what the bar goes on losing after one: a charged move's hit drains it for about 2s once the fight is back, a
     drop every frame. Counting starts again only once the bar has held for 300ms, which a fast move's hit, landing in
     one frame, leaves it doing between hits.
+  - Nor is a frame or three reading the bar short as a hit lands, the bar shaken with our Pokémon: our Kyogre's read
+    42%, 35%, 38%, 38% and then 40% a frame apart against Snorlax. A drop counts once the bar has held within 2 points
+    of one reading for 100ms, measured to the highest it read meanwhile, and one the bar reads back up from before then
+    took nothing. A drop still coming to rest when the fight pauses is counted as it stands.
   - Nor is a drop the bar snaps back from. HP never comes back while the same two Pokémon face each other, so a low our
     bar later reads more than 10 points above was a misread: the drops to it are taken back, and the hits after it are
     measured from what the bar reads again, rather than going uncounted until it falls below the misread. A smaller rise

@@ -33,7 +33,17 @@ const MATCHUP: Matchup = {
 const PSYCHO_CUT = 2 / 132;
 const COUNTER = 6 / 132;
 
-/** A bar read every `every` ms through `hits` seconds, a hit taking `step` off it each second, from `from`. */
+/** A bar read at `hp` every 100ms for 200ms from `at`: long enough to have come to rest there. */
+function rest(energy: Pick<Energy, 'read'>, at: number, hp: number, matchup = MATCHUP): void {
+  for (let t = 0; t <= 200; t += 100) {
+    energy.read(at + t, hp, matchup);
+  }
+}
+
+/**
+ * A bar read every `every` ms through `hits` seconds, a hit taking `step` off it each second, from `from`, and read on
+ * after the last until it has come to rest.
+ */
 function fight(
   energy: Pick<Energy, 'read'>,
   { from = 1, step, hits, start = 0, every = 100 }: Fight,
@@ -51,7 +61,7 @@ function fight(
     at += 1000;
   }
 
-  energy.read(at, hp, matchup);
+  rest(energy, at, hp, matchup);
 
   return hp;
 }
@@ -100,9 +110,10 @@ test('hits run together between readings are counted by the step measured before
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: COUNTER, hits: 3 });
 
-  // Four more, two between each reading: no clean step among them, but the HP they took is four of the three's.
-  energy.read(5000, hp - 2 * COUNTER, MATCHUP);
-  energy.read(7000, hp - 4 * COUNTER, MATCHUP);
+  // Four more, two between each time the bar is read: no clean step among them, but the HP they took is four of the
+  // three's.
+  rest(energy, 5000, hp - 2 * COUNTER);
+  rest(energy, 7000, hp - 4 * COUNTER);
 
   expect(energy.estimate(MATCHUP)?.energy).toBe(42);
 });
@@ -148,10 +159,9 @@ test('a low the bar reads back above was a misread, and the hits after it still 
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: COUNTER, hits: 1 });
 
-  // Two frames at 22%, as a ring drawn across our bar once had it, and then what it held.
-  energy.read(1100, 0.22, MATCHUP);
-  energy.read(1200, 0.22, MATCHUP);
-  fight(energy, { from: hp, step: COUNTER, hits: 2, start: 1300 });
+  // 22%, as a ring drawn across our bar once had it, for long enough to come to rest, and then what it held.
+  rest(energy, 1300, 0.22);
+  fight(energy, { from: hp, step: COUNTER, hits: 2, start: 1600 });
 
   expect(energy.estimate(MATCHUP)?.energy).toBe(18);
   expect(energy.step).toBeCloseTo(COUNTER);
@@ -161,9 +171,9 @@ test('however many drops took it there, a hit landing meanwhile measured from be
   const energy = new Energy(DATA);
   const hp = fight(energy, { step: COUNTER, hits: 1 });
 
-  energy.read(1100, 0.4, MATCHUP);
-  energy.read(1200, 0.22, MATCHUP);
-  energy.read(1300, hp - COUNTER, MATCHUP);
+  rest(energy, 1300, 0.4);
+  rest(energy, 1600, 0.22);
+  rest(energy, 1900, hp - COUNTER);
 
   expect(energy.estimate(MATCHUP)?.energy).toBe(12);
   expect(energy.step).toBeCloseTo(COUNTER);
@@ -174,11 +184,11 @@ test('but a bar wobbling back up a few points is no misread, and splits no hit',
   const hp = fight(energy, { step: COUNTER, hits: 1 });
 
   // 3 points up and back after the hit, as our Kyogre's bar read 74% and 77% in turn against Lugia.
-  energy.read(1100, hp + 0.03, MATCHUP);
-  energy.read(1200, hp, MATCHUP);
   energy.read(1300, hp + 0.03, MATCHUP);
   energy.read(1400, hp, MATCHUP);
-  fight(energy, { from: hp, step: COUNTER, hits: 1, start: 1500 });
+  energy.read(1500, hp + 0.03, MATCHUP);
+  energy.read(1600, hp, MATCHUP);
+  fight(energy, { from: hp, step: COUNTER, hits: 1, start: 1700 });
 
   expect(energy.estimate(MATCHUP)?.energy).toBe(12);
   expect(energy.step).toBeCloseTo(COUNTER);
@@ -192,6 +202,33 @@ test('nor does a misread low as the bar settles stand for what it settled at', (
   energy.read(5000, 0.22, MATCHUP);
   energy.read(5100, 0.22, MATCHUP);
   fight(energy, { from: hp, step: COUNTER, hits: 2, start: 5200 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(18);
+});
+
+test('a hit read short as it lands is measured to where the bar comes to rest, and the hits after it count', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 1 });
+  const rested = hp - COUNTER;
+
+  // A frame 5 points short of where the hit leaves the bar and two within `WANDER` of it, a frame apart, as our
+  // Kyogre's read 42%, 35%, 38%, 38% and then 40% against Snorlax.
+  energy.read(1233, rested - 0.05, MATCHUP);
+  energy.read(1266, rested - 0.015, MATCHUP);
+  energy.read(1300, rested - 0.015, MATCHUP);
+  rest(energy, 1333, rested);
+  fight(energy, { from: rested, step: COUNTER, hits: 1, start: 1600 });
+
+  expect(energy.estimate(MATCHUP)?.energy).toBe(18);
+  expect(energy.step).toBeCloseTo(COUNTER);
+});
+
+test('a hit yet to rest as the fight pauses is counted all the same', () => {
+  const energy = new Energy(DATA);
+  const hp = fight(energy, { step: COUNTER, hits: 2 });
+
+  energy.read(2300, hp - COUNTER, MATCHUP);
+  energy.pause();
 
   expect(energy.estimate(MATCHUP)?.energy).toBe(18);
 });
@@ -231,7 +268,7 @@ test('nothing is counted for an opponent not named, nor HP lost that nothing say
   // Read 2.5s apart, so no clean step, and with Medicham's CP unread and no cap to take it as, no build to say what a
   // hit takes.
   energy.read(0, 1, uncapped);
-  energy.read(2500, 0.9, uncapped);
+  rest(energy, 2500, 0.9, uncapped);
   expect(energy.estimate(uncapped)).toBe(null);
 });
 

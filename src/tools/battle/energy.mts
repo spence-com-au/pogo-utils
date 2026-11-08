@@ -67,6 +67,15 @@ const LEAST = 0.01;
  */
 const SETTLE_MS = 300;
 
+/**
+ * How long a bar must hold within `WANDER` of one reading after a drop before the drop is counted, in milliseconds. A
+ * bar shaken with the Pokémon under it as a hit lands can read short for a frame or three before it rests: in a GO
+ * Battle League run on a Pixel 4 XL, our Kyogre's read 42%, 35%, 38%, 38% and then 40% a frame apart against Snorlax.
+ * Counted at once, such a drop leaves the low short of the bar, and the hits after it uncounted until the bar falls
+ * below it.
+ */
+const REST_MS = 100;
+
 /** The two Pokémon facing each other, and the league's cap their CPs are read against. */
 export interface Matchup {
   own: Side;
@@ -76,7 +85,8 @@ export interface Matchup {
 
 /**
  * One bar's drops as read, outside anything that pauses the fight: how much of it they have taken, and among them the
- * clean steps, each a drop between two readings less than `CLEAN_MS` apart and so one hit.
+ * clean steps, each a drop coming to rest less than `CLEAN_MS` after the bar was last read where it fell from, and so
+ * one hit.
  */
 class Steps {
   /** How much of the bar fast moves have taken since this was last settled: of ours, by the opponent's throw. */
@@ -98,6 +108,12 @@ class Steps {
   /** Whether the bar is yet to hold for `SETTLE_MS` since a pause, its drops until then no fast move's. */
   #settling = false;
 
+  /**
+   * A drop yet to come to rest: the reading the bar has held within `WANDER` of, since when, and the highest it has
+   * read meanwhile.
+   */
+  #landing: { hp: number; since: number; high: number } | undefined;
+
   read(at: number, hp: number): void {
     if (this.#low === null) {
       this.#low = hp;
@@ -112,6 +128,7 @@ class Steps {
     // above to the wobble's top, and the wobble down counted as a clean step of its own, two slivers for one step.
     while (hp - this.#low > JUMP) {
       const before = this.#before.pop();
+      this.#landing = undefined;
 
       if (before === undefined) {
         this.#low = hp;
@@ -124,7 +141,7 @@ class Steps {
       }
     }
 
-    const drop = this.#low - hp;
+    let drop = this.#low - hp;
 
     // Still falling from what the pause was for: the next drop is measured from wherever it comes to rest.
     if (this.#settling) {
@@ -139,21 +156,41 @@ class Steps {
       return;
     }
 
-    if (drop >= LEAST) {
-      this.#before.push({ low: this.#low, at: this.#at, lost: this.lost, steps: this.steps.length });
-      this.lost += drop;
+    // A drop counts once the bar has come to rest, `REST_MS` within `WANDER` of one reading, and is measured to the
+    // highest it read meanwhile, every misread seen having read the bar short. Back up to the low before then, it took
+    // nothing. The reading that finds it rested can be lower already, the next hit landed, and is a drop of its own.
+    const landing = this.#landing;
 
-      if (at - this.#at < CLEAN_MS) {
-        this.steps.push(drop);
+    if (landing && drop >= LEAST && Math.abs(hp - landing.hp) <= WANDER) {
+      landing.high = Math.max(landing.high, hp);
+
+      if (at - landing.since < REST_MS) {
+        return;
       }
 
-      this.#low = hp;
+      const step = this.#low - landing.high;
+      this.#before.push({ low: this.#low, at: this.#at, lost: this.lost, steps: this.steps.length });
+      this.lost += step;
+
+      if (landing.since - this.#at < CLEAN_MS) {
+        this.steps.push(step);
+      }
+
+      this.#low = landing.high;
+      this.#at = at;
+      drop = this.#low - hp;
     }
 
-    // Read again without a drop, the next one is measured from this reading's time: a bar read every frame has a step
-    // land between two readings a frame apart.
-    if (drop > -LEAST) {
-      this.#at = at;
+    if (drop >= LEAST) {
+      this.#landing = { hp, since: at, high: hp };
+    } else {
+      this.#landing = undefined;
+
+      // Read again without a drop, the next one is measured from this reading's time: a bar read every frame has a step
+      // land between two readings a frame apart.
+      if (drop > -LEAST) {
+        this.#at = at;
+      }
     }
   }
 
@@ -162,9 +199,16 @@ class Steps {
    * held for `SETTLE_MS`.
    */
   pause(): void {
+    // A drop yet to rest is counted as it stands, though as no clean step, its size unsettled: the pause clears the
+    // low, so a misread counted stalls no hit after it, where a hit landing just before the pause would go uncounted.
+    if (this.#low !== null && this.#landing) {
+      this.lost += this.#low - this.#landing.high;
+    }
+
     this.#low = null;
     this.#before = [];
     this.#settling = true;
+    this.#landing = undefined;
   }
 
   /** What one hit takes of the bar, the median clean step, or undefined before any. */
