@@ -52,10 +52,10 @@
     // skipped rather than lending this project Node's globals to resolve one name nothing here passes.
     "skipLibCheck": true,
 
-    // esbuild would erase an `enum`, a `namespace` or a parameter property for the browser without complaint, so the
-    // bundle does not need this. It is the rejection `scripts/` takes for Node's type stripping, held here as well so
-    // that a module can move between this project, the shared one and `scripts/` — the inventory readers below already
-    // sit in two of them — without being rewritten first.
+    // esbuild would compile an `enum`, a `namespace` or a parameter property into plain JavaScript for the browser
+    // without complaint, so the bundle does not need this. It is the rejection `scripts/` takes for Node's type
+    // stripping, which can only erase, held here as well so that a module can move between this project, the shared one
+    // and `scripts/` — the inventory readers below already sit in two of them — without being rewritten first.
     "erasableSyntaxOnly": true,
 
     // The inventory readers are `.mts` files written for Node, which names a module by its own extension, and they name
