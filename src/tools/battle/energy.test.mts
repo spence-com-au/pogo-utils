@@ -96,9 +96,9 @@ test('or by the one PvPoke recommends, where it ranks the species', () => {
 });
 
 test.each([
-  ['Psycho Cut', PSYCHO_CUT, 9, 63],
-  ['Counter', COUNTER, 6, 42],
-])('seven hits of %s are told by their size and gain %s each', (fast, step, gain, total) => {
+  ['Psycho Cut', 9, PSYCHO_CUT, 63],
+  ['Counter', 6, COUNTER, 42],
+])('seven hits of %s are told by their size and gain %s each', (fast, gain, step, total) => {
   const energy = new Energy(DATA);
 
   fight(energy, { step, hits: 7 });

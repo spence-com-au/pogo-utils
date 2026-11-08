@@ -35,7 +35,8 @@ node .claude/skills/find-missing-events/scripts/compare-sources.mts
 Run it from the checkout root; it takes about half a minute. It walks the **whole** news archive — 223 articles back to
 mid-2025 when this was written, not just the front page — reads the in-person index and the feed, and reports what no
 source accounts for as three lists: events that look missing, articles that look like they change an event we already
-carry, and in-person listings no source names. Each article row carries the closest names the sources hold, scored.
+carry, and in-person listings no source names. A fourth lists the still-running articles `data/events.json` links to.
+Each row of the first two carries the closest names the sources hold, scored.
 
 Two things about that walk are worth knowing, because both have already cost a run its answer.
 
@@ -47,12 +48,15 @@ Two things about that walk are worth knowing, because both have already cost a r
   announced months ahead, so they are off the front page while still running. Four such events were live and invisible
   to a front-page audit. If you find yourself reading only the latest thirty articles, you are auditing the wrong set.
 
-Trust the matched half and spend your attention on what is left. Slug equality is reliable because Leek Duck derives its
-slugs from these same announcements.
+Trust the matched half and spend your attention on what is left, apart from the articles the fourth list puts back. Slug
+equality is reliable because Leek Duck derives its slugs from these same announcements, but it matches an article rather
+than an event, so an article `data/events.json` links to counts as matched from its first entry on, however many events
+it announces.
 
 ## Triage what the script leaves you
 
-The report has three lists. The first two are there for opposite reasons, and the third is a cross-check.
+The report has four lists. The first two are there for opposite reasons, the third is a cross-check, and the fourth puts
+back what matching by article hides.
 
 **"Announced, unaccounted for, and not yet over"** is the discovery list. Everything an article's own prose dates into
 the future and no source names. That date filter is what makes a 223-article archive readable — an announcement worth
@@ -77,6 +81,14 @@ alone and this list prints no candidates. One that is truly absent is a gap the 
 so find its article — in the discovery list, or failing that with `read-article.mts` — and propose it from there. The
 listing's dates are whole days, so take the times from the article.
 
+**"Held locally, not yet over"** is the one list of matched articles. A tour announced in one article, such as a mall
+tour, has an entry per stop, all linking that article, so it counts as accounted for from its first entry on and a stop
+it gains afterwards reaches none of the other lists. Each row prints the entries behind its article, so check the events
+the article names against them. `! runs past ours` marks an article whose prose names a date after the last entry's end,
+which is how an extension or a stop added at the end shows, so read those first — though that is the same crude date the
+discovery list is filtered on, so the prose decides. A stop added between two we hold moves no date, so an article
+announcing several events needs reading even unmarked.
+
 What reaches you in the discovery list divides two ways, and only the second is worth adding.
 
 **It is not a regional event.** A ticketing update, a "Know Before You GO" venue guide, a "Save the Date", patch notes,
@@ -90,11 +102,11 @@ partnership with a venue or an airline, a city-specific celebration.
 A date the parser failed to read would be filtered out silently, so the counts at the end of the report are printed for
 a reason: before concluding that a specific event you suspected is genuinely absent, check it is not sitting in them.
 
-Neither article list is one-article-one-event, so resolve both by reading rather than by counting:
+No article list is one-article-one-event, so resolve each by reading rather than by counting:
 
 - **One article, several events.** A City Safari announcement covers three European cities; a "Save the Date" covers
   three GO Tour stops; a mall tour lists eleven venue windows across three countries. Some of those may already be
-  present and some not.
+  present and some not, and once `data/events.json` links the article it moves to the fourth list.
 - **Several articles, one event.** An announcement, a venue guide and a ticketing update are three articles about the
   same event.
 
@@ -155,8 +167,7 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 - **`name` is the event's name, not the headline.** Niantic writes headlines as marketing
   (`PokéXciting! Comes to KLCC Park — Get Ready, Kuala Lumpur!`); the entry gets the name the event goes by
   (`PokéXciting! — Kuala Lumpur`). The article body usually states it plainly as a heading above the dates.
-- **Where one article announces several events, each gets its own entry**, with a `link` that may be shared. The four
-  `30th-anniversary-*` entries all link to one article.
+- **Where one article announces several events, each gets its own entry**, with a `link` that may be shared.
 
 ### Choosing between a floating time and a UTC instant
 
@@ -167,14 +178,13 @@ the phrase "local time", which appears in single-city announcements too and so d
 - **An event in one place with stated hours is one worldwide instant**, so convert its local wall clock to UTC and write
   a trailing `Z`. Brisbane, Marseille, Munich, Lisbon, Rio and Boston City Safari all started at `10:00` local on the
   same day and were stored as six different instants — `T00:00`, `T08:00`, `T08:00`, `T09:00`, `T13:00`, `T14:00`.
-  `gowa-global-meetup-karlsruhe-2026` and `pokemon-center-bangkok-2026` are like this.
 - **An event running in several zones at once is a floating time**, so write the wall clock with no zone and no `Z`:
   `2026-10-02T10:00:00.000`. 10am wherever the reader is, which is what such an announcement means and what an iCalendar
-  floating time expresses. `european-space-agency-2026` and `30th-anniversary-stamp-rally-2026` are like this.
+  floating time expresses. A partnership running across Europe or a stamp rally across several countries is like this.
 - **An event given only as whole days is a floating time too, even in one place**, starting at `T00:00:00.000` on its
   first day. With no clock to convert, writing the venue's midnight as UTC would make a calendar west of it draw the
-  event starting a day early, inventing precision the announcement never gave. Many entries are like this, among them
-  every `mall-exploration-*` and `pokemon-run-30-*` venue and the UK-only `national-trust-2026`.
+  event starting a day early, inventing precision the announcement never gave. A mall tour's venues, a run's city
+  weekends and a UK-only season are like this.
 
 So a mall tour across three countries takes floating times even though it names exact hours, a one-city festival takes
 instants even though it says "local time", and one mall's window given as dates takes floating times although it is in

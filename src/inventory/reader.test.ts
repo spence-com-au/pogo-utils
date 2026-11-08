@@ -12,12 +12,14 @@ const mocks = vi.hoisted(() => ({
   signaturesFor: vi.fn(),
   tesseractWasm: vi.fn(),
   useEngine: vi.fn(),
+  wardrobeFor: vi.fn(),
 }));
 
 vi.mock('../tools/inventory/artwork.mts', () => ({
   signatureOfIcon: (image: unknown) => image,
   signaturesFor: mocks.signaturesFor,
 }));
+vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));
 vi.mock('../tools/inventory/ocr.mts', () => ({ useEngine: mocks.useEngine }));
 vi.mock('../tools/inventory/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
 vi.mock('../tools/inventory/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
@@ -68,6 +70,14 @@ test('a response that is not ok fails, naming the URL and the status', async () 
   await expect(fetchOk('https://example.test/icon.png')).rejects.toThrow(
     /^https:\/\/example\.test\/icon\.png: 404 Not Found$/,
   );
+});
+
+test('the bytes of a response are read whole', async () => {
+  const { fetchBytes } = await load();
+
+  fetch.mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
+
+  expect(await fetchBytes('https://example.test/icon.png')).toEqual(new Uint8Array([1, 2, 3]));
 });
 
 test('the game master is fetched once, however many ask', async () => {
@@ -129,4 +139,31 @@ test('a read whose icons failed keeps the engine and the game master, and reads 
   expect(mocks.signaturesFor).toHaveBeenCalledTimes(2);
   expect(mocks.useEngine).toHaveBeenCalledTimes(1);
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test('a wardrobe that failed or fell short is drawn again by the next read, and a whole one is kept', async () => {
+  const { read } = await load();
+  const whole = { costumes: 'drawn' };
+
+  const wardrobe = async () => {
+    await read(image, vi.fn());
+
+    const [, , , , draw] = mocks.readScreen.mock.lastCall as [
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      () => Promise<unknown>,
+    ];
+
+    return draw();
+  };
+
+  mocks.wardrobeFor.mockRejectedValueOnce(new Error('icons')).mockResolvedValueOnce(null).mockResolvedValue(whole);
+
+  await expect(wardrobe()).rejects.toThrow('icons');
+  await expect(wardrobe()).resolves.toBeNull();
+  await expect(wardrobe()).resolves.toBe(whole);
+  await expect(wardrobe()).resolves.toBe(whole);
+  expect(mocks.wardrobeFor).toHaveBeenCalledTimes(3);
 });

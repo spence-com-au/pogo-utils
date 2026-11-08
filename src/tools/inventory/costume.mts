@@ -556,21 +556,18 @@ let kept: ReturnType<typeof decoded> | null = null;
  * not, none for a Pikachu in none, and null where no Pikachu was found to read. `from` is where the artwork starts as a
  * fraction of the height, PGSharp's box being the floor where one was found, as for `signatureOf`.
  *
- * `costumed` is the answer the scan's `costume` search gave, where it ran: a Pikachu it did not find wears none, and
- * one it found cannot be the plain one. A list of several keeps no costume in it as `''` wherever the screen could not
- * rule it out, since the costumes alone would read as the screen having settled on one of them.
+ * `costumed` is true where the scan's `costume` search found the Pikachu in a costume, which cannot be the plain one,
+ * and null where it did not run. A Pikachu it did not find wears none, which `costumeIn` answers without reading it and
+ * so without a wardrobe, and is not asked here. A list of several keeps no costume in it as `''` wherever the screen
+ * could not rule it out, since the costumes alone would read as the screen having settled on one of them.
  */
 export function costumeOf(
   image: Image,
   from: number,
   wardrobe: Wardrobe,
-  costumed: boolean | null = null,
+  costumed: true | null = null,
   references: References = REFERENCES,
 ): string[] | null {
-  if (costumed === false) {
-    return [];
-  }
-
   const measured = measure(image, from, wardrobe);
 
   if (!measured) {

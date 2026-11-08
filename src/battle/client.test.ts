@@ -12,6 +12,7 @@ import type { Phone as Connection } from '../inventory/webusb.js';
 import { DEMO_SERIAL, PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { type Status } from '../tools/battle/reporter.mts';
+import { Screen } from '../tools/battle/screen.mts';
 import { type GameData } from '../tools/inventory/game-master.mts';
 import { putBack } from './awake.js';
 import { lend, type Endpoint } from './client.js';
@@ -63,6 +64,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   channel.port1.close();
   channel.port2.close();
@@ -224,6 +226,22 @@ test('fails with why the Worker could not reach the phone, and holds the phone a
   expect(log).toEqual(['pixel let go', 'worker started', 'worker opened pixel', 'worker ended', 'page opened pixel']);
 });
 
+test.for([
+  ['its message', 'the worker script failed to load', 'the worker script failed to load'],
+  ['a stand-in where it has none', '', 'the battle Worker failed'],
+] as const)('fails a run whose Worker errors before the phone sent a frame, with %s', async ([, message, why]) => {
+  const log: string[] = [];
+  const { store, start, reconnect, back } = await setUp(log, () => new Promise(() => {}));
+  const run = expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow(new Error(why));
+
+  await vi.waitFor(() => expect(log).toContain('worker opened pixel'));
+  channel.port2.dispatchEvent(Object.assign(new Event('error'), { message }));
+
+  await run;
+  expect(store.phone).toBe(back.connection);
+  expect(log.slice(-2)).toEqual(['worker ended', 'page opened pixel']);
+});
+
 test('ends the run when the phone is unplugged, saying so once the page has tried to take it back', async () => {
   const log: string[] = [];
   const there = fakeConnection('pixel', H264, log);
@@ -250,6 +268,27 @@ test.for([
   there.processes[which]?.kill();
 
   await expect(run.ended).rejects.toThrow(reason);
+  expect(store.phone).toBe(back.connection);
+});
+
+test('answers a frame asked for as the recording fails with none, and ends the run with why', async () => {
+  const there = fakeConnection('pixel', H264);
+  const { store, start, reconnect, back } = await setUp([], () => Promise.resolve(there.connection));
+  const run = await lend(store, PLAY, told().report, start, reconnect);
+  const answers: unknown[] = [];
+
+  channel.port2.addEventListener('message', ({ data }: MessageEvent) => data.type === 'frame' && answers.push(data));
+
+  // A failed recording is heard through `phone.failed` within the turn it fails in, so no message from the page lands
+  // before the run has stopped. The ask is made here in the turn `latest` throws, where the battle loop cannot read it
+  // first.
+  vi.spyOn(Screen.prototype, 'latest').mockImplementationOnce(() => {
+    throw new Error('the recording has failed');
+  });
+  channel.port1.dispatchEvent(new MessageEvent('message', { data: { type: 'frame' } }));
+
+  await expect(run.ended).rejects.toThrow(new Error('the recording has failed'));
+  expect(answers).toEqual([{ type: 'frame', image: undefined }]);
   expect(store.phone).toBe(back.connection);
 });
 

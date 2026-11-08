@@ -9,7 +9,7 @@
 
 import { DEMO_SERIAL } from '../phone-store.js';
 import { demoTransport } from '../tools/inventory/demo.mts';
-import { fetchOk } from './reader.js';
+import { fetchBytes } from './reader.js';
 import type { Phone } from './webusb.js';
 
 export function demoPhone(): Phone {
@@ -19,7 +19,7 @@ export function demoPhone(): Phone {
   return {
     name: 'Demo phone',
     serial: DEMO_SERIAL,
-    transport: demoTransport(async (path) => new Uint8Array(await (await fetchOk(path)).arrayBuffer())),
+    transport: demoTransport(fetchBytes),
     spawn: () => Promise.reject(new Error('the demo phone plays its battle in the battle Worker alone')),
     close: () => {
       hangUp();

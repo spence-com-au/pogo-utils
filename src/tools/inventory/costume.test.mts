@@ -5,7 +5,7 @@ import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
 import { type Identity } from './identify.mts';
 import { findOverlay } from './overlay.mts';
-import { decodePng } from './png.mts';
+import { decodePng, screenIn } from './png.mts';
 import { artworkFrom, costumeIn } from './report.mts';
 import { useTestEngine } from './test-engine.mts';
 
@@ -74,6 +74,23 @@ test.each(['Red', 'Yellow', 'Blue'])('a Pikachu in the %s GO Fest 2026 cap is re
   expect(costumeOf(image, from, drawn, null, { ...REFERENCES, captures: others })).toStrictEqual([
     `Gofest 2026 Cap ${colour}`,
   ]);
+});
+
+// The plain Pikachu is a costume among the others to compare against, so one the search found in a costume is read as
+// the nearest of the rest instead, where it would otherwise come out as wearing none. Cropped to its screen, as the
+// scan reads it: the file is a stitch, whose rows below the screen the readers are not anchored for.
+test('a Pikachu the search found in a costume is not read as the plain one', async () => {
+  const file = 'fixtures/pikachu.png';
+  const image = screenIn(decodePng(readFileSync(new URL(file, import.meta.url))));
+  const from = artworkFrom((await findOverlay(image))?.box ?? null);
+  const drawn = await wardrobe();
+
+  if (!drawn) {
+    throw new Error(`${file}: no wardrobe to read it against`);
+  }
+
+  expect(costumeOf(image, from, drawn, null), 'unasked').toStrictEqual([]);
+  expect(costumeOf(image, from, drawn, true), 'asked').not.toStrictEqual([]);
 });
 
 // The labelled pick is vetoed by the icons, which list every costume near their best. A costume drawn with the plain

@@ -87,3 +87,16 @@ export const toggled = (root: Group, at: number, leaf: Leaf) =>
   holds(root, at, leaf)
     ? withPills(root, at, (pills) => pills.filter((pill) => entry(pill) !== entry(leaf)))
     : withPills(root, at, (pills) => [...pills, leaf]);
+
+/**
+ * The cards after a chip is pressed for the one at `at`, and the card the sheet is aimed at from then on.
+ *
+ * **A press that takes a card's last pill takes the card, and every card after it moves up a place.** The sheet then
+ * aims past the end, at a new card, rather than at whichever card has moved into the index it held. Every other press
+ * leaves the aim where it was.
+ */
+export function afterPress(root: Group, at: number, leaf: Leaf): { tree: Group; at: number } {
+  const tree = toggled(root, at, leaf);
+
+  return { tree, at: tree.parts.length < root.parts.length ? tree.parts.length : at };
+}

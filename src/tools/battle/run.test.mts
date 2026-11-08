@@ -22,7 +22,7 @@ import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { type Phone } from './phone.mts';
 import { GAME_ALONE } from './overlay.mts';
-import { Lost, LOST_MS, run, type Clock } from './run.mts';
+import { Lost, LOST_MS, run, type Clock, type Options } from './run.mts';
 
 /**
  * How long Tesseract takes over a band of a battle's frame, in milliseconds: 33 on average over 112 bands of two live
@@ -117,7 +117,7 @@ interface Scene {
   still?: boolean;
 }
 
-/** How long a hold takes, in milliseconds: longer than any `scripts/battle.mts` makes on the selection screen. */
+/** How long a hold takes, in milliseconds: longer than any `phoneOf` in `src/tools/battle/phone.mts` makes. */
 const HOLD_MS = 4000;
 
 /**
@@ -305,6 +305,14 @@ function scripted(
   return { phone, clock, taps, holds, searches, strokes };
 }
 
+/** The modes most tests play: Blanche's Training battles and GO Battle League, both in the Ultra League. */
+const ULTRA = { mode: 'training', leader: 'blanche', league: 'ultra' } as const;
+const GBL = { mode: 'gbl', league: 'ultra' } as const;
+
+/** `run` over the game master and the icons the fixtures are read against, which a test varies only by naming them. */
+const play = (phone: Phone, options: Partial<Options> & Pick<Options, 'mode'>, clock: Clock, report?: Reporter) =>
+  run(phone, { data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, ...options }, clock, report);
+
 /** One battle and the way back round to the next, as recorded against Blanche in the Ultra League. */
 function battleAndBack(): Record<string, Scene> {
   const menu = (name: string, tap: Scene['tap'], lasts?: Scene['lasts']): Scene => ({
@@ -331,17 +339,7 @@ function battleAndBack(): Record<string, Scene> {
 test('plays a battle from the Battle tab and taps its way back round', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
 
-  const battles = await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-  );
+  const battles = await play(phone, { mode: ULTRA, count: 1 }, clock);
 
   expect(battles).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(['training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
@@ -363,19 +361,7 @@ test('reads a result again whose verdict is still fading in', async () => {
     'training',
   );
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
 });
 
 /**
@@ -397,19 +383,7 @@ test('swipes around PGSharp’s star, never beginning a swipe on it', async () =
   const star = { left: 0, top: 2614 / 3040, right: 126 / 1440, bottom: 2740 / 3040 };
   const on = ([x, y]: Point) => x <= star.right + 0.03 && y >= star.top - 0.015 && y <= star.bottom + 0.015;
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: {},
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, typeIcons: {}, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(strokes.filter(({ from }) => on(from))).toEqual([]);
   expect(strokes.filter(({ to }) => on(to)).length).toBeGreaterThan(0);
 });
@@ -418,17 +392,7 @@ test('swipes around PGSharp’s star, never beginning a swipe on it', async () =
 test('taps past a result it started on, then plays the battle counted', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'result');
 
-  const battles = await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-  );
+  const battles = await play(phone, { mode: ULTRA, count: 1 }, clock);
 
   expect(battles).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(['result', 'training', 'intro', 'league', 'party', 'party', 'charged', 'result']);
@@ -468,20 +432,7 @@ test('reads the verdict of a result screenshot as it fades in', async () => {
   );
   const report = recorder();
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock, report)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(report.events).toContain('run: battle 1 won');
 });
 
@@ -497,19 +448,7 @@ test('finds its way to the leader from the map', async () => {
     'map',
   );
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps.slice(0, 3)).toEqual(['map', 'main', 'training']);
 });
 
@@ -532,8 +471,6 @@ function league(): Record<string, Scene> {
   };
 }
 
-const GBL = { mode: 'gbl', league: 'ultra' } as const;
-
 /**
  * Ultra League's carousel on a Pixel 8 Pro, opening on Test 4 with Test 3 and GBL after it: the party named is swiped
  * to, and only then used, and one not saved stops the run rather than battle with another.
@@ -550,13 +487,11 @@ function parties(): Record<string, Scene> {
 test('swipes the party carousel to the party named before using it', async () => {
   const { phone, clock, taps, strokes } = scripted(parties(), 'party');
 
-  expect(
-    await run(
-      phone,
-      { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 0, lost: 1 });
+  expect(await play(phone, { mode: { ...GBL, party: 'GBL' }, count: 1 }, clock)).toEqual({
+    battles: 1,
+    won: 0,
+    lost: 1,
+  });
   expect(strokes.filter(({ scene }) => scene === 'party' || scene === 'test3')).toHaveLength(2);
   expect(taps.slice(0, 1)).toEqual(['gbl']);
 });
@@ -572,13 +507,11 @@ test('searches a carousel for longer than the run takes to give up as lost', asy
   );
   const { phone, clock, taps } = scripted({ ...parties(), ...walk }, 'card0');
 
-  expect(
-    await run(
-      phone,
-      { mode: { ...GBL, party: 'GBL' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 0, lost: 1 });
+  expect(await play(phone, { mode: { ...GBL, party: 'GBL' }, count: 1 }, clock)).toEqual({
+    battles: 1,
+    won: 0,
+    lost: 1,
+  });
   expect(taps[0]).toBe('gbl');
   expect(clock.now()).toBeGreaterThan(LOST_MS);
 });
@@ -586,9 +519,9 @@ test('searches a carousel for longer than the run takes to give up as lost', asy
 test('stops rather than battle where no party has the name', async () => {
   const { phone, clock, taps } = scripted(parties(), 'party');
 
-  await expect(
-    run(phone, { mode: { ...GBL, party: 'Great' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
-  ).rejects.toThrow('no party named Great saved for this league: test 4, test 3, gbl');
+  await expect(play(phone, { mode: { ...GBL, party: 'Great' }, count: 1 }, clock)).rejects.toThrow(
+    'no party named Great saved for this league: test 4, test 3, gbl',
+  );
   expect(taps).toEqual([]);
 });
 
@@ -666,17 +599,17 @@ function masterParty(cancel = { at: SELECTION.cancel, to: 'party' }): Record<str
   };
 }
 
-const ULTRA = { mode: 'training', leader: 'blanche', league: 'ultra' } as const;
-
 // The second time round, Xerneas's CP unread, its card is still the one read: none is read again.
 test('reads each card’s moves off the selection screen before using the party, and only once', async () => {
   const { phone, clock, taps, holds, searches } = scripted(masterParty(), 'party');
   const report = recorder();
 
   expect(await readCps(MASTER_CP_UNREAD)).toEqual([4673, 3986, null]);
-  expect(
-    await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
-  ).toEqual({ battles: 2, won: 2, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, icons: MISREAD, count: 2 }, clock, report)).toEqual({
+    battles: 2,
+    won: 2,
+    lost: 0,
+  });
   expect(
     report.events.filter((line) => line.startsWith('run: party: M') || /^run: .*( CP \d|unread)/.test(line)),
   ).toEqual([
@@ -713,7 +646,7 @@ test('names nobody a card its CP alone found where its panel names nobody', asyn
   );
   const report = recorder();
 
-  await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock, report);
+  await play(phone, { mode: ULTRA, icons: MISREAD, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => /^run: .* CP 4673/.test(line))).toEqual([
     'run: ? CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
@@ -731,9 +664,11 @@ test('tries a card passed over for its CP once its CP is read', async () => {
   );
   const report = recorder();
 
-  expect(
-    await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
-  ).toEqual({ battles: 2, won: 2, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, icons: MISREAD, count: 2 }, clock, report)).toEqual({
+    battles: 2,
+    won: 2,
+    lost: 0,
+  });
   expect(report.events.filter((line) => /^run: .*( CP \d|unread)/.test(line))).toEqual([
     'run: Palkia CP 4673: Dragon Breath / Spacial Rend, Aqua Tail',
     'run: card 2 unread: no pink cell for 376&cp3986 or cp3986',
@@ -762,13 +697,11 @@ test('reads a card whose selection screen opens late', async () => {
     'party',
   );
 
-  expect(await run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual(
-    {
-      battles: 1,
-      won: 1,
-      lost: 0,
-    },
-  );
+  expect(await play(phone, { mode: ULTRA, icons: MISREAD, count: 1 }, clock)).toEqual({
+    battles: 1,
+    won: 1,
+    lost: 0,
+  });
   expect(holds).toEqual(['found0', 'found2']);
 });
 
@@ -780,9 +713,7 @@ test('reads a card whose selection screen opens late', async () => {
 test('taps nothing more where CANCEL leaves the selection screen showing', async () => {
   const { phone, clock } = scripted(masterParty({ at: SELECTION.use, to: 'loading' }), 'party');
 
-  await expect(
-    run(phone, { mode: ULTRA, data: DATA, icons: MISREAD, typeIcons: TYPE_ICONS, count: 1 }, clock),
-  ).rejects.toBeInstanceOf(Lost);
+  await expect(play(phone, { mode: ULTRA, icons: MISREAD, count: 1 }, clock)).rejects.toBeInstanceOf(Lost);
 });
 
 // The party's first card is tapped for its moves only the first time round: the same cards the second time are not read
@@ -790,7 +721,7 @@ test('taps nothing more where CANCEL leaves the selection screen showing', async
 test('plays GO Battle League battles from the map, waiting out matchmaking', async () => {
   const { phone, clock, taps } = scripted(league(), 'map');
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock)).toEqual({
+  expect(await play(phone, { mode: GBL, count: 2 }, clock)).toEqual({
     battles: 2,
     won: 0,
     lost: 2,
@@ -808,9 +739,7 @@ test('taps no Poké Ball once a GO Battle League battle has been played', async 
     'tab',
   );
 
-  await expect(
-    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
-  ).rejects.toBeInstanceOf(Lost);
+  await expect(play(phone, { mode: GBL, count: 2 }, clock)).rejects.toBeInstanceOf(Lost);
   expect(taps.filter((scene) => scene === 'map')).toEqual([]);
 });
 
@@ -829,9 +758,9 @@ const toolbarOver = (...named: string[]): Record<string, Scene> =>
 test('refuses to start with PGSharp’s toolbar open over what it reads, tapping nothing', async () => {
   const { phone, clock, taps } = scripted(toolbarOver('party'), 'party');
 
-  await expect(
-    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock),
-  ).rejects.toThrow(/^PGSharp's toolbar covers .*: collapse it to its star or hide the overlay\./);
+  await expect(play(phone, { mode: GBL, count: 1 }, clock)).rejects.toThrow(
+    /^PGSharp's toolbar covers .*: collapse it to its star or hide the overlay\./,
+  );
   expect(taps).toEqual([]);
 });
 
@@ -840,9 +769,7 @@ test('refuses to start with PGSharp’s toolbar open over what it reads, tapping
 test('stops between battles once PGSharp’s toolbar comes to cover what it reads', async () => {
   const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party', undefined, 4000);
 
-  await expect(
-    run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock),
-  ).rejects.toThrow(/^PGSharp's toolbar covers /);
+  await expect(play(phone, { mode: GBL, count: 2 }, clock)).rejects.toThrow(/^PGSharp's toolbar covers /);
   expect(taps).toEqual(['party', 'party', 'charged']);
 });
 
@@ -850,7 +777,7 @@ test('stops between battles once PGSharp’s toolbar comes to cover what it read
 test('finishes a run whose PGSharp toolbar opens during its last battle', async () => {
   const { phone, clock, taps } = scripted(toolbarOver('result', 'league'), 'party', undefined, 4000);
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
+  expect(await play(phone, { mode: GBL, count: 1 }, clock)).toEqual({
     battles: 1,
     won: 0,
     lost: 1,
@@ -868,7 +795,7 @@ test('stops at the end of a GO Battle League set, leaving its reward to be colle
     'party',
   );
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 3 }, clock)).toEqual({
+  expect(await play(phone, { mode: GBL, count: 3 }, clock)).toEqual({
     battles: 1,
     won: 1,
     lost: 0,
@@ -887,9 +814,7 @@ test('counts a GO Battle League battle the game ends without a result', async ()
   );
   const report = recorder();
 
-  expect(
-    await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 2 }, clock, report),
-  ).toEqual({ battles: 2, won: 0, lost: 0 });
+  expect(await play(phone, { mode: GBL, count: 2 }, clock, report)).toEqual({ battles: 2, won: 0, lost: 0 });
   expect(taps).toEqual(['party', 'party', 'charged', 'tab', 'welcome', 'league', 'party', 'charged']);
   expect(report.events.filter((line) => /^run: battle \d (?!started)/.test(line))).toEqual([
     'run: battle 1 finished, with no result',
@@ -908,7 +833,7 @@ test('counts a set’s last battle the game ends without a result', async () => 
     'party',
   );
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 3 }, clock)).toEqual({
+  expect(await play(phone, { mode: GBL, count: 3 }, clock)).toEqual({
     battles: 1,
     won: 0,
     lost: 0,
@@ -922,7 +847,7 @@ test('plays on where GO Battle League shows BATTLE greyed for one read only', as
     'opening',
   );
 
-  expect(await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock)).toEqual({
+  expect(await play(phone, { mode: GBL, count: 1 }, clock)).toEqual({
     battles: 1,
     won: 0,
     lost: 1,
@@ -968,16 +893,9 @@ test('retaps the card it chose when the first tap on the switch prompt does not 
   const kept: [string | undefined, number, string][] = [];
 
   expect(
-    await run(
+    await play(
       phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-        keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]),
-      },
+      { mode: ULTRA, count: 1, keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]) },
       clock,
       report,
     ),
@@ -1014,18 +932,7 @@ test('plays on as soon as the battle is back, without waiting for a menu read', 
     'fight',
   );
 
-  await expect(
-    run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-      },
-      clock,
-    ),
-  ).rejects.toBeInstanceOf(Lost);
+  await expect(play(phone, { mode: ULTRA }, clock)).rejects.toBeInstanceOf(Lost);
 
   const resumed = strokes.find(({ scene }) => scene === 'back');
 
@@ -1049,24 +956,14 @@ test('plays on while the battle’s names are read, rather than wait for them', 
   let named: { at: number; strokes: number } | undefined;
 
   await expect(
-    run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
+    play(phone, { mode: ULTRA }, clock, {
+      event: () => {},
+      status: ({ fight }) => {
+        if (fight?.opponent.species === 'Sneasel') {
+          named ??= { at: clock.now(), strokes: strokes.length };
+        }
       },
-      clock,
-      {
-        event: () => {},
-        status: ({ fight }) => {
-          if (fight?.opponent.species === 'Sneasel') {
-            named ??= { at: clock.now(), strokes: strokes.length };
-          }
-        },
-      },
-    ),
+    }),
   ).rejects.toBeInstanceOf(Lost);
 
   const before = strokes.slice(0, named?.strokes).map(({ at }) => at);
@@ -1087,11 +984,7 @@ test('stops on a Battle tab whose Training card never shows, rather than scroll 
     'main',
   );
 
-  const lost = await run(
-    phone,
-    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS },
-    clock,
-  ).catch((error: unknown) => error);
+  const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
 
   expect(lost).toBeInstanceOf(Lost);
   expect(taps).toEqual(['main']);
@@ -1111,19 +1004,7 @@ test('aims the minigame’s swipes at its bubbles', async () => {
     'fight',
   );
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
 
   const minigame = strokes.filter(({ scene }) => scene === 'minigame');
 
@@ -1154,20 +1035,7 @@ test.each([
   );
   const report = recorder();
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock, report)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(tapped);
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(['own: threw Shadow Sneak']);
 });
@@ -1219,18 +1087,7 @@ test.each([
     typeColour(fixture('types/POKEMON_TYPE_FLYING')),
   );
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const last = strokes.filter(({ scene }) => scene === 'minigame').at(-1);
 
@@ -1251,18 +1108,7 @@ test('loses a throw where ours faints before it plays', async () => {
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(throws(report.events)).toEqual([
     'opponent: Charizard threw a charged move',
@@ -1311,18 +1157,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([said]);
 });
@@ -1332,20 +1167,7 @@ test('carries on into the next battle until the count is reached', async () => {
   const { phone, clock, taps } = scripted(battleAndBack(), 'training');
   const report = recorder();
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 2,
-      },
-      clock,
-      report,
-    ),
-  ).toEqual({ battles: 2, won: 2, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 2 }, clock, report)).toEqual({ battles: 2, won: 2, lost: 0 });
   expect(taps.filter((scene) => scene === 'result')).toHaveLength(2);
   expect(report.events.filter((line) => line.includes('off the battle'))).toEqual([]);
 });
@@ -1369,19 +1191,7 @@ test('baits with the cheaper move while the opponent has shields', async () => {
     'fight',
   );
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(taps).toEqual(['fight', 'result']);
 });
 
@@ -1453,18 +1263,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps).toContain('fight');
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual([said]);
@@ -1507,18 +1306,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => /^own: (threw|holding)/.test(line))).toEqual(said);
 });
@@ -1668,19 +1456,7 @@ test.each([
     );
     const report = recorder();
 
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: SNEAK_LOWERS,
-        meta: MAMOSWINE_RUN,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    );
+    await play(phone, { mode: ULTRA, data: SNEAK_LOWERS, meta: MAMOSWINE_RUN, count: 1 }, clock, report);
 
     expect(taps.filter((scene) => scene === 'lit' || scene === 'relit' || scene === tapped)).toEqual([tapped]);
     expect(holds(report.events)).toEqual(said);
@@ -1711,19 +1487,7 @@ test.each([
   const { phone, clock, taps } = scripted(scenes, 'party');
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: SNEAK_LOWERS,
-      meta: MAMOSWINE_RUN,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, data: SNEAK_LOWERS, meta: MAMOSWINE_RUN, count: 1 }, clock, report);
 
   expect(taps).toContain('lit');
   expect(holds(report.events)).toEqual([said]);
@@ -1759,18 +1523,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'master' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: { mode: 'training', leader: 'blanche', league: 'master' }, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => line.startsWith('own: threw'))).toEqual(said);
 });
@@ -1797,18 +1550,7 @@ async function mirror(scenes: Record<string, Scene>, count = 1): Promise<{ taps:
   const { phone, clock, taps } = scripted({ ...battleAndBack(), minigame: minigameNoneFainted(), ...scenes }, 'party');
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: ENTEI_HYDRO_PUMP,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, data: ENTEI_HYDRO_PUMP, icons, count }, clock, report);
 
   return { taps: taps.filter((scene) => scene in scenes), said: holds(report.events) };
 }
@@ -1907,15 +1649,9 @@ test.each([
   );
   const report = recorder();
 
-  await run(
+  await play(
     phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'master' },
-      data: SLOW_GEOMANCY,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
+    { mode: { mode: 'training', leader: 'blanche', league: 'master' }, data: SLOW_GEOMANCY, count: 1 },
     clock,
     report,
   );
@@ -1946,24 +1682,13 @@ async function fightThen(after: Record<string, Scene>) {
   const report = recorder();
   const told: { screen: string; energy: number | undefined }[] = [];
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'master' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
+  await play(phone, { mode: { mode: 'training', leader: 'blanche', league: 'master' }, count: 1 }, clock, {
+    ...report,
+    status: (status) => {
+      report.status(status);
+      told.push({ screen: status.screen, energy: status.fight?.ourEnergy?.energy });
     },
-    clock,
-    {
-      ...report,
-      status: (status) => {
-        report.status(status);
-        told.push({ screen: status.screen, energy: status.fight?.ourEnergy?.energy });
-      },
-    },
-  );
+  });
 
   return { strokes, told };
 }
@@ -2071,15 +1796,9 @@ test.each([
   );
   const report = recorder();
 
-  await run(
+  await play(
     phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'master' },
-      data,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
+    { mode: { mode: 'training', leader: 'blanche', league: 'master' }, data, icons, count: 1 },
     clock,
     report,
   );
@@ -2105,18 +1824,7 @@ test('reads none of the opponent’s bar through the countdown drawn over it', a
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(new Set(report.fights.map(({ opponent }) => opponent.hp && Math.round(opponent.hp * 100)))).toEqual(
     new Set([null, 99]),
@@ -2140,18 +1848,7 @@ test('reads the opponent again the moment a fuller bar says it was switched', as
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const newcomer = report.fights.filter(({ opponent }) => opponent.hp !== null && Math.round(opponent.hp * 100) === 43);
 
@@ -2181,18 +1878,7 @@ test('drops a read begun before a newcomer was sent in, rather than let it stand
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const of = (species: string) => report.fights.filter(({ opponent }) => opponent.species === species);
   const newcomer = report.fights.filter(({ opponent }) => opponent.hp !== null && Math.round(opponent.hp * 100) === 43);
@@ -2223,18 +1909,7 @@ test('drops a read still under way as its battle ends, rather than carry it into
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 2,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 2 }, clock, report);
 
   const named = new Set(report.fights.map(({ opponent }) => opponent.species));
 
@@ -2263,18 +1938,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => line.startsWith('opponent: ') && !line.includes('shielded'))).toEqual([said]);
   expect(report.fights.at(0)?.opponent.left).toBe(3);
@@ -2307,18 +1971,7 @@ test('reads a switched-in opponent’s CP afresh rather than keeping the one bef
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const cps = (species: string) =>
     new Set(report.fights.filter(({ opponent }) => opponent.species === species).map(({ opponent }) => opponent.cp));
@@ -2370,18 +2023,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons,
-      typeIcons: {},
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, icons, typeIcons: {}, count: 1 }, clock, report);
 
   const switching = report.events.filter((line) => line.startsWith('own: switching') || line.includes('not sent in'));
 
@@ -2422,18 +2064,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: {},
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, typeIcons: {}, count: 1 }, clock, report);
 
   expect(
     report.events.filter((line) => line.startsWith('own: Zeraora') || line.startsWith('own: switching to Zeraora')),
@@ -2453,17 +2084,7 @@ test('stays in when the type icons show a form that does not threaten ours', asy
     'party',
   );
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock);
 
   expect(taps.filter((scene) => scene === 'golem')).toEqual([]);
 });
@@ -2480,17 +2101,7 @@ test('stays in when nothing benched counters the opponent switched in', async ()
     'party',
   );
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock);
 
   expect(taps.filter((scene) => scene === 'sneasel')).toEqual([]);
 });
@@ -2551,18 +2162,7 @@ test.each([
     );
     const report = recorder();
 
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    );
+    await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
 
     expect(taps).toContain(spentAfter === undefined ? 'mamoswine' : 'spent');
     expect(report.events.filter((line) => line.startsWith('own: staying'))).toEqual(stayed);
@@ -2639,19 +2239,7 @@ test.each([
     );
     const report = recorder();
 
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        meta: MAMOSWINE_AVALANCHE,
-        icons,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    );
+    await play(phone, { mode: ULTRA, meta: MAMOSWINE_AVALANCHE, icons, count: 1 }, clock, report);
 
     expect(taps.filter((scene) => /^(fight|hit|back)/.test(scene))).toEqual(tapped);
     expect(moved(report.events)).toEqual(said);
@@ -2692,7 +2280,7 @@ test('switches the lead to a resister, banking a lit move held for another', asy
   );
   const report = recorder();
 
-  await run(
+  await play(
     phone,
     {
       mode: { mode: 'training', leader: 'blanche', league: 'master' },
@@ -2705,7 +2293,6 @@ test('switches the lead to a resister, banking a lit move held for another', asy
         ]),
       },
       icons,
-      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -2770,19 +2357,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: SNEAK_DROPS,
-      meta: MAMOSWINE_AVALANCHE,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, data: SNEAK_DROPS, meta: MAMOSWINE_AVALANCHE, count: 1 }, clock, report);
 
   expect(taps).toContain('back');
   expect(report.events.filter((line) => line.startsWith('own: threw'))[0]).toBe('own: threw Shadow Sneak');
@@ -2836,10 +2411,10 @@ test.each([
   );
   const report = recorder();
 
-  await run(
+  await play(
     phone,
     {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      mode: ULTRA,
       data: SNEAK_DROPS,
       meta: {
         ...MAMOSWINE_AVALANCHE,
@@ -2848,8 +2423,6 @@ test.each([
           ['Empoleon', { fast: 'Waterfall', fastMoves: ['Waterfall'], chargedMoves: ['Hydro Cannon', 'Drill Peck'] }],
         ]),
       },
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -2907,10 +2480,10 @@ test.each([
   );
   const report = recorder();
 
-  await run(
+  await play(
     phone,
     {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
+      mode: ULTRA,
       data: SNEAK_DROPS,
       meta: {
         ...MAMOSWINE_AVALANCHE,
@@ -2919,8 +2492,6 @@ test.each([
           ['Empoleon', { fast: 'Waterfall', fastMoves: ['Waterfall'], chargedMoves: ['Hydro Cannon', 'Drill Peck'] }],
         ]),
       },
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
       count: 1,
     },
     clock,
@@ -2989,19 +2560,7 @@ test.each([
     );
     const report = recorder();
 
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        meta: MAMOSWINE_AVALANCHE,
-        icons,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    );
+    await play(phone, { mode: ULTRA, meta: MAMOSWINE_AVALANCHE, icons, count: 1 }, clock, report);
 
     expect(report.events).toContain(said);
     expect(taps.filter((scene) => /^(fight|hit)/.test(scene))).toEqual(tapped);
@@ -3030,19 +2589,7 @@ test('fights on where ours faints with a throw tapped and no prompt', async () =
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      meta: MAMOSWINE_AVALANCHE,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, meta: MAMOSWINE_AVALANCHE, icons, count: 1 }, clock, report);
 
   const after = strokes.filter(({ scene }) => scene === 'gone');
 
@@ -3088,18 +2635,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => ['fight', 'fainting', 'picking', 'relit'].includes(scene))).toEqual(tapped);
   expect(report.events.filter((line) => /^own: (threw|Shadow Sneak|tap Shadow Sneak)/.test(line))).toEqual(said);
@@ -3123,18 +2659,7 @@ test('names the lead from the party, and the next of it after a faint', async ()
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
@@ -3165,20 +2690,7 @@ test('answers a switch prompt that reads as the fight for a frame as it slides i
   const { phone, clock, taps, strokes } = scripted(scenes, 'party');
   const report = recorder();
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-      report,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock, report)).toEqual({ battles: 1, won: 1, lost: 0 });
 
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
@@ -3217,18 +2729,7 @@ test('answers no switch prompt while all three of our Poké Balls are red', asyn
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps).not.toContain('slate');
   expect(report.events.filter((line) => line.includes('fainted'))).toEqual([]);
@@ -3250,18 +2751,7 @@ test('counts a faint off our Poké Balls where no switch prompt is answered for 
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const named = new Set(report.fights.map(({ own, opponent }) => `${own.species} against ${opponent.species}`));
 
@@ -3289,18 +2779,7 @@ test('forgets the moves of one of ours fainting with no switch prompt', async ()
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
 
   const fights = new Set(report.fights.map(({ own, moves }) => `${own.species}: ${moves.join(', ') || '?'}`));
 
@@ -3324,18 +2803,7 @@ test('counts a faint off our Poké Balls where the moves read fit none of ours',
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const fights = new Set(report.fights.map(({ own, moves }) => `${own.species}: ${moves.join(', ') || '?'}`));
 
@@ -3367,18 +2835,7 @@ test('takes no read naming one of ours that has fainted for the one sent in', as
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
 
   const named = new Set(report.fights.map(({ own }) => `${own.species} at CP ${own.cp}`));
 
@@ -3416,18 +2873,7 @@ test('takes a read naming a fainted species once the HUD has had time to change'
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
 
   const told = report.events.includes('own: Gengar fainted: one fewer of our Poké Balls');
   const after = report.fights.slice(-1).map(({ own }) => `${own.species} at CP ${own.cp}`);
@@ -3453,17 +2899,7 @@ test.each([
     'fight',
   );
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(tapped);
 });
@@ -3505,18 +2941,7 @@ test('counts no hit off our bar while the "Go, X!" bubble dims its end', async (
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(new Set(report.fights.flatMap(({ energy }) => (energy ? [energy.energy] : [])))).toEqual(new Set([0]));
 });
@@ -3542,18 +2967,7 @@ test('counts no hit off our bar while a touch’s ring crosses it', async () => 
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(new Set(report.fights.flatMap(({ energy }) => (energy ? [energy.energy] : [])))).toEqual(new Set([0]));
 });
@@ -3582,18 +2996,7 @@ test('counts each hit off our bar to where it rests, past a frame reading it sho
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.fights.at(-1)?.energy).toEqual({ energy: 24, fast: 'Powder Snow' });
 });
@@ -3640,18 +3043,7 @@ test.each([
   const { phone, clock, taps } = scripted({ ...battleAndBack(), ...charizardHit(fixture(prompt), spent) }, 'fight');
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(tapped);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([said]);
@@ -3675,18 +3067,7 @@ test('keeps the shield where their next fast move, measured, faints us anyway', 
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
@@ -3714,18 +3095,7 @@ test('keeps the shield through a prompt whose bar flickers low', async () => {
   };
   const report = recorder();
 
-  await run(
-    flickering,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(flickering, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
@@ -3753,18 +3123,7 @@ test('keeps the shield through a prompt whose low frame is read twice', async ()
   };
   const report = recorder();
 
-  await run(
-    lingering,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(lingering, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
@@ -3786,18 +3145,7 @@ test('learns the move the banner after a shield prompt names', async () => {
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.events).toContain('opponent: Quaquaval has Aqua Jet');
 });
@@ -3823,18 +3171,7 @@ test.each([
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(report.events.filter((line) => line.includes('threw a charged move'))).toEqual(threw);
   expect(taps.filter((scene) => scene === 'countdown')).toEqual([]);
@@ -3864,19 +3201,7 @@ test('waits out countdowns in a row for longer than the run takes to give up as 
     'fight',
   );
 
-  expect(
-    await run(
-      phone,
-      {
-        mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-        data: DATA,
-        icons: ICONS,
-        typeIcons: TYPE_ICONS,
-        count: 1,
-      },
-      clock,
-    ),
-  ).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
   expect(clock.now()).toBeGreaterThan(LOST_MS);
 });
 
@@ -3899,18 +3224,7 @@ test('counts no throw off the countdown on a switch prompt taken for `other`', a
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   expect(
     taps.filter((scene) => scene === 'prompt'),
@@ -3932,7 +3246,7 @@ test('takes every shield in GO Battle League until the party screen has given th
     'fight',
   );
 
-  await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, count: 1 }, clock);
+  await play(phone, { mode: GBL, count: 1 }, clock);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual(['prompt']);
 });
@@ -3952,7 +3266,7 @@ test('takes the cap from the league named until the party screen gives it', asyn
   const report = recorder();
   const meta = { cup: 'all', cap: 2500, movesets: new Map() };
 
-  await run(phone, { mode: GBL, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS, meta, count: 1 }, clock, report);
+  await play(phone, { mode: GBL, meta, count: 1 }, clock, report);
 
   expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
@@ -3978,16 +3292,9 @@ test('keeps the frames a second either side of a shield prompt', async () => {
   const { phone, clock } = scripted(scenes, 'lead');
   const kept: [string | undefined, number, string][] = [];
 
-  await run(
+  await play(
     phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-      keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]),
-    },
+    { mode: ULTRA, count: 1, keep: (frame, at, event) => kept.push([sceneShowing(scenes, frame), at, event]) },
     clock,
   );
 
@@ -4014,18 +3321,7 @@ test('says each side’s CP and HP, and how many shields we have left', async ()
   );
   const report = recorder();
 
-  await run(
-    phone,
-    {
-      mode: { mode: 'training', leader: 'blanche', league: 'ultra' },
-      data: DATA,
-      icons: ICONS,
-      typeIcons: TYPE_ICONS,
-      count: 1,
-    },
-    clock,
-    report,
-  );
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
   const percent = (hp: number | null) => (hp === null ? null : Math.round(hp * 100));
   const read = report.fights.map(({ own, opponent }) => [
@@ -4054,11 +3350,7 @@ test('says each side’s CP and HP, and how many shields we have left', async ()
 test('stops, keeping its last frames, where nothing is recognised', async () => {
   const { phone, clock, taps } = scripted({ stuck: { frame: fixture('other-loss') } }, 'stuck');
 
-  const lost = await run(
-    phone,
-    { mode: { mode: 'training', leader: 'blanche', league: 'ultra' }, data: DATA, icons: ICONS, typeIcons: TYPE_ICONS },
-    clock,
-  ).catch((error: unknown) => error);
+  const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
 
   expect(lost).toBeInstanceOf(Lost);
   expect((lost as Lost).frames.length).toBeGreaterThan(0);

@@ -1,6 +1,6 @@
 /**
  * Line up everything pokemongo.com has announced against the two sources the Events page merges, and report what
- * nothing here accounts for and has not yet finished.
+ * nothing here accounts for, or the local list may account for only in part, and has not yet finished.
  *
  * Two announcement surfaces are read. The news archive is paginated by `?nr=<offset>`, thirty articles a page, and
  * walking it to exhaustion reaches every article back to mid-2025 in nine fetches. The in-person index carries one
@@ -31,6 +31,13 @@
  * this script has no business making, because one article can announce eleven events, describe an event that has
  * already ended, or not be an event at all.
  *
+ * A hit on a local entry's link proves less, because it matches an article rather than an event. A tour announced in
+ * one article has an entry per stop, every one linking that article, so the article is accounted for from its first
+ * entry on and a stop it gains afterwards reaches none of the other lists. So every article a local entry links to is
+ * listed again while it is still running, beside the entries behind it, and flagged where its prose runs past the last
+ * of them, which is how an extension or a stop added at the end shows. A stop added between two we hold moves no date,
+ * so only reading the article finds one.
+ *
  * The feed's URL and the local list's path are the ones `src/event-feed.ts` gives the rest of the repository, so an
  * audit cannot go on reading a mirror the site has stopped using.
  */
@@ -38,6 +45,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { byCodeUnit, LOCAL_EVENTS, UPSTREAM_URL } from '../../../../src/event-feed.ts';
 import type { FeedEvent } from '../../../../src/types.js';
+import { containment } from './matching.mts';
 import {
   articleHtml,
   articleText,
@@ -57,16 +65,12 @@ const PAGE_SIZE = 30;
 // stop condition has stopped working rather than that the archive is deep.
 const MAX_PAGES = 20;
 
-// Words too common across Pokémon GO event names to carry any matching signal: every second name contains "Pokémon GO"
-// or "event", so counting them inflates every score equally and separates nothing.
-const STOPWORDS = new Set(['a', 'and', 'during', 'for', 'go', 'in', 'of', 'pokemon', 'the', 'to', 'with']);
-
 // How much of a candidate's name has to appear in the headline before it is worth putting in front of a reader. Set by
 // what the real data does: a true pair usually scores 1.0 and the weakest genuine one seen (a Wild Area ticketing
 // update against the Wild Area itself) scores 0.86, while unrelated events sharing only "City" or "Safari" sit at 0.6.
 const CANDIDATE_FLOOR = 0.5;
 
-// How many articles are fetched at once when dating the unmatched ones.
+// How many articles are fetched at once when dating them.
 const CONCURRENCY = 8;
 
 interface Article {
@@ -90,40 +94,6 @@ interface Candidate {
 
 interface Scored extends Candidate {
   score: number;
-}
-
-/**
- * The comparable words of a name, slug or headline.
- *
- * Accents are folded because the feed writes `Pokémon` where a slug writes `pokemon`; `_` and `-` are separators so
- * `2026_ana_green` and `city-safari-brisbane` tokenise like prose; and a trailing `s` is dropped from longer words so
- * that "City Safaris in Europe" still reaches "City Safari: Marseille", which is the difference between a candidate a
- * reader can act on and silence.
- */
-function tokens(text: string) {
-  const folded = text.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '');
-  const words = folded.match(/[a-z0-9]+/g) ?? [];
-
-  return new Set(
-    words
-      .map((word) => (word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word))
-      .filter((word) => !STOPWORDS.has(word)),
-  );
-}
-
-/**
- * How much of `name` the `headline` already says, from 0 to 1.
- *
- * Containment rather than similarity, because the two sides are not trying to say the same thing: Niantic writes
- * "Rescue Shadow Zekrom during Harvest Festival: Taken Over!" where Leek Duck writes "Harvest Festival: Taken Over", so
- * the feed name sits *inside* the headline surrounded by marketing. A symmetric ratio punishes exactly the verbosity
- * that makes the pair obvious, and would rank the wrong Harvest Festival first.
- */
-function containment(name: string, headline: string) {
-  const wanted = tokens(name);
-  const said = tokens(headline);
-
-  return wanted.size ? [...wanted].filter((word) => said.has(word)).length / wanted.size : 0;
 }
 
 /**
@@ -238,7 +208,7 @@ function candidatesFor(headline: string, candidates: Candidate[]) {
     .filter((candidate) => candidate.score >= CANDIDATE_FLOOR);
 }
 
-/** The furthest-future date an unmatched article's prose names, or `undefined` if it names none. */
+/** The furthest-future date an article's prose names, or `undefined` if it names none. */
 async function runsUntil(slug: string) {
   const html = await articleHtml(slug);
 
@@ -288,9 +258,12 @@ const candidates: Candidate[] = [
   ...local.map(({ eventID, name }) => ({ source: 'local' as const, eventID, name })),
 ];
 
+const linkedFrom = (article: Article) => local.filter((entry) => slugOf(entry.link) === article.slug);
 const unmatched = news.filter((article) => !known.has(article.slug));
-const dates = await mapPooled(unmatched, CONCURRENCY, (article) => runsUntil(article.slug));
-const until = new Map(unmatched.map((article, i) => [article.slug, dates[i]]));
+const ours = news.filter((article) => linkedFrom(article).length > 0);
+const toDate = [...unmatched, ...ours];
+const dates = await mapPooled(toDate, CONCURRENCY, (article) => runsUntil(article.slug));
+const until = new Map(toDate.map((article, i) => [article.slug, dates[i]]));
 const runsTo = (article: Article) => until.get(article.slug);
 
 const undated = unmatched.filter((article) => runsTo(article) === undefined);
@@ -307,6 +280,15 @@ const ended = dated.length - live.length;
 const updates = undated
   .map((article) => ({ article, found: candidatesFor(article.headline, candidates) }))
   .filter(({ found }) => found.length > 0);
+
+const revisits = ours
+  .map((article) => {
+    const entries = linkedFrom(article);
+    const heldTo = entries.map((entry) => entry.end?.slice(0, 10) ?? '').reduce((a, b) => (a > b ? a : b));
+
+    return { article, entries, heldTo, past: (runsTo(article) ?? '') > heldTo };
+  })
+  .filter(({ article, heldTo }) => heldTo >= today || (runsTo(article) ?? '') >= today);
 
 print(
   `${news.length} articles archived at ${NEWS_URL} (${news.at(-1)?.published} to ${news[0]?.published}), ` +
@@ -360,6 +342,27 @@ if (listings.length === 0) {
     '  Nothing — every current listing is already named by a source. This section being empty is the\n' +
       '  expected state, not a failure.\n',
   );
+}
+
+print(`## Held locally, not yet over (${revisits.length}) — does the article announce more than we hold?\n`);
+
+for (const { article, entries, heldTo, past } of revisits.toSorted(
+  (a, b) => Number(b.past) - Number(a.past) || byCodeUnit(a.article.slug, b.article.slug),
+)) {
+  print(
+    `  ${article.slug}  (prose runs to ${runsTo(article) ?? 'no date'}, ours to ${heldTo || 'no date'})` +
+      `${past ? '  ! runs past ours' : ''}\n    ${article.headline}`,
+  );
+
+  for (const { eventID, start, end } of entries) {
+    print(`    =  ${eventID} (${start?.slice(0, 10) ?? 'no date'} to ${end?.slice(0, 10) ?? 'no date'})`);
+  }
+
+  print();
+}
+
+if (revisits.length === 0) {
+  print('  Nothing — no article a local entry links to is still running.\n');
 }
 
 print(

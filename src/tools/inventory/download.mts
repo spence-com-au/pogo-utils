@@ -40,15 +40,16 @@ const ICON_INDEX =
  * name and a week's grace alone, so a fixed name across a change of directory answers the new URL with the old
  * directory's listing until the week is out.
  *
- * Exported for `cli.test.mts`, which seeds a cache to keep itself off the network: a name transcribed there would seed
- * a file the reader no longer asks for, and the test would pass on a download it meant to have prevented.
+ * Exported for `cli.test.mts` and `phone.test.mts`, which seed a cache to keep themselves off the network: a name
+ * transcribed there would seed a file the reader no longer asks for, and the test would pass on a download it meant to
+ * have prevented.
  */
 export const ICON_CACHE = `icons-${ICON_DIR.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.json`;
 
 /**
  * Where the game master is cached, named for whose dump it is and derived from `GAME_MASTER` for the reason
  * `ICON_CACHE` is: a fixed name across a change of source answers the new one with the old one's copy until the week
- * is out. Exported for `cli.test.mts`, which seeds it.
+ * is out. Exported for `cli.test.mts` and `phone.test.mts`, which seed it.
  */
 export const GAME_MASTER_CACHE = `game-master-${new URL(GAME_MASTER).pathname.split('/')[1]?.toLowerCase()}.json`;
 

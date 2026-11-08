@@ -40,6 +40,7 @@ import { replaceQuery } from '../router.js';
 import { stepped, suggestions, written as speciesTerm, type Offer } from '../search/species.js';
 import { GROUPS, PRESETS, RANGES, RANGES_BY_ID, type Range } from '../search/terms.js';
 import {
+  answered,
   boxText,
   chipTitle,
   marked,
@@ -48,9 +49,10 @@ import {
   readBound,
   spans,
   type Edge,
+  type Sent,
   type Typed,
 } from '../search/controls.js';
-import { added, asCards, cardsOf, holds, pillsOf, toggled } from '../search/cards.js';
+import { added, afterPress, asCards, cardsOf, holds, pillsOf } from '../search/cards.js';
 import { clausesOf } from '../search/clauses.js';
 import {
   isGroup,
@@ -231,9 +233,9 @@ const characters = (length: number) => `${length} character${length === 1 ? '' :
  * A sentence's backticked parts set in `<code>`, so that prose written in this repository's convention reads on screen
  * the way the caveat beside it does rather than showing its own punctuation.
  *
- * Four callers: the two refusals, from `clauses.js` and `parse.js`; a category's own help in `terms.js`, which was
- * showing its ticks as ticks — `the game has no \`gen1\`` had been on the page since before the canvas; and the
- * caveats beside a phrase the game mishandles, one of which quotes the span it reads a shortcut as instead.
+ * Four callers: the two refusals, from `clauses.js` and `parse.js`; a category's own help in `terms.js`, which would
+ * otherwise show its ticks as ticks — `the game has no \`gen1\``; and the caveats beside a phrase the game mishandles,
+ * one of which quotes the span it reads a shortcut as instead.
  */
 const ticked = (message: string) =>
   spans(message).map((part, index) => (index % 2 === 0 ? part : <code key={index}>{part}</code>));
@@ -251,19 +253,6 @@ function withBound(node: Node, edge: Edge, bound: number | null): Node {
   }
 
   return edge === 'from' ? { ...node, from: bound } : { ...node, to: bound };
-}
-
-/**
- * Where the last string sent to the phone has got to, and which string that was: an answer is about the string sent, so
- * it is shown only while that is still the string on the page.
- *
- * `unheld` is a press with no phone to send to, a kind of its own because it stops being true in a way the others do
- * not: connecting a phone from the top bar leaves this page mounted and the string unchanged.
- */
-interface Sent {
-  query: string;
-  kind: 'busy' | 'done' | 'failed' | 'unheld';
-  message: string;
 }
 
 /** The state a link describes, laid out as cards. */
@@ -442,17 +431,10 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   /** One press of a chip in the sheet, which adds it to the card being filled or takes it back off. */
   function pressChip(leaf: Leaf) {
     if (adding !== null) {
-      edit((tree) => toggled(tree, adding, leaf));
+      const { tree, at } = afterPress(root, adding, leaf);
 
-      /*
-       * A press that takes a card's last pill takes the card, and every card after it moves up a place. The sheet then
-       * aims past the end, at a new card, rather than at whichever card has moved into the index it held.
-       */
-      const left = toggled(root, adding, leaf).parts.length;
-
-      if (left < root.parts.length) {
-        setAdding(left);
-      }
+      edit(() => tree);
+      setAdding(at);
     }
   }
 
@@ -549,8 +531,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   }
 
   const sending = sent?.kind === 'busy';
-  const answer =
-    sent !== null && (sending || sent.query === query) && !(sent.kind === 'unheld' && phone !== null) ? sent : null;
+  const answer = answered(sent, query, phone !== null);
 
   useEffect(() => {
     if (copyLabel === 'Copy') {
