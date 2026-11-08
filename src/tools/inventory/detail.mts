@@ -363,7 +363,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
     return { height: numberOn(line, HEIGHT), size: line ? await sizeOf(image, line) : null };
   })();
 
-  // None of these reads waits on another, and `ocr.mts` holds each Tesseract process to one thread so they can run
+  // None of these reads waits on another, and `ocr-cli.mts` holds each Tesseract process to one thread so they can run
   // side by side — a screen reaching every rescue is a dozen reads.
   const [cpWhole, nameRescued, weightRead, measures, swept, types, tags, buttons, lucky, max] = await Promise.all([
     whole,
@@ -445,7 +445,7 @@ async function cpsIn(image: Image): Promise<number[]> {
  * reads run in parallel or queue. The pads stay in turn, 0.35 having to be refused before 0.6 is tried.
  *
  * The corpus suite keeps enough reads in flight to saturate the cores either way, which is the same contention
- * `vitest.config.mjs` raises its timeout for and `ocr.mts` pins `OMP_THREAD_LIMIT=1` against.
+ * `vitest.config.mjs` raises its timeout for and `ocr-cli.mts` pins `OMP_THREAD_LIMIT=1` against.
  */
 async function wholeCp(image: Image, line: Line, read: string, longest: number): Promise<string | null> {
   const readings = readingsOf(read, longest);
@@ -462,8 +462,9 @@ async function wholeCp(image: Image, line: Line, read: string, longest: number):
 
     // Settled rather than all-or-nothing, then examined in order, which is what keeps a read the answer does not need
     // from failing the capture: a rejection is thrown only where it is reached, and one past the accepted treatment
-    // never is. Thrown rather than swallowed because `ocr.mts` rejects for the machine's reasons and resolves for the
-    // image's, so a Tesseract missing or killed would otherwise read as a band with nothing on it.
+    // never is. Thrown rather than swallowed because the engines, `ocr-cli.mts` and `ocr-wasm.mts` after it, reject for
+    // the machine's reasons and resolve for the image's, so a Tesseract missing or killed would otherwise read as a
+    // band with nothing on it.
     for (const settled of await Promise.allSettled(readTreated(band))) {
       if (settled.status === 'rejected') {
         throw settled.reason;

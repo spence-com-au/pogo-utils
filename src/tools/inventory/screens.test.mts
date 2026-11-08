@@ -1297,7 +1297,7 @@ for (const fixture of FIXTURES) {
 
     // The end of the pipeline, asserted on every capture rather than on one, which is what catches `levelsOf` admitting
     // any HP at or above the one read: against a shortlist whose largest member is already the true level, as
-    // `fixtures/unown.png`'s `[1, 6, 16]` is, that break cannot move an answer.
+    // `unown-b.png`'s is, that break cannot move an answer.
     test('identify form', async () => {
       const { identity } = await readingOf(fixture.file);
 
