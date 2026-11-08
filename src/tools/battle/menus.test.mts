@@ -305,6 +305,21 @@ test.each([
   expect(near(menu, x, y)).toBe(true);
 });
 
+// Ultra League's card read as Master League's, on beside Master League Mega Edition: a title given in full, or an open
+// league's by its name alone, is that league rather than more than one.
+test.each([
+  ['master', 0.54, 0.43],
+  ['Master League', 0.54, 0.43],
+  ['master league mega', 0.64, 0.57],
+])('taps the GO Battle League %s card beside a longer title it starts', async (league, x, y) => {
+  const master = async (image: Parameters<typeof ocr>[0]) =>
+    (await ocr(image)).map((line) => (fold(line.text) === 'ultra league' ? { ...line, text: 'MASTER LEAGUE' } : line));
+  const menu = await readMenu(fixture('menu-gbl-league'), { ...GBL, league }, master);
+
+  expect(menu.screen).toBe('league');
+  expect(near(menu, x, y)).toBe(true);
+});
+
 test('refuses a league that is not on now, naming those that are', async () => {
   await expect(readMenu(fixture('menu-gbl-league'), { ...GBL, league: 'great' })).rejects.toThrow(
     '--league great is not on now: ultra league; master league mega edition; fantasy cup great league edition',
@@ -439,9 +454,14 @@ test('searches the carousel on from the party it opens on', () => {
   expect(walk(['test 4', 'test 3', 'gbl'], 'GBL')).toEqual(['next', 'next', 'use']);
 });
 
-// A swipe that leaves the same party in front is the end of the carousel, and the search turns back from it.
+// Two swipes in a row leaving the same party in front are the end of the carousel, and the search turns back from it.
 test('turns back at the end of the carousel to find a party before it', () => {
-  expect(walk(['gbl', 'gbl', 'test 3', 'test 4'], 'Test 4')).toEqual(['next', 'back', 'back', 'use']);
+  expect(walk(['gbl', 'gbl', 'gbl', 'test 3', 'test 4'], 'Test 4')).toEqual(['next', 'next', 'back', 'back', 'use']);
+});
+
+// One swipe that leaves the same party in front could be a swipe the phone dropped, so it is made again.
+test('swipes again where a swipe left the party in front, rather than turn back short of the end', () => {
+  expect(walk(['test 4', 'test 4', 'test 3', 'gbl'], 'GBL')).toEqual(['next', 'next', 'next', 'use']);
 });
 
 test('waits for a read of the title rather than swipe past what it could not read', () => {
@@ -451,7 +471,7 @@ test('waits for a read of the title rather than swipe past what it could not rea
 test('stops at the second end without the party, naming those it passed', () => {
   const search = carousel();
 
-  for (const title of ['test 4', 'test 3', 'gbl', 'gbl', 'test 3', 'test 4']) {
+  for (const title of ['test 4', 'test 3', 'gbl', 'gbl', 'gbl', 'test 3', 'test 4', 'test 4']) {
     searchParty(search, title, 'Great');
   }
 
@@ -465,11 +485,26 @@ test('stops after so many swipes where the carousel never shows an end', () => {
   const search = carousel();
   const swipe = (n: number) => searchParty(search, n % 2 === 0 ? 'test 4' : 'test 3', 'GBL');
 
-  for (let n = 0; n < 24; n++) {
+  for (let n = 0; n < 26; n++) {
     swipe(n);
   }
 
-  expect(() => swipe(24)).toThrow('no party named GBL saved for this league');
+  expect(() => swipe(26)).toThrow('no party named GBL saved for this league');
+});
+
+// The most swipes a search takes are enough for a dozen parties there and back, each end shown by two in a row.
+test('searches a dozen parties there and back before it stops', () => {
+  const parties = Array.from({ length: 12 }, (_, i) => `test ${i + 1}`);
+  const back = parties.slice(0, -1).reverse();
+  const search = carousel();
+
+  for (const title of [...parties, 'test 12', 'test 12', ...back, 'test 1']) {
+    searchParty(search, title, 'Great');
+  }
+
+  expect(() => searchParty(search, 'test 1', 'Great')).toThrow(
+    `no party named Great saved for this league: ${[...parties, ...back].join(', ')}`,
+  );
 });
 
 // Stream frames from a Pixel 4 XL and a Pixel 8 Pro, and the full-size screenshots of the result a run reads it off.

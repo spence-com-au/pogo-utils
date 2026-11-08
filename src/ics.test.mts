@@ -8,6 +8,7 @@
  */
 
 import { calendar, calendarEvents, escape, FEED, fold, icsDate, SITE, vevent } from './ics.mts';
+import { toHash } from './page-table.ts';
 import RECURRING_TYPES from './recurring-types.ts';
 import type { FeedEvent } from './types.js';
 import { expect, test } from 'vitest';
@@ -89,7 +90,7 @@ test('the description links to the event on the map when there are routes for it
     'a b': { routes: 2, waypoints: 0 },
   });
 
-  expect(DESCRIPTION).toContain(`${SITE}/#/map?event=a%20b`);
+  expect(DESCRIPTION).toContain(`${SITE}/${toHash('map', 'event=a%20b')}`);
   expect(DESCRIPTION).toMatch(/\\nhttps:\/\/example\.com\/e$/);
 });
 
