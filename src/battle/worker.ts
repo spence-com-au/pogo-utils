@@ -6,7 +6,7 @@
  */
 
 import { DEMO_BATTLE } from '../generated.js';
-import { fetchOk, wasmEngine } from '../inventory/reader.js';
+import { fetchBytes, wasmEngine } from '../inventory/reader.js';
 import { reconnect } from '../inventory/webusb.js';
 import { DEMO_SERIAL } from '../phone-store.js';
 import { demoConnection } from './demo.js';
@@ -17,11 +17,7 @@ host(
   self,
   async (serial, base) =>
     serial === DEMO_SERIAL
-      ? demoConnection(
-          new Uint8Array(await (await fetchOk(new URL(DEMO_BATTLE.clip, base).href)).arrayBuffer()),
-          DEMO_BATTLE.fps,
-          decodeFrames,
-        )
+      ? demoConnection(await fetchBytes(new URL(DEMO_BATTLE.clip, base).href), DEMO_BATTLE.fps, decodeFrames)
       : reconnect(serial),
   (base) => wasmEngine(base),
 );
