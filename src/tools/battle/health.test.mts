@@ -91,6 +91,24 @@ test('a bar just above another is read rather than taken for artwork', () => {
   expect(within(health.opponent, 0.22), `theirs read ${health.opponent}`).toBe(true);
 });
 
+test('a bar as short as the map between letters, just above another, is read rather than taken for artwork', () => {
+  // Sylveon's bar emptied to 6%, its own emptied part copied over the rest of its fill: the outline runs along all of
+  // where the fill has gone, which letters break above a strip of the map.
+  const image = decodePng(readFileSync(new URL('fixtures/other-two-bars.png', import.meta.url)));
+
+  for (let y = 396; y < 402; y++) {
+    for (let x = 246; x < 264; x++) {
+      const at = (y * image.width + x) * 4;
+
+      image.data.copyWithin(at, at + 40 * 4, at + 41 * 4);
+    }
+  }
+
+  const health = readHealth(image);
+
+  expect(within(health.opponent, 0.06), `theirs read ${health.opponent}`).toBe(true);
+});
+
 test('a bar whose right end is hidden goes unread rather than read short', () => {
   // The G of the "GO!" opening a battle over our full bar, which read 68% to where the letter starts.
   const health = read('battle-go');
