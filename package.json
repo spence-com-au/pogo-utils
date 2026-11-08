@@ -56,7 +56,7 @@
     "@yume-chan/adb-credential-web": "^2.1.0",
     "@yume-chan/adb-daemon-webusb": "^2.3.2",
     "esbuild": "^0.28.2",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
     "fake-indexeddb": "^6.2.7",
     "fflate": "^0.8.3",
