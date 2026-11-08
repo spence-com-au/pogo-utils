@@ -103,8 +103,9 @@ const GROUPS: readonly { kind: StatusKind; label: string }[] = [
 
 /**
  * The Tracks view's rows, in display order, keyed by the feed's `eventType` slug rather than its `heading` so the
- * match survives a wording change upstream. GO Battle League and GO Pass are deliberately absent, so an event of
- * either type never lands on the timeline. The labels are ours where they read better than the feed's.
+ * match survives a wording change upstream. GO Battle League and GO Pass are deliberately absent, so an event of either
+ * type never lands on the timeline — nor does one of a type the feed adds later, until it is given a row here. The
+ * labels are ours where they read better than the feed's.
  */
 const TRACKS = [
   { type: 'choose-your-path', label: 'Choose Your Path' },
@@ -120,6 +121,7 @@ const TRACKS = [
   { type: 'research', label: 'Research' },
   { type: 'season', label: 'Season' },
   { type: 'pokemon-spotlight-hour', label: 'Spotlight Hour' },
+  { type: 'timed-research', label: 'Timed Research' },
   { type: 'wild-area', label: 'Wild Area' },
 ];
 
