@@ -117,7 +117,7 @@ interface Scene {
   still?: boolean;
 }
 
-/** How long a hold takes, in milliseconds: longer than any `scripts/battle.mts` makes on the selection screen. */
+/** How long a hold takes, in milliseconds: longer than any `phoneOf` in `src/tools/battle/phone.mts` makes. */
 const HOLD_MS = 4000;
 
 /**
