@@ -518,7 +518,11 @@ export async function readMenu(
 
     if (offered) {
       const wanted = fold(mode.league);
-      const chosen = offered.filter(({ title }) => title.startsWith(wanted));
+
+      // A title given in full, or an open league's by its name alone, wins over a longer one it starts, so `master`
+      // is Master League rather than more than one league while Master League Mega Edition is on beside it.
+      const named = offered.find(({ title }) => title === wanted || title === `${wanted} league`);
+      const chosen = named ? [named] : offered.filter(({ title }) => title.startsWith(wanted));
 
       if (chosen.length > 1) {
         throw new Error(`--league ${mode.league} is more than one league: ${chosen.map((l) => l.title).join('; ')}`);

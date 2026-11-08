@@ -12,9 +12,9 @@
  * everything that reads a request or the filesystem answers with a value instead, and every file read sits behind a
  * stream whose `'error'` is handled.
  *
- * Only an extension in `scripts/served-types.mts` is served at all. A file in `dist/` with any other is not part of
- * the site — `scripts/assemble.mts` fails the build over one, against that same table — so 404 is both the true answer
- * and the only one that never has to guess a type.
+ * Only an extension in `src/served-types.mts` is served at all. A file in `dist/` with any other is not part of the
+ * site — `scripts/assemble.mts` fails the build over one, against that same table — so 404 is both the true answer and
+ * the only one that never has to guess a type.
  *
  * No `fallback` for deep links: `src/router.ts` reads the route out of the fragment, so `#/map` is a request for `/`.
  */
@@ -23,7 +23,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { extname, relative, resolve } from 'node:path';
-import { SERVED_TYPES } from './served-types.mts';
+import { SERVED_TYPES } from '../src/served-types.mts';
 import { DIST } from '../src/generated.ts';
 
 /**
