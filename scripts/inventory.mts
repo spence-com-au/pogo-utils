@@ -725,7 +725,8 @@ async function scan(held: Transport) {
       const iv = overlay?.iv ?? null;
       keep(`${name}-detail`, image);
 
-      // Null for a flag not asked for, or one whose pass would not read, rather than a `false` nothing checked.
+      // Null for a flag not asked for, one whose pass would not read or a screen with no key to match it by, rather
+      // than a `false` nothing checked.
       const flag = (f: Flag): Mark => marked.get(f)?.take(detail, overlay) ?? null;
 
       // Each pass's flag taken once, since `take` uses the match up.

@@ -177,13 +177,15 @@ export class Marks {
    * order can do is see the rows still to come: a row with a field blank takes the first entry it fits, which a later
    * row may have matched exactly. That needs two of one species sharing an HP and every field both read, and moves a
    * mark between them rather than gaining or losing one.
+   *
+   * Null for a screen with no key, which nothing here can match against the search, so the search may well hold it.
    */
-  take(detail: Detail, overlay: Overlay | null): boolean {
+  take(detail: Detail, overlay: Overlay | null): Mark {
     const key = keyOf(detail, overlay);
     const loose = looseKeyOf(detail, overlay);
 
     if (key === null) {
-      return false;
+      return null;
     }
 
     for (const fits of [
