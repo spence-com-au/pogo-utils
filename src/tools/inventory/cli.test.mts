@@ -375,6 +375,29 @@ test.for([
 });
 
 /**
+ * `parse` of the capture with and without `--verbose`, side by side in `cwd`, each run to its end before either's
+ * failure is thrown. `Promise.all` rejects at the first, and the caller's `finally` then deletes `cwd` from under the
+ * other — whose recursive `mkdirSync` of the relative cache path never returns once its directory is gone, on Node 24 at
+ * least, leaving the child spinning a core long after the suite has exited.
+ */
+async function quietAndLoud(cwd: string) {
+  const [quiet, loud] = await Promise.allSettled([
+    run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd }),
+    run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd }),
+  ]);
+
+  if (quiet.status === 'rejected') {
+    throw quiet.reason;
+  }
+
+  if (loud.status === 'rejected') {
+    throw loud.reason;
+  }
+
+  return [quiet.value, loud.value] as const;
+}
+
+/**
  * The dump of what OCR read, and the raw readings beneath the answer, are printed only for `--verbose`; the answer is
  * the same either way.
  *
@@ -385,10 +408,7 @@ test('the OCR dump and the raw readings are printed only with `--verbose`', asyn
   const cwd = reads();
 
   try {
-    const [quiet, loud] = await Promise.all([
-      run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd }),
-      run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd }),
-    ]);
+    const [quiet, loud] = await quietAndLoud(cwd);
 
     expect(quiet.stdout, 'the answer was not printed').toMatch(/^species {2,}/m);
     expect(dumpRows(quiet.stdout), 'the dump was printed without the flag asking for it').toStrictEqual([]);
@@ -442,10 +462,7 @@ test('the progress preamble is printed only with `--verbose`', async () => {
   const cwd = reads(AMBIGUOUS);
 
   try {
-    const [quiet, loud] = await Promise.all([
-      run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd }),
-      run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd }),
-    ]);
+    const [quiet, loud] = await quietAndLoud(cwd);
 
     expect(
       loud.stderr,
@@ -534,10 +551,7 @@ test('the icon count in the preamble is printed only with `--verbose`', async ()
   const cwd = reads(AMBIGUOUS, ['pm327.f00.icon.png', 'pm327.f01.icon.png']);
 
   try {
-    const [quiet, loud] = await Promise.all([
-      run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd }),
-      run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd }),
-    ]);
+    const [quiet, loud] = await quietAndLoud(cwd);
 
     expect(loud.stderr, 'the pair was not drawn, so the quiet claim below would hold for no gate at all').toContain(
       'Reading 2 form icons',
