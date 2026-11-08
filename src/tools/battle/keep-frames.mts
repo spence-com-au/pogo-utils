@@ -60,7 +60,15 @@ export function keepFrames(dir: string, started: number, now: () => number) {
       }
     },
 
-    save,
+    /**
+     * The frames a run was lost with, `00.png` on in the order they were seen, said to be kept only if every one was. A
+     * write that fails is told by `flush` with the others rather than thrown over the error that stopped the run.
+     */
+    last: (lost: readonly Image[]) => {
+      if (lost.every((frame, i) => save(`${String(i).padStart(2, '0')}.png`, frame))) {
+        console.error(`kept the last ${lost.length} frames in ${dir}`);
+      }
+    },
 
     flush: () => {
       queued.splice(0).forEach(write);
