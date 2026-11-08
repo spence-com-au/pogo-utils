@@ -27,7 +27,7 @@ import {
 import { setTimeout as delay } from 'node:timers/promises';
 
 /** The longest a failure is waited out: long enough to stop hammering, short enough to be back within the hour. */
-export const BACKOFF_CEILING = 15 * 60_000;
+const BACKOFF_CEILING = 15 * 60_000;
 
 /** How long a spawn with no despawn time is remembered, which is longer than any spawn lasts. */
 const UNKNOWN_DESPAWN = 60 * 60_000;
