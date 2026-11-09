@@ -65,13 +65,13 @@ export class Session extends Store {
     let run: Run;
 
     try {
-      const { data, icons, typeIcons, meta } = await loadBattle(mode.mode === 'gbl' ? mode.league : null);
+      const { data, icons, typeIcons, meta, pvpoke } = await loadBattle(mode.mode === 'gbl' ? mode.league : null);
 
       this.#set({ kind: 'connecting', message: 'Handing the phone to the battle and waiting for its screen…' });
 
       run = await lend(
         store,
-        { battle: { mode, data, icons, typeIcons, meta, count }, base: location.href },
+        { battle: { mode, data, icons, typeIcons, meta, count }, base: location.href, pvpoke },
         this.#report,
       );
     } catch (error) {
