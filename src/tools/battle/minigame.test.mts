@@ -1,8 +1,8 @@
 /**
- * The bubble finder against minigames of five types, each against the game's own icon for its type: Kyogre's Hydro
- * Pump, Swampert's Hydro Cannon, Mamoswine's Avalanche, Giratina's Shadow Sneak, Tyranitar's Crunch and Mewtwo's
- * Psychic, and a Dark Pulse off a Pixel 8 Pro. Each expectation is a box the bubbles are drawn in on the frame, which
- * the first swipe has to cross; the Get Ready! that comes before them has none.
+ * The bubble finder against minigames of six types, each against the game's own icon for its type: Kyogre's Hydro
+ * Pump, Swampert's Hydro Cannon, Mamoswine's Avalanche, Giratina's Shadow Sneak, Tyranitar's Crunch, Mewtwo's Psychic
+ * and Dedenne's Play Rough, and a Dark Pulse off a Pixel 8 Pro. Each expectation is a box the bubbles are drawn in on
+ * the frame, which the first swipe has to cross; the Get Ready! that comes before them has none.
  */
 
 import { readFileSync } from 'node:fs';
@@ -37,6 +37,7 @@ test.each([
   ['playing-minigame-tyranitar', 'DARK', [0.2, 0.5, 0.56, 0.6]],
   ['playing-minigame-mewtwo', 'PSYCHIC', [0.65, 0.6, 0.9, 0.8]],
   ['playing-minigame-pixel8-dark', 'DARK', [0.11, 0.59, 0.44, 0.81]],
+  ['playing-minigame-dedenne', 'FAIRY', [0.42, 0.55, 0.58, 0.66]],
 ] as const)('%s: the first swipe crosses the %s bubbles', (name, type, box) => {
   const [first] = bubbleSwipes(png(name), colour(type));
 

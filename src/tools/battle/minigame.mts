@@ -29,7 +29,9 @@ const FIELD = { top: 0.2, bottom: 0.95 } as const;
 
 /**
  * How closely the share of the type's colour has to agree across the channels, and how much of it there has to be.
- * Only channels the colour is well short of white in count, a channel near white saying nothing about the share.
+ * Only channels the colour is well short of white in count, a channel near white saying nothing about the share. One is
+ * enough, the rest held by `PALE`: Fairy's icon is 236/142/228, only its green far from white, and wanting two left
+ * no Fairy bubble ever found, a kept Play Rough's minigame swept in rows to `NICE!`.
  */
 const SPREAD = 0.12;
 const SHARE = { least: 0.3, most: 1.15 } as const;
@@ -152,7 +154,7 @@ function washed(pixel: Colour, colour: Colour): boolean {
 
   const mean = sum / told;
 
-  if (told < 2 || mean < SHARE.least || mean > SHARE.most) {
+  if (told < 1 || mean < SHARE.least || mean > SHARE.most) {
     return false;
   }
 
