@@ -13,6 +13,7 @@ import type { Phone as Connection, Process } from '../inventory/webusb.js';
 import { DEMO_SERIAL } from '../phone-store.js';
 import { GAME_ALONE } from '../tools/battle/overlay.mts';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
+import { type Clock } from '../tools/battle/run.mts';
 import { encodePng, type Image } from '../tools/inventory/png.mts';
 
 /** A stream that sends what `send` is handed, until `end`, and nothing after: a process gone answers nothing. */
@@ -90,14 +91,15 @@ export function settingsShell(settings: Map<string, string>) {
 }
 
 /**
- * The demo phone, its screen `clip` played at `fps` from now, by `now`, and its screenshots decoded by `decode`:
- * WebCodecs in the Worker, `ffmpeg` in a test.
+ * The demo phone, its screen `clip` played at `fps` from now, by `clock`, and its screenshots decoded by `decode`:
+ * WebCodecs in the Worker, `ffmpeg` in a test. A test playing a battle on it keeps the time, so that the battle does
+ * not go at the pace of the machine it runs on.
  */
 export function demoConnection(
   clip: Uint8Array,
   fps: number,
   decode: (h264: ReadableStream<Uint8Array>) => AsyncIterable<Image>,
-  now: () => number = () => performance.now(),
+  clock: Clock = { now: () => performance.now(), sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) },
 ): Connection {
   const pictures: Picture[] = [];
   const cut = new Pictures((picture) => pictures.push(picture));
@@ -110,8 +112,8 @@ export function demoConnection(
   }
 
   const period = 1000 / fps;
-  const start = now();
-  const tick = () => Math.floor((now() - start) / period);
+  const start = clock.now();
+  const tick = () => Math.floor((clock.now() - start) / period);
 
   /** The pictures a decoder joining at `tick` needs, from the key picture before it, sent at once as a phone's are. */
   const joining = (at: number) => {
@@ -130,19 +132,22 @@ export function demoConnection(
   const recording = (): Process => {
     const out = stream();
     let at = tick();
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let killed = false;
 
-    const send = () => {
-      out.send(pictures[at % pictures.length]?.bytes ?? new Uint8Array());
-      at++;
-      timer = setTimeout(send, start + at * period - now());
-    };
+    joining(at).forEach(({ bytes }) => out.send(bytes));
 
-    joining(at++).forEach(({ bytes }) => out.send(bytes));
-    timer = setTimeout(send, start + at * period - now());
+    void (async () => {
+      while (!killed) {
+        await clock.sleep(start + ++at * period - clock.now());
+
+        if (!killed) {
+          out.send(pictures[at % pictures.length]?.bytes ?? new Uint8Array());
+        }
+      }
+    })();
 
     const kill = () => {
-      clearTimeout(timer);
+      killed = true;
       out.end();
       recordings.delete(kill);
     };
