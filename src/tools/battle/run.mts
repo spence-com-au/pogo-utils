@@ -1213,6 +1213,7 @@ export async function run(
         ...(card && { card }),
         ...(battle.bench.chosen && !flying && { bench: battle.bench.chosen.at }),
         ...(bubbles && { bubbles }),
+        bar: battle.player.minigame && reads.readHealth(frame).own !== null,
       });
 
       // With none of ours left to send in, by the Poké Balls or the faints counted, what reads as the switch prompt is
