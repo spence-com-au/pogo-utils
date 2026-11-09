@@ -89,6 +89,7 @@
     "src/tools/battle/energy.mts",
     "src/tools/battle/health.mts",
     "src/tools/battle/layout.mts",
+    "src/tools/battle/menu-reader.mts",
     "src/tools/battle/menus.mts",
     "src/tools/battle/meta.mts",
     "src/tools/battle/minigame.mts",

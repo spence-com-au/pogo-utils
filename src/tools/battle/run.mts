@@ -8,24 +8,13 @@
 import { said } from '../../errors.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Image } from '../inventory/png.mts';
-import {
-  CAPS,
-  carousel,
-  CAROUSEL,
-  readMenu,
-  readOutcome,
-  searchParty,
-  type Menu,
-  type Mode,
-  type Outcome,
-} from './menus.mts';
-import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
-import { BOTTOM, place, type Size } from './layout.mts';
-import { readCard } from './selection.mts';
+import { type Mode, type Outcome } from './menus.mts';
+import { type Icon } from './party.mts';
+import { BOTTOM, place } from './layout.mts';
 import { SWITCH_CARDS } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth } from './health.mts';
-import { merge, readBanner, readBattle, settle, type Reading } from './read.mts';
+import { merge, readBanner, readBattle, settle } from './read.mts';
 import {
   countdown,
   opponentShields,
@@ -45,6 +34,7 @@ import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { Battle } from './battle.mts';
 import { SWITCHED_MS, type Field } from './bench.mts';
+import { MenuReader } from './menu-reader.mts';
 
 export interface Clock {
   now(): number;
@@ -57,27 +47,6 @@ export interface Clock {
  * ring — with nothing on screen that is either a battle or a menu.
  */
 export const LOST_MS = 20_000;
-
-/**
- * How long a screen must read as `other` before it is screenshot as a menu. A battle shows `other` for a second or two
- * at a time — a banner over the HUD, the opponent's charged move — and a screenshot costs one, with OCR on top. The read
- * runs beside the battle rather than holding it up: awaited, it left the battle unplayed for as long as the screenshot
- * and OCR took after every charged move, the loop learning only then that the battle had come back.
- */
-const MENU_AFTER_MS = 1_500;
-
-/** How long a menu's tap is given to animate into the next screen before that is screenshot. */
-const MENU_SETTLE_MS = 1_500;
-
-/**
- * How many reads in a row GO Battle League's card has to show BATTLE greyed out before the run stops for its reward.
- * One was taken on a Pixel 8 Pro as the Battle tab slid in, 1.5s after the main menu's tap, its BATTLE not yet green:
- * the run stopped with a set there to play. A read a settle later finds it lit, where a reward is waiting it does not.
- */
-const NO_BATTLE_READS = 2;
-
-/** How long the Battle tab's scroll takes, in milliseconds: long enough to be a drag rather than a tap. */
-const SCROLL_MS = 400;
 
 /**
  * How often the battle's names and move labels are read again, from when the last read began, in milliseconds: what it
@@ -292,14 +261,6 @@ export async function run(
   const outcomes: Record<Outcome, number> = { won: 0, lost: 0 };
   let battling = false;
   let known = clock.now();
-  let otherSince: number | undefined;
-  let noBattle = 0;
-  let faded = false;
-  let search = carousel();
-
-  // The menu read under way, if any: settled once its screenshot is taken and read, or failed. The screenshot of a result
-  // is read for the battle's outcome too.
-  let reading: Reading<{ screenshot: Image; menu: Menu; ended: boolean; outcome: Outcome | undefined }> | undefined;
 
   // PGSharp's overlay as the phone's views show it, waited for before the run taps anything and checked against the
   // first frame. It is looked for again as each battle ends, its star being as readily opened or dragged between battles
@@ -343,63 +304,17 @@ export async function run(
     keeping = { event, until: clock.now() + AROUND_MS };
   };
 
-  let party: Card[] = [];
-
-  // Each card as the party screen showed it when it was last tried on the selection screen, by silhouette and CP, of
-  // which `party` holds what was read: a GO Battle League set comes back to the party screen before every battle, and
-  // reading three cards takes 33s or more. A card is the one tried before where its silhouette names the same species
-  // and its CP is the same or went unread this time, OCR having missed one CP of 24. One tried and not read is not
-  // tried again, a search or a panel that failed once being likely to fail again at some 11s a battle; nor are those
-  // after one that stopped the reading, the selection screen not opening or not closing being what they would meet too.
-  // One passed over for its CP going unread was never tried, and is tried once its CP is read, so each held has its CP.
-  let lastTried: ({ species: string | null; cp: number } | undefined)[] = [];
-
-  const sameCard = (was: (typeof lastTried)[number], card: Card) =>
-    was !== undefined && was.species === card.species && (card.cp === null || was.cp === card.cp);
-
-  // `cards` with the moves of each card in `slots` merged in, read off the selection screen in turn as `readCard` reads
-  // them, and whether the party screen is showing again. Stops at one that left anything but the party screen showing,
-  // nothing more being tapped then.
-  const readCards = async (cards: readonly Card[], slots: readonly number[], screen: Size) => {
-    const read = [...cards];
-
-    for (const slot of slots) {
-      const card = read[slot];
-
-      if (card?.cp === null || card === undefined) {
-        log(`card ${slot + 1} unread: its CP unread`);
-        continue;
-      }
-
-      const sleep = (ms: number) => clock.sleep(ms);
-      const { species, cp } = card;
-      const { panel, why, back } = await readCard(phone, sleep, cardAt(slot, screen), { species, cp }, data);
+  // The menus between battles, which tell of progress through them as the battle's frames do.
+  const menus = new MenuReader(phone, clock, { mode, data, icons, meta }, log, {
+    progress: () => {
       known = clock.now();
-
-      if (panel) {
-        const { species: name, ...moves } = panel;
-        read[slot] = { ...card, species: name, moves };
-        log(`${name ?? '?'} CP ${cp}: ${moves.fast ?? '?'} / ${moves.charged.join(', ')}`);
-      } else {
-        log(`card ${slot + 1} unread: ${why ?? '?'}`);
-      }
-
-      if (!back) {
-        return { cards: read, back };
-      }
-    }
-
-    return { cards: read, back: true };
-  };
+    },
+    lost: () => clock.now() - known > LOST_MS,
+  });
 
   // The battle under way, or the last one played: made afresh on each battle's first frame, and before any for the
   // frames' size, which every frame of a run shares.
-  let battle = new Battle(first, data, meta, party, log);
-
-  // The league's CP cap, which a CP read over it is a misread of: Training's by its league, GO Battle League's as its
-  // party screen states it, and until then as PvPoke has the league named. `undefined` until known, and then every
-  // shield is taken.
-  let cap: number | null | undefined = mode.mode === 'training' ? CAPS[mode.league] : meta?.cap;
+  let battle = new Battle(first, data, meta, menus.party, log);
 
   // The state of the frame before, which the shield prompt's showing is told from: the opponent's charged move.
   let last: State = 'other';
@@ -428,6 +343,9 @@ export async function run(
       await clock.sleep(20);
       continue;
     }
+
+    // As the menus last read them, which only the menus change.
+    const { party, cap } = menus;
 
     if (frames++ % 10 === 0 && keptFrom !== frame) {
       keptFrom = frame;
@@ -1217,10 +1135,7 @@ export async function run(
       known = clock.now();
       screen = state;
       status();
-      otherSince = undefined;
-
-      // Whatever the read under way finds, it is of a screen the battle has since come back from.
-      reading = undefined;
+      menus.leave();
 
       // The battle as this frame shows it, which our switches are decided by. A move is to be thrown now where one is
       // lit to throw and no hold keeps it.
@@ -1376,73 +1291,13 @@ export async function run(
     battle.hits.pause();
     battle.ourEnergy.pause();
 
-    if (otherSince === undefined) {
-      otherSince = clock.now();
-      screen = 'other';
-    }
-
-    if (clock.now() - otherSince >= MENU_AFTER_MS && !reading) {
-      const result = battling;
-      reading = {};
-
-      settle(
-        reading,
-        (async () => {
-          const screenshot = await phone.screenshot();
-
-          const menu = await readMenu(screenshot, { ...mode, result });
-
-          // Any menu after a battle ends it, not only its result: GO Battle League has gone from a faint straight to its
-          // card, with no verdict to read.
-          const ended = result && menu.screen !== 'unknown';
-
-          // The verdict fades in over a ✓ already teal, which is all a result after a battle is known by: the demo
-          // battle's first frame of its result has `YOU WIN!` half drawn, too faint to read, and a run that screenshot
-          // it there counted its win unread. The game holds the result until it is tapped, so a verdict unread is read
-          // again off a second screenshot, a frame or more later, before the battle is counted without it.
-          const verdict = async () => (await readOutcome(screenshot)) ?? readOutcome(await phone.screenshot());
-
-          return {
-            screenshot,
-            menu,
-            ended,
-            outcome: ended && menu.screen === 'result' ? await verdict() : undefined,
-          };
-        })(),
-      );
-    }
-
-    const done = reading?.done;
+    const done = menus.poll(battling, battles);
+    screen = menus.screen;
 
     if (done) {
-      reading = undefined;
-
-      if ('error' in done) {
-        throw done.error;
-      }
-
-      const { screenshot, menu: read } = done;
-
-      // The verdict fades in a frame after the result's ✓ is drawn, so a read can catch the ✓ alone, as the demo clip's
-      // frame 4913 shows it. That read is passed over for the next, and only a result unread twice running is counted
-      // without its verdict.
-      const fading: boolean = done.ended && read.screen === 'result' && !done.outcome && !faded;
-      faded = fading;
-
-      // GO Battle League never comes back to the map of itself once a battle has been played: a Poké Ball there is the
-      // reward encounter's, which is left for the player rather than tapped.
-      let menu: Menu =
-        fading || (read.screen === 'map' && mode.mode === 'gbl' && battles > 0) ? { screen: 'unknown' } : read;
-      screen = menu.screen;
-
-      // Greyed out read after read, not once among others.
-      if (menu.screen !== 'no-battle') {
-        noBattle = 0;
-      }
-
       // Counted before the screen is acted on: a set's last battle can end on the card with no battle left, where the run
       // stops. A result left over from before the run, from a battle it never played, is tapped past but not counted.
-      if (done.ended && menu.screen !== 'unknown') {
+      if (done.ended && done.menu.screen !== 'unknown') {
         battles++;
         battling = false;
         battle.undefer('the battle ended');
@@ -1451,12 +1306,12 @@ export async function run(
           outcomes[done.outcome]++;
         }
 
-        const unread = menu.screen === 'result' ? 'its result unread' : 'with no result';
+        const unread = done.menu.screen === 'result' ? 'its result unread' : 'with no result';
         log(`battle ${battles} ${done.outcome ?? `finished, ${unread}`}`);
 
         // The last battle wanted ending with no result leaves the screen it ended on alone: BATTLE on GO Battle League's
         // card would start another. Its result's ✓ is tapped as ever.
-        if (battles >= count && menu.screen !== 'result') {
+        if (battles >= count && done.menu.screen !== 'result') {
           return { battles, ...outcomes };
         }
 
@@ -1464,89 +1319,21 @@ export async function run(
         // whatever of PGSharp's lies over it, and looked for beside the loop, the next battle could start first. Not after
         // the last battle wanted, which leaves only its ✓ to tap and nothing to read.
         if (battles < count) {
-          panels = checkOverlay(await phone.views(), screenshot);
+          panels = checkOverlay(await phone.views(), done.screenshot);
         }
       }
 
-      const silhouettes = menu.screen === 'party' && 'tap' in menu ? readParty(screenshot, icons) : [];
+      const acted = await menus.act(done);
 
-      if (menu.screen === 'party' && 'tap' in menu) {
-        if (mode.mode === 'gbl' && menu.cap !== undefined) {
-          cap = menu.cap;
-        }
-
-        log(`party: ${silhouettes.map((species) => species ?? '?').join(', ')}`);
+      if (acted === 'lost') {
+        throw new Lost(kept);
       }
 
-      // A party named is looked for along the carousel before its party is used, the search starting afresh each time the
-      // party screen comes round.
-      if (menu.screen === 'party' && 'tap' in menu && mode.mode === 'gbl' && mode.party !== undefined) {
-        const step = searchParty(search, menu.title, mode.party);
-
-        // A step along the carousel is progress, as a scroll of the Battle tab is not: the search ends of itself, at the
-        // party or at both ends without it, where a scroll could go on for ever. Each step is a swipe, a settle and a
-        // read, some 3s, so a search turning back past a few parties would otherwise run out `LOST_MS` and end lost.
-        if (step === 'next' || step === 'back') {
-          known = clock.now();
-        }
-
-        log(`party: ${menu.title ?? '?'} in front, looking for ${mode.party}`);
-        menu =
-          step === 'use'
-            ? menu
-            : step === 'unread'
-              ? { screen: 'unknown' }
-              : { screen: 'party', swipe: CAROUSEL[step] };
-      } else if (menu.screen !== 'party') {
-        search = carousel();
-      }
-
-      // The party to be used, each card read off the selection screen unless it is the card last tried there, whose
-      // moves, if any were read, are kept. Where a card left anything but the party screen showing, the screen is read
-      // afresh rather than USE THIS PARTY tapped at it. The CPs are off the read `readMenu` made, where it made one.
-      if (menu.screen === 'party' && 'tap' in menu) {
-        const cps = menu.cps ?? (await readCps(screenshot));
-        const cards = silhouettes.map((species, slot) => ({ species, cp: cps[slot] ?? null }));
-        const tried = cards.map((card, slot) => (sameCard(lastTried[slot], card) ? party[slot] : undefined));
-        const stale = cards.flatMap((_, slot) => (tried[slot] ? [] : [slot]));
-
-        lastTried = cards.map((card, slot) => {
-          const was = tried[slot] && lastTried[slot];
-
-          return was ? { ...card, cp: card.cp ?? was.cp } : card.cp === null ? undefined : { ...card, cp: card.cp };
-        });
-        party = cards.map((card, slot) => tried[slot] ?? card);
-
-        if (stale.length > 0) {
-          const selection = await readCards(party, stale, screenshot);
-          party = selection.cards;
-          menu = selection.back ? menu : { screen: 'unknown' };
-        }
-      }
-
-      // A scroll is not progress: a tab already at its foot whose portraits go unmatched would be scrolled for ever, so
-      // the scrolls count towards `LOST_MS` from the tap that opened the tab. Matchmaking is: it is waited out, however
-      // long GO Battle League takes to find an opponent.
-      if ('swipe' in menu) {
-        if (clock.now() - known > LOST_MS) {
-          throw new Lost(kept);
-        }
-
-        log(`${menu.screen}: scroll`);
-        await phone.swipe(...menu.swipe, SCROLL_MS);
-      } else if (menu.screen === 'matchmaking') {
-        known = clock.now();
-      } else if (menu.screen === 'no-battle' && ++noBattle >= NO_BATTLE_READS) {
-        log('no-battle: a reward to collect');
+      if (acted === 'stop') {
         return { battles, ...outcomes };
-      } else if ('tap' in menu) {
-        log(`${menu.screen}: tap`);
-        await phone.tap(menu.tap);
-        known = clock.now();
       }
 
-      if (menu.screen !== 'unknown') {
-        await clock.sleep(MENU_SETTLE_MS);
+      if (acted === 'acted') {
         continue;
       }
     }
