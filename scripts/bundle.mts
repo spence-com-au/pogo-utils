@@ -49,6 +49,9 @@ if (entryPoints.length === 0) {
   throw new Error('No page names a module: the `<script type="module">` tags are not the shape this expects.');
 }
 
+// What the markup names, kept apart from the Worker's below for the check after the build of what a page loads.
+const named = [...entryPoints];
+
 // A module Worker, which a page starts by its path rather than its markup naming it, and which imports the chunks it
 // shares with the pages as they do.
 entryPoints.push(sourceOf(BATTLE_WORKER.replace(/\.js$/, ''), 'src/generated.ts'));
@@ -112,17 +115,23 @@ const { outputs } = result.metafile;
 /*
  * The Battle page's own thread reads nothing off the screen, the battle's Worker doing that, so nothing loaded with the
  * page may bring tesseract.js: CommonJS with no `sideEffects` field, it comes whole with any module that imports it,
- * however little of that module the page wants. What loads with the page is its chunk and every chunk reached from it
- * by a static import, rather than what it imports later.
+ * however little of that module the page wants. What loads with the page is the module the markup names, which reaches
+ * the page through `import()`, the page's own chunk, and every chunk either reaches by a static import, rather than
+ * what they import later.
  */
 const BATTLE_PAGE = 'src/pages/battle.tsx';
-const battle = Object.keys(outputs).find((path) => outputs[path]?.entryPoint === BATTLE_PAGE);
 
-if (battle === undefined) {
-  throw new Error(`No chunk was built for ${BATTLE_PAGE}, so what it loads cannot be checked.`);
-}
+const withBattle = new Set(
+  [...named, BATTLE_PAGE].map((entry) => {
+    const chunk = Object.keys(outputs).find((path) => outputs[path]?.entryPoint === entry);
 
-const withBattle = new Set([battle]);
+    if (chunk === undefined) {
+      throw new Error(`No chunk was built for ${entry}, so what the Battle page loads cannot be checked.`);
+    }
+
+    return chunk;
+  }),
+);
 
 for (const chunk of withBattle) {
   for (const { path, kind } of outputs[chunk]?.imports ?? []) {
