@@ -26,8 +26,8 @@
  * moves faint us: `wornDown`.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
-import { median } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { median } from '../../core/png.mts';
 import {
   buildsOf,
   capped,

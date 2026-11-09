@@ -9,12 +9,12 @@
  * it: the screen at the stream's size, which the menus read as they read a full-size screenshot.
  */
 
-import type { Phone as Connection, Process } from '../inventory/webusb.js';
+import type { Phone as Connection, Process } from '../core/browser/webusb.js';
 import { DEMO_SERIAL } from '../phone-store.js';
 import { GAME_ALONE } from '../tools/battle/overlay.mts';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
 import { type Clock } from '../tools/battle/run.mts';
-import { encodePng, type Image } from '../tools/inventory/png.mts';
+import { encodePng, type Image } from '../core/png.mts';
 
 /** A stream that sends what `send` is handed, until `end`, and nothing after: a process gone answers nothing. */
 export function stream() {

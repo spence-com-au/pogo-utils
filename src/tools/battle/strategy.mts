@@ -14,7 +14,7 @@
  * have is narrowed, in a league PvPoke ranks, to those its players run.
  */
 
-import { type Form, type GameData } from '../inventory/game-master.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
 import { type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';

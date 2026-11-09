@@ -7,7 +7,7 @@
 
 import { type Colourings } from './artwork.mts';
 import { DEX, type Wardrobe } from './costume.mts';
-import { closest, type Form, type GameData } from './game-master.mts';
+import { closest, type Form, type GameData } from '../../core/game-master.mts';
 import { identify, settledForm, shadowOf } from './identify.mts';
 import { type Looked } from './look.mts';
 import { type OverlayBox } from './overlay.mts';

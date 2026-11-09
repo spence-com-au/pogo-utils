@@ -14,15 +14,15 @@
  */
 
 import { cpDigits, cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
-import { type Line } from './ocr.mts';
-import { type GameData } from './game-master.mts';
-import { type Image } from './png.mts';
+import { type Line } from '../../core/ocr.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Image } from '../../core/png.mts';
 import { expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 /** How many digits the longest CP any form can show runs to, read off the game master vended beside the captures. */
 const LONGEST = cpDigits(
-  JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData,
+  JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData,
 );
 
 /**

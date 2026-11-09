@@ -8,9 +8,9 @@
  * frame.
  */
 
-import { closest, distance, type GameData } from '../inventory/game-master.mts';
-import { centre, fold, ocr, ocrLine, type Line } from '../inventory/ocr.mts';
-import { crop, scale, type Image } from '../inventory/png.mts';
+import { closest, distance, type GameData } from '../../core/game-master.mts';
+import { centre, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
+import { crop, scale, type Image } from '../../core/png.mts';
 import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 import { BUTTON_XS } from './recognise.mts';
 import { type Typing } from './strategy.mts';

@@ -51,7 +51,7 @@ export function Phone() {
     setStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
 
     try {
-      const { connect } = await loadChunk(() => import('./inventory/webusb.js'));
+      const { connect } = await loadChunk(() => import('./core/browser/webusb.js'));
       const picked = await connect();
 
       // The chooser dismissed, or the phone already held picked in it, which keeps whatever phone is already connected
@@ -88,7 +88,7 @@ export function Phone() {
       if (phone?.serial === DEMO_SERIAL) {
         await phone.close();
       } else {
-        const { demoPhone } = await loadChunk(() => import('./inventory/demo.js'));
+        const { demoPhone } = await loadChunk(() => import('./demo-phone.js'));
 
         // Asked again once the module is in, which a first use waits on: a phone picked in the chooser meanwhile, or
         // taken back by a battle that ended, is real, and `hold` would close it.

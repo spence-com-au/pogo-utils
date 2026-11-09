@@ -13,12 +13,12 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type Detail } from './detail.mts';
-import { type Form, type GameData } from './game-master.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
 import { identify, label, shadowOf } from './identify.mts';
 import { type Overlay } from './overlay.mts';
 
 /** The game master the readers are asserted against, vended beside the captures. */
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const PUMPKABOO: Overlay = { iv: { attack: 2, defense: 0, stamina: 6 }, levels: [1], checked: true, form: null };
 

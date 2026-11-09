@@ -5,10 +5,10 @@
  */
 
 import { measuresIn, type Detail } from './detail.mts';
-import { type Moves } from './moves.mts';
-import { ocr } from './ocr.mts';
+import { type Moves } from '../../core/moves.mts';
+import { ocr } from '../../core/ocr.mts';
 import { findOverlay, ivsOf, readOverlay, widen, type Overlay } from './overlay.mts';
-import { decodePng, screenIn } from './png.mts';
+import { decodePng, screenIn } from '../../core/png.mts';
 import {
   agree,
   count,
@@ -33,7 +33,7 @@ import {
   walk,
   type Landmark,
 } from './scan.mts';
-import { useTestEngine } from './test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, expect, test, vi } from 'vitest';
 

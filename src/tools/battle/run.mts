@@ -6,8 +6,8 @@
  */
 
 import { said } from '../../errors.ts';
-import { type GameData } from '../inventory/game-master.mts';
-import { type Image } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Image } from '../../core/png.mts';
 import { type Mode, type Outcome } from './menus.mts';
 import { type Icon } from './party.mts';
 import { BOTTOM, place } from './layout.mts';
@@ -50,9 +50,9 @@ export const LOST_MS = 20_000;
 
 /**
  * How often the battle's names and move labels are read again, from when the last read began, in milliseconds: what it
- * reads changes only when a Pokémon on either side does. A read takes about 220ms, a fast move's worth, so it runs
- * beside the battle rather than holding it up, which would leave every frame meanwhile unplayed, no swipe going out and
- * a prompt or a lit button seen late.
+ * reads changes only when a Pokémon on either side does. A read of its two bands takes about 70ms, two frames of the
+ * stream's 30 a second, so it runs beside the battle rather than holding it up, which would leave every frame meanwhile
+ * unplayed, no swipe going out and a prompt or a lit button seen late.
  */
 const READ_MS = 3_000;
 
@@ -987,7 +987,7 @@ export async function run(
       const throwing: Pick | undefined = finish ?? now ?? pick;
 
       // While a read of the `seen` now held is under way, no lit button is thrown if any is unnamed, for as long as the
-      // read takes, about 220ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
+      // read takes, about 70ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
       // of no colour known. That covers one of ours sent in after a faint with energy banked, lit at once and read at
       // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`. Nor a named move that is
       // to go now, a finish or a throw for fear of fainting, the turn waited being what either is thrown to save.

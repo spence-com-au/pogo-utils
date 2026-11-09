@@ -8,27 +8,19 @@
  * anything about the screen; the screenshot and what it reads as stay in memory here, and leave only as a download.
  */
 
-import { said } from '../errors.js';
-import { fetchOk as fetchStatus } from '../fetch-ok.js';
-import { GAME_MASTER, TESSERACT_VENDOR } from '../generated.js';
+import { Device, type Transport } from '../core/adb.mts';
+import { fetchBytes, gameData, once } from '../core/browser/fetch.js';
+import { wasmEngine } from '../core/browser/ocr.js';
+import { type Form, type GameData } from '../core/game-master.mts';
+import { useEngine } from '../core/ocr.mts';
+import { decodePng, type Image } from '../core/png.mts';
 import { ICON_BASE } from '../pokedex/icons.js';
-import { Device, type Transport } from '../tools/inventory/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../tools/inventory/artwork.mts';
 import { DEFAULTS } from '../tools/inventory/config.mts';
 import { wardrobeFor } from '../tools/inventory/costume.mts';
-import { type Form, type GameData } from '../tools/inventory/game-master.mts';
-import { useEngine } from '../tools/inventory/ocr.mts';
-import { MODEL, tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
-import { decodePng, type Image } from '../tools/inventory/png.mts';
 import { showProgress } from '../tools/inventory/progress.mts';
 import { readScreen, type Reading } from '../tools/inventory/report.mts';
 import { storage, unsearchable } from '../tools/inventory/storage.mts';
-
-/**
- * How many workers to read with at most. Each holds its own copy of the model and its own WebAssembly heap, which on a
- * phone is the thing that runs out first, and a screen's reads are a few dozen bands rather than a queue worth eight.
- */
-const MAX_WORKERS = 4;
 
 /** Everything a read needs that is the same for every screen. */
 interface Kit {
@@ -45,74 +37,6 @@ export function unreadable(): string | null {
   return window.isSecureContext
     ? null
     : 'Reading a screenshot needs a secure context too: open this page from localhost or the published site.';
-}
-
-/** The shared `fetchOk`, naming the URL in whatever it throws: the readers that call it report a failure as thrown. */
-export async function fetchOk(url: string): Promise<Response> {
-  try {
-    return await fetchStatus(url);
-  } catch (e) {
-    throw new Error(`${url}: ${said(e)}`, { cause: e });
-  }
-}
-
-/** What `url` serves, the bytes of it. */
-export async function fetchBytes(url: string): Promise<Uint8Array> {
-  return new Uint8Array(await (await fetchOk(url)).arrayBuffer());
-}
-
-/**
- * `make`, run by the first call with its arguments, and the promise it made answered to every call after. A promise
- * that rejected is let go, so the next call runs `make` again rather than answering every later one with the network
- * as it was the first time, and so is one whose value `keeps` refuses.
- */
-function once<Args extends unknown[], Value>(
-  make: (...args: Args) => Promise<Value>,
-  keeps: (value: Value) => boolean = () => true,
-): (...args: Args) => Promise<Value> {
-  let kept: Promise<Value> | null = null;
-
-  return (...args) => {
-    if (kept === null) {
-      const promise = (kept = make(...args));
-
-      const forget = () => {
-        if (kept === promise) {
-          kept = null;
-        }
-      };
-
-      promise.then((value) => {
-        if (!keeps(value)) {
-          forget();
-        }
-      }, forget);
-    }
-
-    return kept;
-  };
-}
-
-/**
- * The vended game master, fetched once for every page that reads the screen against it: this one's reads and the
- * battle tool's.
- */
-export const gameData = once(async (): Promise<GameData> => (await fetchOk(GAME_MASTER)).json() as Promise<GameData>);
-
-/**
- * The WebAssembly Tesseract, its worker and cores found against `base`, the page's URL. Tesseract.js resolves a
- * relative path against the page itself, but in a Worker it takes one as it is, and the worker it starts from a blob
- * has no URL of its own to resolve one against, so a battle's Worker hands its page's.
- */
-export function wasmEngine(base: string, progress?: (fraction: number) => void) {
-  return tesseractWasm({
-    langPath: MODEL,
-    workers: Math.min(navigator.hardwareConcurrency || 1, MAX_WORKERS),
-    workerPath: new URL(TESSERACT_VENDOR + 'worker.min.js', base).href,
-    corePath: new URL(TESSERACT_VENDOR, base).href,
-    cache: true,
-    ...(progress && { progress }),
-  });
 }
 
 /**

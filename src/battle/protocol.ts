@@ -4,7 +4,7 @@
  * handed to it for the run and back to the page after.
  */
 
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 import { type Status } from '../tools/battle/reporter.mts';
 import { type Options, type Tally } from '../tools/battle/run.mts';
 
@@ -12,11 +12,13 @@ import { type Options, type Tally } from '../tools/battle/run.mts';
  * What the page starts a run with: what `run` is to play, loaded by the page, and the page's URL, which the Worker finds
  * the OCR engine's files against. Neither could be had from the Worker's own URL, which is its script's, under
  * `src/battle/`, where every path the site publishes is relative to the page. No frames are kept, there being nowhere
- * in a page to keep them, and the meta of the league tapped is loaded by the Worker, a message carrying no function.
+ * in a page to keep them, and the meta of the league tapped is loaded by the Worker, a message carrying no function:
+ * out of `pvpoke`, PvPoke's files as the page fetched them for `--league` by URL, none for Training.
  */
 export interface Play {
   battle: Omit<Options, 'keep' | 'metaOf'>;
   base: string;
+  pvpoke: Map<string, Uint8Array>;
 }
 
 /** What the page says: start on the phone `serial` names, which the page has let go of; the latest frame; stop. */

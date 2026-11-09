@@ -15,10 +15,10 @@ import { expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dexOn } from './pokedex.mts';
 import { identify, label } from './identify.mts';
-import { type GameData } from './game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 
 /** The game master the readers are asserted against, vended beside the captures. */
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const lines = (...texts: readonly string[]) =>
   texts.map((text, at) => ({ text, left: 0, top: at * 40, width: 400, height: 32 }));

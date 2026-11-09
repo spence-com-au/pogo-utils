@@ -13,8 +13,8 @@
  * screenshots.
  */
 
-import { fold, ocr, type Line } from '../inventory/ocr.mts';
-import { crop, rgb, type Image } from '../inventory/png.mts';
+import { fold, ocr, type Line } from '../../core/ocr.mts';
+import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Box, type Point, type Size } from './layout.mts';
 import { readCps } from './party.mts';
 

@@ -1,7 +1,7 @@
 /**
- * `Pictures` on its own, apart from the MPEG-TS writer in `video.mts`, so that a browser can cut a recording into the
- * pictures WebCodecs decodes one at a time: `video.mts` reads a recording as Node's stream and pumps on an unreferenced
- * Node timer, and this reaches nothing.
+ * `Pictures` on its own, apart from the MPEG-TS writer in `node/video.mts`, so that a browser can cut a recording into
+ * the pictures WebCodecs decodes one at a time: `node/video.mts` reads a recording as Node's stream and pumps on an
+ * unreferenced Node timer, and this reaches nothing.
  */
 
 /** One picture: its NAL units as they came, Annex B, and when its first arrived. */

@@ -29,13 +29,13 @@ flowchart LR
 
 ### Watching the screen
 
-- **[`stream.mts`](stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second, and
-  decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen`, in [`screen.mts`](screen.mts),
-  keeps one recording going after another, since `screenrecord` stops after 180s, and always answers the latest frame.
-  It knows a recording only as a `Feed` of frames it can stop, so a page plugs in its own: `screenrecord` over WebUSB,
-  decoded by WebCodecs, in [`src/battle/feed.ts`](../../battle/feed.ts). What `screenrecord` is asked for, the picture's
-  size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's `child_process` so that a page
-  streaming over WebUSB asks for the same picture.
+- **[`stream.mts`](node/stream.mts)** runs `screenrecord` on the phone, which sends H.264 at about 30 frames a second,
+  and decodes it with `ffmpeg` into the same `Image` the inventory readers take. `Screen`, in
+  [`screen.mts`](screen.mts), keeps one recording going after another, since `screenrecord` stops after 180s, and always
+  answers the latest frame. It knows a recording only as a `Feed` of frames it can stop, so a page plugs in its own:
+  `screenrecord` over WebUSB, decoded by WebCodecs, in [`src/battle/feed.ts`](../../battle/feed.ts). What `screenrecord`
+  is asked for, the picture's size and bit rate, is in [`record-command.mts`](record-command.mts), apart from Node's
+  `child_process` so that a page streaming over WebUSB asks for the same picture.
 - **How far behind the phone a frame arrives:** a median of 51ms (p90 57ms, p99 88ms) on a Pixel 4 XL showing the map,
   which redraws at 30 frames a second. That was 85ms (p90 89ms) while `ffmpeg`'s `rawvideo` encoder held each frame
   until the next. It was measured with `screenrecord --bugreport`, which stamps every frame with the time the phone
@@ -47,9 +47,9 @@ flowchart LR
   until something next moves, since `screenrecord` sends nothing for a still screen. Cutting it needs a source that
   frames its pictures, as scrcpy's server does with each packet's size. `adb`'s reads don't: 13 of 612 carried the tail
   of a picture, up to 5ms after its start, so a marker added after each read would cut one picture in fifty in two.
-- **[`video.mts`](video.mts)** keeps the same H.264 for `--keep-video`, heard beside the decoder's pipe so nothing is
-  recorded twice. It cuts the bytes into pictures as they come, by the NAL units that open one, stamps each with when it
-  arrived since the run began, and writes it as MPEG-TS, raw H.264 having no times of its own: a still screen sends
+- **[`video.mts`](node/video.mts)** keeps the same H.264 for `--keep-video`, heard beside the decoder's pipe so nothing
+  is recorded twice. It cuts the bytes into pictures as they come, by the NAL units that open one, stamps each with when
+  it arrived since the run began, and writes it as MPEG-TS, raw H.264 having no times of its own: a still screen sends
   nothing, so a picture's place in the video is only its stamp. `screenrecord` holds its first pictures while it starts
   and sends them in a rush, the first showing what the last recording sent 38–98ms earlier across 14 hand-overs, so the
   video goes over to the next recording 100ms before its first byte, dropping what the last sent from there and holding
@@ -102,10 +102,10 @@ for text and done every few seconds.
   Pokémon low on HP can faint while it waits. Nothing is swiped for 0.7s after a charged-move tap, since a swipe
   straight after one could cost the throw. A bench card to switch to is tapped ahead of a lit move, since the switch is
   made to keep that move's energy.
-- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts), over the
-  marker protocol in [`held-shell.mts`](../inventory/held-shell.mts) that a page's shell over WebUSB shares), not a
+- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../../core/node/adb-cli.mts), over
+  the marker protocol in [`held-shell.mts`](../../core/held-shell.mts) that a page's shell over WebUSB shares), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
-  ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
+  ([`touchscreen.mts`](../../core/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
   report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
   touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included. Over a Training
@@ -147,13 +147,12 @@ for text and done every few seconds.
     its silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
     species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
   - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
-    rows matched as `pnpm inventory` matches the detail screen's moves
-    ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. One its dex number found
-    is that species, its moves matched among its own whatever types the panel reads, a type OCR missed leaving them to
-    fit another. Otherwise its types and moves name the species, which a nickname hides: the one species whose forms of
-    those types hold every move read. Where they name none, the silhouette's species stands, unless the search by its
-    dex number took on a selection screen recognised as such and showed no pink cell, which rules it out and leaves the
-    card unnamed.
+    rows matched as `pnpm inventory` matches the detail screen's moves ([`../../core/moves.mts`](../../core/moves.mts)),
+    among the species' own moves first. One its dex number found is that species, its moves matched among its own
+    whatever types the panel reads, a type OCR missed leaving them to fit another. Otherwise its types and moves name
+    the species, which a nickname hides: the one species whose forms of those types hold every move read. Where they
+    name none, the silhouette's species stands, unless the search by its dex number took on a selection screen
+    recognised as such and showed no pink cell, which rules it out and leaves the card unnamed.
   - **Leaving it as found:** the game keeps a search for the next opening, so one seen to take is cleared before CANCEL.
     One OCR did not see take is left, a pink cell being no sign of one: the party is often at the top of storage, in
     view unsearched, and ⊗ tapped with no search in force opens the keyboard over CANCEL. The next search typed clears
@@ -253,13 +252,13 @@ next connect ([`src/battle/awake.ts`](../../battle/awake.ts)).
 
 **[`reporter.mts`](reporter.mts)** is how a run tells of itself: events (a tap, a throw, a shield taken and why, a
 faint) and a status sent every frame, which the Worker passes on to the Battle tab to draw.
-**[`report.mts`](report.mts)** draws them in a terminal. There, `live` draws a fixed full-screen panel with our side on
-the left and the opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty, Ghostty and
-WezTerm do, the phone's latest frame is drawn down the panel's left edge at full height, so long as the table beside it
-still has 80 columns and `--no-graphics` doesn't leave it out. [`kitty.mts`](kitty.mts) draws it, passing each frame as
-a temporary file the terminal reads, and asks the terminal first, so one that can't read the file, such as a remote one,
-draws no picture rather than a broken one. Where stderr isn't a terminal, `plain` writes lines instead, which is what
-`--verbose` gives there.
+**[`report.mts`](node/report.mts)** draws them in a terminal. There, `live` draws a fixed full-screen panel with our
+side on the left and the opponent's on the right. Where the terminal speaks the Kitty graphics protocol, as Kitty,
+Ghostty and WezTerm do, the phone's latest frame is drawn down the panel's left edge at full height, so long as the
+table beside it still has 80 columns and `--no-graphics` doesn't leave it out. [`kitty.mts`](node/kitty.mts) draws it,
+passing each frame as a temporary file the terminal reads, and asks the terminal first, so one that can't read the file,
+such as a remote one, draws no picture rather than a broken one. Where stderr isn't a terminal, `plain` writes lines
+instead, which is what `--verbose` gives there.
 
 The phone is drawn ten times a second rather than every frame. At 30 a second Ghostty fell behind reading the 1.2 MB
 files, and the run sat blocked writing the panel to it, for 181ms at the longest. Ten a second costs the run itself
@@ -271,9 +270,9 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 
 ### Game data
 
-- **The game master,** from [`../inventory/download.mts`](../inventory/download.mts): every form's types, stats and move
-  pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded and cached
-  for a week; tests read the vended [`../inventory/fixtures/game-master.json`](../inventory/fixtures/game-master.json).
+- **The game master,** from [`../../core/node/download.mts`](../../core/node/download.mts): every form's types, stats
+  and move pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded
+  and cached for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json).
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
   League. It matches `--league` to PvPoke's cup by title before the run, then the title of the league card the run taps,
   which can be a different cup: `--league master` taps Master League: Mega Edition while it is on. A cup PvPoke doesn't

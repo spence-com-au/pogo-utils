@@ -7,12 +7,12 @@
  */
 
 import { type Detail } from './detail.mts';
-import { type IVs } from './game-master.mts';
+import { type IVs } from '../../core/game-master.mts';
 import { type Identity, type Shade } from './identify.mts';
-import { type Moves } from './moves.mts';
-import { fold } from './ocr.mts';
+import { type Moves } from '../../core/moves.mts';
+import { fold } from '../../core/ocr.mts';
 import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
-import { type Image } from './png.mts';
+import { type Image } from '../../core/png.mts';
 
 /** The searches that answer the yes-or-no fields, each field named for the game's own search term. */
 export const FLAGS = ['shiny', 'lucky', 'costume', 'shadow', 'purified'] as const;

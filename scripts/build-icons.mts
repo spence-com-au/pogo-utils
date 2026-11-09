@@ -15,7 +15,7 @@ import { Resvg } from '@resvg/resvg-js';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DIST } from '../src/generated.ts';
-import { decodePng, encodePng, pad, type Image } from '../src/tools/inventory/png.mts';
+import { decodePng, encodePng, pad, type Image } from '../src/core/png.mts';
 
 /** The one icon this repository keeps. Everything written below is a rendering of it. */
 const SOURCE = 'favicon.svg';

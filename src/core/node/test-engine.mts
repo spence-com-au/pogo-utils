@@ -10,8 +10,8 @@
  */
 
 import { tesseractCli } from './ocr-cli.mts';
-import { useEngine } from './ocr.mts';
-import { tesseractWasm } from './ocr-wasm.mts';
+import { useEngine } from '../ocr.mts';
+import { tesseractWasm } from '../ocr-wasm.mts';
 import { execFileSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 

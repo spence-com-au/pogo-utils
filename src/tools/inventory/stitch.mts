@@ -16,7 +16,7 @@
  * was never on the screen.
  */
 
-import { median, rgb, type Image } from './png.mts';
+import { median, rgb, type Image } from '../../core/png.mts';
 
 /** The fractions of a frame's height that scroll, which is the region the game draws its own content in. */
 export interface Band {

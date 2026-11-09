@@ -4,11 +4,12 @@
  * takes these for the moves and `snap` for the whole screen, reaching the phone only through a `Device`.
  */
 
-import { type Device } from './adb.mts';
+import { type Device } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
-import { difference, type Image } from './png.mts';
+import { difference, type Image } from '../../core/png.mts';
 import { offsetBetween, scrollStep } from './stitch.mts';
-import { setTimeout as sleep } from 'node:timers/promises';
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * The band a screen is watched for movement in, and how much of it may still differ for it to count as still. The

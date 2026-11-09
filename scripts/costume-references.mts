@@ -21,12 +21,12 @@
  * ```
  */
 
-import { CACHE, cachedIcon, loadGameData } from '../src/tools/inventory/download.mts';
+import { CACHE, cachedIcon, loadGameData } from '../src/core/node/download.mts';
 import { designFiles, measure, wardrobeFor, type References } from '../src/tools/inventory/costume.mts';
-import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
-import { useEngine } from '../src/tools/inventory/ocr.mts';
+import { tesseractCli } from '../src/core/node/ocr-cli.mts';
+import { useEngine } from '../src/core/ocr.mts';
 import { findOverlay } from '../src/tools/inventory/overlay.mts';
-import { decodePng } from '../src/tools/inventory/png.mts';
+import { decodePng } from '../src/core/png.mts';
 import { artworkFrom } from '../src/tools/inventory/report.mts';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

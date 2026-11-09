@@ -5,7 +5,7 @@ import { BOTTOM, place, type Point } from './layout.mts';
 import { BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
-import { decodeFrames } from './stream.mts';
+import { decodeFrames } from './node/stream.mts';
 
 /** The size of the committed frames, a Pixel 4 XL's stream. */
 const SIZE = streamSize({ width: 1440, height: 3040 });

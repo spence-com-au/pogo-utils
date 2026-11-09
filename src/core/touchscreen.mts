@@ -11,7 +11,7 @@
  * shell holds `/dev/uhid` open: a shell gone with the connection takes it with it, along with any touch still down.
  */
 
-import { said } from '../../errors.ts';
+import { said } from '../errors.ts';
 import { type Transport } from './adb.mts';
 
 /** A pause, by the global timer rather than `node:timers/promises`, so a page can make the touchscreen too. */

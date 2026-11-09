@@ -17,6 +17,9 @@ export const POGO_ASSETS = 'https://raw.githubusercontent.com/PokeMiners/pogo_as
 
 export const ICON_BASE = `${POGO_ASSETS}${encodeURI(ICON_DIR)}/`;
 
+/** How many icons to fetch at once. Each is some 24 KB, so the time goes on round trips rather than bytes. */
+export const FETCH_BATCH = 16;
+
 /** The file `pogo_assets` holds a type's round icon in, which the battle tool caches under the same name. */
 export const typeIconFile = (type: string) => `POKEMON_TYPE_${type.toUpperCase()}.png`;
 

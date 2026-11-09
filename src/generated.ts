@@ -24,7 +24,7 @@ export const EVENTS_FEED = 'events.ics';
  *
  * `TESSERACT_VENDOR` ends in a slash because Tesseract.js takes it as a `corePath` it appends a file name to.
  */
-export const GAME_MASTER = 'src/tools/inventory/fixtures/game-master.json';
+export const GAME_MASTER = 'data/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**

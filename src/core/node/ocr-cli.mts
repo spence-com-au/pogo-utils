@@ -4,7 +4,7 @@
  * the whitelist `ocrLine` narrows a read with.
  */
 
-import { type Engine } from './ocr.mts';
+import { type Engine } from '../ocr.mts';
 import { execFile } from 'node:child_process';
 
 /**

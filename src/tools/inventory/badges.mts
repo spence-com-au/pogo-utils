@@ -5,18 +5,15 @@
  * and the symbol need no OCR at all.
  */
 
-import { closest } from './game-master.mts';
-import { fold, ocr, ocrLine, type Line } from './ocr.mts';
-import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from './png.mts';
+import { closest, type Size } from '../../core/game-master.mts';
+import { fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
+import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from '../../core/png.mts';
 
 /**
  * What the symbol beside the HP says, in the game's own search terms: `genderunknown` is what the game calls a species
  * with no gender, so each value is the search that finds the Pokémon it describes.
  */
 export type Gender = 'male' | 'female' | 'genderunknown';
-
-/** The four bands the game records, each of which `src/search/terms.ts` has a search for. */
-export type Size = 'XXL' | 'XL' | 'XS' | 'XXS';
 
 interface Patch {
   left: number;

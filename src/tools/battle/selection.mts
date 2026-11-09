@@ -13,10 +13,10 @@
  * full-size screenshots: the header, search field and grid pinned to the top, CANCEL to the foot.
  */
 
-import { closest, type Form, type GameData } from '../inventory/game-master.mts';
-import { readMoves, type Moves } from '../inventory/moves.mts';
-import { fold, ocr, type Line } from '../inventory/ocr.mts';
-import { crop, rgb, type Image } from '../inventory/png.mts';
+import { closest, type Form, type GameData } from '../../core/game-master.mts';
+import { readMoves, type Moves } from '../../core/moves.mts';
+import { fold, ocr, type Line } from '../../core/ocr.mts';
+import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
 

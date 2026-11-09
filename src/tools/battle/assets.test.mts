@@ -6,8 +6,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { expect, test, vi } from 'vitest';
 import { GAME_MASTER, SILHOUETTES } from '../../generated.ts';
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng } from '../../core/png.mts';
 import { decodeSilhouettes, formIcons, typeIcons, type Download, type Silhouettes } from './assets.mts';
 import { silhouetteOfIcon } from './party.mts';
 

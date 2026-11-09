@@ -4,8 +4,8 @@
  * views of their own, and the game's pixels are all there is.
  *
  * Which Tesseract is an `Engine`, installed once with `useEngine` by whatever is running the readers: the CLI in
- * `ocr-cli.mts` for `pnpm inventory`, and the WebAssembly build in `ocr-wasm.mts` for the Inventory page. Neither is
- * imported here, since each drags in what the other platform lacks — a child process on one side, a `Worker` on the
+ * `node/ocr-cli.mts` for `pnpm inventory`, and the WebAssembly build in `ocr-wasm.mts` for the Inventory page. Neither
+ * is imported here, since each drags in what the other platform lacks — a child process on one side, a `Worker` on the
  * other — and the readers below this have to run on both.
  *
  * Downstream, readers anchor on where text sits wherever the screen offers something to anchor on, rather than on fixed

@@ -18,8 +18,8 @@
  * `0900 M © Os` where 900 is Kleavor.
  */
 
-import { fold, type Line } from './ocr.mts';
-import { type GameData } from './game-master.mts';
+import { fold, type Line } from '../../core/ocr.mts';
+import { type GameData } from '../../core/game-master.mts';
 
 /**
  * A four-digit number followed by a name, which is the shape of the entry's title and of nothing else on the screen.

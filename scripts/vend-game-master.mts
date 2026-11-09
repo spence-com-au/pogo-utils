@@ -17,7 +17,7 @@
  */
 
 import { GAME_MASTER } from '../src/generated.ts';
-import { loadGameData } from '../src/tools/inventory/download.mts';
+import { loadGameData } from '../src/core/node/download.mts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

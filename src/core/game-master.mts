@@ -9,11 +9,13 @@
  * alternative to report rather than one to pick.
  *
  * The tables and the arithmetic over them, which a browser runs as readily as Node. Where the tables come from is
- * `download.mts` for `pnpm inventory` and the vended `fixtures/game-master.json` for the corpus and the Inventory page.
+ * `node/download.mts` for the CLIs and the vended `data/game-master.json` for the corpus and the Inventory page.
  */
 
-import { type Size } from './badges.mts';
 import { fold } from './ocr.mts';
+
+/** The four bands the game records, each of which `src/search/terms.ts` has a search for. */
+export type Size = 'XXL' | 'XL' | 'XS' | 'XXS';
 
 export interface Form {
   dex: number;

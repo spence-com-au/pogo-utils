@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { decodePng } from '../inventory/png.mts';
+import { decodePng } from '../../core/png.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
 import { type Point } from './layout.mts';
 

@@ -5,10 +5,10 @@
  * is how a wrong tap shows: the run stalls, and ends `Lost`.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng, type Image } from '../inventory/png.mts';
-import { useEngine, type Engine } from '../inventory/ocr.mts';
-import { wasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, type Image } from '../../core/png.mts';
+import { useEngine, type Engine } from '../../core/ocr.mts';
+import { wasmEngine } from '../../core/node/test-engine.mts';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -53,9 +53,7 @@ const tsv: Engine['tsv'] = (image, psm, whitelist) => {
   return read;
 };
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const fixture = (name: string) =>
   decodePng(readFileSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url))));

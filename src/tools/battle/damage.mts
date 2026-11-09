@@ -12,7 +12,7 @@
  * prompt, and so the stat stages those move: their attack and our defense, as they stand, go into the hit.
  */
 
-import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../inventory/game-master.mts';
+import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../../core/game-master.mts';
 import { type Meta } from './meta.mts';
 import { chargedOf, effectiveness, formsOf, MOVES_HELD, STAB, stage, type Pick, type Shown } from './strategy.mts';
 

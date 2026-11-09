@@ -3,9 +3,9 @@
  * however often it is photographed, and one `scrolling` through a detail screen and the moves below it.
  */
 
-import { Device } from './adb.mts';
+import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
-import { decodePng, encodePng, type Image } from './png.mts';
+import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { SETTLE_ATTEMPTS, scrollFrames, scrollUp, settled } from './scroll.mts';
 import { offsetBetween } from './stitch.mts';
 import { scrolling } from './test-phone.mts';

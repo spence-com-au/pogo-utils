@@ -5,19 +5,20 @@
  * against recordings, the script handing in the phone, the overlay and the walk it reaches them by.
  */
 
-import { type Device } from './adb.mts';
+import { type Device } from '../../core/adb.mts';
 import { type Config } from './config.mts';
 import { measuresIn, powerUpOn } from './detail.mts';
-import { type Form, type GameData } from './game-master.mts';
-import { movesCutOff, parseMoves, type Moves } from './moves.mts';
-import { ocr } from './ocr.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
+import { movesCutOff, parseMoves, type Moves } from '../../core/moves.mts';
+import { ocr } from '../../core/ocr.mts';
 import { type Overlay } from './overlay.mts';
-import { type Image } from './png.mts';
+import { type Image } from '../../core/png.mts';
 import { movesOf, reachMoves, type Reading, type Steps } from './scan.mts';
 import { SCROLL_DRAG_MS, scrollFrames, scrollUp } from './scroll.mts';
 import { offsetBetween, scrollStep, stitch } from './stitch.mts';
 import { dialogOpen } from './storage.mts';
-import { setTimeout as sleep } from 'node:timers/promises';
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** The note on a row whose swipe to the moves moved further than `offsetBetween` could measure, once however many. */
 export const UNMEASURED_SWIPE = 'the swipe to the moves could not be measured; the scroll back is what it dragged';

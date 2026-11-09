@@ -9,7 +9,7 @@
  * to it, menus among them, every distance below in the frame's width, which is what the game sizes the bars by.
  */
 
-import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
+import { chroma, luminance, median, rgb, type Image } from '../../core/png.mts';
 import { type Area } from './layout.mts';
 import { type Colour } from './minigame.mts';
 

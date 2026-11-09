@@ -1,5 +1,5 @@
 import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
-import { encodePng } from './png.mts';
+import { encodePng } from '../png.mts';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

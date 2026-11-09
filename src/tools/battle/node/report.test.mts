@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { describe, live, panel, plain, rule } from './report.mts';
-import { ending, summary, type Fight, type Status } from './reporter.mts';
+import { ending, summary, type Fight, type Status } from '../reporter.mts';
 
 const FIGHT: Fight = {
   own: { species: 'Charizard', cp: 2495, hp: 0.74, shields: 1, left: 2 },

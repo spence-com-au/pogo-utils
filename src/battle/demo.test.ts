@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { DEMO_SERIAL } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
-import { decodePng, type Image } from '../tools/inventory/png.mts';
+import { decodePng, type Image } from '../core/png.mts';
 import { demoConnection } from './demo.js';
 import { battlePhone } from './phone.js';
 import { FakeChunk, FakeDecoder } from './test-phone.js';

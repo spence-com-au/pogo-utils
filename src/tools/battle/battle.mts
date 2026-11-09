@@ -3,7 +3,7 @@
  * one battle into the next, as one kept beside the battle and left out of its reset would.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { Bench } from './bench.mts';
 import { type Colour } from './minigame.mts';
 import { NO_STAGE_PAIR, NO_STAGES, type StagePair } from './damage.mts';

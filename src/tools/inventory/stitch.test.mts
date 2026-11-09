@@ -14,7 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { offsetBetween, scrollStep, stitch, SCREEN_BAND, type Band } from './stitch.mts';
-import { crop, decodePng, rgb, screenIn, type Image } from './png.mts';
+import { crop, decodePng, rgb, screenIn, type Image } from '../../core/png.mts';
 
 /**
  * Where the frames below put their furniture, which is a fact about the screen rather than about any band. The band is

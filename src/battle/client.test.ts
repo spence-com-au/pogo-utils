@@ -8,12 +8,12 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { DEMO_SERIAL, PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { type Status } from '../tools/battle/reporter.mts';
 import { Screen } from '../tools/battle/screen.mts';
-import { type GameData } from '../tools/inventory/game-master.mts';
+import { type GameData } from '../core/game-master.mts';
 import { putBack } from './awake.js';
 import { lend, type Endpoint } from './client.js';
 import { host } from './host.js';
@@ -27,13 +27,14 @@ const PLAY: Play = {
   battle: {
     mode: { mode: 'training', leader: 'spark', league: 'great' },
     data: JSON.parse(
-      new TextDecoder().decode(fixture(new URL('../tools/inventory/fixtures/game-master.json', import.meta.url))),
+      new TextDecoder().decode(fixture(new URL('../../data/game-master.json', import.meta.url))),
     ) as GameData,
     icons: [],
     typeIcons: {},
     meta: { cup: 'all', cap: 1500, movesets: new Map() },
   },
   base: 'http://localhost:8000/#/battle',
+  pvpoke: new Map(),
 };
 
 /** What the page is told, event by event and the latest status. */

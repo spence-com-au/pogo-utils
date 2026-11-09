@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { NO_STAGES, type Verdict, wouldShield } from './damage.mts';
 import {
   Energy,
@@ -20,9 +20,7 @@ import {
 } from './energy.mts';
 import { type Meta } from './meta.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const MATCHUP: Matchup = {
   own: { species: 'Registeel', cp: 1497 },

@@ -9,7 +9,7 @@
  * the same screen scrolled down. The level and the three IVs come off PGSharp's own overlay, which is why the scanner
  * needs PGSharp rather than the stock client — nothing else gives the IVs without walking the appraisal dialogue every
  * time. The form is worked out rather than read, HP being fixed by base stamina, the stamina IV and the level; see
- * `inventory/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
+ * `src/core/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
  * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
  * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
  * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
@@ -61,22 +61,22 @@
  */
 
 import { said } from '../src/errors.ts';
-import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
-import { Device, type Transport } from '../src/tools/inventory/adb.mts';
-import { type Colourings } from '../src/tools/inventory/artwork.mts';
+import { adbCli, adbHeld } from '../src/core/node/adb-cli.mts';
+import { Device, type Transport } from '../src/core/adb.mts';
+import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { parseDetail, readLines } from '../src/tools/inventory/detail.mts';
 import { wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
-import { CACHE, cachedIcon, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
-import { type Form, type GameData } from '../src/tools/inventory/game-master.mts';
+import { CACHE, cachedIcon, loadGameData } from '../src/core/node/download.mts';
+import { type Form, type GameData } from '../src/core/game-master.mts';
 import { clearable, identify } from '../src/tools/inventory/identify.mts';
 import { lookForMoves } from '../src/tools/inventory/look.mts';
-import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
-import { useEngine, type Line } from '../src/tools/inventory/ocr.mts';
+import { tesseractCli } from '../src/core/node/ocr-cli.mts';
+import { useEngine, type Line } from '../src/core/ocr.mts';
 import { findOverlay, ivsOf, readOverlay } from '../src/tools/inventory/overlay.mts';
 import { flagPasses } from '../src/tools/inventory/passes.mts';
-import { decodePng, encodePng, type Image } from '../src/tools/inventory/png.mts';
+import { decodePng, encodePng, type Image } from '../src/core/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
@@ -108,7 +108,7 @@ import {
 import { scrollFrames, scrollUp, settled } from '../src/tools/inventory/scroll.mts';
 import { offsetBetween, stitch } from '../src/tools/inventory/stitch.mts';
 import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
-import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
+import { touchscreen } from '../src/core/touchscreen.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -311,6 +311,10 @@ let wardrobe: Promise<Wardrobe | null> | null = null;
  */
 const wardrobeOn = (data: GameData) => () => (wardrobe ??= wardrobeFor(data, cachedIcon(CACHE, options.refresh)));
 
+/** The colourings of every form the artwork could settle, its icons out of the same cache. */
+const iconsFor = (data: GameData) =>
+  signaturesFor(data, async (file) => signatureOfIcon(await cachedIcon(CACHE, options.refresh)(file)));
+
 /**
  * Everything each reader makes of one screenshot, for tuning: `readScreen` does the reading, which the Inventory page
  * shares, and this prints it. The answer first, each field once and coloured by where it came from; then, for
@@ -404,7 +408,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
   const device = new Device(adbCli(options.serial));
   await device.check();
   const data = await loadGameData(CACHE, options.refresh);
-  const icons = await iconsFor(CACHE, data, options.refresh);
+  const icons = await iconsFor(data);
 
   // The chips under the HP say which tags a Pokémon carries, so this is a vocabulary rather than a list to search for:
   // the names are the user's own, and only something to match against can say that `Shiny SJ` is the `Shiny` chip with
@@ -824,7 +828,7 @@ async function snap() {
   }
 
   const data = await gameData();
-  const read = await report(image, data, await iconsFor(CACHE, data, options.refresh));
+  const read = await report(image, data, await iconsFor(data));
 
   const reasons = refusals(read);
 
@@ -927,7 +931,7 @@ if (command === 'scan') {
   await snap();
 } else if (command === 'parse' && rest.length > 0) {
   const data = await loadGameData(CACHE, options.refresh);
-  const icons = await iconsFor(CACHE, data, options.refresh);
+  const icons = await iconsFor(data);
 
   // Ahead of the first header rather than under it, being about every screen below.
   colourKey();

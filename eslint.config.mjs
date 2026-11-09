@@ -71,4 +71,29 @@ export default [
       globals: globals.nodeBuiltin,
     },
   },
+
+  {
+    files: ['src/core/**'],
+    rules: importsNone('(^|\\/)(tools|inventory|battle)\\/', '`src/core/` imports no tool.'),
+  },
+  {
+    files: ['src/tools/battle/**', 'src/battle/**'],
+    rules: importsNone(
+      '(^|\\/)inventory\\/',
+      'The battle tool reaches what it shares with the inventory through `src/core/`.',
+    ),
+  },
 ];
+
+/**
+ * The rules refusing an import whose specifier `regex` matches. The phone, its screen and the game master are reached
+ * through `src/core/`, which every tool stands on and so imports none of them, and the battle tool reaches none of them
+ * through the inventory tool. `no-restricted-imports` sees a static import alone, so an `import()` is refused by its
+ * specifier too.
+ */
+function importsNone(regex, message) {
+  return {
+    'no-restricted-imports': ['error', { patterns: [{ regex, message }] }],
+    'no-restricted-syntax': ['error', { selector: `ImportExpression > Literal[value=/${regex}/]`, message }],
+  };
+}

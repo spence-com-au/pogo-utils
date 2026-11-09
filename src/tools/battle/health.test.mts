@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { decodePng, type Image } from '../inventory/png.mts';
+import { decodePng, type Image } from '../../core/png.mts';
 import { readHealth, Steady } from './health.mts';
 
 const read = (name: string) => readHealth(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))));

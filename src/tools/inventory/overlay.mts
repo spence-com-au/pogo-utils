@@ -6,9 +6,9 @@
  * `OVERLAY_LUMINANCE` and `OVERLAY_CHROMA` are exported because the detail screen's CP is the same near-white text.
  */
 
-import { MAX_LEVEL, type IVs } from './game-master.mts';
-import { ocr, ocrLine } from './ocr.mts';
-import { brighten, crop, isolate, scale, type Image } from './png.mts';
+import { MAX_LEVEL, type IVs } from '../../core/game-master.mts';
+import { ocr, ocrLine } from '../../core/ocr.mts';
+import { brighten, crop, isolate, scale, type Image } from '../../core/png.mts';
 
 /** Where PGSharp draws its overlay, as fractions of the screen's width and height. */
 export interface OverlayBox {
