@@ -7,10 +7,12 @@
 
 import { said } from '../errors.js';
 import type { Phone as Connection } from '../inventory/webusb.js';
+import { loadMeta } from '../tools/battle/meta.mts';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { run, type Clock, type Tally } from '../tools/battle/run.mts';
 import { useEngine, type Engine } from '../tools/inventory/ocr.mts';
 import { keepAwake } from './awake.js';
+import { download } from './load.js';
 import { battlePhone } from './phone.js';
 import { type Command, type Message, type Play } from './protocol.js';
 
@@ -113,7 +115,12 @@ export function host(
       port.postMessage({ type: 'started' });
 
       // A run stopped by the page throws as it is, which the stop already under way leaves unsaid.
-      run(phone, battle, clock, report).then(
+      run(
+        phone,
+        { ...battle, metaOf: (league, warn) => loadMeta(download, battle.data, league, warn) },
+        clock,
+        report,
+      ).then(
         (tally) => void stop(undefined, tally),
         (error: unknown) => void stop(error),
       );

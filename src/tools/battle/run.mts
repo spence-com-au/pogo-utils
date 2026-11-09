@@ -332,6 +332,13 @@ export interface Options {
    * theirs for shielding and for who goes in. Absent, as in Training, every move its species can hold is allowed for.
    */
   meta?: Meta | null;
+
+  /**
+   * The meta of a league by the title its card on the league chooser reads, said to `warn` where there is none: loaded
+   * in place of `meta` for the card tapped, which `--league` names only the start of. `master` taps Master League: Mega
+   * Edition while it is on, which PvPoke ranks apart from the open league. Absent, `meta` is kept whatever is tapped.
+   */
+  metaOf?: (league: string, warn: (line: string) => void) => Promise<Meta | null>;
   count?: number;
 
   /**
@@ -349,15 +356,21 @@ export interface Options {
  */
 export async function run(
   phone: Phone,
-  { mode, data, icons, typeIcons, meta, count = Infinity, keep }: Options,
+  { mode, data, icons, typeIcons, meta, metaOf, count = Infinity, keep }: Options,
   clock: Clock,
   report: Reporter = { event: () => {}, status: () => {} },
 ): Promise<Tally> {
   const log = (line: string, side?: 'own' | 'opponent', why?: string) => report.event(line, side, why);
 
-  if (meta) {
-    log(`opponents' moves as PvPoke ranks ${meta.cup} at ${meta.cap ?? 'any'} CP: ${meta.movesets.size} species`);
-  }
+  const ranked = (loaded: Meta | null | undefined) => {
+    if (loaded) {
+      log(
+        `opponents' moves as PvPoke ranks ${loaded.cup} at ${loaded.cap ?? 'any'} CP: ${loaded.movesets.size} species`,
+      );
+    }
+  };
+
+  ranked(meta);
 
   const coloursBy = (colour: (icon: Image) => Colour) =>
     Object.fromEntries(Object.entries(typeIcons).map(([type, icon]) => [type, colour(icon)]));
@@ -560,9 +573,12 @@ export async function run(
   let departed: string | null = null;
 
   // The league's CP cap, which a CP read over it is a misread of: Training's by its league, GO Battle League's as its
-  // party screen states it, and until then as PvPoke has the league named. `undefined` until known, and then every
-  // shield is taken.
+  // party screen states it, and until then as PvPoke has the league tapped, or `--league` before one is. `undefined`
+  // until known, and then every shield is taken.
   let cap: number | null | undefined = mode.mode === 'training' ? CAPS[mode.league] : meta?.cap;
+
+  // The title of the league card whose meta `meta` is, none until one is tapped.
+  let metaFor: string | undefined;
 
   // Each side's HP as decided on from the bars read, a misread held back, and a bar not drawn on this frame keeping what
   // an earlier one showed. The opponent's is the last one's until a newcomer's bar is drawn, which the camera does on
@@ -2010,6 +2026,14 @@ export async function run(
           party = read.cards;
           menu = read.back ? menu : { screen: 'unknown' };
         }
+      }
+
+      // Loaded before the card is tapped, so the time a fetch takes is not counted towards `LOST_MS` from the tap.
+      if (menu.screen === 'league' && 'tap' in menu && menu.title !== undefined && menu.title !== metaFor && metaOf) {
+        metaFor = menu.title;
+        meta = await metaOf(menu.title, log);
+        cap = meta?.cap;
+        ranked(meta);
       }
 
       // A scroll is not progress: a tab already at its foot whose portraits go unmatched would be scrolled for ever, so

@@ -4,7 +4,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { type GameData } from '../inventory/game-master.mts';
 import { type Download } from './assets.mts';
 import { formatOf, loadMeta, movesetsOf, type PvPokeData, type Ranking } from './meta.mts';
@@ -17,10 +17,6 @@ const PVPOKE = JSON.parse(readFileSync(new URL('fixtures/pvpoke.json', import.me
   rankings: Ranking[];
 };
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 test.each<[string, { cup: string; cp: number } | null, string]>([
   ['great', { cup: 'all', cp: 1500 }, 'an open league by its name'],
   ['ultra league', { cup: 'all', cp: 2500 }, 'or its title'],
@@ -28,6 +24,7 @@ test.each<[string, { cup: string; cp: number } | null, string]>([
   ['fantasy', { cup: 'fantasy', cp: 1500 }, 'a cup by the start of its title'],
   ['Fantasy Cup: Great League Edition', { cup: 'fantasy', cp: 1500 }, 'or by a title holding all of its own'],
   ['master league: mega', { cup: 'mega', cp: 10000 }, 'in any order: PvPoke’s Mega Master League'],
+  ['master league mega edition', { cup: 'mega', cp: 10000 }, 'the card `master` taps while Mega Edition is on'],
   ['little cup', { cup: 'little', cp: 500 }, 'Little Cup, rather than an open Little League'],
   ['great league remix', { cup: 'all', cp: 1500 }, 'a cup PvPoke does not list, by its league'],
   ['retro cup', null, 'nothing to go on'],
@@ -113,33 +110,30 @@ const download: Download = async (file, url, decode) => {
 };
 
 test('the meta is read as the league’s rankings and PvPoke’s game master', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-
-  const fantasy = await loadMeta(download, DATA, 'fantasy cup');
+  const warn = vi.fn();
+  const fantasy = await loadMeta(download, DATA, 'fantasy cup', warn);
 
   expect(fantasy && { cup: fantasy.cup, cap: fantasy.cap, species: [...fantasy.movesets.keys()] }).toStrictEqual({
     cup: 'fantasy',
     cap: 1500,
     species: ['Marowak', 'Medicham', 'Registeel', 'Stunfisk'],
   });
-  expect((await loadMeta(download, DATA, 'master'))?.cap, 'Master League has no cap').toBe(null);
-  expect(await loadMeta(download, DATA, 'retro cup'), 'every move allowed for').toBe(null);
-  expect(console.error).toHaveBeenCalledWith(expect.stringContaining('PvPoke ranks nothing called retro cup'));
+  expect((await loadMeta(download, DATA, 'master', warn))?.cap, 'Master League has no cap').toBe(null);
+  expect(await loadMeta(download, DATA, 'retro cup', warn), 'every move allowed for').toBe(null);
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('PvPoke ranks nothing called retro cup'));
 });
 
 test('rankings that cannot be had allow for every move rather than stopping the run', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const warn = vi.fn();
 
-  expect(await loadMeta(download, DATA, 'great')).toBe(null);
-  expect(console.error).toHaveBeenCalledWith(expect.stringContaining('rankings-1500.json: 404 Not Found'));
+  expect(await loadMeta(download, DATA, 'great', warn)).toBe(null);
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('rankings-1500.json: 404 Not Found'));
 });
 
 test.each([
   { cup: '../../x', cp: 1500 },
   { cup: 'fantasy', cp: '../1500' },
 ])('a format naming a path outside the cache, $cup and $cp, is never downloaded', async (format) => {
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-
   const pvpoke = { ...PVPOKE, formats: [{ title: 'Fantasy Cup', ...format }] };
   const files: string[] = [];
 
@@ -149,6 +143,6 @@ test.each([
     return decode(new TextEncoder().encode(JSON.stringify(file === 'pvpoke-gamemaster.json' ? pvpoke : [])));
   };
 
-  expect(await loadMeta(tampered, DATA, 'fantasy cup')).toBe(null);
+  expect(await loadMeta(tampered, DATA, 'fantasy cup', () => {})).toBe(null);
   expect(files).toStrictEqual(['pvpoke-gamemaster.json']);
 });
