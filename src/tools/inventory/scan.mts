@@ -608,8 +608,9 @@ const LOOKS = 3;
 export const DROP_RETRIES = 3;
 
 /**
- * How many of the swipes since the last visit a story may have gone nowhere: three, a swipe on to a Pokémon, the swipe
- * back that looked for it and the swipe that came back, two of which #820's phone dropped one after the other.
+ * How many of the swipes since the last visit a story may have gone nowhere, past those a retry struck: three, a swipe
+ * on to a Pokémon, the swipe back that looked for it and the swipe that came back, two of which #820's phone dropped one
+ * after the other.
  */
 const DROPS = 3;
 
@@ -656,9 +657,11 @@ const DROPS = 3;
  * count the game shows for what is walked, says which: short of it, the swipe is sent again, up to `DROP_RETRIES` times
  * in a row, so that a count read too high costs a few swipes at the real end. Storage going on with the swipes the end
  * stopped struck as dropped then becomes a story beside the end, so that a swipe sent again onto a twin of the last
- * Pokémon is not taken for one more gone nowhere. Without a count the walk ends there, for `shortfall` to report if it
- * was short, as it does where storage may have ended further back, past an unread screen. Where the stories put the
- * phone past the next Pokémon, the swipe back that looked for it went nowhere, and the walk swipes back to it.
+ * Pokémon is not taken for one more gone nowhere. The walk tells the log again from that story too, beside those the
+ * last visit left, so that drops spread over the retries count once rather than outrun what a retelling may add.
+ * Without a count the walk ends there, for `shortfall` to report if it was short, as it does where storage may have
+ * ended further back, past an unread screen. Where the stories put the phone past the next Pokémon, the swipe back that
+ * looked for it went nowhere, and the walk swipes back to it.
  *
  * Nor does the walk visit past `total`, where it has one. The swipe on from the last Pokémon goes nowhere, and only a
  * read that `agree`s with the last tells that from a new Pokémon: a scroll back up from the moves that stopped short
@@ -680,7 +683,8 @@ export async function walk<R extends { key: string | null }>(
   let retries = 0;
   let doubted = false;
 
-  // The stories the last visit left and where in the log it left them, which the walk tells again from.
+  // The stories the last visit left, with those each retry since struck, which the walk tells again from, and where in
+  // the log the visit left them.
   let left = stories;
   let since = 0;
 
@@ -698,13 +702,27 @@ export async function walk<R extends { key: string | null }>(
     stories = stories.filter((story) => replay(log, from, story) !== null);
   };
 
-  /** The stories the last visit left told again with up to {@link DROPS} of the swipes since gone nowhere that fit. */
+  /** The stories in `left` told again with up to {@link DROPS} more of the swipes since gone nowhere that fit. */
   const retell = () => {
     const swipes = log.flatMap((step, i) => (i >= since && 'move' in step ? [i] : []));
 
+    // Each story once, however many in `left` tell it, or a retelling would multiply with every retry: a story a retry
+    // struck is the end beside it told with drops, and the stories a visit leaves can repeat.
+    const told = new Set<string>();
+
     return left.flatMap((story) =>
-      subsets(swipes, DROPS).flatMap((dropped) => {
-        const retold = { end: story.end, dropped: [...story.dropped, ...dropped] };
+      subsets(
+        swipes.filter((i) => !story.dropped.includes(i)),
+        DROPS,
+      ).flatMap((dropped) => {
+        const retold = { end: story.end, dropped: [...story.dropped, ...dropped].sort((a, b) => a - b) };
+        const key = JSON.stringify(retold);
+
+        if (told.has(key)) {
+          return [];
+        }
+
+        told.add(key);
         const world = replay(log, from, retold);
         return world ? [{ story: retold, world }] : [];
       }),
@@ -897,6 +915,7 @@ export async function walk<R extends { key: string | null }>(
         });
 
         stories = [...stories, ...struck];
+        left = [...left, ...struck];
         await swipe(1, 1);
         reading = undefined;
         continue;
