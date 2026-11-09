@@ -1016,6 +1016,27 @@ test('aims the minigame’s swipes at its bubbles', async () => {
 });
 
 /**
+ * Avalanche played out in a kept run under `98% used Avalanche!`, our bar back, and the white lines of the field found
+ * as its bubbles 0.3s after the last of them, too soon for their gap to end them.
+ */
+test('touches nothing once our bar is back after the minigame, whatever is found as its bubbles', async () => {
+  const { phone, clock, strokes } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('charged-avalanche'), tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: { frame: fixture('playing-minigame-mamoswine'), lasts: { ms: 6000, to: 'played' } },
+      played: { frame: fixture('playing-banner-avalanche'), lasts: { ms: 1500, to: 'won' } },
+    },
+    'fight',
+  );
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock);
+
+  expect(strokes.some(({ scene }) => scene === 'minigame')).toBe(true);
+  expect(strokes.filter(({ scene }) => scene === 'played')).toEqual([]);
+});
+
+/**
  * A throw waits for the fast move under way with its button lit, and a live run tapped it again a second on and told
  * the one throw twice. Whether the tap took or not, it is tried again each second the button stays lit, and told once.
  */

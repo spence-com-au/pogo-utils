@@ -101,10 +101,20 @@ export interface Choices {
    * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
    * waits through the minigame's lead-in, there being nothing to pop yet, and once this minigame's have been found since
    * its throw was taken to be playing, there being none left; otherwise it sweeps rows, the finder perhaps missing the
-   * move's bubbles. Those found once they have been gone `OVER_MS` are waited through too, being the move playing out.
-   * Undefined, where the bubbles' colour is not known, sweeps rows throughout.
+   * move's bubbles. Those found once they have been gone `OVER_MS`, or once `bar` shows, are waited through too, being
+   * the move playing out. Undefined, where the bubbles' colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
+
+  /**
+   * Whether our HP bar is found on this frame. The minigame's camera hides it, and it shows again as the move plays out
+   * after the bubbles, which from then are over however closely what is found as them follows: Outrage's smoke, Close
+   * Combat's colour on Zamazenta's red body and Crunch's up to the minigame's last frame, each less than `OVER_MS`
+   * after the last bubble. Over 235 throws of 18 kept runs it stopped the swipes after 52, each from under the move's
+   * `used` banner with no bubble left. Ours alone: a bar centred on its Pokémon showed through Crunch's bubbles, read
+   * once as the opponent's.
+   */
+  bar?: boolean;
 }
 
 /**
@@ -150,15 +160,16 @@ const LEAD_IN_MS = 2_500;
  * anything found after is the move playing out, which strikes the opponent with things of its type's colour —
  * Avalanche's ice chunks, Outrage's smoke, Thunderbolt's lightning. Over 218 throws of 17 kept runs, no stretch of
  * bubbles was broken for more than 0.36s, and 129 had the move found 0.5s or more after the last of them, each looked
- * at under its `used` banner or just before it. Found sooner, it is swiped as before.
+ * at under its `used` banner or just before it. Found sooner, it is swiped until our bar is back, as `bar` says.
  */
 const OVER_MS = 500;
 
 /**
- * How long the bubbles have to have been found, unbroken by `OVER_MS`, for that to end them, in milliseconds. A throw
- * can be taken to be playing before its minigame begins, as when the opponent's faint hides our buttons, and whatever
- * the fight shows meanwhile is found as bubbles: 0.8s and 1.3s of it in kept runs, and the `Get Ready!` after, with
- * none found, would have ended a minigame not yet begun. Every stretch the move came after ran 2.5s at the least.
+ * How long the bubbles have to have been found, unbroken by `OVER_MS`, for that or our bar to end them, in
+ * milliseconds. A throw can be taken to be playing before its minigame begins, as when the opponent's faint hides our
+ * buttons, and whatever the fight shows meanwhile is found as bubbles: 0.8s and 1.3s of it in kept runs, and the `Get
+ * Ready!` after, with none found, would have ended a minigame not yet begun, as our bar in the fight would. Every
+ * stretch the move came after ran 2.5s at the least.
  */
 const BUBBLES_MS = 2_000;
 
@@ -222,7 +233,10 @@ export class Player {
    */
   #found: { from: number; to: number } | undefined;
 
-  /** Whether the bubbles found have been gone `OVER_MS` after `BUBBLES_MS` of them, after which none are swiped. */
+  /**
+   * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or our bar back after them, after which none
+   * are swiped.
+   */
   #over = false;
 
   /** Since when the frames have read as the fight, unbroken, which `FIGHT_MS` of ends a minigame. */
@@ -259,7 +273,16 @@ export class Player {
   next(
     state: State,
     now: number,
-    { ready = [], best, shield = true, minigame = false, card = this.#taps.switch, bench, bubbles }: Choices = {},
+    {
+      ready = [],
+      best,
+      shield = true,
+      minigame = false,
+      card = this.#taps.switch,
+      bench,
+      bubbles,
+      bar = false,
+    }: Choices = {},
   ): Action {
     this.#streak = state === this.#state ? this.#streak + 1 : 1;
     this.#state = state;
@@ -310,6 +333,9 @@ export class Player {
       if (this.#tapped?.state === 'charged' && now - this.#tapped.at < HOLD_MS) {
         return { kind: 'wait' };
       }
+
+      // Judged whatever is found on the frame: the move playing out can be found as bubbles with no gap of `OVER_MS`.
+      this.#over ||= bar && this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS;
 
       const [through] = this.#minigame && !this.#over ? (bubbles ?? []) : [];
 

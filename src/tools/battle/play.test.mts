@@ -160,9 +160,17 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
   expect(over.every((action) => action.kind === 'wait')).toBe(true);
 });
 
-/** `count` frames from `from` milliseconds, 33ms apart, each read as `battle` with `bubbles` found on it. */
-const frames = (player: Player, from: number, count: number, bubbles: readonly (readonly [Point, Point])[]) =>
-  Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles }));
+/**
+ * `count` frames from `from` milliseconds, 33ms apart, each read as `playing` with `bubbles` found on it, and our bar
+ * where `bar` says.
+ */
+const frames = (
+  player: Player,
+  from: number,
+  count: number,
+  bubbles: readonly (readonly [Point, Point])[],
+  bar = false,
+) => Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles, bar }));
 
 const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
 
@@ -192,8 +200,34 @@ test('leaves alone what is found once the bubbles have been gone a while, the mo
   expect(waits(frames(player, 7346, 19, [chunk]))).toBe(true);
 });
 
+// In a kept run, Close Combat's colour was found on Zamazenta's red body on and off for 1.8s after its bubbles, never
+// more than 0.29s apart, as the move played out with our bar back under its `used` banner.
+test('leaves alone what is found once our bar shows again, however closely it follows the bubbles', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const body: [Point, Point] = [
+    [0.3, 0.62],
+    [0.45, 0.7],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
+  frames(player, 3033, 60, [chain]);
+  frames(player, 5013, 9, []);
+
+  expect(frames(player, 5310, 6, [body]).every((action) => action.kind === 'swipe')).toBe(true);
+
+  frames(player, 5508, 9, []);
+
+  expect(waits(frames(player, 5805, 6, [body], true))).toBe(true);
+  expect(waits(frames(player, 6003, 30, [body]))).toBe(true);
+});
+
 // Live, an Outrage was taken to be playing before its minigame began, the opponent's faint having hidden our buttons,
-// and the fight was found as its bubbles for 0.8s before `Get Ready!`.
+// and the fight, our bar in it, was found as its bubbles for 0.8s before `Get Ready!`.
 test('swipes the bubbles of a minigame taken to be playing before it began', () => {
   const player = new Player(SIZE);
   const fight: [Point, Point] = [
@@ -206,8 +240,8 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [fight] });
-  frames(player, 3033, 24, [fight]);
+  player.next('playing', 3000, { minigame: true, bubbles: [fight], bar: true });
+  frames(player, 3033, 24, [fight], true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
   expect(frames(player, 6003, 30, [chain]).every((action) => action.kind === 'swipe' && action.from === chain[0])).toBe(
