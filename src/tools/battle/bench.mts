@@ -60,10 +60,13 @@ export type Chosen = Switch & { at: Point; strip: boolean };
 /**
  * A switch of ours tapped, as `judge` finds it: `early` where the read began too soon after the tap to tell, the next
  * being due at `due`; `took` where ours went in; and `refused` where the one tapped away from is still out, `from`, with
- * the stages it had.
+ * the stages it had and its charged moves as read before the tap, which forgot them for the newcomer.
  */
 export type Judged =
-  { kind: 'early'; due: number } | { kind: 'took' } | { kind: 'refused'; from: number; stages: Stages } | undefined;
+  | { kind: 'early'; due: number }
+  | { kind: 'took' }
+  | { kind: 'refused'; from: number; stages: Stages; moves: ReadonlyMap<number, string> }
+  | undefined;
 
 /** The battle as one frame shows it, which a switch of ours is decided by. */
 export interface Field {
@@ -132,6 +135,7 @@ export class Bench {
         cp: number | null;
         at: number;
         stages: Stages;
+        moves: ReadonlyMap<number, string>;
 
         /** What the slot switched to had banked, given back to it where the switch is refused. */
         bank: Bank | undefined;
@@ -249,7 +253,7 @@ export class Bench {
       timer ? 'the switch timer is running' : `taken as dropped, no switch of ours in the last ${TIMER_MS / 1_000}s`,
     );
 
-    return { kind: 'refused', from: switching.from, stages: switching.stages };
+    return { kind: 'refused', from: switching.from, stages: switching.stages, moves: switching.moves };
   }
 
   /**
@@ -498,6 +502,7 @@ export class Bench {
       cp: field.facing.own.cp,
       at: field.now,
       stages: field.stages.own,
+      moves: field.moves,
       bank: this.#banked.get(chosen.slot),
       stripping: this.#stripping,
       calm: this.#calmAt,

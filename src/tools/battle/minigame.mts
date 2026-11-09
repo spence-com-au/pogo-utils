@@ -30,7 +30,9 @@ const FIELD = { top: 0.2, bottom: 0.95 } as const;
 
 /**
  * How closely the share of the type's colour has to agree across the channels, and how much of it there has to be.
- * Only channels the colour is well short of white in count, a channel near white saying nothing about the share.
+ * Only channels the colour is well short of white in count, a channel near white saying nothing about the share. One is
+ * enough, the rest held by `PALE`: Fairy's icon is 236/142/228, only its green far from white, and wanting two left
+ * no Fairy bubble ever found, a kept Play Rough's minigame swept in rows to `NICE!`.
  */
 const SPREAD = 0.12;
 const SHARE = { least: 0.3, most: 1.15 } as const;
@@ -162,7 +164,7 @@ function washed(pixel: Colour, colour: Colour): number {
 
   const mean = sum / told;
 
-  if (told < 2 || mean < SHARE.least || mean > SHARE.most) {
+  if (told < 1 || mean < SHARE.least || mean > SHARE.most) {
     return 0;
   }
 
@@ -183,7 +185,8 @@ const white = ([r, g, b]: Colour) =>
 /**
  * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, the biggest blob first of
  * those as saturated as `FADED` asks, then the biggest of the rest: along each blob's length, through its middle, and a
- * little past either end.
+ * little past either end. Their ends can lie past `REACH`, so that a bubble at an edge keeps its size and middle for
+ * whatever is told from them, and `reachable` brings each onto it before it is swiped.
  */
 export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
@@ -274,11 +277,15 @@ function along(xs: readonly number[], ys: readonly number[], width: number, heig
   const [ux, uy] = [Math.cos(angle), Math.sin(angle)];
   const offsets = xs.map((x, i) => (x - mx) * ux + ((ys[i] ?? 0) - my) * uy);
   const overrun = OVERRUN * width;
-  const clamp = (v: number, least: number, most: number) => Math.min(Math.max(v, least), most);
-  const end = (t: number): Point => [
-    clamp((mx + ux * t) / width, REACH.left, REACH.right),
-    clamp((my + uy * t) / height, REACH.top, REACH.bottom),
-  ];
+  const end = (t: number): Point => [(mx + ux * t) / width, (my + uy * t) / height];
 
   return [end(Math.min(...offsets) - overrun), end(Math.max(...offsets) + overrun)];
 }
+
+const clamp = (v: number, least: number, most: number) => Math.min(Math.max(v, least), most);
+
+/** `point` brought onto the part of the screen a swipe may reach, as `REACH` says. */
+export const reachable = ([x, y]: Point): Point => [
+  clamp(x, REACH.left, REACH.right),
+  clamp(y, REACH.top, REACH.bottom),
+];

@@ -155,14 +155,3 @@ export function swipeAround(
 
   return !under(from) ? [from, to] : !under(to) ? [to, from] : undefined;
 }
-
-/**
- * `swipes`, each begun clear of `panels` as `swipeAround` turns it, and those with neither end clear left out: to be
- * chosen among, since one left in and skipped once chosen would be chosen again on the next frame, and the next.
- */
-export const swipesAround = (swipes: readonly (readonly [Point, Point])[], panels: readonly Panel[], screen: Size) =>
-  swipes.flatMap((swipe) => {
-    const begun = swipeAround(swipe, panels, screen);
-
-    return begun ? [begun] : [];
-  });

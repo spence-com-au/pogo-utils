@@ -1,8 +1,11 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
+import { decodePng } from '../../core/png.mts';
 import { BOTTOM, place, type Point } from './layout.mts';
-import { BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
+import { bubbleSwipes, typeColour } from './minigame.mts';
+import { swipeAround, type Panel } from './overlay.mts';
+import { ahead, BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
 import { decodeFrames } from './node/stream.mts';
@@ -32,6 +35,16 @@ const swipes = (actions: readonly Action[]) => actions.flatMap((action) => (acti
 const onBench = ([x, y]: Point) => x > 0.8 && y > 0.53 && y < 0.7;
 const onButton = ([x, y]: Point) =>
   [LEFT, CENTRE, RIGHT].some(([bx, by]) => Math.hypot(x - bx, (y - by) * (760 / 360)) < 0.12);
+
+const png = (path: string) => decodePng(readFileSync(new URL(`fixtures/${path}.png`, import.meta.url)));
+
+/** Whether a swipe passes through a box, sampled along its length. */
+const crosses = ([from, to]: readonly [Point, Point], [left, top, right, bottom]: readonly number[]) =>
+  Array.from({ length: 21 }, (_, i) => i / 20).some((t) => {
+    const [x, y] = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+
+    return x >= (left ?? 0) && x <= (right ?? 1) && y >= (top ?? 0) && y <= (bottom ?? 1);
+  });
 
 test('swipes through the fight, clear of the bench and the charged-move buttons', () => {
   const actions = swipes(play(Array(10).fill('battle')));
@@ -161,6 +174,191 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 });
 
 /**
+ * Palkia's Aqua Tail against Candela, at night on a Pixel 8 Pro: the bubble found on the frame of 213.228s, alone, flew
+ * on from 0.49 across on the frame of 213.129s towards the bottom left, and the frame of 213.397s, as the swipe aimed off
+ * it lands, has it centred at 0.22 across and 0.80 down, 37 pixels wide at the finder's 180. Swiped where it was seen,
+ * the swipe passes behind it.
+ */
+test('runs a swipe on ahead of a bubble seen moving, to where it is as the swipe lands', () => {
+  const screen = { width: 360, height: 802 };
+  const player = new Player(screen);
+  const water = typeColour(png('types/POKEMON_TYPE_WATER'));
+  const [before, seen] = ['playing-minigame-palkia-before', 'playing-minigame-palkia'].map((name) =>
+    bubbleSwipes(png(name), water),
+  );
+  const lands: [number, number, number, number] = [0.22 - 0.1, 0.8 - 0.046, 0.22 + 0.1, 0.8 + 0.046];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: before });
+  const action = player.next('playing', 1099, { bubbles: seen });
+
+  expect(action.kind === 'swipe' && crosses([action.from, action.to], lands)).toBe(true);
+  expect(seen?.[0] && crosses(seen[0], lands)).toBe(false);
+
+  // The same frame read again, the loop come round before the next, its swipes listed afresh: still one look.
+  const again = player.next('playing', 1119, { bubbles: seen?.map(([from, to]) => [from, to] as const) });
+
+  expect(again.kind === 'swipe' && crosses([again.from, again.to], lands)).toBe(true);
+});
+
+test.each([
+  [
+    'standing',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    100,
+  ],
+  [
+    'one of a chain',
+    [
+      [0.1, 0.6],
+      [0.6, 0.6],
+    ],
+    [
+      [0.2, 0.6],
+      [0.7, 0.6],
+    ],
+    100,
+  ],
+  [
+    'swelling where one was, popped',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.35, 0.6],
+      [0.6, 0.6],
+    ],
+    100,
+  ],
+  [
+    'seen moving only too long before',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.5, 0.6],
+      [0.6, 0.6],
+    ],
+    400,
+  ],
+] as const)('swipes a bubble %s where it was found', (_, was, swipe, apart) => {
+  const screen = { width: 360, height: 760 };
+  const look = { at: 1000 + apart, bubbles: [swipe] };
+
+  expect(ahead(swipe, look, { at: 1000, bubbles: [was] }, look.at, 80, screen)).toEqual(swipe);
+});
+
+/**
+ * A Water bubble flying in at 1.6 widths a second, first seen with its middle at 0.92 across, its swipe as found running
+ * past `REACH`. Clamped before it was matched, it was shorter on the first frame than on the second, by more than
+ * `SAME`, and was swiped where it was found.
+ */
+test('runs a swipe on ahead of a bubble flying in from the edge', () => {
+  const screen = { width: 360, height: 760 };
+  const was: [Point, Point] = [
+    [0.79, 0.5],
+    [1.05, 0.5],
+  ];
+  const swipe: [Point, Point] = [
+    [0.63, 0.5],
+    [0.89, 0.5],
+  ];
+  const [from, to] = ahead(swipe, { at: 1100, bubbles: [swipe] }, { at: 1000, bubbles: [was] }, 1100, 80, screen);
+
+  expect(from[0]).toBeCloseTo(0.76);
+  expect(to[0]).toBeCloseTo(0.76 - (1.6 * (120 + 80)) / 1000 - 0.26 / 2);
+});
+
+/**
+ * PGSharp's star at the left edge, by a bubble listed before one standing clear of it. A swipe with both ends on the star
+ * is not made, and the bubble it was aimed at would be chosen again on every frame, so each is judged as `ahead` aims it:
+ * one flying left onto the star is clear of it as found, to 0.19 across, but aimed ahead runs from 0.06 to 0.05, both on
+ * it; one flying right off it is on it at both ends as found, but aimed ahead runs clear to 0.39.
+ */
+test.each([
+  [
+    'standing on the star',
+    [
+      [0.05, 0.7],
+      [0.06, 0.74],
+    ],
+    [
+      [0.05, 0.7],
+      [0.06, 0.74],
+    ],
+    0.4,
+  ],
+  [
+    'flying onto the star',
+    [
+      [0.07, 0.72],
+      [0.33, 0.72],
+    ],
+    [
+      [-0.07, 0.72],
+      [0.19, 0.72],
+    ],
+    0.4,
+  ],
+  [
+    'flying off the star',
+    [
+      [-0.13, 0.72],
+      [-0.03, 0.72],
+    ],
+    [
+      [0.01, 0.72],
+      [0.11, 0.72],
+    ],
+    0.06,
+  ],
+] as const)('judges a bubble %s by PGSharp’s overlay on its swipe as aimed', (_, was, found, from) => {
+  const screen = { width: 360, height: 760 };
+  const player = new Player(screen);
+  const star: Panel = { name: 'star', box: [0, 0.7, 0.0875, 0.74] };
+  const clear = (swipe: readonly [Point, Point]) => swipeAround(swipe, [star], screen) !== undefined;
+  const standing: [Point, Point] = [
+    [0.4, 0.5],
+    [0.6, 0.5],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: [was, standing], clear });
+  const action = player.next('playing', 1100, { bubbles: [found, standing], clear });
+
+  expect(action.kind === 'swipe' ? action.from[0] : NaN).toBeCloseTo(from);
+});
+
+/** Mewtwo's bubbles low on the screen run past where a swipe may reach as found, and are swiped only within it. */
+test('no minigame swipe starts or ends on an edge Android takes for its own gestures', () => {
+  const found = bubbleSwipes(png('playing-minigame-mewtwo'), typeColour(png('types/POKEMON_TYPE_PSYCHIC')));
+  const made = found.map((bubble) => {
+    const player = new Player(SIZE);
+
+    play(['charged', 'charged'], player);
+
+    return player.next('playing', 1000, { minigame: true, bubbles: [bubble] });
+  });
+
+  expect(found.flat().some(([x, y]) => x < 0.05 || x > 0.95 || y > 0.92)).toBe(true);
+  expect(
+    swipes(made)
+      .flatMap(({ from, to }) => [from, to])
+      .every(([x, y]) => x >= 0.05 && x <= 0.95 && y <= 0.92),
+  ).toBe(true);
+  expect(swipes(made)).toHaveLength(found.length);
+});
+
+/**
  * `count` frames from `from` milliseconds, 33ms apart, each read as `playing` with `bubbles` found on it, and what the
  * minigame hides back where `back` says.
  */
@@ -245,8 +443,8 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   frames(player, 3033, 24, [fight], true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
-  expect(frames(player, 6003, 30, [chain]).every((action) => action.kind === 'swipe' && action.from === chain[0])).toBe(
-    true,
+  expect(frames(player, 6003, 30, [chain]).map((action) => action.kind === 'swipe' && action.from)).toEqual(
+    Array.from({ length: 30 }, () => chain[0]),
   );
 });
 
