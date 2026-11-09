@@ -135,11 +135,16 @@ export class Battle {
   // Our charged move tapped and not yet seen to play, by its button's x, and why it was tapped: told as thrown, and its
   // stats moved, only once it plays. The opponent's move on the same turn can drop the tap, its button lighting again
   // with the energy kept, or hold the throw back until after theirs, its minigame coming with no tap of its own; and a
-  // faint of either side's before it plays loses it. Since when the HUD has shown none of our buttons lit, unbroken, as
-  // a minigame does throughout, and since when the button tapped has shown lit again, untapped.
-  pending: { move: string | undefined; x: number; why: string | undefined } | undefined;
+  // faint of either side's before it plays loses it. Whether its `Get Ready!` has been read, its minigame begun. Since
+  // when the HUD has shown none of our buttons lit, unbroken, as a minigame does throughout, and since when the button
+  // tapped has shown lit again, untapped.
+  pending: { move: string | undefined; x: number; why: string | undefined; ready: boolean } | undefined;
   unlit: number | undefined;
   relit: number | undefined;
+
+  // Whether a read for the `Get Ready!` of a throw held back is under way, and when the last began.
+  readyReading = false;
+  readyAt = -Infinity;
 
   // When one of the opponent's Poké Balls last went grey, its faint hiding our buttons while it picks its next.
   theirFaintAt = -Infinity;

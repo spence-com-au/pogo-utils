@@ -143,6 +143,9 @@ function scripted(
   holds: string[];
   searches: string[];
   strokes: { scene: string; from: Point; to: Point; at: number }[];
+
+  /** Each scene the phone moved on to, and when. */
+  visits: { scene: string; at: number }[];
 } {
   let time = 0;
   let current = start;
@@ -152,6 +155,7 @@ function scripted(
   const holds: string[] = [];
   const searches: string[] = [];
   const strokes: { scene: string; from: Point; to: Point; at: number }[] = [];
+  const visits: { scene: string; at: number }[] = [];
 
   // Screenshots taken and OCR begun, not yet handed back: each takes time on the run's clock, a screenshot a second and
   // a read `ocrMs`, which passes as the run waits or the phone works rather than holding the run up, as on a real
@@ -213,6 +217,7 @@ function scripted(
     current = to;
     entered = time;
     swiped = 0;
+    visits.push({ scene: to, at: time });
   };
 
   const scene = () => {
@@ -300,7 +305,7 @@ function scripted(
 
   const clock: Clock = { now: () => time, sleep: advance };
 
-  return { phone, clock, taps, holds, searches, strokes };
+  return { phone, clock, taps, holds, searches, strokes, visits };
 }
 
 /** The modes most tests play: Blanche's Training battles and GO Battle League, both in the Ultra League. */
@@ -1041,7 +1046,8 @@ test.each([
 /**
  * Moltres against Charizard in GO Battle League, as the user recorded it on a Pixel 8 Pro: Fly's tap moves on to
  * `tapped`, its minigame or the prompt for Charizard's Air Cutter on the same turn, which plays and puts up its banner
- * before `after`.
+ * before `after`. Fly's `Get Ready!` is `ready`, none of the recordings kept: Palkia's, off a run on the same phone,
+ * pasted over the banner.
  */
 function moltresFly(tapped: string, after: string): Record<string, Scene> {
   const fly = (to: string): Scene => ({ frame: fixture('charged-pixel8-fly'), tap: { at: [0.69, 0.895], to } });
@@ -1053,6 +1059,10 @@ function moltresFly(tapped: string, after: string): Record<string, Scene> {
     away: { frame: fixture('other-vs-fade'), lasts: { ms: 5000, to: 'banner' } },
     banner: { frame: fixture('playing-banner-pixel8-charizard'), lasts: { ms: 2000, to: 'gap' } },
     gap: { frame: fixture('other-vs-fade'), lasts: { ms: 700, to: after } },
+    ready: {
+      frame: pasted(fixture('playing-banner-pixel8-charizard'), fixture('playing-ready-pixel8-palkia'), PILL),
+      lasts: { ms: 800, to: 'minigame' },
+    },
     relit: fly('minigame'),
     minigame: { frame: fixture('playing-minigame-pixel8-fly'), lasts: { ms: 6000, to: 'won' } },
   };
@@ -1091,6 +1101,28 @@ test.each([
 
   expect(throws(report.events)).toEqual([...before, 'own: threw Fly']);
   expect(last && [last.from, last.to]).toEqual(chain);
+});
+
+/**
+ * Held back, Fly's minigame is taken to have begun once its `Get Ready!` is read, and its bubbles are swiped from the
+ * first frame they show on. Waiting out `PLAYING_MS` from the pill's first frame instead, it went 2.7s unswiped.
+ */
+test('swipes a held-back minigame from its Get Ready!', async () => {
+  const { phone, clock, strokes, visits } = scripted(moltresFly('prompt', 'ready'), 'fight');
+  const report = recorder();
+  const [chain] = bubbleSwipes(
+    fixture('playing-minigame-pixel8-fly'),
+    typeColour(fixture('types/POKEMON_TYPE_FLYING')),
+  );
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
+
+  const begun = visits.find(({ scene }) => scene === 'minigame')?.at ?? NaN;
+  const first = strokes.find(({ scene }) => scene === 'minigame');
+
+  expect(throws(report.events)).toEqual(['opponent: Charizard threw a charged move', 'own: threw Fly']);
+  expect(first && [first.from, first.to]).toEqual(chain);
+  expect((first?.at ?? Infinity) - begun).toBeLessThan(FRAME_MS);
 });
 
 // Moltres faints to Air Cutter before Fly plays: lost, and not told as thrown by the next of ours as it fights on.
@@ -1226,6 +1258,9 @@ const FIRST_BALL = [0.045, 0.19, 0.071, 0.215];
 
 /** Where the opponent's Poké Balls are on the Pixel 4 XL's frames, as boxes for `painted`. */
 const THEIR_BALLS = [0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+
+/** Where the banner is on the Pixel 8 Pro's frames, Charizard's in full, as a box for `pasted`. */
+const PILL = [0.15, 0.6, 0.85, 0.82];
 
 /** The red of a bar's fill as the stream draws it, for painting a bar low enough to turn red. */
 const RED = [230, 106, 96];

@@ -207,6 +207,13 @@ const BANNER_ANCHOR = 0.19;
 const USED = /^(.*?)\s*used\s*([^!]*)/i;
 
 /**
+ * Where across the screen `Get Ready!` is read: the pill it is drawn in, 0.339 to 0.656 of the width on both phones,
+ * narrower than any banner's. Read with the sky either side, as a banner is, it went unread over bright cloud, `la` and
+ * `at` on frames that show it plainly, where the pill alone read it on every one.
+ */
+const PILL = { left: 0.34, right: 0.66 } as const;
+
+/**
  * The charged move the banner says `opponent` used, matched to one its species can hold, or null where no banner is up,
  * it names another Pokémon — ours, each side's moves having one — or the move is not one of its. A mirror match, both
  * sides the same species, says nothing of whose move it was, and so is not read.
@@ -240,6 +247,26 @@ export async function readBanner(
   }
 
   return null;
+}
+
+/**
+ * Whether `image` shows `Get Ready!`, which our charged move's minigame opens with, in the pill a banner is drawn in and
+ * in either place it has been. Nothing else the battle draws says `Ready`, the opponent's minigame being hidden from us.
+ * Over 6,935 frames of charged moves under way, a tenth of a second apart, from 120 of the opponent's throws to ours
+ * after it in 18 kept runs, OCR read it before 106 of the 109 minigames and on no other frame: two drew no pill, and
+ * the touch rings of our own swipes covered the third.
+ */
+export async function readGetReady(image: Image): Promise<boolean> {
+  // Every band is cropped before the first read, since `stream.mts` frees the frame two frames on, while OCR is running.
+  const bands = BANNERS.map((place) => band(image, { ...PILL, ...place }, BANNER_ANCHOR, 3).image);
+
+  for (const crop of bands) {
+    if (/\bready\b/.test(fold((await ocrLine(crop)) ?? ''))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
