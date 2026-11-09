@@ -34,6 +34,7 @@ const PLAY: Play = {
     meta: { cup: 'all', cap: 1500, movesets: new Map() },
   },
   base: 'http://localhost:8000/#/battle',
+  pvpoke: new Map(),
 };
 
 /** What the page is told, event by event and the latest status. */

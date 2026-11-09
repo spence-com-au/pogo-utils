@@ -7,7 +7,7 @@
  */
 
 import type { FunctionComponent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 
 import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
@@ -104,9 +104,13 @@ function usePageComponent({ page, query, visit }: Arrival) {
  * The title is what a bookmark and a tab strip read. The `data-page` attribute is what the stylesheets are scoped by:
  * the Map page's sheet lays out a full viewport that does not scroll, and the page sheets between them define `.grid`,
  * `.card` and `.chip` differently, all of which was free while each page was its own document and none of which is now.
+ *
+ * A layout effect, which Preact runs before the browser paints, because the page loaded last is still held: arriving
+ * back at it renders it in the same commit as the route change, and an ordinary effect would let that first frame draw
+ * it under the last page's styles.
  */
 function useDocument(page: Page) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.title = pageOf(page).title;
     document.body.dataset['page'] = page;
   }, [page]);
