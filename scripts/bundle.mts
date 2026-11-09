@@ -107,6 +107,43 @@ const result = await build({
   metafile: true,
 });
 
-const modules = new Set(Object.values(result.metafile.outputs).flatMap((output) => Object.keys(output.inputs)));
+const { outputs } = result.metafile;
+
+/*
+ * The Battle page's own thread reads nothing off the screen, the battle's Worker doing that, so nothing loaded with the
+ * page may bring tesseract.js: CommonJS with no `sideEffects` field, it comes whole with any module that imports it,
+ * however little of that module the page wants. What loads with the page is its chunk and every chunk reached from it
+ * by a static import, rather than what it imports later.
+ */
+const BATTLE_PAGE = 'src/pages/battle.tsx';
+const battle = Object.keys(outputs).find((path) => outputs[path]?.entryPoint === BATTLE_PAGE);
+
+if (battle === undefined) {
+  throw new Error(`No chunk was built for ${BATTLE_PAGE}, so what it loads cannot be checked.`);
+}
+
+const withBattle = new Set([battle]);
+
+for (const chunk of withBattle) {
+  for (const { path, kind } of outputs[chunk]?.imports ?? []) {
+    if (kind === 'import-statement' && path in outputs) {
+      withBattle.add(path);
+    }
+  }
+}
+
+const tesseract = [...withBattle].flatMap((chunk) =>
+  Object.keys(outputs[chunk]?.inputs ?? {}).filter((input) => input.includes('node_modules/tesseract.js/')),
+);
+
+if (tesseract.length > 0) {
+  const inputs = tesseract.join('\n  ');
+
+  throw new Error(
+    `${BATTLE_PAGE} loads tesseract.js with the page, which only the battle's Worker reads with:\n  ${inputs}`,
+  );
+}
+
+const modules = new Set(Object.values(outputs).flatMap((output) => Object.keys(output.inputs)));
 
 console.log(`${entryPoints.length} entry point(s) bundled into ${OUT}/ from ${modules.size} module(s).`);

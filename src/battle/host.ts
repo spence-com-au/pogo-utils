@@ -6,7 +6,7 @@
  */
 
 import { said } from '../errors.js';
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { run, type Clock, type Tally } from '../tools/battle/run.mts';
 import { useEngine, type Engine } from '../core/ocr.mts';

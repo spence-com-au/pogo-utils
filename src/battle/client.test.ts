@@ -8,7 +8,7 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { DEMO_SERIAL, PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { type Status } from '../tools/battle/reporter.mts';

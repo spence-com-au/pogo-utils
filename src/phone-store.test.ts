@@ -4,7 +4,7 @@
 
 import { expect, test, vi } from 'vitest';
 
-import type { Phone } from './inventory/webusb.js';
+import type { Phone } from './core/browser/webusb.js';
 import { PhoneStore } from './phone-store.js';
 
 /** A phone whose connection ends when the test says, and whose `close` does what it is told. */

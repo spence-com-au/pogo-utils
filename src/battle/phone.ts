@@ -6,7 +6,7 @@
  */
 
 import { said } from '../errors.js';
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { type Size } from '../tools/battle/layout.mts';
 import { phoneOf, type Phone } from '../tools/battle/phone.mts';
 import { streamSize } from '../tools/battle/record-command.mts';

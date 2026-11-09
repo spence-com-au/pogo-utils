@@ -10,7 +10,7 @@
 import { afterAll, expect, test } from 'vitest';
 
 import { DEMO_BATTLE } from '../generated.js';
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { fixture } from '../testing/fixture.js';
 import { type GameData } from '../core/game-master.mts';
 import { useEngine } from '../core/ocr.mts';

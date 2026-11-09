@@ -4,9 +4,9 @@
  * silhouettes the site publishes rather than the 40 MB of icons they are outlined from.
  */
 
+import { fetchBytes, gameData } from '../core/browser/fetch.js';
 import { said } from '../errors.js';
 import { SILHOUETTES } from '../generated.js';
-import { fetchBytes, gameData } from '../inventory/reader.js';
 import { decodeSilhouettes, typeIcons, type Download, type Silhouettes } from '../tools/battle/assets.mts';
 import { loadMeta } from '../tools/battle/meta.mts';
 

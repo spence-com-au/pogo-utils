@@ -10,12 +10,12 @@
  * Only the `Phone` type comes from `webusb.ts`, so a tab that merely asks whether a phone is held loads none of Tango.
  */
 
-import type { Phone } from './inventory/webusb.js';
+import type { Phone } from './core/browser/webusb.js';
 import { Store, useStore } from './store.js';
 
 /**
- * What the demo phone in `inventory/demo.ts` is found by, which no USB serial is. Here rather than there so the Battle
- * page can refuse it without fetching the readers that module brings.
+ * What the demo phone in `demo-phone.ts` is found by, which no USB serial is. Here rather than there so the Battle page
+ * can refuse it without fetching the demo phone.
  */
 export const DEMO_SERIAL = 'demo';
 
