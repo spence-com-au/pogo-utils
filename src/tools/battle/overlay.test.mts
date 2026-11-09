@@ -7,17 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import {
-  areas,
-  checkOverlay,
-  covered,
-  Covered,
-  GAME_ALONE,
-  panelsOf,
-  swipeAround,
-  swipesAround,
-  type Panel,
-} from './overlay.mts';
+import { areas, checkOverlay, covered, Covered, GAME_ALONE, panelsOf, swipeAround, type Panel } from './overlay.mts';
 
 const views = (name: string) => readFileSync(new URL(`fixtures/views-${name}.xml`, import.meta.url), 'utf8');
 
@@ -118,40 +108,6 @@ test('leaves a swipe begun clear of PGSharp’s overlay as it is, however far ac
   ] as const;
 
   expect(swipeAround(swipe, [STAR], PIXEL_4_XL)).toEqual(swipe);
-});
-
-// `Player` swipes the first bubble it is handed, the biggest: one left in with both ends covered would be chosen and
-// skipped on every frame, and the bubbles after it never swiped.
-test('leaves out the bubbles PGSharp’s overlay covers at both ends, before one is chosen', () => {
-  expect(
-    swipesAround(
-      [
-        [
-          [0.05, 0.7],
-          [0.06, 0.74],
-        ],
-        [
-          [0.05, 0.72],
-          [0.95, 0.76],
-        ],
-        [
-          [0.4, 0.8],
-          [0.6, 0.8],
-        ],
-      ],
-      [STAR],
-      PIXEL_4_XL,
-    ),
-  ).toEqual([
-    [
-      [0.95, 0.76],
-      [0.05, 0.72],
-    ],
-    [
-      [0.4, 0.8],
-      [0.6, 0.8],
-    ],
-  ]);
 });
 
 test('makes no swipe with both ends on PGSharp’s overlay', () => {

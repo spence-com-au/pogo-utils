@@ -31,7 +31,7 @@ import { afterThrow, chargePriority, finisher, NO_STAGES, wouldFaint, wouldShiel
 import { iconColour, readTypes } from './typing.mts';
 import { holding, spare, untilTheirsLands, wornDown, type Matchup } from './energy.mts';
 import { type Meta } from './meta.mts';
-import { checkOverlay, named, swipeAround, swipesAround } from './overlay.mts';
+import { checkOverlay, named, swipeAround } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { Battle } from './battle.mts';
@@ -1259,10 +1259,9 @@ export async function run(
       const fading = clock.now() - battle.theirFaintAt < FADING_MS;
       const card = battle.prompt?.card;
 
-      // The bubbles swiped around PGSharp's overlay, those it covers at both ends left out before one is chosen.
       const bubbles =
         (battle.player.minigame || playing) && battle.bubbleColour
-          ? swipesAround(reads.bubbleSwipes(frame, battle.bubbleColour), panels, frame)
+          ? reads.bubbleSwipes(frame, battle.bubbleColour)
           : undefined;
 
       const played = battle.player.next(state, clock.now(), {
@@ -1273,6 +1272,7 @@ export async function run(
         ...(card && { card }),
         ...(battle.bench.chosen && !flying && { bench: battle.bench.chosen.at }),
         ...(bubbles && { bubbles }),
+        clear: (swipe) => swipeAround(swipe, panels, frame) !== undefined,
         back: battle.player.minigame && (reads.fleeButton(frame) || reads.readHealth(frame).own !== null),
       });
 
