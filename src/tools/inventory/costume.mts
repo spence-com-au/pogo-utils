@@ -12,12 +12,11 @@
  * - **The game's icons**, which draw every costume there is, are right 102 times in 160. Each icon is lit unlike the
  *   game's model and framed to fit its own outfit, so a big one shrinks Pikachu in it by up to 1.6×.
  *
- * So the captures answer and the icons check them. Where the icons put the captures' pick further behind their own best
- * than they ever put that costume on its own labelled captures, the pick is a costume nobody labelled, and the answer is
- * every icon close to the best instead. Each of the 160 judged against the other 159 and the corpus's five against all
- * of them, that names 159 rightly and lists 1 with the right one among them. One of the 5 wrong is a yellow GO Fest cap
- * the icons veto: their yellow cap is drawn unlike the model, and comes further behind on that capture than on the
- * other two.
+ * So the captures answer and the icons check them. Where the icons put the captures' pick well further behind their own
+ * best than they ever put that costume on its own labelled captures, the pick is a costume nobody labelled, and the
+ * answer is every icon close to the best instead. Each of the 160 judged against the other 159 and the corpus's five
+ * against all of them, that names 162 rightly and lists 1 with the right one among them. The 2 wrong are two of the
+ * corpus's, in costumes nobody labelled.
  *
  * Both are compared in the plain icon's frame rather than the screen's. Each screen is registered onto the plain icon by
  * Pikachu's yellow, searched afresh each time, which is what lets references labelled on one phone read another's: the
@@ -39,7 +38,7 @@ export const DEX = 25;
 
 /**
  * Every labelled capture, as `blocksOf` reduced its `BODY` and its `FRONT`, and how far behind its own icons' best each
- * costume came on its own captures at worst: the per-costume allowance the veto measures a pick against.
+ * costume came on its own captures at worst: what the veto allows a pick of that costume in proportion to.
  *
  * Written by `scripts/costume-references.mts` from a directory of captures and the costume each wears.
  */
@@ -132,9 +131,23 @@ const BRIGHTNESS = 0.3;
 const FOUND = 0.2;
 
 /**
- * What the icons' veto allows a pick on top of its own worst, and how close to the icons' best a costume has to come to
- * be listed once it is vetoed. Chosen together over the same captures: no slack named 6 fewer rightly and listed 7 more,
- * and a shortlist of 0.01 named 3 fewer and listed longer.
+ * How far behind the icons' best a pick can come before they veto it, as a multiple of how far behind they put that
+ * costume on its own captures at worst.
+ *
+ * A multiple, because most icons come out best on their own costume's captures, but one drawn unlike its model puts its
+ * costume behind on every capture of it, by more on some than on others: Glass Helmet 2026 by 0.05 to 0.10, Anniversary
+ * 2026 by 0.03 to 0.045 and the yellow GO Fest 2026 cap by 0.022 to 0.035. Two or three captures understate how far such
+ * a costume can go, and the same slack on every costume's worst either vetoes it where it was picked rightly or lets
+ * through a costume nobody labelled that the captures took for one the icons draw true. Every multiple from 1.5 to 1.85
+ * named as many rightly; 1.45 named 2 fewer, and 1.9 one fewer.
+ */
+const LEEWAY = 1.7;
+
+/**
+ * The least the icons' veto allows a pick, which is all it allows a costume they put at their best on its own captures,
+ * and how close to the icons' best a costume has to come to be listed once a pick is vetoed. Chosen together over the
+ * same captures: no slack named 4 fewer rightly and listed 4 more, and a shortlist of 0.01 named 3 fewer and listed
+ * longer.
  */
 const SLACK = 0.005;
 const SHORTLIST = 0.005;
@@ -592,7 +605,8 @@ export function costumeOf(
 
   // A pick the icons cannot judge, having no icon for it, stands: the veto is the icons' to cast.
   const answer =
-    pick !== undefined && (picked === undefined || picked - best <= (references.behind[pick] ?? 0) + SLACK)
+    pick !== undefined &&
+    (picked === undefined || picked - best <= Math.max(LEEWAY * (references.behind[pick] ?? 0), SLACK))
       ? [pick]
       : scores.filter(([, score]) => score - best <= SHORTLIST).map(([costume]) => costume);
 

@@ -10,8 +10,8 @@
  * or the artwork: a misspelt one would be a reference no icon can check.
  *
  * Kept as numbers rather than as the captures, which hold trainer names and are some 2 MB each: three bytes per block
- * of each, and how far behind the icons' best each costume came on its own captures at worst — the allowance the icons'
- * veto is measured against, which only the captures and the icons together can say.
+ * of each, and how far behind the icons' best each costume came on its own captures at worst — what the icons' veto
+ * allows a pick of it in proportion to, which only the captures and the icons together can say.
  *
  * Run again when a costume arrives that nothing has labelled, with captures of it added to the directory: until then
  * the icons alone answer it.
