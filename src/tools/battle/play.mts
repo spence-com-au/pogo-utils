@@ -99,14 +99,21 @@ export interface Choices {
   bench?: Point;
 
   /**
-   * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped once
-   * brought onto what a swipe may reach. None found waits through the minigame's lead-in, there being nothing to pop
-   * yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
+   * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first whose swipe as
+   * aimed is `clear` swiped. None found, or none clear, waits through the minigame's lead-in, there being nothing to
+   * pop yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
    * otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have been gone
    * `OVER_MS`, or once `back` says, are waited through too, being the move playing out. Undefined, where the bubbles'
    * colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
+
+  /**
+   * Whether a swipe can be made, PGSharp's overlay not under both its ends, judged on each bubble's swipe as `ahead`
+   * aims it and the first passing swiped: one refused as it is made would be chosen again on the next frame, and the
+   * next, the bubbles after it never swiped. Without it, every swipe can be made.
+   */
+  clear?: (swipe: readonly [Point, Point]) => boolean;
 
   /**
    * Whether what the minigame hides is back on this frame: the button to flee the battle, or our HP bar. Both show again
@@ -382,6 +389,7 @@ export class Player {
       card = this.#taps.switch,
       bench,
       bubbles,
+      clear = () => true,
       back = false,
     }: Choices = {},
   ): Action {
@@ -445,17 +453,20 @@ export class Player {
         this.#look = { at: now, bubbles };
       }
 
-      const [through] = this.#minigame && !this.#over ? (bubbles ?? []) : [];
+      const look = this.#look;
+      const aimed =
+        this.#minigame && !this.#over && look
+          ? (bubbles ?? []).map((bubble) => ahead(bubble, look, this.#before, now, SWIPE_MS, this.#screen))
+          : [];
+      const through = aimed.find(clear);
 
-      if (through && this.#look) {
+      if (through) {
         if (this.#playing) {
           this.#found =
             this.#found && now - this.#found.to < OVER_MS ? { ...this.#found, to: now } : { from: now, to: now };
         }
 
-        const [from, to] = ahead(through, this.#look, this.#before, now, SWIPE_MS, this.#screen);
-
-        return { kind: 'swipe', from, to, ms: SWIPE_MS };
+        return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
       }
 
       // Judged on a frame with none found, so that a loop held up for a moment does not end the bubbles on its own.

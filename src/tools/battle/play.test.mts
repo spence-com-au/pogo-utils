@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import { decodePng } from '../../core/png.mts';
 import { BOTTOM, place, type Point } from './layout.mts';
 import { bubbleSwipes, typeColour } from './minigame.mts';
+import { swipeAround, type Panel } from './overlay.mts';
 import { ahead, BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
@@ -275,6 +276,66 @@ test('runs a swipe on ahead of a bubble flying in from the edge', () => {
 
   expect(from[0]).toBeCloseTo(0.76);
   expect(to[0]).toBeCloseTo(0.76 - (1.6 * (120 + 80)) / 1000 - 0.26 / 2);
+});
+
+/**
+ * PGSharp's star at the left edge, by a bubble listed before one standing clear of it. A swipe with both ends on the star
+ * is not made, and the bubble it was aimed at would be chosen again on every frame, so each is judged as `ahead` aims it:
+ * one flying left onto the star is clear of it as found, to 0.19 across, but aimed ahead runs from 0.06 to 0.05, both on
+ * it; one flying right off it is on it at both ends as found, but aimed ahead runs clear to 0.39.
+ */
+test.each([
+  [
+    'standing on the star',
+    [
+      [0.05, 0.7],
+      [0.06, 0.74],
+    ],
+    [
+      [0.05, 0.7],
+      [0.06, 0.74],
+    ],
+    0.4,
+  ],
+  [
+    'flying onto the star',
+    [
+      [0.07, 0.72],
+      [0.33, 0.72],
+    ],
+    [
+      [-0.07, 0.72],
+      [0.19, 0.72],
+    ],
+    0.4,
+  ],
+  [
+    'flying off the star',
+    [
+      [-0.13, 0.72],
+      [-0.03, 0.72],
+    ],
+    [
+      [0.01, 0.72],
+      [0.11, 0.72],
+    ],
+    0.06,
+  ],
+] as const)('judges a bubble %s by PGSharp’s overlay on its swipe as aimed', (_, was, found, from) => {
+  const screen = { width: 360, height: 760 };
+  const player = new Player(screen);
+  const star: Panel = { name: 'star', box: [0, 0.7, 0.0875, 0.74] };
+  const clear = (swipe: readonly [Point, Point]) => swipeAround(swipe, [star], screen) !== undefined;
+  const standing: [Point, Point] = [
+    [0.4, 0.5],
+    [0.6, 0.5],
+  ];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: [was, standing], clear });
+  const action = player.next('playing', 1100, { bubbles: [found, standing], clear });
+
+  expect(action.kind === 'swipe' ? action.from[0] : NaN).toBeCloseTo(from);
 });
 
 /** Mewtwo's bubbles low on the screen run past where a swipe may reach as found, and are swiped only within it. */
