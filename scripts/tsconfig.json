@@ -29,9 +29,9 @@
     "types": ["node"],
 
     // tesseract.js ships one declaration file for both of its builds, naming `HTMLImageElement` and `OffscreenCanvas`
-    // among the images it takes — which this project's lib has no DOM to resolve. `src/core/ocr-wasm.mts` is
-    // checked here as well as in the browser project, and hands it nothing but a PNG's bytes; skipping the check of
-    // declaration files is what lets it be read here without lending the whole project the DOM.
+    // among the images it takes — which this project's lib has no DOM to resolve. `src/core/ocr-wasm.mts` is checked
+    // here as well as in the browser project, and hands it nothing but a PNG's bytes; skipping the check of declaration
+    // files is what lets it be read here without lending the whole project the DOM.
     "skipLibCheck": true,
 
     // A value import from `src/` has to name the `.ts` file, because Node runs these by stripping types in place and
@@ -43,15 +43,15 @@
   },
   // The entry points here, and everything under `src/` written as an `.mts` file, which is this project's by that name
   // alone: the browser project's `src/**/*.ts` does not match one, so an `.mts` under `src/` belongs to whichever of
-  // the two claims it and would otherwise be checked by neither. What is there now is the inventory library — it
-  // reaches `node:child_process` for `adb` and the Tesseract CLI, so it needs Node's lib and must not have the DOM's —
-  // `src/gpx-source.mts`, which reaches the same for `git ls-files`, the logic three build scripts import so that it
-  // can be tested — `src/artifact.mts`, `src/ics.mts` and `src/gpx-checks.mts`, each beside its test —
-  // `src/served-types.mts`, the table of what is served that `src/artifact.mts` and `scripts/serve.mts` both read — and
-  // the two tests that read a repository file off disk rather than importing one: `src/styles.test.mts` the
-  // stylesheets, `src/build.test.mts` the `package.json`. Then the scripts the skills under `.claude/skills/` run,
-  // which import the shared files as this project's entry points do, and would otherwise be the one TypeScript nothing
-  // checks.
+  // the two claims it and would otherwise be checked by neither. What is there now is the tools and `src/core/`, the
+  // layer they share — whose `node/` modules reach `node:child_process` for `adb` and the Tesseract CLI, so need Node's
+  // lib and must not have the DOM's — `src/gpx-source.mts`, which reaches the same for `git ls-files`, the logic three
+  // build scripts import so that it can be tested — `src/artifact.mts`, `src/ics.mts` and `src/gpx-checks.mts`, each
+  // beside its test — `src/served-types.mts`, the table of what is served that `src/artifact.mts` and
+  // `scripts/serve.mts` both read — and the two tests that read a repository file off disk rather than importing one:
+  // `src/styles.test.mts` the stylesheets, `src/build.test.mts` the `package.json`. Then the scripts the skills under
+  // `.claude/skills/` run, which import the shared files as this project's entry points do, and would otherwise be the
+  // one TypeScript nothing checks.
   "include": ["*.mts", "../src/**/*.mts", "../.claude/skills/*/scripts/*.mts"],
 
   // These scripts import files the shared project owns, and `tsconfig.shared.json`'s `include` is the one place that

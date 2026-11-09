@@ -1,4 +1,4 @@
-import { said } from '../../errors.ts';
+import { said } from '../../../errors.ts';
 import { type Recording } from './stream.mts';
 import { Video } from './video.mts';
 import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';

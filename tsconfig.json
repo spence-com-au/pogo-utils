@@ -55,13 +55,14 @@
     // esbuild would compile an `enum`, a `namespace` or a parameter property into plain JavaScript for the browser
     // without complaint, so the bundle does not need this. It is the rejection `scripts/` takes for Node's type
     // stripping, which can only erase, held here as well so that a module can move between this project, the shared one
-    // and `scripts/` — the inventory readers below already sit in two of them — without being rewritten first.
+    // and `scripts/` — the `.mts` modules below already sit in two of them — without being rewritten first.
     "erasableSyntaxOnly": true,
 
-    // The inventory readers are `.mts` files written for Node, which names a module by its own extension, and they name
-    // each other that way. They are checked here as well as in `scripts/` — here without Node's globals and there
-    // without the DOM's — so a reader reaching for either fails one of the two, and only the two together say it runs
-    // on both. Allowed because nothing here emits JavaScript; esbuild resolves an `.mts` specifier as it stands.
+    // The modules the tools share with the pages are `.mts` files written for Node, which names a module by its own
+    // extension, and they name each other that way. They are checked here as well as in `scripts/` — here without
+    // Node's globals and there without the DOM's — so a module reaching for either fails one of the two, and only the
+    // two together say it runs on both. Allowed because nothing here emits JavaScript; esbuild resolves an `.mts`
+    // specifier as it stands.
     "allowImportingTsExtensions": true,
 
     // `react-jsx` is the modern transform, which imports what it needs rather than expecting a name in scope, so no
@@ -76,58 +77,9 @@
   // by name rather than by directory because they sit among the files that import them: they are shared by what reads
   // them, not by where they live.
   //
-  // The inventory readers the page runs are named one by one, and the held shell and touchscreen the battle Worker in
-  // `src/battle/` drives the phone through, the rest of that directory being Node's: the CLI's transports, the download
-  // cache and the tests. So are the battle modules `src/battle/` reaches.
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/tools/battle/assets.mts",
-    "src/tools/battle/damage.mts",
-    "src/tools/battle/energy.mts",
-    "src/tools/battle/health.mts",
-    "src/tools/battle/layout.mts",
-    "src/tools/battle/menus.mts",
-    "src/tools/battle/meta.mts",
-    "src/tools/battle/minigame.mts",
-    "src/tools/battle/options.mts",
-    "src/tools/battle/overlay.mts",
-    "src/tools/battle/party.mts",
-    "src/tools/battle/phone.mts",
-    "src/tools/battle/pictures.mts",
-    "src/tools/battle/play.mts",
-    "src/tools/battle/read.mts",
-    "src/tools/battle/recognise.mts",
-    "src/tools/battle/record-command.mts",
-    "src/tools/battle/reporter.mts",
-    "src/tools/battle/run.mts",
-    "src/tools/battle/screen.mts",
-    "src/tools/battle/selection.mts",
-    "src/tools/battle/stay-on.mts",
-    "src/tools/battle/strategy.mts",
-    "src/tools/battle/typing.mts",
-    "src/core/adb.mts",
-    "src/tools/inventory/artwork.mts",
-    "src/tools/inventory/badges.mts",
-    "src/tools/inventory/config.mts",
-    "src/tools/inventory/costume-references.mts",
-    "src/tools/inventory/costume.mts",
-    "src/tools/inventory/demo.mts",
-    "src/tools/inventory/detail.mts",
-    "src/core/game-master.mts",
-    "src/core/held-shell.mts",
-    "src/tools/inventory/identify.mts",
-    "src/core/moves.mts",
-    "src/core/ocr-wasm.mts",
-    "src/core/ocr.mts",
-    "src/tools/inventory/overlay.mts",
-    "src/core/png.mts",
-    "src/tools/inventory/progress.mts",
-    "src/tools/inventory/report.mts",
-    "src/tools/inventory/stitch.mts",
-    "src/tools/inventory/storage.mts",
-    "src/core/touchscreen.mts"
-  ],
+  // And by directory, the `.mts` modules a page runs as well as Node: `src/core/` and the battle and inventory tools.
+  // Each keeps its Node-only modules apart in a `node/` beneath it, and its tests, Node's as well, are excluded below.
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/core/*.mts", "src/tools/battle/*.mts", "src/tools/inventory/*.mts"],
   "exclude": [
     "src/coin-bag/release.ts",
     "src/countries.ts",
@@ -143,7 +95,8 @@
     "src/pokemon/names.ts",
     "src/recurring-types.ts",
     "src/release.ts",
-    "src/types.d.ts"
+    "src/types.d.ts",
+    "src/**/*.test.mts"
   ],
 
   "references": [{ "path": "tsconfig.shared.json" }]

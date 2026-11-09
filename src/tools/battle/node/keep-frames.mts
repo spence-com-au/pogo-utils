@@ -1,5 +1,5 @@
-import { said } from '../../errors.ts';
-import { encodePng, type Image } from '../../core/png.mts';
+import { said } from '../../../errors.ts';
+import { encodePng, type Image } from '../../../core/png.mts';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 

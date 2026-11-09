@@ -1,6 +1,6 @@
-import { type Image } from '../../core/png.mts';
+import { type Image } from '../../../core/png.mts';
 import { columnsFor, ERASE, type Graphics } from './kitty.mts';
-import { energyOf, PARTY, summary, type Fight, type Reporter, type Side, type Status } from './reporter.mts';
+import { energyOf, PARTY, summary, type Fight, type Reporter, type Side, type Status } from '../reporter.mts';
 
 /**
  * What `run` tells of itself, as a terminal shows it: `plain` writes it as lines, for a log or a pipe; `live` takes over
