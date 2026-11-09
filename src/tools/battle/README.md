@@ -194,7 +194,8 @@ for text and done every few seconds.
 
 **[`run.mts`](run.mts)** ties it together, one frame at a time:
 
-1. **Recognise the frame.** On the first non-`other` frame of a battle, everything about the last battle is reset.
+1. **Recognise the frame.** On the first non-`other` frame of a battle, a fresh [`Battle`](battle.mts) is made, which
+   holds everything the battle is played by, so nothing of the last battle carries into it.
 2. **Read cheap things every frame:** shields, Pokémon left and HP bars. A bar of the opponent's reading fuller than
    before means a new Pokémon, HP never coming back, so its name and CP are dropped and read again at once.
 3. **Read text every 3s,** or at once after a switch: names, CPs and our move labels, and with them each side's type
@@ -209,7 +210,9 @@ for text and done every few seconds.
    opponent's throw, a shield prompt or its countdown, the banner is looked for for 8s, beside the battle too.
 4. **Update the opponent's energy count** from our bar ([below](#the-opponents-energy)), and what our hits take off its.
 5. **Decide:** whether a shield would be taken, which button to throw if any, which card to send in after a faint, and
-   whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`.
+   whether to switch when the opponent does. That is `strategy.mts`, `damage.mts` and `energy.mts`, but for our
+   switches: [`bench.mts`](bench.mts) decides those, and keeps the energy each leaves banked on the bench and our switch
+   timer, which is never read off the screen but kept from whether each switch tapped went through.
 6. **Act:** hand the state and the decisions to `Player`, then perform its swipe, tap or wait. A charged move tapped is
    logged as thrown, `threw Fly`, and its stat changes counted only once it plays. In the user's GO Battle League
    recordings, an opponent throwing on the same turn could drop our tap, its button lighting again with the energy kept,
@@ -228,9 +231,10 @@ for text and done every few seconds.
    counted, no fast move firing there; one straight from the fight is still the fight for 0.6s, a fast move's flash
    having washed our buttons' names out for up to 0.46s.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
-   the battle. If nothing at all has been recognised for 20s, stop with `Lost`, keeping the last frames for
-   `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged move playing, is
-   told once it comes back, how long and what showed:
+   the battle, and tap or scroll it, reading the party's cards off the selection screen on the way. That is
+   [`menu-reader.mts`](menu-reader.mts). If nothing at all has been recognised for 20s, stop with `Lost`, keeping the
+   last frames for `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged
+   move playing, is told once it comes back, how long and what showed:
    `off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)`. A stretch
    the battle never comes back from, its end, is not.
 
