@@ -1,13 +1,14 @@
 /**
- * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, how a row is written, whether
- * two passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in
+ * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, what a row holds, whether two
+ * passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in
  * `scripts/inventory.mts` so the suite can import them, that script parsing `process.argv` and driving a phone at its
- * top level.
+ * top level; `passes.mts`, `row.mts` and `look.mts` beside it hold the flag passes, the row and the look for the moves
+ * the script wires to the phone.
  */
 
 import { type Detail } from './detail.mts';
 import { type IVs } from './game-master.mts';
-import { type Shade } from './identify.mts';
+import { type Identity, type Shade } from './identify.mts';
 import { type Moves } from './moves.mts';
 import { fold } from './ocr.mts';
 import { ivsOf, widen, type findOverlay, type Overlay, type OverlayBox, type readOverlay } from './overlay.mts';
@@ -111,6 +112,36 @@ export interface Row {
    * several wherever the screen could not rule it out, since the costumes alone would read as settled among them.
    */
   costume: string[] | null;
+}
+
+/** One detail screen as the scan read it: the game's own text, PGSharp's overlay over it and the key they make. */
+export interface Reading {
+  detail: Detail;
+  overlay: Overlay | null;
+  key: string | null;
+
+  /** Worked out while reading, since a reading is only accepted once something fits it; the row writer reuses it. */
+  id: Identity;
+
+  /** The screenshot this reading was read from, which the `-detail` screen has to be to account for its row. */
+  image: Image;
+
+  /**
+   * The last screenshot taken, which is `image` on every reading but one `bestOf` kept from an earlier attempt. The
+   * scroll owes `scrollFrames` a frame still on the screen and measures its swipe against one, where an attempt back
+   * is a `config.waits.swipe` and a `settled` older than that.
+   *
+   * Where the two differ the stitch is a later read of the screen than the row beside it, which the row says, since
+   * the stitch is the capture a fixture is promoted from and the row is what a reader would take its claims for.
+   */
+  latest: Image;
+
+  /**
+   * How much of this reading is in doubt, as a score to be got to zero. Recorded with the reading rather than worked
+   * out again when two are compared: `boxes.box` is found part way through a pass, and a score that moved with it
+   * would rank an earlier attempt differently for what a later one went on to learn.
+   */
+  faults: number;
 }
 
 /**
