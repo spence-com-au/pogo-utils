@@ -351,13 +351,13 @@ export default function MapPage({ query: fragment }: { query: string }) {
       const missing: Failure[] = [];
       const bad: Failure[] = [];
 
-      for (const { file, read, failure } of results) {
-        if (read === null) {
+      for (const { file, read: gpx, failure } of results) {
+        if (gpx === null) {
           (failure instanceof FetchError ? missing : bad).push({ file, reason: said(failure) });
           continue;
         }
 
-        for (const route of read.routes) {
+        for (const route of gpx.routes) {
           const line = L.polyline(route.latlngs, routeStyle(route)).addTo(map);
           const entry: RouteEntry = { ...route, id: `r${routes.length}`, line, distance: routeDistance(route.latlngs) };
 
@@ -365,7 +365,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
           routes.push(entry);
         }
 
-        for (const place of read.waypoints) {
+        for (const place of gpx.waypoints) {
           const marker = L.circleMarker(place.coords, cityStyle(place)).addTo(map);
           const entry: CityEntry = { ...place, id: `w${cities.length}`, marker };
 
@@ -401,9 +401,9 @@ export default function MapPage({ query: fragment }: { query: string }) {
        * to finish afterwards and restore the world. Ordering cannot fix it.
        */
       if (!focusEvent(read)) {
-        const all = L.featureGroup([...routes.map((r) => r.line), ...cities.map((c) => c.marker)]);
+        const world = L.featureGroup([...routes.map((r) => r.line), ...cities.map((c) => c.marker)]);
 
-        map.fitBounds(all.getBounds(), { padding: [16, 16] });
+        map.fitBounds(world.getBounds(), { padding: [16, 16] });
       }
     })();
 
@@ -411,6 +411,8 @@ export default function MapPage({ query: fragment }: { query: string }) {
       live = false;
     };
   }, []);
+
+  const chosen = new Set(selected);
 
   /**
    * Tell the layers what is selected. An effect rather than part of the click, selection being state several entries
@@ -424,13 +426,11 @@ export default function MapPage({ query: fragment }: { query: string }) {
       return;
     }
 
-    const chosen = new Set(selected);
-
     for (const route of loaded.routes) {
       const dots = markers.current.get(route.id);
 
       if (dots) {
-        dots.forEach((dot) => map.removeLayer(dot));
+        dots.forEach((marker) => map.removeLayer(marker));
         markers.current.delete(route.id);
       }
 
@@ -724,7 +724,6 @@ export default function MapPage({ query: fragment }: { query: string }) {
       return next;
     });
 
-  const chosen = new Set(selected);
   const routeCount = loaded?.routes.length ?? 0;
   const cityCount = loaded?.cities.length ?? 0;
 
@@ -798,7 +797,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
 
                         <div class="country-items">
                           {held.map((row) => {
-                            const classes = ['route'];
+                            const routeClasses = ['route'];
 
                             // A waypoint carries coordinates where a track carries GPX, which is also what the
                             // stylesheet tells the two apart by — so the one field decides the class, the glyph and
@@ -806,21 +805,21 @@ export default function MapPage({ query: fragment }: { query: string }) {
                             const place = row.coordStr !== null;
 
                             if (place) {
-                              classes.push('city');
+                              routeClasses.push('city');
                             }
 
                             if (!row.hit) {
-                              classes.push('hidden');
+                              routeClasses.push('hidden');
                             }
 
                             if (chosen.has(row.id)) {
-                              classes.push('active');
+                              routeClasses.push('active');
                             }
 
                             return (
                               <div
                                 key={row.id}
-                                class={classes.join(' ')}
+                                class={routeClasses.join(' ')}
                                 ref={(node) => {
                                   if (node === null) {
                                     rows.current.delete(row.id);

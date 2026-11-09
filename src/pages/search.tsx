@@ -319,7 +319,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   /** The pause `IDLE` is waiting out in the Advanced box, if one is running. */
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { query, was, rewrites, lossy, error, mishandled } = current(state);
+  const { query, was: before, rewrites, lossy, error, mishandled } = current(state);
   const root = cardsOf(state.tree);
 
   /**
@@ -443,9 +443,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
   /** Whether a catalogue entry matches what is typed into the sheet's box, by its label or the word the game reads. */
   const wanted = (label: string, term: string) => {
-    const typed = typing.trim().toLowerCase();
+    const sought = typing.trim().toLowerCase();
 
-    return typed === '' || label.toLowerCase().includes(typed) || term.toLowerCase().includes(typed);
+    return sought === '' || label.toLowerCase().includes(sought) || term.toLowerCase().includes(sought);
   };
 
   /**
@@ -594,11 +594,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    * step — the arrangement is still its only state, and an edit on the cards afterwards is not written back here.
    */
   function importTyped(text: string) {
-    const { tree, error } = read(text);
+    const { tree, error: readError } = read(text);
     const laid = tree === null ? null : asCards(tree);
 
     // A tree that parsed but will not lay out is one spreading past what a search box takes, which the composer says.
-    setTypedError(tree === null ? error : laid === null ? clausesOf(tree).error : null);
+    setTypedError(tree === null ? readError : laid === null ? clausesOf(tree).error : null);
 
     if (laid !== null) {
       arrange(laid);
@@ -840,7 +840,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     ...category,
     terms: category.terms.filter((term) => wanted(term.label, term.term)),
   })).filter((category) => category.terms.length > 0);
-  const spans = RANGES.filter((range) => wanted(range.label, spanned(range, '')));
+  const ranges = RANGES.filter((range) => wanted(range.label, spanned(range, '')));
 
   return (
     <>
@@ -914,7 +914,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
           </div>
 
           <div class="meta">
-            <span class="count">{query ? `${characters(query.length)}${was ? `, down from ${was}` : ''}` : ''}</span>
+            <span class="count">
+              {query ? `${characters(query.length)}${before ? `, down from ${before}` : ''}` : ''}
+            </span>
             <span class="actions">
               <label class="toggle" title="Say the same thing in fewer characters">
                 <input
@@ -983,14 +985,14 @@ export default function SearchPage({ query: fragment }: { query: string }) {
          * a reader nothing to Tab past one, and it leaves the arrows as a second way across rather than the only one.
          */}
         <div class="panes" role="tablist" aria-label="How to write the query">
-          {PANES.map(({ id, label, said }) => (
+          {PANES.map(({ id, label, said: summary }) => (
             <button
               key={id}
               type="button"
               role="tab"
               id={`pane-${id}`}
               class="pane-tab"
-              title={said}
+              title={summary}
               aria-selected={pane === id}
               aria-controls={`panel-${id}`}
               onClick={() => setPane(id)}
@@ -1049,8 +1051,8 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               ))}
 
               {/* A saved search notes the string it composes, which is the one thing about it a name cannot say. */}
-              {favourites.map(({ label, fragment }) => {
-                const { tree } = fromFragment(fragment);
+              {favourites.map(({ label, fragment: saved }) => {
+                const { tree } = fromFragment(saved);
 
                 return (
                   <span key={label} class="saved">
@@ -1327,12 +1329,12 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               </section>
             ))}
           </div>
-          <section class="panel" aria-labelledby="rangesLabel" hidden={spans.length === 0}>
+          <section class="panel" aria-labelledby="rangesLabel" hidden={ranges.length === 0}>
             <h2 class="label" id="rangesLabel">
               Ranges
             </h2>
             <div class="chips">
-              {spans.map((range) => {
+              {ranges.map((range) => {
                 const chip = chipState(rangeLeaf(range.id));
 
                 return (
@@ -1429,7 +1431,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             </p>
           </section>
 
-          <p class="help" hidden={shelves.length > 0 || spans.length > 0}>
+          <p class="help" hidden={shelves.length > 0 || ranges.length > 0}>
             No filter is called that, so <kbd>Enter</kbd> adds it as a name.
           </p>
         </div>

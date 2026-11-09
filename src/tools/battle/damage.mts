@@ -120,7 +120,7 @@ export function rankOne(data: GameData, form: Form, cp: number): Build | null {
     for (let defense = 0; defense <= 15; defense++) {
       for (let stamina = 0; stamina <= 15; stamina++) {
         const iv = { attack, defense, stamina };
-        const fit = data.cpm.findLast(([, m]) => cpOf(form, iv, m) <= cp);
+        const fit = data.cpm.findLast(([, multiplier]) => cpOf(form, iv, multiplier) <= cp);
 
         if (!fit) {
           continue;
@@ -387,9 +387,9 @@ export function wouldFaint(
   for (const attacker of theirs) {
     const names = seen.size >= MOVES_HELD ? [...seen] : [...new Set([...seen, ...chargedOf(attacker.form, moveset)])];
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
-    const afforded = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
-    const counted = affordable !== undefined && afforded.length > 0;
-    const moves = counted ? afforded : allowed;
+    const payable = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
+    const counted = affordable !== undefined && payable.length > 0;
+    const moves = counted ? payable : allowed;
 
     narrowed ||= moves.length < allowed.length;
 

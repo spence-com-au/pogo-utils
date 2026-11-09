@@ -10,13 +10,13 @@ import { inkOn, TYPE_PAINT } from './types.js';
 /** WCAG's contrast ratio between two `#rrggbb` colours, written out here rather than imported from what it checks. */
 function contrast(a: string, b: string) {
   const lum = (hex: string) => {
-    const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => {
+    const [red = 0, green = 0, blue = 0] = [1, 3, 5].map((at) => {
       const c = parseInt(hex.slice(at, at + 2), 16) / 255;
 
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     });
 
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
   };
 
   const [lo, hi] = [lum(a), lum(b)].sort((x, y) => x - y);

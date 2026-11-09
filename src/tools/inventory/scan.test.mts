@@ -393,13 +393,13 @@ test('a key with IVs agrees with the same key read without the overlay, and not 
   expect(agree('a', 'b')).toBe(false);
 });
 
-const iv = (name: string) => `${name}|50|1.5|0.4|15/15/15`;
-const blind = (name: string) => `${name}|50|1.5|0.4|`;
+const ivKey = (name: string) => `${name}|50|1.5|0.4|15/15/15`;
+const blindKey = (name: string) => `${name}|50|1.5|0.4|`;
 
 test('a look back that misses the overlay a first read saw goes on, after a skip', async () => {
-  const keys = [iv('z'), iv('a'), iv('a'), iv('c')];
+  const keys = [ivKey('z'), ivKey('a'), ivKey('a'), ivKey('c')];
 
-  expect(await walked(keys, Infinity, 1, [], [], null, { 1: blind('a') })).toEqual([
+  expect(await walked(keys, Infinity, 1, [], [], null, { 1: blindKey('a') })).toEqual([
     [keys[1], 1],
     [keys[2], 2],
     [keys[3], 3],
@@ -601,8 +601,8 @@ test('a walk skipped to the last Pokémon in storage ends there, by a look back 
 test('a look back where one world missed the overlay still tells apart two worlds with different IVs', () => {
   // Storage going on lands on the IV-less read first, and each IV key agrees with it but not with the other.
   const worlds = [
-    { at: 5, known: new Map([[4, blind('a')]]) },
-    { at: 3, known: new Map([[2, iv('a')]]) },
+    { at: 5, known: new Map([[4, blindKey('a')]]) },
+    { at: 3, known: new Map([[2, ivKey('a')]]) },
     { at: 2, known: new Map([[1, 'a|50|1.5|0.4|1/2/3']]) },
   ];
 
@@ -677,7 +677,7 @@ test.for([
 });
 
 /** A Pikachu of `hp`, read whole. */
-const at = (hp: number): Landmark => ({ hp, weight: 6.1, height: 0.41, iv: '1/2/3' });
+const landmark = (hp: number): Landmark => ({ hp, weight: 6.1, height: 0.41, iv: '1/2/3' });
 
 /**
  * Lands a skip of `from` over a storage of `hps`, with the forward swipes numbered in `dropped` — counting the blind
@@ -700,7 +700,7 @@ async function landed(hps: readonly number[], from: number, dropped: readonly nu
     await next();
   }
 
-  const behind = hps.slice(Math.max(from - 3, 0), from).map(at);
+  const behind = hps.slice(Math.max(from - 3, 0), from).map(landmark);
   const off = await land(
     {
       read: async () => ({ key: String(hps[position]) }),
@@ -708,7 +708,7 @@ async function landed(hps: readonly number[], from: number, dropped: readonly nu
       back: async () => void (position = Math.max(position - 1, 0)),
     },
     behind,
-    ({ key }) => at(Number(key)),
+    ({ key }) => landmark(Number(key)),
     reach,
   );
 
@@ -877,18 +877,22 @@ test('the HP, weight and height over a moves screen say whose it is where its ov
     width: 0.6076388888888888,
     height: 0.024671052631578955,
   };
-  const detail = await readOverlay(capture('elgyem-detail.png'), box);
+  const detailOverlay = await readOverlay(capture('elgyem-detail.png'), box);
   const moves = capture('elgyem-moves.png');
   const shown = await readOverlay(moves, box);
 
-  expect(detail?.iv).toStrictEqual({ attack: 11, defense: 13, stamina: 8 });
-  expect(otherPokemon(detail, shown), 'the moves screen’s overlay no longer misreads; this test proves nothing').toBe(
-    true,
-  );
+  expect(detailOverlay?.iv).toStrictEqual({ attack: 11, defense: 13, stamina: 8 });
+  expect(
+    otherPokemon(detailOverlay, shown),
+    'the moves screen’s overlay no longer misreads; this test proves nothing',
+  ).toBe(true);
 
   const measures = measuresIn(await ocr(moves));
   const took = await movesOf(
-    { key: `elgyem|57|7.6|0.46|${ivsOf(detail?.iv ?? expect.unreachable('no overlay'))}`, overlay: detail },
+    {
+      key: `elgyem|57|7.6|0.46|${ivsOf(detailOverlay?.iv ?? expect.unreachable('no overlay'))}`,
+      overlay: detailOverlay,
+    },
     async () => ({ moves: { fast: 'Astonish', charged: ['Dark Pulse'] }, cutOff: false, overlay: shown, measures }),
     { read: async () => expect.unreachable('read again'), next: async () => expect.unreachable('swiped') },
   );

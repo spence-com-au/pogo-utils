@@ -57,8 +57,8 @@ const ran = () => (existsSync(join(dir, 'ran')) ? readFileSync(join(dir, 'ran'),
  * Runs `command` in a process session of its own until the test ends or `kill` ends it, resolving with its pid once it
  * has written its first line.
  */
-function start(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<number> {
-  const child = spawn(command, args, { env, detached: true, stdio: ['ignore', 'pipe', 'inherit'] });
+function start(command: string, args: string[], environment?: NodeJS.ProcessEnv): Promise<number> {
+  const child = spawn(command, args, { env: environment, detached: true, stdio: ['ignore', 'pipe', 'inherit'] });
   running.push(child);
 
   return new Promise((resolve) => child.stdout.once('data', () => resolve(child.pid ?? 0)));
@@ -66,7 +66,7 @@ function start(command: string, args: string[], env?: NodeJS.ProcessEnv): Promis
 
 /** Ends the process `start` ran as `pid`, resolving once it has gone. */
 async function kill(pid: number) {
-  const child = running.find((child) => child.pid === pid);
+  const child = running.find((spawned) => spawned.pid === pid);
   const exited = new Promise((resolve) => child?.once('exit', resolve));
   child?.kill();
   await exited;

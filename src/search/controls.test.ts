@@ -420,7 +420,7 @@ test('a press with no phone is answered for until a phone is held, and not after
 test('every chip, span and favourite the catalogue offers can be sent to the phone', () => {
   const offered = [
     ...GROUPS.flatMap((category) => category.terms.map(({ term }) => term)),
-    ...RANGES.map((range) => spanned(range, '1-2')),
+    ...RANGES.map((entry) => spanned(entry, '1-2')),
     ...PRESETS.map((preset) => compose({ ...emptyState(), tree: presetTree(preset) }).query),
   ];
 

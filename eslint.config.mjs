@@ -48,21 +48,12 @@ export default [
           allowModuleStart: true,
         },
       ],
-    },
-  },
 
-  {
-    // A name declared again in a nested scope, as another thing, leaves a reader to work out which of the two each use
-    // means. Only the battle's loop and the modules split out of it are held to it so far; the rest of the repository
-    // still has names to rename first (#949).
-    files: [
-      'src/tools/battle/battle.mts',
-      'src/tools/battle/bench.mts',
-      'src/tools/battle/menu-reader.mts',
-      'src/tools/battle/run.mts',
-    ],
-    rules: {
-      '@typescript-eslint/no-shadow': 'error',
+      // A name declared again inside a scope that already holds it leaves a reader to work out which of the two each use
+      // means: `back` the swipe to the Pokémon before and `back` the distance a look scrolled down. `hoist: 'all'`
+      // because a closure is as often declared above the name it shadows as below it. `_` names a parameter nothing
+      // reads, so there is no use of it to mistake.
+      '@typescript-eslint/no-shadow': ['error', { hoist: 'all', allow: ['_'] }],
     },
   },
 
@@ -91,23 +82,6 @@ export default [
       '(^|\\/)inventory\\/',
       'The battle tool reaches what it shares with the inventory through `src/core/`.',
     ),
-  },
-
-  // A name declared again inside a scope that already holds it reads as the outer one: `back` the swipe to the Pokémon
-  // before and `back` the distance a look scrolled down. `hoist: 'all'` because a closure is as often declared above
-  // the name it shadows as below it. Only the scan's wiring and the modules it calls, the rest of the repository not
-  // being held to it.
-  {
-    files: [
-      'scripts/inventory.mts',
-      'src/tools/inventory/look.mts',
-      'src/tools/inventory/passes.mts',
-      'src/tools/inventory/row.mts',
-      'src/tools/inventory/scroll.mts',
-    ],
-    rules: {
-      '@typescript-eslint/no-shadow': ['error', { hoist: 'all' }],
-    },
   },
 ];
 

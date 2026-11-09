@@ -2767,13 +2767,13 @@ test(
 test(
   'the moves read off every committed capture are the ones on it',
   async () => {
-    const read: Record<string, Moves> = {};
+    const moves: Record<string, Moves> = {};
 
     for (const file of COMMITTED) {
-      read[file] = (await readingOf(file)).moves;
+      moves[file] = (await readingOf(file)).moves;
     }
 
-    expect(read).toStrictEqual({
+    expect(moves).toStrictEqual({
       'applin.png': { fast: 'Astonish', charged: ['Struggle'] },
       'articuno-galar.png': { fast: 'Confusion', charged: ['Fly'] },
       'articuno-kanto.png': { fast: 'Powder Snow', charged: ['Ice Beam'] },
@@ -2849,7 +2849,7 @@ test(
     for (const file of STITCHES) {
       const { lines, image, identity } = await readingOf(file);
       const shown = await parseMoves(lines, DATA, identity.form, image);
-      const whole = read[file];
+      const whole = moves[file];
 
       assert.ok(whole, `${file} read no moves at all`);
       expect(whole.charged.length, `${file} lost a charged move the screen in it shows`).toBeGreaterThanOrEqual(

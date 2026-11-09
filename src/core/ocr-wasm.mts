@@ -161,16 +161,16 @@ export function tesseractWasm(options: WasmOptions): Engine & { terminate(): Pro
       started++;
 
       try {
-        const worker = await spawn();
+        const fresh = await spawn();
 
         if (closed) {
-          void worker.terminate().catch(() => {});
+          void fresh.terminate().catch(() => {});
           throw new Error('the OCR engine was stopped');
         }
 
-        live.add(worker);
+        live.add(fresh);
 
-        return worker;
+        return fresh;
       } catch (error) {
         started--;
 

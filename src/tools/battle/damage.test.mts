@@ -445,8 +445,8 @@ test.each<[string, number, number | undefined, Shielding]>([
     undefined,
     { shield: true, why: 'Drill Peck would take ~34%, with 3% left; that would faint us' },
   ],
-])('Palkia shields Zapdos’s Drill Peck %s', (_, hp, hit, shielding) => {
-  expect(palkia(hp, 2, { ...THUNDER_SHOCK, ...(hit !== undefined && { hit }) })).toEqual(shielding);
+])('Palkia shields Zapdos’s Drill Peck %s', (_, hp, measured, shielding) => {
+  expect(palkia(hp, 2, { ...THUNDER_SHOCK, ...(measured !== undefined && { hit: measured }) })).toEqual(shielding);
 });
 
 test('a fast move measured to faint us keeps no shield where our HP is unread or none is left to keep', () => {

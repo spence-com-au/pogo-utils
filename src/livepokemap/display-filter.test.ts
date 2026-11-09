@@ -68,7 +68,7 @@ test('the clock is the only thing that moves between two exports', () => {
   const later = new Date('2026-03-04T05:06:07.890Z');
   const lines = (date: Date) => displayFilterText(shinyHuntFilter(date)).split('\n');
   const differing = lines(at)
-    .map((line, at) => [line, lines(later)[at]])
+    .map((line, index) => [line, lines(later)[index]])
     .filter(([before, after]) => before !== after);
 
   expect(differing).toEqual([

@@ -200,8 +200,8 @@ function byScore(a: Scored, b: Scored) {
 }
 
 /** The few events a headline most plausibly refers to, best first, or nothing if none is close enough. */
-function candidatesFor(headline: string, candidates: Candidate[]) {
-  return candidates
+function candidatesFor(headline: string, events: Candidate[]) {
+  return events
     .map((candidate) => ({ ...candidate, score: containment(candidate.name, headline) }))
     .toSorted(byScore)
     .slice(0, 3)

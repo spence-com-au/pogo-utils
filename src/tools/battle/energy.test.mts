@@ -653,13 +653,13 @@ test('a hold goes on a fear of fainting, whatever weighed it', () => {
 test('counts our energy off the fight’s time at the fast move read, per slot', () => {
   const ours = new OurEnergy(DATA, ['Geomancy', null]);
 
-  const fight = (slot: number, from: number, to: number) => {
+  const readBetween = (slot: number, from: number, to: number) => {
     for (let at = from; at <= to; at += 100) {
       ours.read(slot, at);
     }
   };
 
-  fight(0, 0, 4400);
+  readBetween(0, 0, 4400);
   expect(ours.estimate(0), 'two Geomancy, the third not yet landed').toEqual({
     energy: 26,
     fast: 'Geomancy',
@@ -667,11 +667,11 @@ test('counts our energy off the fight’s time at the fast move read, per slot',
   });
 
   ours.pause();
-  fight(0, 10_000, 10_100);
+  readBetween(0, 10_000, 10_100);
   expect(ours.estimate(0)?.energy, 'the time across a pause gaining nothing').toBe(39);
 
   ours.pause();
-  fight(1, 20_000, 30_000);
+  readBetween(1, 20_000, 30_000);
   expect(ours.estimate(1), 'a card whose fast move went unread').toBe(null);
   expect(ours.estimate(0)?.energy, 'kept on the bench').toBe(39);
 
@@ -681,13 +681,13 @@ test('counts our energy off the fight’s time at the fast move read, per slot',
   expect(ours.estimate(0)?.energy, 'never lowered by one').toBe(45);
 
   ours.pause();
-  fight(0, 40_000, 41_000);
+  readBetween(0, 40_000, 41_000);
   ours.threw(0, 'Close Combat');
   expect(ours.estimate(0)?.energy, 'what is left after the throw').toBe(0);
-  fight(0, 41_100, 41_500);
+  readBetween(0, 41_100, 41_500);
   expect(ours.estimate(0)?.energy, 'the fast move under way going on').toBe(13);
 
-  fight(0, 41_600, 100_000);
+  readBetween(0, 41_600, 100_000);
   expect(ours.estimate(0)?.energy, 'capped').toBe(100);
 });
 

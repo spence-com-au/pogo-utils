@@ -361,10 +361,10 @@ test('swipes nothing for a moment after a charged move is tapped', () => {
 test.each([
   ['shield', 3],
   ['switch', 3],
-] as const)('answers the %s prompt once it has held for %i frames', (state, frames) => {
+] as const)('answers the %s prompt once it has held for %i frames', (state, held) => {
   const actions = play(Array(20).fill(state));
 
-  expect(actions.slice(0, frames - 1).every((action) => action.kind === 'wait')).toBe(true);
+  expect(actions.slice(0, held - 1).every((action) => action.kind === 'wait')).toBe(true);
   expect(taps(actions)).toEqual([{ kind: 'tap', at: place(TAPS[state], BOTTOM, SIZE), what: state }]);
 });
 

@@ -309,10 +309,10 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
   for (const { data } of templates) {
     for (const change of data.pokemonSettings?.formChange ?? []) {
-      const moves = (change.moveReassignment?.cinematicMoves ?? []).flatMap((m) => m.replacementMoves ?? []);
+      const replacements = (change.moveReassignment?.cinematicMoves ?? []).flatMap((m) => m.replacementMoves ?? []);
 
       for (const form of change.availableForm) {
-        granted.set(form, [...(granted.get(form) ?? []), ...moves]);
+        granted.set(form, [...(granted.get(form) ?? []), ...replacements]);
       }
     }
   }

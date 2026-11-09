@@ -120,9 +120,9 @@ export function cpOn(text: string, longest: number): string | null {
     return null;
   }
 
-  const digits = (cp: string) => cp.replaceAll('/', '').length;
-  const joined = read.replace(' ', '');
-  const cp = digits(joined) <= longest ? joined : (read.split(' ')[0] ?? '');
+  const digits = (figure: string) => figure.replaceAll('/', '').length;
+  const unspaced = read.replace(' ', '');
+  const cp = digits(unspaced) <= longest ? unspaced : (read.split(' ')[0] ?? '');
 
   return digits(cp) <= longest ? cp : null;
 }
@@ -852,13 +852,13 @@ export function figureIn(image: Image, pill: Pill, first = false): { left: numbe
   let open = false;
 
   for (const glyph of glyphs) {
-    const run = runs.at(-1);
+    const last = runs.at(-1);
 
     if (!narrow(glyph)) {
       open = false;
-    } else if (open && run && glyph.left - run.right < pill.height * FIGURE_GAP) {
-      run.right = glyph.right;
-      run.glyphs++;
+    } else if (open && last && glyph.left - last.right < pill.height * FIGURE_GAP) {
+      last.right = glyph.right;
+      last.glyphs++;
     } else {
       runs.push({ ...glyph, glyphs: 1 });
       open = true;

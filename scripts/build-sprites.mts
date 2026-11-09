@@ -48,7 +48,7 @@ function readSpecies(): { first: ReadonlyMap<number, string>; last: number; spli
   const source = readFileSync(SPECIES, 'utf8');
   const first = new Map<number, string>();
   const dexes: number[] = [];
-  const split: number[] = [];
+  const splitDexes: number[] = [];
 
   // Split on the constructor so each chunk holds one species, then take the first quoted argument in it.
   const chunks = source.split(/new Pokemon\((\d+)\)/).slice(1);
@@ -66,7 +66,7 @@ function readSpecies(): { first: ReadonlyMap<number, string>; last: number; spli
 
     // Where the leading group is load-bearing rather than incidental, which is what the report at the end names.
     if ((body.match(/addForms?\(/g) ?? []).length > 1) {
-      split.push(dex);
+      splitDexes.push(dex);
     }
   }
 
@@ -88,7 +88,7 @@ function readSpecies(): { first: ReadonlyMap<number, string>; last: number; spli
     );
   }
 
-  return { first, last: Math.max(...dexes), split };
+  return { first, last: Math.max(...dexes), split: splitDexes };
 }
 
 const { first: declared, last, split } = readSpecies();

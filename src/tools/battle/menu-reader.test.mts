@@ -218,9 +218,9 @@ test('takes up the meta of the league card tapped, once for each title', async (
   const loaded: string[] = [];
   const ultra = { cup: 'all', cap: 2500, movesets: new Map() };
 
-  const metaOf = (league: string) => {
-    loaded.push(league);
-    return Promise.resolve(league === 'ultra league' ? ultra : null);
+  const metaOf = (title: string) => {
+    loaded.push(title);
+    return Promise.resolve(title === 'ultra league' ? ultra : null);
   };
 
   const { reader, told } = readerOf(fixture('menu-gbl-league'), GBL, metaOf);

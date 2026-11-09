@@ -37,7 +37,7 @@ const XXL_HUNT = parseQuery('xxl.json', fixture('xxl.json'));
 /** The fixture with every spawn ten minutes from despawning. */
 function viewport(): ViewportResponse {
   const answer = JSON.parse(fixture('viewport.json')) as ViewportResponse;
-  const live = (spawn: WireSpawn) => ({ ...spawn, despawn_ms: NOW + 10 * 60_000 });
+  const live = (wire: WireSpawn) => ({ ...wire, despawn_ms: NOW + 10 * 60_000 });
 
   return { ...answer, pokemon: answer.pokemon?.map(live), my_shiny_pokemon: answer.my_shiny_pokemon?.map(live) };
 }

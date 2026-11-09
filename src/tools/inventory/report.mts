@@ -125,7 +125,7 @@ export async function readScreen(
   const identity = identify(data, detail, overlay, artworkIn(screen, box, icons));
   const [moves, costume] = await Promise.all([
     parseMoves(whole, data, identity.form, image),
-    costumeIn(screen, box, identity, wardrobe).then(({ costume }) => costume),
+    costumeIn(screen, box, identity, wardrobe).then((reading) => reading.costume),
   ]);
 
   return { lines, whole, detail, moves, box, overlay, identity, costume };

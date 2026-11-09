@@ -285,7 +285,7 @@ test.for<{ name: string; from: Date; to: Date; cols: readonly [number, number]; 
 });
 
 describe('layoutTracks', () => {
-  const NOW = at(2026, 1, 10, 12);
+  const LAYOUT_NOW = at(2026, 1, 10, 12);
 
   const TRACKS = [
     { type: 'event', label: 'Events' },
@@ -297,7 +297,7 @@ describe('layoutTracks', () => {
     over: Partial<{ hidden: Set<string>; carried: Set<string>; isVisible: (ev: ParsedEvent) => boolean }> = {},
   ) =>
     layoutTracks(events, TRACKS, {
-      now: NOW,
+      now: LAYOUT_NOW,
       hidden: new Set(),
       carried: new Set(['event', 'research', 'go-battle-league']),
       isVisible: () => true,
@@ -309,7 +309,7 @@ describe('layoutTracks', () => {
    * local days in it have, so calendar arithmetic (`addDays`) would put a boundary an hour off in a zone that changes
    * its clocks within it.
    */
-  const RANGE_START_MS = addDays(startOfDay(NOW), -TRACK_LEAD_DAYS).getTime();
+  const RANGE_START_MS = addDays(startOfDay(LAYOUT_NOW), -TRACK_LEAD_DAYS).getTime();
 
   const days = (id: string, from: number, to: number, eventType = 'event') =>
     parsed({
@@ -322,7 +322,7 @@ describe('layoutTracks', () => {
   test('the range starts a couple of days before today and spans at least a month', () => {
     const { rangeStart, span, rangeEndMs } = layout([]);
 
-    expect(rangeStart.getTime()).toBe(addDays(startOfDay(NOW), -TRACK_LEAD_DAYS).getTime());
+    expect(rangeStart.getTime()).toBe(addDays(startOfDay(LAYOUT_NOW), -TRACK_LEAD_DAYS).getTime());
     expect(span).toBe(TRACK_MIN_DAYS);
     expect(rangeEndMs - rangeStart.getTime()).toBe(TRACK_MIN_DAYS * DAY_MS);
   });
