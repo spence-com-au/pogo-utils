@@ -25,6 +25,16 @@ import { SCROLL_STRIP } from './stitch.mts';
 const DIALOG_BUTTON = /^(cancel|yes)$/;
 
 /**
+ * The power-up sheet's title, `POWER UP: PERSIAN`, which reads where its `CANCEL` may not. The button is pale teal on
+ * the sheet's white, 172 against 251, and neither engine reads a line below the candy cost on
+ * `dialog/persian-power-up.png`, while the title is grey on the same white, 126 against 254, and reads on all three
+ * sheets captured under both (#967). Matched unfolded, since its capitals and colon are what tell it from the detail
+ * screen's own `POWER UP` pill and from the move `Power-Up Punch`, which `fold` makes `power up punch` as it makes the
+ * title `power up persian`.
+ */
+const POWER_UP_TITLE = /^POWER UP:/;
+
+/**
  * The luminance between a detail screen's white panel and the same panel under a dialog's scrim, as `scrimmed` takes
  * it: measured over every screen committed, the margin's median is 224 or brighter at both heights on each detail
  * screen and storage, scrolled or not, where the scrim the game drew over a Dynamax Sableye
@@ -53,17 +63,18 @@ const scrimmed = (image: Image) => margin(image, 0.4, 0.5) > PANEL_LIT && margin
 
 /**
  * Whether a dialog is open over the screen — what a drag the phone dropped as a tap leaves behind, on whatever control
- * it started over, or one the game raises on its own, such as `New Mega Level available!` — by its button where that
- * reads and by its scrim where it does not. A dialog's own buttons sit where the screen's do — the close button's tap
- * lands on the power-up sheet's CANCEL, and the main menu's tap or a later stray could land on its confirm — so it is
- * asked before the taps at the foot of the screen: `toStorage`'s close and menu taps, and `closeDetail`'s. The scan
- * asks it twice more, on every detail screen it reads and on the screenshot its moves are read from, a dialog hiding
- * what it is drawn over however much of the screen above it read. It is not asked before the swipes between Pokémon,
- * which do nothing over a dialog, nor before the search box's tap or a tile's, which are made on storage, where no
- * detail screen's control can be hit.
+ * it started over, or one the game raises on its own, such as `New Mega Level available!` — by its button or the
+ * power-up sheet's title where either reads, and by its scrim where neither does. A dialog's own buttons sit where the
+ * screen's do — the close button's tap lands on the power-up sheet's CANCEL, and the main menu's tap or a later stray
+ * could land on its confirm — so it is asked before the taps at the foot of the screen: `toStorage`'s close and menu
+ * taps, and `closeDetail`'s. The scan asks it twice more, on every detail screen it reads and on the screenshot its
+ * moves are read from, a dialog hiding what it is drawn over however much of the screen above it read. It is not asked
+ * before the swipes between Pokémon, which do nothing over a dialog, nor before the search box's tap or a tile's, which
+ * are made on storage, where no detail screen's control can be hit.
  */
 export const dialogOpen = (lines: readonly Line[], image: Image) =>
-  lines.some((l) => l.top >= image.height * SKY && DIALOG_BUTTON.test(fold(l.text))) || scrimmed(image);
+  lines.some((l) => l.top >= image.height * SKY && (DIALOG_BUTTON.test(fold(l.text)) || POWER_UP_TITLE.test(l.text))) ||
+  scrimmed(image);
 
 /**
  * Why `term` cannot be typed into storage's search box, or null where it can: a character `type` would refuse, or more

@@ -148,6 +148,9 @@ interface Strip {
   left: number;
   top: number;
   rights: number[];
+
+  /** Whether the strip is two strips, each too thin to be read alone, joined by `rejoin`. */
+  rejoined: boolean;
 }
 
 /**
@@ -201,16 +204,55 @@ function strips(image: Image): Strip[] {
 
       above?.rights.push(right);
 
-      return above ?? { fill, left, top: y, rights: [right] };
+      return above ?? { fill, left, top: y, rights: [right], rejoined: false };
     });
 
     done.push(...open.filter((s) => !next.includes(s)));
     open = next;
   }
 
-  return [...done, ...open].filter(
+  return rejoin([...done, ...open], unit).filter(
     ({ rights }) => rights.length >= THICK.least * unit && rights.length <= THICK.most * unit,
   );
+}
+
+/**
+ * `found` with each strip too thin to be read alone joined to one as thin just above it, where it starts within 2
+ * pixels of where that does and ends near where that did, as one strip starting where the further left of the two does.
+ * As the camera sweeps a bar up or down the screen, a row of its fill can start a pixel or two further in than the rows
+ * beside it, its left end blurred too pale for `fillOf`, past the 1.5 pixels `strips` lets a row stray, and so split
+ * the fill into strips under `THICK.least`: our bar at 43% was lost so in the kept Pixel 8 Pro run of 2026-10-29, and
+ * the map between the letters of "NOT VERY EFFECTIVE..." just above it read in its place at 3%. Of the 546,449 pictures
+ * of the 27 GO Battle League runs kept with video, joining so reads 11,763 bars that went unread, 11,591 of them within
+ * 3 points of a reading of that side within half a second either side. Letting every row stray 2 pixels found the bar
+ * at 43% too, but grew strips of artwork already found by the rows that strayed, which then passed `outside` for a bar;
+ * joining only what would otherwise be dropped leaves every strip found as it was.
+ */
+function rejoin(found: Strip[], unit: number): Strip[] {
+  const thin = (strip: Strip) => strip.rights.length < THICK.least * unit;
+  const joined = new Set<Strip>();
+
+  for (const lower of [...found].sort((a, b) => a.top - b.top)) {
+    const upper = found.find(
+      (s) =>
+        !joined.has(s) &&
+        s.fill === lower.fill &&
+        thin(s) &&
+        thin(lower) &&
+        s.top + s.rights.length === lower.top &&
+        Math.abs(s.left - lower.left) <= 2 * unit &&
+        Math.abs((s.rights.at(-1) ?? 0) - (lower.rights[0] ?? 0)) <= 3 * unit,
+    );
+
+    if (upper) {
+      upper.left = Math.min(upper.left, lower.left);
+      upper.rights.push(...lower.rights);
+      upper.rejoined = true;
+      joined.add(lower);
+    }
+  }
+
+  return found.filter((strip) => !joined.has(strip));
 }
 
 /** The most any of `levels` is lighter than one after it, which is a light line seen from beyond a dark one. */
@@ -378,14 +420,25 @@ export interface Health {
 }
 
 /**
+ * Whether `strip` is taken for a side's bar over `other`, the one taken so far: one found whole over one `rejoin`ed,
+ * and otherwise the one starting further left. Red foliage of the autumn map, slanting across a few rows just left of a
+ * bar, splits as a bar sweeping by does, and rejoined passes `framed` and `outside`: of the 546,449 pictures of the 27
+ * GO Battle League runs kept with video, the strip starting further left would have been a rejoined one over a bar
+ * found whole in 62, 31 of them foliage read at 4–8% where the bar was at 2–90%, three pictures in a row reading 6% of
+ * a bar at 76%.
+ */
+const before = (strip: Strip, other: Strip | undefined) =>
+  !other || (strip.rejoined === other.rejoined ? strip.left < other.left : other.rejoined);
+
+/**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
  * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`
- * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one starting further left is the
- * bar, unless it lies `outside` the bar.
+ * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one taken is the bar by
+ * `before`, unless it lies `outside` the bar.
  */
 export function readHealth(image: Image): Health {
   const health: Health = { own: null, opponent: null };
-  const starts: Partial<Record<keyof Health, number>> = {};
+  const taken: Partial<Record<keyof Health, Strip>> = {};
   const all = strips(image);
 
   for (const strip of all) {
@@ -396,7 +449,7 @@ export function readHealth(image: Image): Health {
     if (
       side &&
       fraction <= 1.03 &&
-      left < (starts[side] ?? Infinity) &&
+      before(strip, taken[side]) &&
       framed(image, strip) &&
       !outside(image, strip, all, side)
     ) {
@@ -404,7 +457,7 @@ export function readHealth(image: Image): Health {
         covered(image, strip) || cut(image, strip, all) || (strip.fill !== 'red' && fraction < LIT)
           ? null
           : Math.min(1, fraction);
-      starts[side] = left;
+      taken[side] = strip;
     }
   }
 

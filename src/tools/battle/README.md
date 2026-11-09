@@ -239,8 +239,10 @@ for text and done every few seconds.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle, and tap or scroll it, reading the party's cards off the selection screen on the way. That is
    [`menu-reader.mts`](menu-reader.mts). If nothing at all has been recognised for 20s, stop with `Lost`, keeping the
-   last frames for `--keep-frames`. A battle off its field for 3s or more, through the minigame, a prompt or a charged
-   move playing, is told once it comes back, how long and what showed:
+   last frames for `--keep-frames`. The black the game draws between a battle's end and its result counts as the battle
+   going on for up to a minute, `BLACK_MS`, a Pixel 8 Pro having drawn it for longer than 20s. A battle off its field
+   for 3s or more, through the minigame, a prompt or a charged move playing, is told once it comes back, how long and
+   what showed:
    `off the battle for 10.1s: the minigame for our Shadow Sneak (5.1s), then the charged move playing (5.0s)`. A stretch
    the battle never comes back from, its end, is not.
 

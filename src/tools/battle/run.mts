@@ -16,6 +16,7 @@ import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth } from './health.mts';
 import { merge, readBanner, readBattle, readGetReady, settle } from './read.mts';
 import {
+  blank,
   countdown,
   fleeButton,
   opponentShields,
@@ -48,6 +49,14 @@ export interface Clock {
  * ring — with nothing on screen that is either a battle or a menu.
  */
 export const LOST_MS = 20_000;
+
+/**
+ * How long the game drawing black holds off `LOST_MS` after a battle, in milliseconds. Between the last move of a battle
+ * won against Candela and its result, a Pixel 8 Pro drew black for 18.6s and more twice running (#975), the first time
+ * for no more than 51s, from the last frame the run knew to the result showing. A game hung on black still ends the
+ * run, `LOST_MS` after this has run out.
+ */
+export const BLACK_MS = 60_000;
 
 /**
  * How often the battle's names and move labels are read again, from when the last read began, in milliseconds: what it
@@ -265,6 +274,7 @@ export async function run(
     readHealth: perFrame(readHealth),
     readyButtons: perFrame(readyButtons),
     countdown: perFrame(countdown),
+    blank: perFrame(blank),
     bubbleSwipes: perFrame(bubbleSwipes),
     fleeButton: perFrame(fleeButton),
   };
@@ -272,6 +282,9 @@ export async function run(
   const outcomes: Record<Outcome, number> = { won: 0, lost: 0 };
   let battling = false;
   let known = clock.now();
+
+  // When the game began drawing black after a battle, while it still is.
+  let blackSince: number | undefined;
 
   // PGSharp's overlay as the phone's views show it, waited for before the run taps anything and checked against the
   // first frame. It is looked for again as each battle ends, its star being as readily opened or dragged between battles
@@ -498,6 +511,15 @@ export async function run(
       if (battle.matchup) {
         battle.energy.threw(battle.matchup, battle.theirMoves.get(battle.matchup.opponent.species ?? ''));
       }
+    }
+
+    // Black, with nothing on it to tap, between a battle's end and its result, which no menu has yet ended: the battle
+    // going on as the countdown is, and held to `BLACK_MS` in a row, a screen that never comes back being lost.
+    const black = battling && recognised === 'other' && reads.blank(frame);
+    blackSince = black ? (blackSince ?? clock.now()) : undefined;
+
+    if (blackSince !== undefined && clock.now() - blackSince < BLACK_MS) {
+      known = clock.now();
     }
 
     if (battle.offered && state !== 'shield') {

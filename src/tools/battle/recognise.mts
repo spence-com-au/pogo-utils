@@ -249,6 +249,36 @@ export function countdown(image: Image): boolean {
 }
 
 /**
+ * The game drawing nothing but black, as it does between the end of a battle and its result: on a Pixel 8 Pro's frames
+ * of it (`other-pixel8-black`), 0 in every channel from below the status bar, which Android draws over the game and
+ * which ends 25 rows of 802 down, short of `top` widths. Of every other still, the darkest, `menu-pixel8-party-master`,
+ * is brighter than 16 over 72% of the same field. A share of it may be lit, for what Android and PGSharp draw over the
+ * game: the gesture bar's handle at a Pixel 4 XL's foot, and PGSharp's star, 0.4% of its screen. PGSharp's toolbar open
+ * down the left edge is more, and black under it, as in one kept run, is not taken for black. Every fourth pixel each
+ * way is looked at, anything the game draws being bigger than that.
+ */
+const BLANK = { top: 0.1, level: 24, share: 0.01, step: 4 } as const;
+
+/** Whether the game draws nothing but black below the status bar. */
+export function blank(image: Image): boolean {
+  const from = Math.round(down(BLANK.top, TOP, image) * image.height);
+  const samples = Math.ceil((image.height - from) / BLANK.step) * Math.ceil(image.width / BLANK.step);
+  let lit = 0;
+
+  for (let y = from; y < image.height; y += BLANK.step) {
+    for (let x = 0; x < image.width; x += BLANK.step) {
+      lit += Math.max(...rgb(image, x, y)) > BLANK.level ? 1 : 0;
+
+      if (lit > BLANK.share * samples) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
  * The charged-move buttons, as the circles their rims trace: one move's centred at 179.5,676 of 360×760, and two moves'
  * either side of it at the same height, all with a radius of 34. A button with a move ready wears a white rim, and one
  * without wears none: 32 points around the circle were white at 88–100% of them for a ready button, at none for an

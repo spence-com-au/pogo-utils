@@ -10,6 +10,7 @@ import { type GameData } from '../../core/game-master.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { dialogOpen, storage, unsearchable } from './storage.mts';
+import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useTestEngine, useWasmEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
@@ -222,13 +223,15 @@ test('a term longer than the box can be cleared of is refused, and one that fits
   );
 });
 
-test("a dialog's buttons are what tells it from the detail screen beneath it, but not in the sky", () => {
+test("a dialog's buttons and the power-up sheet's title are what tell it from the detail screen beneath it, but not in the sky", () => {
   const line = (text: string, top = 185) => ({ text, left: 0, top, width: 10, height: 10 });
 
   expect(dialogOpen([line('POWER UP: GEODUDE', 60), line('CANCEL')], SCREEN)).toBe(true);
+  expect(dialogOpen([line('POWER UP: PERSIAN', 120)], SCREEN)).toBe(true);
   expect(dialogOpen([line('YES')], SCREEN)).toBe(true);
   expect(dialogOpen([line('YES', 20)], SCREEN)).toBe(false);
   expect(dialogOpen([line('POWER UP'), line('EVOLVE'), line('NEW ATTACK')], SCREEN)).toBe(false);
+  expect(dialogOpen([line('© Power-Up Punch', 120)], SCREEN)).toBe(false);
 });
 
 const capture = (file: string) => decodePng(readFileSync(new URL(`fixtures/${file}`, import.meta.url)));
@@ -240,6 +243,26 @@ const capture = (file: string) => decodePng(readFileSync(new URL(`fixtures/${fil
  */
 test("a dialog whose button does not read is told by the scrim it draws over the detail screen's panel", () => {
   expect(dialogOpen([], capture('dialog/sableye-mega-level.png'))).toBe(true);
+});
+
+/**
+ * The power-up sheet over a Persian, whose `CANCEL` neither engine reads, so its title is all that says it is open
+ * (#967). Read under both engines whatever `INVENTORY_OCR` asks for, since both missed it and CI runs this file with the
+ * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's three looks closes it with Back
+ * and none taps under it.
+ */
+test.for([
+  ['the CLI', () => (useEngine(tesseractCli), () => Promise.resolve())],
+  ['tesseract.js', useWasmEngine],
+] as const)('the power-up sheet is closed with Back under %s, though its CANCEL does not read', async ([, use]) => {
+  const finished = use();
+  const image = capture('dialog/persian-power-up.png');
+  const { sent, device } = phone(DEFAULTS.package, { screen: image });
+  const { search } = storage(device, CONFIG, DATA, image, () => {});
+
+  await expect(search('shiny').finally(finished)).rejects.toThrow('could not find Pokémon storage');
+  expect(tapped(sent)).toStrictEqual([]);
+  expect(sent.filter((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toHaveLength(3);
 });
 
 /**

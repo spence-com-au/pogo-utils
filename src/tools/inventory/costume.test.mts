@@ -119,6 +119,37 @@ test.each([[['Twin']], [['Twin', 'Twin2']]])(
   },
 );
 
+// An icon drawn unlike its model puts its own costume behind on every capture of it, by more on some than on others, so
+// a pick a little further behind than its labelled captures came stands. Far further behind, it is a costume nobody
+// labelled. The Holiday 2016 hat on a Pikachu in none stands for one: the icons put it well behind their best.
+test.each([
+  [1.25, ['Holiday 2016']],
+  [2.5, []],
+])('a pick %s times as far behind the icons as its own captures came is read as %j', async (times, read) => {
+  const image = decodePng(readFileSync(new URL('fixtures/pikachu.png', import.meta.url)));
+  const [capture] = REFERENCES.captures;
+
+  if (!HAT || !capture) {
+    throw new Error('no Holiday 2016 costume or no labelled capture to pick it with');
+  }
+
+  const drawn = wardrobeOf([
+    { costume: '', colourings: [await fixture(PLAIN)] },
+    { costume: HAT.name, colourings: [await fixture(HAT.icon)] },
+  ]);
+  const from = artworkFrom((await findOverlay(image))?.box ?? null);
+  const measured = measure(image, from, drawn);
+
+  if (!measured) {
+    throw new Error('fixtures/pikachu.png: no Pikachu found to read');
+  }
+
+  const behind = (measured.scores.get(HAT.name) ?? 0) - Math.min(...measured.scores.values());
+  const references = { captures: [{ ...capture, costume: HAT.name }], behind: { [HAT.name]: behind / times } };
+
+  expect(costumeOf(image, from, drawn, null, references)).toStrictEqual(read);
+});
+
 const pikachu = { form: DATA.forms.find((f) => f.dex === 25 && f.form === null) } as Identity;
 const pixel = { width: 1, height: 1, data: new Uint8Array(4) };
 

@@ -22,7 +22,7 @@ import { type Meta } from './meta.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { type Phone } from './phone.mts';
 import { GAME_ALONE } from './overlay.mts';
-import { Lost, LOST_MS, run, type Clock, type Options } from './run.mts';
+import { BLACK_MS, Lost, LOST_MS, run, type Clock, type Options } from './run.mts';
 
 /**
  * How long Tesseract takes over a band of a battle's frame, in milliseconds: 33 on average over 112 bands of two live
@@ -3472,4 +3472,43 @@ test('stops, keeping its last frames, where nothing is recognised', async () => 
   expect((lost as Lost).frames.length).toBeGreaterThan(0);
   expect(clock.now()).toBeGreaterThan(LOST_MS);
   expect(taps).toEqual([]);
+});
+
+/**
+ * The black a Pixel 8 Pro drew for 18.6s and more between a battle won against Candela and its result (#975), standing
+ * still as the phone sends no frame of it, for `after` it and then on to `to`.
+ */
+const blackAfterWin = (to: string, after?: number): Record<string, Scene> => ({
+  won: { frame: fixture('other-win'), screenshot: fixture('menu-unknown-medal'), lasts: { ms: 8000, to: 'black' } },
+  black: {
+    frame: fixture('other-pixel8-black'),
+    still: true,
+    ...(after !== undefined && { lasts: { ms: after, to } }),
+  },
+});
+
+test('waits out the black between a battle won and its result for longer than it takes to give up as lost', async () => {
+  const { phone, clock, taps } = scripted({ ...battleAndBack(), ...blackAfterWin('result', LOST_MS * 2) }, 'training');
+
+  expect(await play(phone, { mode: ULTRA, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });
+  expect(taps.at(-1)).toBe('result');
+});
+
+test('stops where the black after a battle never ends, once it has held off giving up for as long as it may', async () => {
+  const { phone, clock, visits } = scripted({ ...battleAndBack(), ...blackAfterWin('result') }, 'training');
+
+  await expect(play(phone, { mode: ULTRA, count: 1 }, clock)).rejects.toBeInstanceOf(Lost);
+
+  const lostAfter = clock.now() - (visits.find(({ scene }) => scene === 'black')?.at ?? NaN);
+
+  expect(lostAfter).toBeGreaterThanOrEqual(BLACK_MS + LOST_MS);
+  expect(lostAfter).toBeLessThan(BLACK_MS + LOST_MS + 1000);
+});
+
+// Black with no battle before it is no battle's end, and as lost as any screen not known.
+test('stops where it starts on black as where nothing is recognised', async () => {
+  const { phone, clock } = scripted({ black: { frame: fixture('other-pixel8-black'), still: true } }, 'black');
+
+  await expect(play(phone, { mode: ULTRA }, clock)).rejects.toBeInstanceOf(Lost);
+  expect(clock.now()).toBeLessThan(BLACK_MS);
 });

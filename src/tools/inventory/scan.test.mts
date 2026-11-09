@@ -497,6 +497,30 @@ test.for([
   expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
 });
 
+/**
+ * #839: a retry for a dropped swipe settles the drops it strikes, which a retelling counts once rather than against
+ * those it may add, and a retelling still reaches back past a retry to a story the retry was not sent for. The swipe on
+ * to the fourth Pokémon can go nowhere three times, the last look's swipe back with it: four drops since the last
+ * visit. Or the fourth Pokémon is a twin of the third, and the look at it drops its swipe forward, so the walk takes
+ * the twin for the end and sends the swipe on again, whose look drops its swipe back.
+ */
+test.for([
+  [
+    'the swipe on to a Pokémon, dropped three times,',
+    ['a', 'b', 'c', 'd', 'e', 'f'],
+    (move: 1 | -1, n: number) => (move === 1 ? [2, 4, 6].includes(n) : n === 2),
+  ],
+  [
+    'a twin taken for a dropped swipe',
+    ['a', 'b', 'c', 'c', 'd', 'e'],
+    (move: 1 | -1, n: number) => (move === 1 ? n === 3 : n === 2),
+  ],
+] as const)('drops spread over the retries for %s still visit every Pokémon once', async ([, keys, dropped]) => {
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  expect(await walked(keys, Infinity, 0, [], dropped, keys.length)).toEqual(keys.map((key, i) => [key, i]));
+});
+
 /** Mulberry32: numbers in [0, 1) that are the same for the same seed, so a walk the phone botched can be run again. */
 function seeded(seed: number) {
   let state = seed;
