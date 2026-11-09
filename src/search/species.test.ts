@@ -12,6 +12,9 @@ import { expect, test } from 'vitest';
 import { fold, nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import Pokemon from '../pokemon/pokemon.js';
+import { all, named } from '../testing/search.js';
+import { read } from './parse.js';
+import { compose, emptyState } from './query.js';
 import { offerable, stepped, suggestions, written } from './species.js';
 
 /** Every released species as the name a row would offer, in dex order — the whole of what the list draws from. */
@@ -114,6 +117,24 @@ test('a row writes the name the game shows rather than the one that was typed to
   // Nidoran is the sharpest of the three, the symbol being the species' whole distinguishing mark: writing the folded
   // name would collapse these two rows into one search reaching both, which is the one thing the list is asked for.
   expect(suggestions('nidoran').map(written)).toEqual(['nidoran♀', '+nidoran♀', 'nidoran♂', '+nidoran♂']);
+});
+
+test('every row the list can offer goes to the game as the one term it shows', () => {
+  // The game reads a `:`, `;` or `,` as an OR and a `&` or `|` as an AND wherever it falls, so a name holding one is
+  // sent as two terms, and `parse.js` reads them the same way. Type: Null is the name that does: its row would write
+  // `type: null`, asking for `type` or ` null`, and a negated pill would let Type: Null itself through. The Pokédex's
+  // two links write the same lowercased name for the same released species.
+  //
+  // It holds only while Type: Null is unreleased, and nothing can say yet how the game reads a species it does not
+  // carry: `772` should find the species, but nothing shows `+772` finds its family. So releasing it fails here, where
+  // the game is there to try the spellings against, rather than in a search a reader trusts.
+  for (const name of OFFERABLE) {
+    for (const text of [written({ name, family: false }), written({ name, family: true })]) {
+      const pill = all(named(text));
+
+      expect(read(compose({ ...emptyState(), tree: pill }).query).tree, text).toEqual(pill);
+    }
+  }
 });
 
 test('a fragment shorter than two characters offers nothing, the marker included', () => {
