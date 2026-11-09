@@ -92,6 +92,23 @@ export default [
       'The battle tool reaches what it shares with the inventory through `src/core/`.',
     ),
   },
+
+  // A name declared again inside a scope that already holds it reads as the outer one: `back` the swipe to the Pokémon
+  // before and `back` the distance a look scrolled down. `hoist: 'all'` because a closure is as often declared above
+  // the name it shadows as below it. Only the scan's wiring and the modules it calls, the rest of the repository not
+  // being held to it.
+  {
+    files: [
+      'scripts/inventory.mts',
+      'src/tools/inventory/look.mts',
+      'src/tools/inventory/passes.mts',
+      'src/tools/inventory/row.mts',
+      'src/tools/inventory/scroll.mts',
+    ],
+    rules: {
+      '@typescript-eslint/no-shadow': ['error', { hoist: 'all' }],
+    },
+  },
 ];
 
 /**

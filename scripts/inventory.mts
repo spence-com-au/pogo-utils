@@ -66,21 +66,21 @@ import { Device, type Transport } from '../src/core/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
-import { DEX, wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
+import { parseDetail, readLines } from '../src/tools/inventory/detail.mts';
+import { wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
 import { CACHE, cachedIcon, loadGameData } from '../src/core/node/download.mts';
-import { closest, type Form, type GameData } from '../src/core/game-master.mts';
-import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
-import { movesCutOff, parseMoves, type Moves } from '../src/core/moves.mts';
+import { type Form, type GameData } from '../src/core/game-master.mts';
+import { clearable, identify } from '../src/tools/inventory/identify.mts';
+import { lookForMoves } from '../src/tools/inventory/look.mts';
 import { tesseractCli } from '../src/core/node/ocr-cli.mts';
-import { ocr, useEngine, type Line } from '../src/core/ocr.mts';
-import { findOverlay, ivsOf, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
-import { decodePng, difference, encodePng, type Image } from '../src/core/png.mts';
+import { useEngine, type Line } from '../src/core/ocr.mts';
+import { findOverlay, ivsOf, readOverlay } from '../src/tools/inventory/overlay.mts';
+import { flagPasses } from '../src/tools/inventory/passes.mts';
+import { decodePng, encodePng, type Image } from '../src/core/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
   artworkIn,
-  costumeIn,
   dumped,
   NO_BOX,
   NO_OVERLAY,
@@ -89,27 +89,24 @@ import {
   refusals,
   type Source,
 } from '../src/tools/inventory/report.mts';
+import { rowOf } from '../src/tools/inventory/row.mts';
 import {
   count,
   keyOf,
   land,
   landmarkOf,
   landmarksBefore,
-  Marks,
-  movesOf,
   OverlayBoxes,
   parseFlags,
-  reachMoves,
   reachOf,
-  shaded,
   shortfall,
   walk as stepThrough,
   type Flag,
-  type Mark,
   type Landmark,
-  type Row,
+  type Reading,
 } from '../src/tools/inventory/scan.mts';
-import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
+import { scrollFrames, scrollUp, settled } from '../src/tools/inventory/scroll.mts';
+import { offsetBetween, stitch } from '../src/tools/inventory/stitch.mts';
 import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
 import { touchscreen } from '../src/core/touchscreen.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -118,33 +115,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs, styleText } from 'node:util';
 
 /**
- * The band a screen is watched for movement in, and how much of it may still differ for it to count as still. The
- * game's own panel, since the artwork above it holds an animated Pokémon that never stops and the status bar ticks with
- * the clock. Measured through one swipe: 31%, then 6.2%, then 0.54% and steady, so anything between settles it.
- */
-const SETTLE_BAND = { from: 0.34, to: 0.95 };
-const SETTLE_CHANGE = 0.02;
-const SETTLE_ATTEMPTS = 4;
-
-/**
  * How long a swipe from one Pokémon to the next takes, in milliseconds: `input swipe`'s own, which is what
  * `config.swipes.next` and `config.waits.swipe` were measured with, and so what the touchscreen is given too.
  */
 const NEXT_MS = 300;
-
-/** How many frames one `--scroll` may take before it is a loop rather than a screen. */
-const SCROLL_FRAMES = 12;
-
-/**
- * How long one drag of a scroll takes, in milliseconds. Slow, so that the content follows the finger rather than
- * flinging on past where it stopped and out of `offsetBetween`'s reach. Measured with a `scrollStep` on a Pixel 4 XL's
- * 1440x3040, where the step is 836 pixels and the reach 1254: at `input swipe`'s own 300 the panel went on to 1484 and
- * 1697, at 1000 it moved 966 to 1032, and at 2000 it moved 847, margin this already has bought at a second a Pokémon.
- */
-const SCROLL_DRAG_MS = 1000;
-
-/** The note on a row whose swipe to the moves moved further than `offsetBetween` could measure, once however many. */
-const UNMEASURED_SWIPE = 'the swipe to the moves could not be measured; the scroll back is what it dragged';
 
 /**
  * How far down the panel may be left after a snap has dragged it back, as a fraction of the screen's height, under
@@ -321,7 +295,7 @@ const paint = (style: Parameters<typeof styleText>[0], text: string) =>
 let keyed = false;
 
 /** The key to those colours, once, and only where they are shown: without them it would describe nothing on the page. */
-function key() {
+function colourKey() {
   if (!keyed && paint('cyan', 'read') !== 'read') {
     console.log(`${paint('cyan', 'read off the screen')}, ${paint('magenta', 'worked out from what was read')}`);
   }
@@ -348,7 +322,7 @@ const iconsFor = (data: GameData) =>
  */
 async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Colourings>) {
   const read = await readScreen(image, data, icons, config.overlay, wardrobeOn(data));
-  key();
+  colourKey();
 
   const { facts, notes } = answer(read);
   const width = Math.max(...facts.map((f) => f.label.length));
@@ -488,35 +462,6 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
     }
   };
 
-  interface Reading {
-    detail: Detail;
-    overlay: Overlay | null;
-    key: string | null;
-
-    /** Worked out while reading, since a reading is only accepted once something fits it; the row writer reuses it. */
-    id: Identity;
-
-    /** The screenshot this reading was read from, which the `-detail` screen has to be to account for its row. */
-    image: Image;
-
-    /**
-     * The last screenshot taken, which is `image` on every reading but one `bestOf` kept from an earlier attempt. The
-     * scroll owes `scrollFrames` a frame still on the screen and measures its swipe against one, where an attempt back
-     * is a `config.waits.swipe` and a `settled` older than that.
-     *
-     * Where the two differ the stitch is a later read of the screen than the row beside it, which the row says, since
-     * the stitch is the capture a fixture is promoted from and the row is what a reader would take its claims for.
-     */
-    latest: Image;
-
-    /**
-     * How much of this reading is in doubt, as a score to be got to zero. Recorded with the reading rather than worked
-     * out again when two are compared: `boxes.box` is found part way through a pass, and a score that moved with it
-     * would rank an earlier attempt differently for what a later one went on to learn.
-     */
-    faults: number;
-  }
-
   const overlayOf = async (image: Image, sweep: boolean) => {
     const known = boxes.box;
     const overlay = await boxes.overlayOn(image, sweep);
@@ -621,8 +566,8 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
    * Opens the first Pokémon the grid shows and reads it, answering a reading with no key when there is none — a search
    * that matched nothing — or when it would not read.
    */
-  const openFirst = async (grid: readonly Line[]) => {
-    await tap(firstTile(grid), config.waits.swipe);
+  const openFirst = async (lines: readonly Line[]) => {
+    await tap(firstTile(lines), config.waits.swipe);
 
     // Through `readDetail` for its retry: the tile opens with an animation that outlasts one wait, and a screen read
     // while it is still running is indistinguishable from a grid with nothing in it.
@@ -632,6 +577,19 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
   const [grab, drop] = config.swipes.next;
   const next = () => drag([grab, drop], config.waits.swipe);
   const back = () => drag([drop, grab], config.waits.swipe);
+
+  const looking = {
+    device,
+    config,
+    data,
+    dismiss,
+    scroll: options.scroll,
+    screen: shot,
+    overlayOf,
+    keep,
+    read: readDetail,
+    next,
+  };
 
   /**
    * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it, of `total`
@@ -668,51 +626,24 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
       }
     }
 
-    const counted = async (reading: Reading, index: number) => {
+    const tallied = async (reading: Reading, index: number) => {
       visited++;
       await visit(reading, index);
     };
 
-    await stepThrough({ read: readDetail, next, back }, counted, max, from, from === 0 ? first : undefined, total);
+    await stepThrough({ read: readDetail, next, back }, tallied, max, from, from === 0 ? first : undefined, total);
     await closeDetail();
 
     return visited;
   };
 
   // The flag passes come first, so that the full pass can write each row complete as it goes.
-  const marked = new Map<Flag, Marks>();
-
-  for (const flag of flags) {
-    const marks = new Marks();
-    const grid = await search(term === undefined ? flag : `${flag}&${term}`);
-    const first = await openFirst(grid);
-
-    if (first.key !== null) {
-      const total = matches(grid);
-      const visited = await walk(async ({ detail, overlay }) => marks.add(detail, overlay), total, Infinity, 0, first);
-      const short = shortfall(flag, visited, total);
-
-      // Thrown rather than left null: what cut this pass short would cut the full pass short too, which is hours of
-      // phone time to find that out in.
-      if (short) {
-        throw new Error(`${short}; marking only those would write \`false\` against the rest`);
-      }
-    } else if (matched(grid)) {
-      // The search matched Pokémon and the first would not read, which is not the answer a search matching nothing
-      // gives: marking nothing would write `false` against every Pokémon the search holds. So the field is left null
-      // instead.
-      console.error(`${flag}: the first Pokémon would not read, so this field is left null`);
-      continue;
-    }
-
-    console.error(`${flag}: ${marks.size}`);
-    marked.set(flag, marks);
-  }
+  const marked = await flagPasses(flags, term, { search, openFirst, walk, matches, matched });
 
   const grid = await search(term ?? '');
-  const first = await openFirst(grid);
+  const opened = await openFirst(grid);
 
-  if (first.key === null) {
+  if (opened.key === null) {
     const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
 
     throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
@@ -728,382 +659,45 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
   const started = Date.now();
 
   // Read off the grid before the walk leaves it, both to tell a dropped swipe from the end and to check the pass after.
-  const total = term === undefined ? stored(grid) : matches(grid);
+  const counted = term === undefined ? stored(grid) : matches(grid);
 
-  const visited = await walk(
+  const walked = await walk(
     async (reading, index) => {
-      const { detail, overlay, id: read, image } = reading;
       const name = String(index + 1).padStart(5, '0');
-      const notes: string[] = [];
-      let moves: Moves = { fast: null, charged: [] };
-      const iv = overlay?.iv ?? null;
-      keep(`${name}-detail`, image);
+      keep(`${name}-detail`, reading.image);
 
-      // Null for a flag not asked for, one whose pass would not read or a screen with no key to match it by, rather
-      // than a `false` nothing checked.
-      const flag = (f: Flag): Mark => marked.get(f)?.take(detail, overlay) ?? null;
-
-      // Each pass's flag taken once, since `take` uses the match up.
-      const passes = { shadow: flag('shadow'), purified: flag('purified') };
-
-      // Identified again where the fields say whether this is shadow or purified, which is all that rules out a form
-      // the game only hands out as a shadow, and which the reading `walk` took could not know. A function, since a
-      // screen asking no stardust is settled again off the screen the moves are read from.
-      const settle = (powerUp: number | null) => {
-        const shade = shaded(passes, shadowOf(data, { ...detail, powerUp }, read.levels));
-        const id =
-          shade.shadowed === null
-            ? read
-            : identify(data, detail, overlay, artworkIn(image, boxes.box, icons), null, shade.shadowed);
-
-        return { ...shade, id };
-      };
-
-      let settled = settle(detail.powerUp);
-
-      // Taken whatever the screen says, so that a match the pass holds for this Pokémon is used up here rather than
-      // left to mark another. The caption is the screen stating it, where the pass can have been cut short.
-      const passed = flag('lucky');
-      const lucky = detail.lucky || passed;
-
-      if (detail.hp === null) {
-        notes.push('detail screen not read');
-      }
-
-      if (overlay === null) {
-        notes.push(boxes.box ? 'overlay not read' : 'no PGSharp overlay found; is its IV display switched on?');
-      }
-
-      if (!options['no-moves']) {
-        // From a reading rather than this one, since `movesOf` looks again from a fresh one where the screen scrolled
-        // down was another Pokémon's.
-        const look = async ({ image, latest }: Reading, steps: number) => {
-          let scrolled: Image;
-
-          // The screen the overlay is read off, which in a stitch is its last frame: the first is the detail screen.
-          let shown: Image;
-          let back: number;
-
-          if (options.scroll) {
-            // The same two halves `snap` takes: the screenshot already in hand as the first frame, rather than a
-            // second photograph of a screen that has moved on, and the height it was drawn at recorded on the stitch.
-            //
-            // `latest` rather than `image`, since the frame handed over is the one `scrollFrames` does not wait for and
-            // the reading may have come from an attempt before it.
-            //
-            // Under the plain name, the stitch being the capture and `-detail` above the frame the row was read from.
-            // `name` here is the scan's own index, so a capture kept for the corpus is still renamed to the Pokémon it
-            // shows; what the plain name buys is that the suffix is not part of what has to come off.
-            const capture = await scrollFrames(device, latest);
-            scrolled = stitch(capture.frames, capture.offsets, config.scrollBand);
-            shown = capture.frames.at(-1) ?? latest;
-            back = capture.offsets.reduce((a, b) => a + b, 0);
-            keep(name, scrolled, { Viewport: `${latest.width}x${latest.height}` });
-
-            // So the stitch and this row are a pair or say they are not. A fixture is promoted from the stitch while
-            // its expectations are derived from the committed png, so nothing downstream would report the two having
-            // been read a `config.waits.swipe` apart — and the readings that need a second look are the ones the
-            // corpus is collected for.
-            if (latest !== image) {
-              notes.push('the capture kept for this row is a later read of the screen than the row itself');
-            }
-
-            if (capture.lost) {
-              notes.push(`the scroll lost its place after frame ${capture.frames.length}`);
-            }
-          } else {
-            // One step of the `--scroll` branch's capture, at its speed, so that the shift lands inside what
-            // `offsetBetween` looks for. Half the screen at `input swipe`'s 300ms moved a Pixel 4 XL's panel as far as
-            // 0.69 of the screen, to its foot or flung past the finger, where the band reaches 0.41: 38 rows of 40
-            // went unmeasured. The step still brings the moves up from the panel's foot to about two-thirds of the way
-            // down, and `steps` of them is what `reachMoves` asks for where one did not.
-            //
-            // A look after the first starts from a fresh screenshot rather than `latest`, since `scrollUp` stops short
-            // of the top on purpose and what is measured has to be what it scrolls back.
-            const [from, to] = scrollStep(config.scrollBand, latest.width, latest.height);
-            scrolled = steps === 1 ? latest : await device.screenshot();
-            back = 0;
-
-            for (let step = 0; step < steps; step++) {
-              const before = scrolled;
-
-              await device.swipe(from, to, SCROLL_DRAG_MS);
-              await sleep(config.waits.scroll);
-              scrolled = await device.screenshot();
-
-              // Measured against the screen before the swipe, on the same footing as the `--scroll` branch above and
-              // `latest` for the same reason. What the drag asked for is no bound on what it got: the panel flings a
-              // little past the finger, or has less than the step left to give, and the distance that matters is the
-              // one it actually moved.
-              const moved = offsetBetween(before, scrolled, config.scrollBand);
-              back += moved ?? from[1] - to[1];
-
-              // A fling past half the step again is more than `offsetBetween` looks for. Falling back to the drag can
-              // overshoot the top where the panel had less than that to give, so it is recorded rather than hidden.
-              if (moved === null && !notes.includes(UNMEASURED_SWIPE)) {
-                notes.push(UNMEASURED_SWIPE);
-              }
-            }
-
-            // The screen the moves were read from, so a second look replaces the first's.
-            keep(`${name}-moves`, scrolled);
-            shown = scrolled;
-          }
-
-          // Read while the phone scrolls back, since nothing that follows depends on the moves. Awaited with the
-          // swipes, so that a read failing before the phone is back is a rejection here rather than an unhandled one.
-          let dialog = false;
-          let cutOff = false;
-          let measures = '';
-          const found = ocr(scrolled).then((lines) => {
-            dialog = dialogOpen(lines, scrolled);
-            cutOff = !options.scroll && movesCutOff(lines, scrolled);
-
-            // Not off a stitch, whose first frame is the detail screen the reading came from and so vouches for it
-            // whatever the frames below it show.
-            measures = options.scroll ? '' : measuresIn(lines);
-
-            return parseMoves(lines, data, settled.id.form, scrolled);
-          });
-
-          // Only where the detail screen's overlay read, there being nothing to hold this one to otherwise, and without
-          // a sweep: they are rationed, and the moves screen is no place to spend one.
-          const seen = overlay ? overlayOf(shown, false) : Promise.resolve(null);
-
-          // A panel above `POWER UP` can push it below the plain screen's foot, as Necrozma's fusion panel does, and
-          // then the screen scrolled down for the moves is where its stardust is.
-          const power = detail.powerUp === null ? powerUpOn(scrolled) : Promise.resolve(null);
-          await Promise.all([found, seen, power, scrollUp(device, shot, back)]);
-
-          // The swipe to the moves dropped as a tap and opened something. The drags back up did nothing over it — they
-          // run down the margin, where no dialog has a button — so it is closed before the swipe to the next Pokémon,
-          // which would do nothing either. Nor is it looked past, the screen read having been the dialog's.
-          if (dialog) {
-            await dismiss();
-            notes.push('a dialog opened on the swipe to the moves and was closed');
-          }
-
-          return { moves: await found, cutOff: cutOff && !dialog, overlay: await seen, measures, powerUp: await power };
-        };
-
-        // The stardust off any look of one reach, since the step further down that a second look takes can scroll
-        // `POWER UP` off the top. Per reach, so a look `movesOf` threw away for showing another Pokémon keeps none.
-        const reach = async (from: Reading) => {
-          let powerUp: number | null = null;
-          const last = await reachMoves(async (steps) => {
-            const found = await look(from, steps);
-            powerUp = found.powerUp ?? powerUp;
-
-            return found;
-          });
-
-          return { ...last, powerUp };
-        };
-
-        const took = await movesOf(reading, reach, { read: readDetail, next });
-        const below = took.look?.powerUp ?? null;
-        moves = took.look?.moves ?? moves;
-
-        if (took.note) {
-          notes.push(took.note);
-        }
-
-        if (moves.fast === null || moves.charged.length === 0) {
-          notes.push('moves not fully read');
-        }
-
-        if (below !== null) {
-          settled = settle(below);
-        }
-      }
-
-      const { shadow, purified, id } = settled;
-      notes.push(...settled.notes);
-
-      // The search's answer taken once, since `take` uses the match up, and handed to the artwork: a Pikachu the search
-      // did not find wears no costume, and one it found is not the plain one. Any other species is named only by the
-      // search, so it gets every costume it has, which is the most the screen says — or null, unknown, where it has
-      // none the game data names or its species is unread, since an empty list would say it wears none.
-      const costumed = flag('costume');
-      const worn = await costumeIn(image, boxes.box, id, wardrobeOn(data), costumed);
-      const named = [...new Set(data.costumes.filter((c) => c.dex === id.form?.dex).map((c) => c.name))];
-      const costume =
-        worn.costume ??
-        (costumed === null || id.form?.dex === DEX ? null : costumed ? (named.length > 0 ? named : null) : []);
-
-      if (worn.note) {
-        notes.push(worn.note);
-      }
-
-      // A chip that matches nothing named is kept as it read rather than dropped, since a misread is worth seeing.
-      const carried = detail.tags.map((t) => (tags.length > 0 ? (closest(t, tags, (n) => n, 0.3) ?? t) : t));
-
-      const row: Row = {
-        index: index + 1,
-
-        // A nickname says nothing of the species, so a Pokémon `identify` could not place is left null rather than
-        // filed under it.
-        species: id.form?.species ?? (id.nickname === null ? detail.name : null),
-
-        nickname: id.nickname,
-        dex: id.form?.dex ?? null,
-        form: settledForm(id),
-        gender: detail.gender,
-        favourite: detail.favourite,
-        tags: carried,
-        costume,
-        shiny: flag('shiny'),
-        lucky,
-        size: detail.size,
-        shadow,
-        purified,
-        max: detail.max,
-        cp: id.cp ?? detail.cp,
-        hp: detail.hp,
-        levels: id.levels,
-        iv,
-        moves,
-        weight: detail.weight,
-        height: detail.height,
-        types: detail.types,
-        notes: [...notes, ...id.notes],
-      };
+      const row = await rowOf(reading, index, {
+        data,
+        icons,
+        marked,
+        tags,
+        boxes,
+        wardrobe: wardrobeOn(data),
+        look: options['no-moves'] ? null : (form) => lookForMoves(looking, reading, name, form),
+      });
 
       appendFileSync(out, `${JSON.stringify(row)}\n`);
       written++;
 
       const each = (Date.now() - started) / written / 1000;
-      const ivText = iv ? ivsOf(iv) : '?';
+      const ivText = row.iv ? ivsOf(row.iv) : '?';
       console.error(
         `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.levels.join(' / ') || '?'}` +
           ` (${each.toFixed(1)}s each)${row.notes.length > 0 ? ` — ${row.notes.join('; ')}` : ''}`,
       );
     },
-    total,
+    counted,
     limit,
     skip,
-    first,
+    opened,
   );
 
   console.error(`Wrote ${written} Pokémon to ${out}`);
 
-  const short = shortfall('the full pass', visited, total, skip, limit);
+  const short = shortfall('the full pass', walked, counted, skip, limit);
 
   if (short) {
-    throw new Error(`${short}; \`--skip ${skip + visited}\` carries on from the next one`);
-  }
-}
-
-/**
- * A screenshot of a screen that has stopped moving, which is what a fixed wait after a swipe can only guess at. The
- * cost is one extra screenshot where the screen was already still, and the gain is that a scan slowed down by anything
- * — a phone thinking, an animation that ran long — waits for it rather than reading through it.
- */
-async function settled(device: Device): Promise<Image> {
-  let previous = await device.screenshot();
-
-  for (let attempt = 1; attempt < SETTLE_ATTEMPTS; attempt++) {
-    const image = await device.screenshot();
-
-    if (difference(previous, image, SETTLE_BAND.from, SETTLE_BAND.to) < SETTLE_CHANGE) {
-      return image;
-    }
-
-    previous = image;
-  }
-
-  return previous;
-}
-
-/** What a scroll capture took, and what `stitch` and the way back up need from it. */
-interface Capture {
-  frames: Image[];
-
-  /** The shift between each consecutive pair, as `stitch` takes them, and what they sum to is the way back up. */
-  offsets: number[];
-
-  /** Whether it stopped on two frames that would not line up, rather than on reaching the end. */
-  lost: boolean;
-}
-
-/**
- * Every frame of the screen from here to its bottom, dragging half the scrolling band at a time — `SCROLL_STEP`, kept
- * within what `offsetBetween` looks for — and waiting for each frame to settle. Stops on a frame that has not moved,
- * which is what reaching the end looks like; on one that will not line up, which is left out; or at `SCROLL_FRAMES`,
- * so a screen that never stops moving is a short capture rather than a scan that does not come back.
- *
- * It does not scroll back up: `scrollUp` does, by what the offsets sum to. The last drag always moved nothing, so what
- * it dragged is no part of the way back.
- *
- * `taken` stands in for the first frame, so the stitch holds the screen the caller already has rather than a second
- * photograph of it — shot twice seconds apart, the two differ over about half their rows as the artwork animates and
- * PGSharp redraws. What it buys is one identity: `crop(stitch, 0, 0, width, bandFoot)` is that screen row for row.
- *
- * **It is the one frame not waited for, so the caller owes it** still being what the phone is showing. A stale one
- * does not corrupt the stitch quietly: `offsetBetween` refuses the pair, so `lost` comes back true and the capture is
- * one frame long.
- */
-async function scrollFrames(device: Device, taken?: Image): Promise<Capture> {
-  const band = config.scrollBand;
-  const first = taken ?? (await settled(device));
-  const [from, to] = scrollStep(band, first.width, first.height);
-  const frames = [first];
-  const offsets: number[] = [];
-
-  while (frames.length < SCROLL_FRAMES) {
-    await device.swipe(from, to, SCROLL_DRAG_MS);
-    const next = await settled(device);
-    const moved = offsetBetween(frames.at(-1) as Image, next, band);
-
-    if (moved === null) {
-      return { frames, offsets, lost: true };
-    }
-
-    if (moved === 0) {
-      break;
-    }
-
-    frames.push(next);
-    offsets.push(moved);
-  }
-
-  return { frames, offsets, lost: false };
-}
-
-/**
- * Back up the screen by `pixels`, which is the distance it was measured to have scrolled. `screen` is any screenshot,
- * for its size.
- *
- * **A drag longer than the screen has scrolled does not stop at the top.** Once the content is there the game reads
- * the rest of the finger's travel as a swipe to dismiss and closes the panel, so asking for more than was scrolled
- * ends on the map and the swipe to the next Pokémon lands on nothing. One drag covers 0.55 of the height where a
- * detail screen scrolls 711 pixels of 2244, so a swipe per drag asked for roughly three times too much.
- *
- * Undershooting is the safe direction, the panel resetting when the game draws the next Pokémon. That is the scan's
- * invariant and not every caller's — one with no next Pokémon has to measure what is left and ask again, as `snap`
- * does.
- */
-async function scrollUp(device: Device, screen: Image, pixels: number) {
-  if (pixels <= 0) {
-    return;
-  }
-
-  const [from, to] = config.swipes.scrollUp.map(([x, y]): Point => [x * screen.width, y * screen.height]) as [
-    Point,
-    Point,
-  ];
-  const reach = to[1] - from[1];
-
-  // As few drags as the configured swipe reaches in, each an equal share, one drag covering only what fits on screen.
-  const drags = Math.ceil(pixels / reach);
-  const part = pixels / drags / reach;
-  const end: Point = [from[0] + (to[0] - from[0]) * part, from[1] + reach * part];
-
-  for (let i = 0; i < drags; i++) {
-    // At the capture's own drag speed, and for its reason: a quick drag flings on past where the finger stopped, which
-    // on the way back means landing above what `pixels` asked for and spending the overshoot on the dismiss gesture.
-    await device.swipe(from, end, SCROLL_DRAG_MS);
-    await sleep(config.waits.scroll);
+    throw new Error(`${short}; \`--skip ${skip + walked}\` carries on from the next one`);
   }
 }
 
@@ -1168,10 +762,10 @@ async function snap() {
   // this name is whatever the last run to get past here put there. `--search` has made this promise all along.
   const kept = 'nothing was written, so a snap already saved under this name is still the one that was there';
 
-  const write = (image: Image, carry: Readonly<Record<string, string>> = {}) => {
+  const write = (picture: Image, carry: Readonly<Record<string, string>> = {}) => {
     mkdirSync(join(CACHE, 'snaps'), { recursive: true });
-    writeFileSync(path, encodePng(image, carry));
-    console.log(`Saved ${path} (${image.width}×${image.height})`);
+    writeFileSync(path, encodePng(picture, carry));
+    console.log(`Saved ${path} (${picture.width}×${picture.height})`);
   };
 
   const refuse = (...whys: readonly string[]) => {
@@ -1236,10 +830,10 @@ async function snap() {
   const data = await gameData();
   const read = await report(image, data, await iconsFor(data));
 
-  const refused = refusals(read);
+  const reasons = refusals(read);
 
-  if (refused.length > 0) {
-    refuse(...refused);
+  if (reasons.length > 0) {
+    refuse(...reasons);
   }
 
   // The refusal above says the capture is not one a scan could have used; this says there is nothing to scroll. Only
@@ -1259,7 +853,7 @@ async function snap() {
   // The whole screen stitched out of as many frames as it takes. The report above ran on the unstitched screen — it is
   // all there was then — so what the report read is not what lands on disk here. This write is the only one on an
   // accepted capture, going over the screen on a free name and being the first on a name that was held.
-  const capture = await scrollFrames(device, image);
+  const capture = await scrollFrames(device, config, image);
   const total = capture.offsets.reduce((a, b) => a + b, 0);
   const scrolled = `${capture.offsets.join(' + ') || 0} = ${total} pixels`;
 
@@ -1280,7 +874,7 @@ async function snap() {
   write(stitch(capture.frames, capture.offsets, config.scrollBand), {
     Viewport: `${image.width}x${image.height}`,
   });
-  await scrollUp(device, image, total);
+  await scrollUp(device, config, image, total);
 
   // The way back measured rather than assumed, against the screenshot already in hand, and asked for again by whatever
   // the last drag left: `scrollUp` undershoots on purpose and no next Pokémon is coming to reset the panel. It stops
@@ -1291,7 +885,7 @@ async function snap() {
   let left = await scrolledPast();
 
   while (left !== null && left > floor) {
-    await scrollUp(device, image, left);
+    await scrollUp(device, config, image, left);
     const after = await scrolledPast();
 
     if (after === null || after >= left) {
@@ -1340,7 +934,7 @@ if (command === 'scan') {
   const icons = await iconsFor(data);
 
   // Ahead of the first header rather than under it, being about every screen below.
-  key();
+  colourKey();
 
   for (const path of rest) {
     console.log(`\n=== ${basename(path)}`);

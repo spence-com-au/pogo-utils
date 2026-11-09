@@ -53,7 +53,7 @@ afterEach(() => {
 });
 
 test('is the demo phone, its shell answering settings as Android does', async () => {
-  const phone = demoConnection(CLIP, FPS, counting, () => Date.now());
+  const phone = demoConnection(CLIP, FPS, counting);
   const text = async (command: string[]) => new TextDecoder().decode(await phone.transport.shell(command));
 
   expect([phone.name, phone.serial]).toEqual(['Demo phone', DEMO_SERIAL]);
@@ -69,7 +69,7 @@ test('records from the picture showing, then each as its time comes, and round a
   expect(pictures[0]?.key).toBe(true);
   expect(pictures.slice(1).every(({ key }) => !key)).toBe(true);
 
-  const phone = demoConnection(CLIP, FPS, counting, () => Date.now());
+  const phone = demoConnection(CLIP, FPS, counting);
   await vi.advanceTimersByTimeAsync(10.5 * PERIOD);
 
   const recording = await phone.spawn(['screenrecord', '--output-format=h264', '-']);
@@ -99,7 +99,7 @@ test('records from the picture showing, then each as its time comes, and round a
 });
 
 test('screenshots the picture showing, decoded from the key picture before it', async () => {
-  const phone = demoConnection(CLIP, FPS, counting, () => Date.now());
+  const phone = demoConnection(CLIP, FPS, counting);
   const handed = async () => decodePng(await phone.transport.screencap()).data[0];
 
   expect(await handed()).toBe(1);
@@ -115,7 +115,7 @@ test('screenshots the picture showing, decoded from the key picture before it', 
 });
 
 test('closing it ends its recordings and its connection', async () => {
-  const phone = demoConnection(CLIP, FPS, counting, () => Date.now());
+  const phone = demoConnection(CLIP, FPS, counting);
   const recording = await phone.spawn(['screenrecord', '-']);
   const ended = new Response(recording.stdout).arrayBuffer();
 
