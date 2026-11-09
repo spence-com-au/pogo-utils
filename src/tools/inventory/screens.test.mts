@@ -2567,10 +2567,6 @@ test(
 /**
  * That no committed capture reads as having a dialog over it, the corpus being every screen there is to measure
  * `dialogOpen`'s scrim against: a detail screen it tripped on would be closed with Back and its reading thrown away.
- *
- * Under tesseract.js, `overworld.png` is the exception: it reads a `yes` into the map's scenery, at 697,242, which
- * `dialogOpen` takes for a dialog's button. It is pinned rather than passed over, since `toStorage` asks before the
- * menu tap it makes from the map, and on a map that read so would press Back instead (#935).
  */
 test(
   'no capture reads as having a dialog open over it',
@@ -2585,7 +2581,7 @@ test(
       }
     }
 
-    expect(open).toStrictEqual(ON_WASM ? ['overworld.png'] : []);
+    expect(open).toStrictEqual([]);
   },
   WHOLE_CORPUS_TIMEOUT,
 );

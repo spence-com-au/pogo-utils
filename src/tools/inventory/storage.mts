@@ -6,7 +6,7 @@
 
 import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
-import { CP_LABEL, parseDetail, readLines } from './detail.mts';
+import { CP_LABEL, parseDetail, readLines, SKY } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
 import { luminance, median, rgb, type Image } from '../../core/png.mts';
@@ -16,6 +16,11 @@ import { SCROLL_STRIP } from './stitch.mts';
 /**
  * A button only a dialog over a detail screen carries: `CANCEL` on the power-up sheet, `YES` on the evolve prompt. The
  * detail screen itself prints neither as a line of its own, nor does storage.
+ *
+ * Taken only below `SKY`, which no dialog reaches with its buttons — the power-up sheet's `CANCEL` sits under
+ * `taps.closeDetail`, at 0.93 of the height — and which `readLines` reads again inverted, where the map's rooftops can
+ * come out as words: tesseract.js reads a `yes` at 697,242 of `overworld.png`, and a map taken for a dialog is pressed
+ * Back on rather than walked from by the main menu (#935).
  */
 const DIALOG_BUTTON = /^(cancel|yes)$/;
 
@@ -58,7 +63,7 @@ const scrimmed = (image: Image) => margin(image, 0.4, 0.5) > PANEL_LIT && margin
  * detail screen's control can be hit.
  */
 export const dialogOpen = (lines: readonly Line[], image: Image) =>
-  findLine(lines, DIALOG_BUTTON) !== undefined || scrimmed(image);
+  lines.some((l) => l.top >= image.height * SKY && DIALOG_BUTTON.test(fold(l.text))) || scrimmed(image);
 
 /**
  * Why `term` cannot be typed into storage's search box, or null where it can: a character `type` would refuse, or more

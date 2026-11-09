@@ -10,7 +10,7 @@ import { type GameData } from '../../core/game-master.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { dialogOpen, storage, unsearchable } from './storage.mts';
-import { useTestEngine } from '../../core/node/test-engine.mts';
+import { useTestEngine, useWasmEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 
@@ -222,11 +222,12 @@ test('a term longer than the box can be cleared of is refused, and one that fits
   );
 });
 
-test("a dialog's buttons are what tells it from the detail screen beneath it", () => {
-  const line = (text: string) => ({ text, left: 0, top: 0, width: 10, height: 10 });
+test("a dialog's buttons are what tells it from the detail screen beneath it, but not in the sky", () => {
+  const line = (text: string, top = 185) => ({ text, left: 0, top, width: 10, height: 10 });
 
-  expect(dialogOpen([line('POWER UP: GEODUDE'), line('CANCEL')], SCREEN)).toBe(true);
+  expect(dialogOpen([line('POWER UP: GEODUDE', 60), line('CANCEL')], SCREEN)).toBe(true);
   expect(dialogOpen([line('YES')], SCREEN)).toBe(true);
+  expect(dialogOpen([line('YES', 20)], SCREEN)).toBe(false);
   expect(dialogOpen([line('POWER UP'), line('EVOLVE'), line('NEW ATTACK')], SCREEN)).toBe(false);
 });
 
@@ -462,6 +463,24 @@ test('the map is walked to storage by the main menu, and the Pokémon button tap
     ['input', 'tap', '50', '182'],
     ['input', 'tap', '25', '164'],
     ['input', 'tap', '50', '35'],
+  ]);
+});
+
+/**
+ * The map as the Inventory page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
+ * reads a `yes` into the rooftops of `overworld.png` (#935). The phone answers every screenshot with the map, so the
+ * menu never opens and the walk stops there, having pressed no Back.
+ */
+test('the map is walked from by the main menu under tesseract.js, whatever its scenery reads as', async () => {
+  const finished = useWasmEngine();
+  const image = capture('overworld.png');
+  const { sent, device } = phone(DEFAULTS.package, { screen: image });
+  const { search, at } = storage(device, CONFIG, DATA, image, () => {});
+
+  await expect(search('shiny').finally(finished)).rejects.toThrow('the main menu did not open');
+  expect(sent).not.toContainEqual(['input', 'keyevent', String(KEY.BACK)]);
+  expect(tapped(sent)).toStrictEqual([
+    ['input', 'tap', ...at(DEFAULTS.taps.mainMenu).map((n) => String(Math.round(n)))],
   ]);
 });
 
