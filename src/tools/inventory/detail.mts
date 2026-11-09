@@ -69,9 +69,12 @@ export interface Detail {
 
 export type Max = 'dynamax' | 'gigantamax';
 
+/** How far down a screen `readLines` reads it a second time inverted, as a fraction of its height. */
+export const SKY = 1 / 5;
+
 /** Everything OCR read off an image: the whole of it, then the top fifth again inverted, where the CP is white. */
 export async function readLines(image: Image): Promise<Line[]> {
-  const top = Math.round(image.height / 5);
+  const top = Math.round(image.height * SKY);
   const [all, sky] = await Promise.all([ocr(image), ocr(crop(image, 0, 0, image.width, top, true))]);
 
   return [...all, ...sky].sort((a, b) => a.top - b.top || a.left - b.left);
