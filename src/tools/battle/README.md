@@ -269,7 +269,7 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 
 - **The game master,** from [`../inventory/download.mts`](../inventory/download.mts): every form's types, stats and move
   pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded and cached
-  for a week; tests read the vended [`../inventory/fixtures/game-master.json`](../inventory/fixtures/game-master.json).
+  for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json).
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
   League. It matches `--league` to PvPoke's cup by title; a cup PvPoke doesn't list falls back to its league's open
   rankings. For each species it gives the moves its players run and the recommended fast move. A species' forms and

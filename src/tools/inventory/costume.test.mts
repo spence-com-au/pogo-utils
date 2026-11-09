@@ -15,7 +15,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** Pikachu with two of its costumes, which is all a wardrobe's loading needs and keeps the registration quick. */
 const CAP = DATA.costumes.find((c) => c.name === 'Gofest 2026 Cap Red');

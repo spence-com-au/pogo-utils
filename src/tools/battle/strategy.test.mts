@@ -27,9 +27,7 @@ import {
   worth,
 } from './strategy.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** A party of cards whose silhouettes named `species`, and of which nothing else was read. */
 const cards = (species: readonly (string | null)[]): Card[] => species.map((name) => ({ species: name, cp: null }));

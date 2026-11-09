@@ -14,7 +14,7 @@ import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** `DEFAULTS` with nothing waited for, there being no animation here to let settle. */
 const CONFIG: Config = {

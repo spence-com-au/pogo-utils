@@ -9,7 +9,7 @@
  * alternative to report rather than one to pick.
  *
  * The tables and the arithmetic over them, which a browser runs as readily as Node. Where the tables come from is
- * `download.mts` for `pnpm inventory` and the vended `fixtures/game-master.json` for the corpus and the Inventory page.
+ * `download.mts` for `pnpm inventory` and the vended `data/game-master.json` for the corpus and the Inventory page.
  */
 
 import { type Size } from './badges.mts';

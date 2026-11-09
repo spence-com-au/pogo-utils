@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 
 /** How many digits the longest CP any form can show runs to, read off the game master vended beside the captures. */
 const LONGEST = cpDigits(
-  JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData,
+  JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData,
 );
 
 /**

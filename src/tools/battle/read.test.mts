@@ -13,9 +13,7 @@ import { merge, readBanner, readBattle, unseen } from './read.mts';
 
 afterAll(useWasmEngine());
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const read = async (name: string) => {
   const sighting = await readBattle(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))), DATA);

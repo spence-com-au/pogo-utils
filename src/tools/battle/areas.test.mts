@@ -41,9 +41,7 @@ const fixtures = (pattern: RegExp) =>
     .map((file) => file.replace(/[.]png$/, ''))
     .filter((name) => pattern.test(name));
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const ICONS = readdirSync(new URL('fixtures/icons/', import.meta.url)).map((icon) => ({
   species: DATA.forms.find((form) => form.icon === icon)?.species ?? icon,

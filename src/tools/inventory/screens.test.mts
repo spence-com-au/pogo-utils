@@ -36,7 +36,7 @@ import { ON_WASM, useTestEngine } from './test-engine.mts';
  * checked against, with nothing failing when the two disagree. The cast is unchecked, which is what the test below
  * makes loud.
  */
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /**
  * The tag names under storage's own TAGS tab, which is the vocabulary a `--tags` run passes and the only thing that can

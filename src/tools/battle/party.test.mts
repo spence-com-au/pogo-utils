@@ -20,9 +20,7 @@ import { decodePng } from '../inventory/png.mts';
 import { useWasmEngine } from '../inventory/test-engine.mts';
 import { readCps, readParty, silhouetteOfIcon } from './party.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 afterAll(useWasmEngine());
 

@@ -15,7 +15,7 @@ import { movesCutOff, parseMoves } from './moves.mts';
 import { decodePng } from './png.mts';
 import { useTestEngine } from './test-engine.mts';
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 const NECROZMA = DATA.forms.find((f) => f.species === 'Necrozma' && f.form === null) ?? null;
 
 afterAll(useTestEngine());

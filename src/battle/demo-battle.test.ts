@@ -48,7 +48,7 @@ const CLIP = new URL(`../../${DEMO_BATTLE.clip}`, import.meta.url);
 const H264 = fixture(CLIP);
 
 const DATA = JSON.parse(
-  new TextDecoder().decode(fixture(new URL('../tools/inventory/fixtures/game-master.json', import.meta.url))),
+  new TextDecoder().decode(fixture(new URL('../../data/game-master.json', import.meta.url))),
 ) as GameData;
 
 /** The clip's picture size, which `ffmpeg` puts its frames out at. */

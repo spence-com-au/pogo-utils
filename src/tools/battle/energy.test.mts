@@ -20,9 +20,7 @@ import {
 } from './energy.mts';
 import { type Meta } from './meta.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const MATCHUP: Matchup = {
   own: { species: 'Registeel', cp: 1497 },

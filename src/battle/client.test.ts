@@ -27,7 +27,7 @@ const PLAY: Play = {
   battle: {
     mode: { mode: 'training', leader: 'spark', league: 'great' },
     data: JSON.parse(
-      new TextDecoder().decode(fixture(new URL('../tools/inventory/fixtures/game-master.json', import.meta.url))),
+      new TextDecoder().decode(fixture(new URL('../../data/game-master.json', import.meta.url))),
     ) as GameData,
     icons: [],
     typeIcons: {},

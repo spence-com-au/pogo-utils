@@ -9,9 +9,7 @@ import { type GameData } from '../inventory/game-master.mts';
 import { type Download } from './assets.mts';
 import { formatOf, loadMeta, movesetsOf, type PvPokeData, type Ranking } from './meta.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const PVPOKE = JSON.parse(readFileSync(new URL('fixtures/pvpoke.json', import.meta.url), 'utf8')) as PvPokeData & {
   rankings: Ranking[];

@@ -16,9 +16,7 @@ import { isSelection, pinkCell, query, readCard, readPanel, searched, type Hands
 
 afterAll(useWasmEngine());
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const fixture = (name: string) =>
   decodePng(readFileSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url))));
