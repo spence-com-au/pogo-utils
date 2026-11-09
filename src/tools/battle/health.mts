@@ -149,7 +149,7 @@ interface Strip {
   top: number;
   rights: number[];
 
-  /** Whether the strip is two found too thin to be read alone, by `rejoin`. */
+  /** Whether the strip is two strips, each too thin to be read alone, joined by `rejoin`. */
   rejoined: boolean;
 }
 
