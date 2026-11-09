@@ -253,9 +253,9 @@ export function stitch(frames: readonly Image[], offsets: readonly number[], ban
   const data = new Uint8Array(first.width * height * 4);
   const image: Image = { width: first.width, height, data };
 
-  const place = (source: Image, from: number, rowCount: number, at: number) => {
+  const place = (source: Image, from: number, rowCount: number, to: number) => {
     const stride = source.width * 4;
-    data.set(source.data.subarray(from * stride, (from + rowCount) * stride), at * stride);
+    data.set(source.data.subarray(from * stride, (from + rowCount) * stride), to * stride);
   };
 
   // Everything above the band, which is the status bar and whatever is drawn over the app rather than in it, taken from

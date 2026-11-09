@@ -282,7 +282,7 @@ export class Bench {
       cap === undefined
         ? []
         : [...this.#banked].flatMap(([waiting, bank]) => {
-            const moves = new Map(bank.moves.map((move, i) => [i, move]));
+            const moves = new Map(bank.moves.entries());
             const lands = finisher(
               this.#data,
               moves,

@@ -677,19 +677,19 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
         </div>
         <ul>
           {[null, ...GENERATIONS].map((row) => {
-            const generation = row?.number ?? null;
-            const of = ENTRIES.filter((entry) => generation === null || entry.generation === generation);
+            const number = row?.number ?? null;
+            const of = ENTRIES.filter((entry) => number === null || entry.generation === number);
             const got = of.filter((entry) => registered(entry, state.mode)).length;
             const starters = row?.starters ?? ALL_REGIONS.starters;
 
             return (
-              <li key={generation ?? 'all'}>
+              <li key={number ?? 'all'}>
                 <button
                   type="button"
                   class="regioncard"
-                  aria-current={state.generation === generation ? 'true' : undefined}
+                  aria-current={state.generation === number ? 'true' : undefined}
                   onClick={() => {
-                    setState((was) => ({ ...was, generation }));
+                    setState((was) => ({ ...was, generation: number }));
                     regionsRef.current?.close();
                     window.scrollTo({ top: 0 });
                   }}

@@ -57,7 +57,7 @@ function scripted(said?: string) {
 
   return {
     feed,
-    send: (red: number) => push({ width: 1, height: 1, data: Uint8Array.of(red, 0, 0, 255) }),
+    send: (shade: number) => push({ width: 1, height: 1, data: Uint8Array.of(shade, 0, 0, 255) }),
     end: (error?: Error) => push(error ?? null),
     stopped: () => stopped,
   };

@@ -266,7 +266,7 @@ export function nextOut(
  * The hardest hit any charged move a card is judged by lands on `opponent`, as `nextOut` ranks by; nothing for a card
  * with no species and not both its charged moves read.
  */
-function hardest(data: GameData, card: Card, opponent: Shown): { hardest: number; move: string | undefined } {
+function hardestHit(data: GameData, card: Card, opponent: Shown): { hardest: number; move: string | undefined } {
   const own = typesOf(data, { species: card.species });
   const types = typesOf(data, opponent);
   const moves = unread(card) ? [] : judgedBy(data, card);
@@ -294,8 +294,8 @@ interface Benched {
 
 /**
  * The cards not fainted nor `out`, each with whether it is safe from every charged move the opponent is allowed for, as
- * `shouldShield` judges, and how hard it hits, as `hardest` does. A card whose species is not known is never safe, its
- * types unknown.
+ * `shouldShield` judges, and how hard it hits, as `hardestHit` does. A card whose species is not known is never safe,
+ * its types unknown.
  */
 function benched(
   data: GameData,
@@ -313,7 +313,7 @@ function benched(
             slot,
             card,
             safe: card.species !== null && !shouldShield(data, { species: card.species }, opponent, meta),
-            ...hardest(data, card, opponent),
+            ...hardestHit(data, card, opponent),
           },
         ],
   );
@@ -690,7 +690,7 @@ const weigh = (
 });
 
 /** What a weighed move is worth for each point of energy it costs: nothing where what it costs is not known. */
-const perEnergy = ({ cost, worth }: Weighed): number => (cost > 0 ? worth / cost : 0);
+const perEnergy = ({ cost, worth: value }: Weighed): number => (cost > 0 ? value / cost : 0);
 
 /**
  * Whether `a` is to be held for rather than `b`: worth more per energy, or as much and cheaper, which fires sooner. As

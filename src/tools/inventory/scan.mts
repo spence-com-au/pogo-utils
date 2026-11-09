@@ -767,10 +767,10 @@ export async function walk<R extends { key: string | null }>(
   };
 
   const take = async () => {
-    const reading = await read();
-    note(reading.key);
+    const taken = await read();
+    note(taken.key);
     explain();
-    return reading;
+    return taken;
   };
 
   let reading = first;
@@ -794,16 +794,16 @@ export async function walk<R extends { key: string | null }>(
     const looked = new Set<string>();
 
     for (;;) {
-      const possible = worlds();
-      const state = JSON.stringify(possible.map(({ world }) => [world.at, [...world.known]]));
-      const open = possible.filter(({ story }) => story.end === Infinity);
+      const candidates = worlds();
+      const state = JSON.stringify(candidates.map(({ world }) => [world.at, [...world.known]]));
+      const open = candidates.filter(({ story }) => story.end === Infinity);
 
-      if (open.length === 0 || new Set(possible.map(({ world }) => world.at)).size < 2 || looked.has(state)) {
+      if (open.length === 0 || new Set(candidates.map(({ world }) => world.at)).size < 2 || looked.has(state)) {
         break;
       }
 
       const k = distance(
-        possible.map(({ world }) => world),
+        candidates.map(({ world }) => world),
         index,
       );
 
@@ -848,7 +848,7 @@ export async function walk<R extends { key: string | null }>(
       // the walk above.
       if (twin && !doubted) {
         doubted = true;
-        const instead = retell().filter(({ world }) => [...world.known.keys()].every((place) => place < index));
+        const instead = retell().filter(({ world }) => [...world.known.keys()].every((seen) => seen < index));
 
         if (instead.length > 0) {
           stories = [...stories, ...cheapest(instead)];

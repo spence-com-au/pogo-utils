@@ -34,9 +34,9 @@ async function clip(colour: string, frames: number): Promise<Buffer> {
 /** A recording that sends nothing until a test writes to it, and ends when the test ends it. */
 function recording(): { recording: Recording; stdout: PassThrough } {
   const stdout = new PassThrough();
-  const recording = Object.assign(new PassThrough(), { stdout, stderr: new PassThrough() });
+  const fake = Object.assign(new PassThrough(), { stdout, stderr: new PassThrough() });
 
-  return { recording: recording as unknown as Recording, stdout };
+  return { recording: fake as unknown as Recording, stdout };
 }
 
 /** Each picture of a video as a player shows it: when, and the red and blue of its first pixel. */
@@ -135,7 +135,7 @@ test('times each picture by when it arrived since the run began, the first from 
 });
 
 test('goes over to the next recording before its first byte, by as long as its first pictures were held', async () => {
-  const [red, blue] = await Promise.all([clip('red', 20), clip('blue', 20)]);
+  const [redClip, blueClip] = await Promise.all([clip('red', 20), clip('blue', 20)]);
 
   const cut = (h264: Buffer) => {
     const pictures: Uint8Array[] = [];
@@ -145,7 +145,7 @@ test('goes over to the next recording before its first byte, by as long as its f
     return pictures;
   };
 
-  const [reds, blues] = [cut(red), cut(blue)];
+  const [reds, blues] = [cut(redClip), cut(blueClip)];
   const written: Uint8Array[] = [];
   let now = 0;
   const video = new Video(
@@ -271,7 +271,7 @@ test('writes a held picture once its time is up, with nothing else arriving', as
 });
 
 test('keeps the last pictures of a recording that ends before the next has begun', async () => {
-  const [red, blue] = await Promise.all([clip('red', 5), clip('blue', 5)]);
+  const [redClip, blueClip] = await Promise.all([clip('red', 5), clip('blue', 5)]);
   const written: Uint8Array[] = [];
   let now = 0;
   const video = new Video(
@@ -284,7 +284,7 @@ test('keeps the last pictures of a recording that ends before the next has begun
 
   video.watch(first.recording);
   now = 1000;
-  first.stdout.write(red);
+  first.stdout.write(redClip);
   await new Promise(setImmediate);
 
   // The last ends at once, its every picture within `HELD_MS`; the next has started but sent nothing.
@@ -293,7 +293,7 @@ test('keeps the last pictures of a recording that ends before the next has begun
   await new Promise(setImmediate);
 
   now = 3000;
-  second.stdout.write(blue);
+  second.stdout.write(blueClip);
   await new Promise(setImmediate);
   video.close();
 

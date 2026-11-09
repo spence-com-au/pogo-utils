@@ -38,11 +38,11 @@ interface Manifest {
 }
 
 /** `#rrggbb` as the three bytes `pad` takes. */
-function plate(colour: string): [number, number, number] {
-  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(colour);
+function plate(hex: string): [number, number, number] {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex);
 
   if (!match) {
-    throw new Error(`${MANIFEST}: cannot read \`background_color\` "${colour}" as a #rrggbb colour`);
+    throw new Error(`${MANIFEST}: cannot read \`background_color\` "${hex}" as a #rrggbb colour`);
   }
 
   return [parseInt(match[1] ?? '', 16), parseInt(match[2] ?? '', 16), parseInt(match[3] ?? '', 16)];

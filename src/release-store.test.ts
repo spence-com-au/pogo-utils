@@ -97,12 +97,12 @@ test('each store keeps its own acknowledgement, so clearing one app leaves the o
   const other = 'pogo-utils:other:acknowledged';
 
   const visitBoth = async (version: string) => {
-    const one = new ReleaseStore(ACKNOWLEDGED_KEY, async () => release(version));
-    const two = new ReleaseStore(other, async () => release(version));
+    const ours = new ReleaseStore(ACKNOWLEDGED_KEY, async () => release(version));
+    const theirs = new ReleaseStore(other, async () => release(version));
 
-    await Promise.all([one.ensureLoaded(), two.ensureLoaded()]);
+    await Promise.all([ours.ensureLoaded(), theirs.ensureLoaded()]);
 
-    return [one, two] as const;
+    return [ours, theirs] as const;
   };
 
   await visitBoth('1.272.2');

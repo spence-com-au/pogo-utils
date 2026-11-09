@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../tools/inventory/artwork.mts', () => ({
-  signatureOfIcon: (image: unknown) => image,
+  signatureOfIcon: (icon: unknown) => icon,
   signaturesFor: mocks.signaturesFor,
 }));
 vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));

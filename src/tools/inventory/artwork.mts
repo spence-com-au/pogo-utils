@@ -495,10 +495,10 @@ export async function signaturesFor(
 
   for (let at = 0; at < drawn.length; at += FETCH_BATCH) {
     const batch = drawn.slice(at, at + FETCH_BATCH);
-    const read = await Promise.all(batch.map(signatureFor));
+    const fetched = await Promise.all(batch.map(signatureFor));
 
     for (const [i, form] of batch.entries()) {
-      const colourings = read[i];
+      const colourings = fetched[i];
 
       if (colourings) {
         signatures.set(form, colourings);

@@ -52,7 +52,7 @@ const watched = (record: () => Recording, segmentMs?: number) => new Screen(() =
 const starting = { timeout: 10_000, interval: 10 };
 
 /** Whether the screen's latest frame is the second recording's blue, rather than the first's red. */
-const blue = (screen: Screen): boolean => {
+const showsBlue = (screen: Screen): boolean => {
   const latest = screen.latest();
 
   return latest !== undefined && rgb(latest.image, 10, 10)[2] > 200;
@@ -181,14 +181,14 @@ test('hands the screen to the next recording without going back to the last', as
   try {
     expect(rgb((await screen.first()).image, 10, 10)[0]).toBeGreaterThan(200);
 
-    await vi.waitUntil(() => blue(screen), starting);
+    await vi.waitUntil(() => showsBlue(screen), starting);
 
     // The first recording goes on sending frames for as long as its stop takes, and none of them may hand the screen
     // back. Looking for a while after the take-over is what catches one; looking only at the moment of it cannot.
     const watching = performance.now() + 500;
 
     while (performance.now() < watching) {
-      expect(blue(screen)).toBe(true);
+      expect(showsBlue(screen)).toBe(true);
       await sleep(10);
     }
 
@@ -215,7 +215,7 @@ test('keeps the whole screen as video across the hand-over, the first recording 
     await screen.first();
 
     // The next recording's bytes are written before they are decoded, so its frame on the screen is in the video.
-    await vi.waitUntil(() => blue(screen), starting);
+    await vi.waitUntil(() => showsBlue(screen), starting);
   } finally {
     screen.close();
     video.close();

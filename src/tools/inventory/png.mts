@@ -291,7 +291,7 @@ const unwritable = (keyword: string, value: string): string | undefined => {
   return undefined;
 };
 
-const text = (keyword: string, value: string): Uint8Array => {
+const textChunk = (keyword: string, value: string): Uint8Array => {
   const refusal = unwritable(keyword, value);
 
   if (refusal !== undefined) {
@@ -323,7 +323,7 @@ export function encodePng(image: Image, carry: Readonly<Record<string, string>> 
   return concat([
     SIGNATURE,
     chunk('IHDR', header),
-    ...Object.entries(carried).map(([keyword, value]) => text(keyword, value)),
+    ...Object.entries(carried).map(([keyword, value]) => textChunk(keyword, value)),
     chunk('IDAT', zlibSync(raw)),
     chunk('IEND'),
   ]);

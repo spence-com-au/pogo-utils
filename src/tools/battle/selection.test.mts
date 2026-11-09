@@ -255,9 +255,9 @@ test('reads a card the CP alone found among every move, its silhouette ruled out
 // results: the first is in force all the same, so ⊗ is tapped before CANCEL, five taps with the card's and two
 // searches'.
 test('clears a search that took before one OCR does not see take', async () => {
-  const searched = fixture('menu-pixel8-selection-searched');
-  const unseen = { ...searched };
-  const screens = [fixture('menu-pixel8-selection'), searched, unseen, fixture('menu-pixel8-party-master')];
+  const filtered = fixture('menu-pixel8-selection-searched');
+  const unseen = { ...filtered };
+  const screens = [fixture('menu-pixel8-selection'), filtered, unseen, fixture('menu-pixel8-party-master')];
   const { hands, taps, searches } = phone(screens, fixture('menu-pixel8-held-metagross'));
   const read = async (image: Image) =>
     (await ocr(image)).filter((line) => image !== unseen || !/evolutionary/i.test(line.text));

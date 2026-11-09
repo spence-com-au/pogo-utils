@@ -411,7 +411,7 @@ function aboveTypes(gap: Image): number {
 
 /** The coloured runs of columns in a band, one per chip, with the rows each of them actually occupies. */
 function chipsIn(band: Image, tallest: number): { left: number; top: number; width: number; height: number }[] {
-  const coloured = (x: number, y: number) => chroma(...rgb(band, x, y)) >= TAG_CHROMA;
+  const tinted = (x: number, y: number) => chroma(...rgb(band, x, y)) >= TAG_CHROMA;
 
   const filled: boolean[] = [];
 
@@ -419,7 +419,7 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
     filled[x] = false;
 
     for (let y = 0; y < band.height && !filled[x]; y++) {
-      filled[x] = coloured(x, y);
+      filled[x] = tinted(x, y);
     }
   }
 
@@ -442,7 +442,7 @@ function chipsIn(band: Image, tallest: number): { left: number; top: number; wid
 
     for (let y = 0; y < band.height; y++) {
       for (let cx = start; cx < x; cx++) {
-        if (coloured(cx, y)) {
+        if (tinted(cx, y)) {
           n++;
           top = Math.min(top, y);
           bottom = Math.max(bottom, y);

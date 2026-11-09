@@ -12,7 +12,8 @@ import { readHealth, Steady } from './health.mts';
 
 const read = (name: string) => readHealth(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))));
 
-const within = (read: number | null, expected: number) => read !== null && Math.abs(read - expected) <= 0.05;
+const within = (measured: number | null, expected: number) =>
+  measured !== null && Math.abs(measured - expected) <= 0.05;
 
 test.each([
   // At a shield prompt, which is where the HP left is wanted: yellow, green and both sides red.

@@ -579,10 +579,10 @@ export function costumeOf(
   const labelled = (references === REFERENCES ? (kept ??= decoded(references)) : decoded(references)).filter((r) =>
     allowed(r.costume),
   );
-  const pick = labelled.reduce<{ costume: string; gap: number } | null>((best, r) => {
+  const pick = labelled.reduce<{ costume: string; gap: number } | null>((closest, r) => {
     const gap = apart(blocks, r.blocks) + FRONT_WEIGHT * apart(front, r.front);
 
-    return best === null || gap < best.gap ? { costume: r.costume, gap } : best;
+    return closest === null || gap < closest.gap ? { costume: r.costume, gap } : closest;
   }, null)?.costume;
 
   const scores = [...measured.scores].filter(([costume]) => allowed(costume));

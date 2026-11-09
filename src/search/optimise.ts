@@ -376,8 +376,8 @@ function shortSpans(junction: Group['junction'], parts: readonly Node[]): Node[]
 
     // A dex pill is read through the writer that produced it, so the two cannot drift over which bound an empty box
     // falls back to.
-    const written = pill?.kind === 'range' && pill.id === 'dex' ? leafText(pill) : null;
-    const bounds = written ? spanOf(written) : null;
+    const dexText = pill?.kind === 'range' && pill.id === 'dex' ? leafText(pill) : null;
+    const bounds = dexText ? spanOf(dexText) : null;
 
     return bounds ? [{ part, spans: [bounds] }] : [];
   });
@@ -546,8 +546,8 @@ export function current(state: State) {
   }
 
   const { state: shortened, rewrites, lossy } = optimise(state);
-  const short = compose(shortened);
-  const worth = short.query.length > 0 && short.query.length < plain.query.length;
+  const shorter = compose(shortened);
+  const worth = shorter.query.length > 0 && shorter.query.length < plain.query.length;
 
-  return worth ? { ...short, was: plain.query.length, rewrites, lossy } : unchanged;
+  return worth ? { ...shorter, was: plain.query.length, rewrites, lossy } : unchanged;
 }

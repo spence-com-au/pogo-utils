@@ -606,8 +606,8 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
     return null;
   }
 
-  const suffixIn = async (crop: Image, alphabet: string) =>
-    [...((await ocrLine(crop, alphabet))?.matchAll(FORM_SUFFIX) ?? [])].at(-1)?.[1]?.trim() ?? null;
+  const suffixIn = async (region: Image, alphabet: string) =>
+    [...((await ocrLine(region, alphabet))?.matchAll(FORM_SUFFIX) ?? [])].at(-1)?.[1]?.trim() ?? null;
 
   // Both alphabets always run and a two-digit answer wins, because only one of them could have produced it: the
   // letters alphabet holds no digits, so it says "letter" about Spinda's `(04)` either way. Nothing but Spinda is

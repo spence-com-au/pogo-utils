@@ -84,9 +84,9 @@ export async function pictures(input: NodeJS.ReadStream, output: NodeJS.WriteStr
     input.pause();
   }
 
-  const [, height, width] = /\[6;(\d+);(\d+)t/.exec(answer) ?? [];
+  const [, cellHeight, cellWidth] = /\[6;(\d+);(\d+)t/.exec(answer) ?? [];
 
-  if (!answer.includes(`\x1b_Gi=${QUERY_ID};OK\x1b\\`) || !height || !width) {
+  if (!answer.includes(`\x1b_Gi=${QUERY_ID};OK\x1b\\`) || !cellHeight || !cellWidth) {
     rmSync(dir, { recursive: true, force: true });
 
     return undefined;
@@ -96,7 +96,7 @@ export async function pictures(input: NodeJS.ReadStream, output: NodeJS.WriteStr
   let sent = 0;
 
   return {
-    cell: { width: Number(width), height: Number(height) },
+    cell: { width: Number(cellWidth), height: Number(cellHeight) },
     picture({ width, height, data }, rows) {
       const path = join(dir, `${sent++}.rgba`);
 
