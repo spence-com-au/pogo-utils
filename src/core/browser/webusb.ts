@@ -4,8 +4,14 @@
  * phone is picked through the browser's own device chooser and no `adb` is installed anywhere.
  *
  * The computer has to be authorised on the phone the first time, as it does for `adb`. The key that authorisation is
- * for is made by Web Crypto and kept in this site's IndexedDB, so it is this browser that is trusted rather than the
+ * for is made by Web Crypto and kept in the origin's IndexedDB, so it is this browser that is trusted rather than the
  * machine — another browser, or this one with its site data cleared, asks again.
+ *
+ * Within the browser, though, it is the origin that is trusted rather than this site: the key and the WebUSB grant both
+ * belong to `https://spence.com.au`, which every GitHub Pages site in the organization shares, so a script on any of
+ * them could open a shell on the phone with no prompt. That is accepted while every one of those sites is ours and
+ * renders nothing untrusted. Once one renders anything untrusted, or someone else can publish to one, this site needs
+ * an origin of its own.
  */
 
 import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
