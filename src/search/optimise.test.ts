@@ -13,6 +13,7 @@
 
 import { expect, test } from 'vitest';
 
+import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import { all, any, named, no, yes } from '../testing/search.js';
 import { compose, emptyState, fromFragment, nameFragment, type State } from './query.js';
@@ -133,6 +134,27 @@ test('a name pill holding a catalogue term is that term to the game, and is not 
 
   for (const { term: text } of GROUPS.flatMap((entry) => entry.terms)) {
     expect(told(all(named(text)))).toEqual({ query: text, rewrites: [], lossy: EXACT });
+  }
+});
+
+test('a name is never shortened to a catalogue term', () => {
+  // `dark` is the shortest fragment reaching Darkrai alone, and being the Dark type's text, `+dark` is that text behind
+  // a `+`, which nothing says the game reads as Darkrai's family. The next fragment up is a name and nothing else.
+  expect(term('dark')).toBe('dark');
+  expect(told(all(named('+darkrai')))).toEqual({
+    query: '+darkr',
+    rewrites: [['+darkrai', '+darkr']],
+    lossy: { narrowed: false, widened: true },
+  });
+
+  // A family keeps the fragment every species name is cut to, where a bare name might turn into its number instead, so
+  // a `+` in front of each is every fragment there is. A term or a species added later can meet another the same way.
+  const terms = new Set(GROUPS.flatMap((entry) => entry.terms).map((entry) => entry.term));
+
+  for (const constant of Object.keys(POKEMON)) {
+    const family = short(all(named(`+${nameOf(constant).toLowerCase()}`)));
+
+    expect(terms.has(family.slice(1)), family).toBe(false);
   }
 });
 
