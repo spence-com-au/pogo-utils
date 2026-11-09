@@ -13,6 +13,7 @@
 import { areas as healthAreas } from './health.mts';
 import { tall, type Area, type Box, type Point, type Size } from './layout.mts';
 import { FINGER, areas as menuAreas } from './menus.mts';
+import { reachable } from './minigame.mts';
 import { areas as partyAreas } from './party.mts';
 import { areas as playAreas } from './play.mts';
 import { areas as readAreas } from './read.mts';
@@ -157,12 +158,10 @@ export function swipeAround(
 }
 
 /**
- * `swipes`, each begun clear of `panels` as `swipeAround` turns it, and those with neither end clear left out: to be
- * chosen among, since one left in and skipped once chosen would be chosen again on the next frame, and the next.
+ * The minigame's bubbles' `swipes`, as `bubbleSwipes` finds them, less those `panels` cover at both ends once brought
+ * within reach, as they would be swiped: to be chosen among, since one left in and skipped once chosen would be chosen
+ * again on the next frame, and the next. Those kept are as found, for `ahead` to match by their size and middle, and
+ * are turned clear of `panels` by `swipeAround` as they are made.
  */
-export const swipesAround = (swipes: readonly (readonly [Point, Point])[], panels: readonly Panel[], screen: Size) =>
-  swipes.flatMap((swipe) => {
-    const begun = swipeAround(swipe, panels, screen);
-
-    return begun ? [begun] : [];
-  });
+export const uncovered = (swipes: readonly (readonly [Point, Point])[], panels: readonly Panel[], screen: Size) =>
+  swipes.filter(([from, to]) => swipeAround([reachable(from), reachable(to)], panels, screen));
