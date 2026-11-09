@@ -15,6 +15,7 @@ import { createReadStream, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  blank,
   countdown,
   opponentShields,
   ownShields,
@@ -80,6 +81,29 @@ const countdowns = pngs.filter((name) => name.startsWith('shield-') || name.star
 
 test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the countdown only where it is up', (name) => {
   expect(countdown(decodePng(readFileSync(FIXTURES + name)))).toBe(countdowns.includes(name));
+});
+
+// The black between a battle's end and its result, and no other still, however dark.
+test.each(pngs)('%s is blank only where the game draws nothing', (name) => {
+  expect(blank(decodePng(readFileSync(FIXTURES + name)))).toBe(name === 'other-pixel8-black.png');
+});
+
+/** `other-pixel8-black` with a white square `side` pixels across near its foot at the left, where PGSharp's star sits. */
+function starred(side: number) {
+  const image = decodePng(readFileSync(`${FIXTURES}other-pixel8-black.png`));
+  const top = Math.round(0.86 * image.height);
+
+  for (let y = top; y < top + side; y++) {
+    image.data.fill(255, y * image.width * 4, (y * image.width + side) * 4);
+  }
+
+  return image;
+}
+
+// The star, 126 of a Pixel 4 XL's 1440 across, is 32 of the stream's 360: black still, where twice that across is not.
+test('is blank with PGSharp’s star over the black, and not with more drawn on it', () => {
+  expect(blank(starred(32))).toBe(true);
+  expect(blank(starred(64))).toBe(false);
 });
 
 test('follows a charged move coming ready and being thrown through the decoder', async () => {
