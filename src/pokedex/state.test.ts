@@ -28,6 +28,14 @@ const entryAt = (dex: number): Entry => {
   return entry;
 };
 
+/**
+ * Node's, which `tsconfig.json` leaves out of the types of the browser project that checks this file, though the file
+ * only ever runs under Node. Declared in this module rather than globally, so nothing the page ships can reach for it.
+ */
+declare const process: {
+  threadCpuUsage(previous?: { user: number; system: number }): { user: number; system: number };
+};
+
 test('an empty state writes no fragment and admits the whole dex', () => {
   expect(toFragment(emptyState())).toBe('');
   expect(admitted({})).toHaveLength(ENTRIES.length);
@@ -157,15 +165,20 @@ test('a name fragment matches anywhere in the name', () => {
  * long one has to cost its length rather than its square. A long run of zeros ending in something other than a digit is
  * the shape that backtracks when the leading zeros and the digits after them can trade characters, and leading zeros
  * before a real number still have to read as that number. The budget is generous for linear work and orders of
- * magnitude short of what the quadratic version took over the whole dex.
+ * magnitude short of what the quadratic version took over the whole dex. It is spent in the thread's CPU time rather
+ * than on the wall clock, which also counts every moment the thread waited for a core the rest of a busy machine held.
  */
 test('a long run of zeros costs its length, not its square', () => {
   const zeros = '0'.repeat(5_000);
-  const started = performance.now();
+  const started = process.threadCpuUsage();
 
   expect(admitted({ q: `${zeros}x` })).toEqual([]);
   expect(admitted({ q: `#${zeros}25` })).toEqual([entryAt(25)]);
-  expect(performance.now() - started).toBeLessThan(1_000);
+
+  const { user, system } = process.threadCpuUsage(started);
+  const milliseconds = (user + system) / 1_000;
+
+  expect(milliseconds).toBeLessThan(1_000);
 });
 
 test('an empty query admits everything', () => {
