@@ -152,8 +152,9 @@ added again.
 ## Calendar subscription
 
 The same events are published as an iCalendar feed, [`events.ics`](https://spence.com.au/pogo-utils/events.ics), so they
-can be subscribed to rather than read here. It holds what the Events page shows by default: every dated event other than
-the weekly-cadence ones, so subscribing does not put a Spotlight Hour and a Raid Hour into every week of your calendar.
+can be subscribed to rather than read here. It holds every dated event other than Spotlight Hours, Raid Hours, Max
+Mondays and seasons, the types [`src/recurring-types.ts`](src/recurring-types.ts) lists as coming round on a fixed
+cadence, so subscribing does not put a Spotlight Hour and a Raid Hour into every week of your calendar.
 
 In Google Calendar, that is **Other calendars → + → From URL**; iOS and Outlook take the same URL. Google re-fetches a
 subscribed URL on its own schedule, typically somewhere between a few hours and a day, so a newly announced event does
