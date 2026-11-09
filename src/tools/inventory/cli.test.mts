@@ -359,10 +359,28 @@ test.for([
 });
 
 /**
+ * A run in a working directory deleted before it starts fails at once, rather than spinning a core in `cached`'s
+ * recursive `mkdirSync`, as `CACHE` says. A shell deletes the directory and `exec`s the run in it, there being no other
+ * way to start a process somewhere that is not there. The `exec` is also what lets `timeout` kill the run itself rather
+ * than the shell in front of it, so a regression fails here instead of spinning on after the suite.
+ */
+test('a run whose working directory is gone fails rather than spins', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'inventory-cli-'));
+  const failure = await run(
+    'sh',
+    ['-c', 'rmdir -- "$1" && shift && exec "$@"', 'sh', cwd, process.execPath, SCRIPT, 'parse', CAPTURE],
+    { cwd, timeout: 30_000 },
+  ).catch((error: unknown) => error);
+
+  expect(failure, 'the run did not fail by itself, so it was killed spinning').toMatchObject({ code: 1 });
+  expect((failure as { stderr: string }).stderr).toContain('ENOENT: process.cwd failed');
+});
+
+/**
  * `parse` of the capture with and without `--verbose`, side by side in `cwd`, each run to its end before either's
  * failure is thrown. `Promise.all` rejects at the first, and the caller's `finally` then deletes `cwd` from under the
- * other — whose recursive `mkdirSync` of the relative cache path never returns once its directory is gone, on Node 24 at
- * least, leaving the child spinning a core long after the suite has exited.
+ * other, which makes the directory again and downloads everything it was seeded with into it, long after the suite has
+ * exited.
  */
 async function quietAndLoud(cwd: string) {
   const [quiet, loud] = await Promise.allSettled([
