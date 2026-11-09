@@ -1,7 +1,7 @@
 /**
- * Assembles `dist/` into the tree GitHub Pages serves: everything a page fetches that the compiler does not produce.
- * Positions are preserved rather than flattened, a page resolving `src/theme.css` against its own URL and the markup
- * not being rewritten.
+ * Assembles `dist/` into the tree GitHub Pages serves: everything a page fetches that the rest of `pnpm build` does not
+ * write there. Positions are preserved rather than flattened, a page resolving `src/theme.css` against its own URL and
+ * the markup not being rewritten.
  *
  * An allowlist rather than everything-minus-exclusions, because the two fail in opposite directions: a missing
  * exclusion publishes something nobody audited and says nothing, where a missing inclusion is a 404 the check at the
@@ -71,7 +71,7 @@ if (orphaned.length > 0) {
   );
 }
 
-console.log(`${copied} path(s) copied into ${DIST}/ beside the compiler's output.`);
+console.log(`${copied} path(s) copied into ${DIST}/ beside what the rest of the build wrote.`);
 console.log(
   `${checked} local reference(s) across ${pages.length} page(s) and ${manifests.size} manifest(s) resolve inside it.`,
 );

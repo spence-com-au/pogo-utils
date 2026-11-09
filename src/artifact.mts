@@ -12,8 +12,9 @@ import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TE
 import { SERVED_TYPES } from './served-types.mts';
 
 /**
- * What the site serves that the compiler does not write, relative to the repository root. An entry ending `*.ext` takes
- * every matching file in that one directory; anything else is copied as it stands, recursively where it is a directory.
+ * What the site serves that the rest of `pnpm build` does not write into `dist/`, relative to the repository root. An
+ * entry ending `*.ext` takes every matching file in that one directory; anything else is copied as it stands,
+ * recursively where it is a directory.
  */
 export const PUBLISHED = [
   '*.html',
