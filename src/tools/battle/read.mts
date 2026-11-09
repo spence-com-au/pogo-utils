@@ -260,8 +260,8 @@ export async function readGetReady(image: Image): Promise<boolean> {
   // Every band is cropped before the first read, since `stream.mts` frees the frame two frames on, while OCR is running.
   const bands = BANNERS.map((place) => band(image, { ...PILL, ...place }, BANNER_ANCHOR, 3).image);
 
-  for (const crop of bands) {
-    if (/\bready\b/.test(fold((await ocrLine(crop)) ?? ''))) {
+  for (const banner of bands) {
+    if (/\bready\b/.test(fold((await ocrLine(banner)) ?? ''))) {
       return true;
     }
   }
