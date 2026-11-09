@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test, vi } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { type Download } from './assets.mts';
 import { formatOf, loadMeta, movesetsOf, type PvPokeData, type Ranking } from './meta.mts';
 

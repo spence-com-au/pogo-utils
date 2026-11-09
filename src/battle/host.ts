@@ -9,7 +9,7 @@ import { said } from '../errors.js';
 import type { Phone as Connection } from '../inventory/webusb.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { run, type Clock, type Tally } from '../tools/battle/run.mts';
-import { useEngine, type Engine } from '../tools/inventory/ocr.mts';
+import { useEngine, type Engine } from '../core/ocr.mts';
 import { keepAwake } from './awake.js';
 import { battlePhone } from './phone.js';
 import { type Command, type Message, type Play } from './protocol.js';

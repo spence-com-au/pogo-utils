@@ -12,8 +12,8 @@
 
 import { GAME_MASTER, SILHOUETTES } from '../src/generated.ts';
 import { encodeSilhouettes, formIcons, silhouettesFor, type Download } from '../src/tools/battle/assets.mts';
-import { cachedAs } from '../src/tools/inventory/download.mts';
-import { type GameData } from '../src/tools/inventory/game-master.mts';
+import { cachedAs } from '../src/core/node/download.mts';
+import { type GameData } from '../src/core/game-master.mts';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

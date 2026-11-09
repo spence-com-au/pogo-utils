@@ -10,9 +10,9 @@
  */
 
 import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
-import { KEY, type Transport } from './adb.mts';
+import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
-import { decodePng, encodePng, screenIn } from './png.mts';
+import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 
 /** `read` answers a recording's bytes by its path in the repository, which is where the site publishes it too. */
 export function demoTransport(read: (path: string) => Promise<Uint8Array>): Transport {

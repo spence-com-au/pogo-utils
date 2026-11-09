@@ -11,7 +11,7 @@
  */
 
 import { ordinaryIcon, type Icons } from '../src/pokedex/icons.ts';
-import type { GameData } from '../src/tools/inventory/game-master.mts';
+import type { GameData } from '../src/core/game-master.mts';
 import { fold } from '../src/pokemon/names.ts';
 import type { Types } from '../src/pokedex/types.js';
 import { GAME_MASTER, POKEMON_ICONS, POKEMON_TYPES } from '../src/generated.ts';

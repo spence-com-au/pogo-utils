@@ -9,7 +9,7 @@
  * the latest frame.
  */
 
-import { type Image } from '../inventory/png.mts';
+import { type Image } from '../../core/png.mts';
 import { type Size } from './layout.mts';
 import { decodeArgs, RECORD_LIMIT_S, recordCommand } from './record-command.mts';
 import { type Feed } from './screen.mts';

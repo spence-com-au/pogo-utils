@@ -15,7 +15,7 @@
 
 import { said } from '../src/errors.ts';
 import { screenPower } from '../src/tools/adb/screen-power.mts';
-import { adbCli } from '../src/tools/inventory/adb-cli.mts';
+import { adbCli } from '../src/core/node/adb-cli.mts';
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 

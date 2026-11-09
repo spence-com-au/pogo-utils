@@ -102,10 +102,10 @@ for text and done every few seconds.
   Pokémon low on HP can faint while it waits. Nothing is swiped for 0.7s after a charged-move tap, since a swipe
   straight after one could cost the throw. A bench card to switch to is tapped ahead of a lit move, since the switch is
   made to keep that move's energy.
-- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../inventory/adb-cli.mts), over the
-  marker protocol in [`held-shell.mts`](../inventory/held-shell.mts) that a page's shell over WebUSB shares), not a
+- **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../../core/node/adb-cli.mts), over
+  the marker protocol in [`held-shell.mts`](../../core/held-shell.mts) that a page's shell over WebUSB shares), not a
   fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
-  ([`touchscreen.mts`](../inventory/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
+  ([`touchscreen.mts`](../../core/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
   report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
   touchscreen can't be written: SELinux refuses the shell `/dev/input/event*`, `sendevent` included. Over a Training
@@ -147,13 +147,12 @@ for text and done every few seconds.
     its silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
     species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
   - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
-    rows matched as `pnpm inventory` matches the detail screen's moves
-    ([`../inventory/moves.mts`](../inventory/moves.mts)), among the species' own moves first. One its dex number found
-    is that species, its moves matched among its own whatever types the panel reads, a type OCR missed leaving them to
-    fit another. Otherwise its types and moves name the species, which a nickname hides: the one species whose forms of
-    those types hold every move read. Where they name none, the silhouette's species stands, unless the search by its
-    dex number took on a selection screen recognised as such and showed no pink cell, which rules it out and leaves the
-    card unnamed.
+    rows matched as `pnpm inventory` matches the detail screen's moves ([`../../core/moves.mts`](../../core/moves.mts)),
+    among the species' own moves first. One its dex number found is that species, its moves matched among its own
+    whatever types the panel reads, a type OCR missed leaving them to fit another. Otherwise its types and moves name
+    the species, which a nickname hides: the one species whose forms of those types hold every move read. Where they
+    name none, the silhouette's species stands, unless the search by its dex number took on a selection screen
+    recognised as such and showed no pink cell, which rules it out and leaves the card unnamed.
   - **Leaving it as found:** the game keeps a search for the next opening, so one seen to take is cleared before CANCEL.
     One OCR did not see take is left, a pink cell being no sign of one: the party is often at the top of storage, in
     view unsearched, and ⊗ tapped with no search in force opens the keyboard over CANCEL. The next search typed clears
@@ -267,9 +266,9 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 
 ### Game data
 
-- **The game master,** from [`../inventory/download.mts`](../inventory/download.mts): every form's types, stats and move
-  pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded and cached
-  for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json).
+- **The game master,** from [`../../core/node/download.mts`](../../core/node/download.mts): every form's types, stats
+  and move pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded
+  and cached for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json).
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
   League. It matches `--league` to PvPoke's cup by title; a cup PvPoke doesn't list falls back to its league's open
   rankings. For each species it gives the moves its players run and the recommended fast move. A species' forms and

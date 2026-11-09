@@ -29,7 +29,7 @@
     "types": ["node"],
 
     // tesseract.js ships one declaration file for both of its builds, naming `HTMLImageElement` and `OffscreenCanvas`
-    // among the images it takes — which this project's lib has no DOM to resolve. `src/tools/inventory/ocr-wasm.mts` is
+    // among the images it takes — which this project's lib has no DOM to resolve. `src/core/ocr-wasm.mts` is
     // checked here as well as in the browser project, and hands it nothing but a PNG's bytes; skipping the check of
     // declaration files is what lets it be read here without lending the whole project the DOM.
     "skipLibCheck": true,

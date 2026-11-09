@@ -10,7 +10,7 @@ import { type Size } from '../tools/battle/layout.mts';
 import { Pictures } from '../tools/battle/pictures.mts';
 import { recordCommand } from '../tools/battle/record-command.mts';
 import { type Feed } from '../tools/battle/screen.mts';
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 
 /** What `stream` says, as text, until it ends: a process's stderr, which says why it stopped where it says anything. */
 export function textOf(stream: ReadableStream<Uint8Array>): () => string {

@@ -24,8 +24,8 @@
 
 import { said } from '../../errors.ts';
 import { FETCH_BATCH } from '../../pokedex/icons.ts';
-import { type Form, type GameData } from './game-master.mts';
-import { luminance, rgb, type Image } from './png.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
+import { luminance, rgb, type Image } from '../../core/png.mts';
 import { progress } from './progress.mts';
 
 /** How many hue bins a signature holds. Coarse on purpose: the model is lit and posed, where the icon is flat art. */

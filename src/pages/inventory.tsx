@@ -21,8 +21,8 @@ import { download } from '../dom.js';
 import { said } from '../errors.js';
 import { read, unreadable } from '../inventory/reader.js';
 import { usePhone } from '../phone-store.js';
-import { Device } from '../tools/inventory/adb.mts';
-import { decodePng, encodePng, type Image } from '../tools/inventory/png.mts';
+import { Device } from '../core/adb.mts';
+import { decodePng, encodePng, type Image } from '../core/png.mts';
 import { dumped, NO_BOX, NO_OVERLAY, printable, refusals, type Reading } from '../tools/inventory/report.mts';
 
 /** Where a screen came from, which names its download and says what the page is showing. */

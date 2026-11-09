@@ -13,7 +13,7 @@
  * Bubbles come in chains, which overlap into one blob, so each blob is swiped along its length.
  */
 
-import { scale, type Image } from '../inventory/png.mts';
+import { scale, type Image } from '../../core/png.mts';
 import { type Point } from './layout.mts';
 
 export type Colour = readonly [r: number, g: number, b: number];

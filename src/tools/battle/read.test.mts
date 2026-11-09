@@ -5,10 +5,10 @@
 
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
-import { type Line } from '../inventory/ocr.mts';
-import { decodePng } from '../inventory/png.mts';
-import { useWasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Line } from '../../core/ocr.mts';
+import { decodePng } from '../../core/png.mts';
+import { useWasmEngine } from '../../core/node/test-engine.mts';
 import { merge, readBanner, readBattle, unseen } from './read.mts';
 
 afterAll(useWasmEngine());

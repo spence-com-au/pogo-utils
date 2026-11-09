@@ -5,9 +5,9 @@
  * of them still Node's.
  */
 
-import { replaceSearch, type Device } from '../inventory/adb.mts';
-import { type Image } from '../inventory/png.mts';
-import { type Touchscreen } from '../inventory/touchscreen.mts';
+import { replaceSearch, type Device } from '../../core/adb.mts';
+import { type Image } from '../../core/png.mts';
+import { type Touchscreen } from '../../core/touchscreen.mts';
 import { type Point } from './layout.mts';
 import { type Screen } from './screen.mts';
 

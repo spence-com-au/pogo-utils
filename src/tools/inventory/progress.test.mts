@@ -10,7 +10,7 @@
  * go about it. So these are the assertions that would notice either being swept into `progress`.
  */
 
-import { cached, cachedAs } from './download.mts';
+import { cached, cachedAs } from '../../core/node/download.mts';
 import { showProgress } from './progress.mts';
 import { mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';

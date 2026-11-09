@@ -6,7 +6,7 @@
  * synchronously, holding up the taps.
  */
 
-import { type Image } from '../inventory/png.mts';
+import { type Image } from '../../core/png.mts';
 import { type Size } from './layout.mts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

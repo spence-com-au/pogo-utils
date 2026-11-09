@@ -5,10 +5,10 @@
  * is how a wrong tap shows: the run stalls, and ends `Lost`.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng, type Image } from '../inventory/png.mts';
-import { useEngine, type Engine } from '../inventory/ocr.mts';
-import { wasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, type Image } from '../../core/png.mts';
+import { useEngine, type Engine } from '../../core/ocr.mts';
+import { wasmEngine } from '../../core/node/test-engine.mts';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

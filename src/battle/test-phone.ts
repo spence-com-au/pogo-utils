@@ -5,7 +5,7 @@
  */
 
 import type { Phone as Connection, Process } from '../inventory/webusb.js';
-import { encodePng } from '../tools/inventory/png.mts';
+import { encodePng } from '../core/png.mts';
 import { answeringShell, settingsShell, stream } from './demo.js';
 
 /**

@@ -18,8 +18,8 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
 import { assembled, confirmed, fuller, readOverlay } from './overlay.mts';
-import { decodePng } from './png.mts';
-import { useTestEngine } from './test-engine.mts';
+import { decodePng } from '../../core/png.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 
 afterAll(useTestEngine());
 

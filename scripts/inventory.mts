@@ -9,7 +9,7 @@
  * the same screen scrolled down. The level and the three IVs come off PGSharp's own overlay, which is why the scanner
  * needs PGSharp rather than the stock client — nothing else gives the IVs without walking the appraisal dialogue every
  * time. The form is worked out rather than read, HP being fixed by base stamina, the stamina IV and the level; see
- * `inventory/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
+ * `src/core/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
  * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
  * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
  * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
@@ -61,21 +61,21 @@
  */
 
 import { said } from '../src/errors.ts';
-import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
-import { Device, type Transport } from '../src/tools/inventory/adb.mts';
+import { adbCli, adbHeld } from '../src/core/node/adb-cli.mts';
+import { Device, type Transport } from '../src/core/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { DEX, wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
-import { CACHE, cachedIcon, loadGameData } from '../src/tools/inventory/download.mts';
-import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
+import { CACHE, cachedIcon, loadGameData } from '../src/core/node/download.mts';
+import { closest, type Form, type GameData } from '../src/core/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
-import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
-import { tesseractCli } from '../src/tools/inventory/ocr-cli.mts';
-import { ocr, useEngine, type Line } from '../src/tools/inventory/ocr.mts';
+import { movesCutOff, parseMoves, type Moves } from '../src/core/moves.mts';
+import { tesseractCli } from '../src/core/node/ocr-cli.mts';
+import { ocr, useEngine, type Line } from '../src/core/ocr.mts';
 import { findOverlay, ivsOf, readOverlay, type Overlay } from '../src/tools/inventory/overlay.mts';
-import { decodePng, difference, encodePng, type Image } from '../src/tools/inventory/png.mts';
+import { decodePng, difference, encodePng, type Image } from '../src/core/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
@@ -111,7 +111,7 @@ import {
 } from '../src/tools/inventory/scan.mts';
 import { offsetBetween, scrollStep, stitch } from '../src/tools/inventory/stitch.mts';
 import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
-import { touchscreen } from '../src/tools/inventory/touchscreen.mts';
+import { touchscreen } from '../src/core/touchscreen.mts';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';

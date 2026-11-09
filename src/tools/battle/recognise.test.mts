@@ -10,7 +10,7 @@
  * the screen gives way to the throw: 13 frames that half-second samples of the same footage stepped over.
  */
 
-import { decodePng } from '../inventory/png.mts';
+import { decodePng } from '../../core/png.mts';
 import { createReadStream, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';

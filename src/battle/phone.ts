@@ -11,9 +11,9 @@ import { type Size } from '../tools/battle/layout.mts';
 import { phoneOf, type Phone } from '../tools/battle/phone.mts';
 import { streamSize } from '../tools/battle/record-command.mts';
 import { Screen, type Feed } from '../tools/battle/screen.mts';
-import { Device } from '../tools/inventory/adb.mts';
-import { holdShell, type HeldShell } from '../tools/inventory/held-shell.mts';
-import { touchscreen } from '../tools/inventory/touchscreen.mts';
+import { Device } from '../core/adb.mts';
+import { holdShell, type HeldShell } from '../core/held-shell.mts';
+import { touchscreen } from '../core/touchscreen.mts';
 import { feed, textOf } from './feed.js';
 
 /**

@@ -3,7 +3,7 @@
  * `pnpm inventory`, which takes a `--config` file over `DEFAULTS`, and the Search page, which has no file to take.
  */
 
-import { launchable } from './adb.mts';
+import { launchable } from '../../core/adb.mts';
 import { type OverlayBox } from './overlay.mts';
 import { SCREEN_BAND, SCROLL_STRIP, type Band } from './stitch.mts';
 

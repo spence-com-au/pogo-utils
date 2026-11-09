@@ -26,9 +26,9 @@ vi.mock('../tools/inventory/artwork.mts', () => ({
   signaturesFor: mocks.signaturesFor,
 }));
 vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));
-vi.mock('../tools/inventory/ocr.mts', () => ({ useEngine: mocks.useEngine }));
-vi.mock('../tools/inventory/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
-vi.mock('../tools/inventory/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
+vi.mock('../core/ocr.mts', () => ({ useEngine: mocks.useEngine }));
+vi.mock('../core/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
+vi.mock('../core/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
 vi.mock('../tools/inventory/report.mts', () => ({ readScreen: mocks.readScreen }));
 vi.mock('../tools/inventory/storage.mts', () => ({ storage: mocks.storage, unsearchable: mocks.unsearchable }));
 
@@ -254,7 +254,7 @@ test('a search the phone cannot be sent is refused before the phone, engine or n
 
 test('a search is typed into storage on the phone, and the count the game gave is what is answered', async () => {
   const { searchStorage } = await load();
-  const { Device } = await import('../tools/inventory/adb.mts');
+  const { Device } = await import('../core/adb.mts');
   const lines = ['a screen read'];
   const search = vi.fn(async () => lines);
   const matches = vi.fn(() => 3);

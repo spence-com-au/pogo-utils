@@ -12,7 +12,7 @@
  * `snap`, which do need a phone, are driven the same way against a stand-in for one in `phone.test.mts`.
  */
 
-import { ICON_CACHE } from './download.mts';
+import { ICON_CACHE } from '../../core/node/download.mts';
 import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,8 +20,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
-import { CLEAR_KEYS, typeable } from './adb.mts';
-import { reads } from './test-cache.mts';
+import { CLEAR_KEYS, typeable } from '../../core/adb.mts';
+import { reads } from '../../core/node/test-cache.mts';
 
 const run = promisify(execFile);
 

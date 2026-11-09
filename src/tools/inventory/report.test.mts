@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { type Form } from './game-master.mts';
+import { type Form } from '../../core/game-master.mts';
 import { answer, isDetail, printable, refusals, type Reading } from './report.mts';
 
 const APPLIN: Form = {

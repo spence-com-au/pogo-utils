@@ -4,12 +4,12 @@
  * OCR engine was installed.
  */
 
-import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from './adb.mts';
+import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
 import { CP_LABEL, parseDetail, readLines } from './detail.mts';
-import { type GameData } from './game-master.mts';
-import { centre, findLine, fold, type Line } from './ocr.mts';
-import { luminance, median, rgb, type Image } from './png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
+import { luminance, median, rgb, type Image } from '../../core/png.mts';
 import { isDetail } from './report.mts';
 import { SCROLL_STRIP } from './stitch.mts';
 

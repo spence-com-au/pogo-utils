@@ -1,4 +1,4 @@
-import { type Image } from '../inventory/png.mts';
+import { type Image } from '../../core/png.mts';
 import { columnsFor, ERASE, type Graphics } from './kitty.mts';
 import { energyOf, PARTY, summary, type Fight, type Reporter, type Side, type Status } from './reporter.mts';
 

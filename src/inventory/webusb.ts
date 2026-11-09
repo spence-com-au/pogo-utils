@@ -12,7 +12,7 @@ import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
 import AdbWebCredentialStore from '@yume-chan/adb-credential-web';
 import { AdbDaemonWebUsbDevice, AdbDaemonWebUsbDeviceManager } from '@yume-chan/adb-daemon-webusb';
 
-import { NO_ANSWER, TIMEOUT_MS, type Transport } from '../tools/inventory/adb.mts';
+import { NO_ANSWER, TIMEOUT_MS, type Transport } from '../core/adb.mts';
 
 /** What the exit status is printed behind on a phone without the shell protocol; see `legacy` in `open`. */
 const EXIT_MARK = 'pogo-utils-exit:';

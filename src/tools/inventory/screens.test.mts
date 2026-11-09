@@ -17,18 +17,18 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
-import { closest, fitsHeight, type Form, type GameData, type IVs, type Size } from './game-master.mts';
+import { closest, fitsHeight, type Form, type GameData, type IVs, type Size } from '../../core/game-master.mts';
 import { ambiguous, nearest, type Colourings } from './artwork.mts';
 import { wardrobeFor, type Wardrobe } from './costume.mts';
-import { decodePng, screenIn } from './png.mts';
+import { decodePng, screenIn } from '../../core/png.mts';
 import { sizeOf, type Gender } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { dexOn } from './pokedex.mts';
-import { parseMoves, type Moves } from './moves.mts';
+import { parseMoves, type Moves } from '../../core/moves.mts';
 import { artworkIn, readScreen } from './report.mts';
 import { dialogOpen } from './storage.mts';
-import { ON_WASM, useTestEngine } from './test-engine.mts';
+import { ON_WASM, useTestEngine } from '../../core/node/test-engine.mts';
 
 /**
  * The game master, vended rather than downloaded so a test of a reader reaches no network. Vended whole rather than

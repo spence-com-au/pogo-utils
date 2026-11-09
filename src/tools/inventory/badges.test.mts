@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { isFavourite } from './badges.mts';
-import { decodePng } from './png.mts';
+import { decodePng } from '../../core/png.mts';
 
 test.each(['axew.png', 'axew-shiny.png'])('an outline star over yellow bokeh is no favourite: %s', (file) => {
   expect(isFavourite(decodePng(readFileSync(new URL(`fixtures/favourite/${file}`, import.meta.url))))).toBe(false);

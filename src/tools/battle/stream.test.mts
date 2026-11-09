@@ -4,7 +4,7 @@
  * its first pixel.
  */
 
-import { rgb } from '../inventory/png.mts';
+import { rgb } from '../../core/png.mts';
 import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';

@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type Detail } from './detail.mts';
-import { type Form, type GameData } from './game-master.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
 import { identify, label, shadowOf } from './identify.mts';
 import { type Overlay } from './overlay.mts';
 

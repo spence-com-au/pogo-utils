@@ -5,9 +5,9 @@
  * and the symbol need no OCR at all.
  */
 
-import { closest, type Size } from './game-master.mts';
-import { fold, ocr, ocrLine, type Line } from './ocr.mts';
-import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from './png.mts';
+import { closest, type Size } from '../../core/game-master.mts';
+import { fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
+import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from '../../core/png.mts';
 
 /**
  * What the symbol beside the HP says, in the game's own search terms: `genderunknown` is what the game calls a species

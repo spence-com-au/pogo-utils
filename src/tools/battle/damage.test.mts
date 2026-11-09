@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { cpOf, multiplierOf, type Form, type GameData } from '../inventory/game-master.mts';
+import { cpOf, multiplierOf, type Form, type GameData } from '../../core/game-master.mts';
 import {
   afterThrow,
   buildsOf,

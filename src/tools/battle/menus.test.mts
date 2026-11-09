@@ -4,9 +4,9 @@
  * readers. The Battle tab's QR code is painted over in its fixture, being tied to the account it was recorded on.
  */
 
-import { decodePng } from '../inventory/png.mts';
-import { fold, ocr } from '../inventory/ocr.mts';
-import { useWasmEngine } from '../inventory/test-engine.mts';
+import { decodePng } from '../../core/png.mts';
+import { fold, ocr } from '../../core/ocr.mts';
+import { useWasmEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test, vi } from 'vitest';

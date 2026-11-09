@@ -19,10 +19,10 @@
  * given longer than the default.
  */
 
-import { KEY } from './adb.mts';
-import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
-import { type GameData } from './game-master.mts';
-import { decodePng, encodePng, screenIn } from './png.mts';
+import { KEY } from '../../core/adb.mts';
+import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

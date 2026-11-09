@@ -1,7 +1,7 @@
 /**
  * The game master, the string table and the icon listing, downloaded and cached on disk, which is the half of
- * `game-master.mts` only `pnpm inventory` has: a browser has no disk to keep a week's copy on, and the Inventory page
- * reads the vended `data/game-master.json` the build publishes rather than the 23 MB it is made from.
+ * `../game-master.mts` only the CLIs have: a browser has no disk to keep a week's copy on, and the pages read the
+ * vended `data/game-master.json` the build publishes rather than the 23 MB it is made from.
  *
  * Every download is cached for a week, the game master being 19 MB and a scan of a few thousand Pokémon not the moment
  * to discover the network is down.
@@ -10,8 +10,8 @@
 import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from './game-master.mts';
-import { decodePng, type Image } from './png.mts';
+import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from '../game-master.mts';
+import { decodePng, type Image } from '../png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 

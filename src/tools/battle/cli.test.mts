@@ -13,8 +13,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, onTestFinished, test } from 'vitest';
-import { reads } from '../inventory/test-cache.mts';
-import { tessdata } from '../inventory/test-engine.mts';
+import { reads } from '../../core/node/test-cache.mts';
+import { tessdata } from '../../core/node/test-engine.mts';
 
 const SCRIPT = fileURLToPath(new URL('../../../scripts/battle.mts', import.meta.url));
 

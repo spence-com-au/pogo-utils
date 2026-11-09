@@ -7,11 +7,11 @@
  * zlib is [fflate](https://github.com/101arrowz/fflate)'s rather than `node:zlib`'s: a browser has no CRC at all, and
  * only an asynchronous `DecompressionStream` for the rest, where every reader here decodes synchronously.
  * `createImageBitmap` is no way round it either — it drops the `tEXt` chunk a stitch records its `Viewport` in, and
- * answers colour-managed pixels where `artwork.mts` picks a form by its colour.
+ * answers colour-managed pixels where `src/tools/inventory/artwork.mts` picks a form by its colour.
  */
 
 import { unzlibSync, zlibSync } from 'fflate';
-import { said } from '../../errors.ts';
+import { said } from '../errors.ts';
 
 /**
  * An image as four bytes a pixel, red, green, blue and alpha, row after row.

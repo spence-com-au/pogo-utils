@@ -13,7 +13,7 @@ import { DEMO_SERIAL, PhoneStore } from '../phone-store.js';
 import { fixture } from '../testing/fixture.js';
 import { type Status } from '../tools/battle/reporter.mts';
 import { Screen } from '../tools/battle/screen.mts';
-import { type GameData } from '../tools/inventory/game-master.mts';
+import { type GameData } from '../core/game-master.mts';
 import { putBack } from './awake.js';
 import { lend, type Endpoint } from './client.js';
 import { host } from './host.js';

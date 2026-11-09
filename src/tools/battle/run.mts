@@ -6,8 +6,8 @@
  */
 
 import { said } from '../../errors.ts';
-import { type GameData } from '../inventory/game-master.mts';
-import { type Image } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Image } from '../../core/png.mts';
 import {
   CAPS,
   carousel,

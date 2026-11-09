@@ -38,6 +38,6 @@
   account's trainer names — on the VS screen, under the avatar on the map and as the partner under "OBTAINED IN A TRADE"
   on a detail screen — and the Nearby Battle QR code on the Battle tab, which is tied to the account. Fill them solid,
   since text can be read back out of a mosaic, and check every frame before the first push: the repository is public,
-  and a pushed LFS object outlives a force-push. Rewrite an edited capture with `encodePng` from
-  `src/tools/inventory/png.mts`, because other tools drop the `Viewport` `tEXt` chunk a stitched capture carries. The
-  map's location needs nothing, since the in-game location is spoofed.
+  and a pushed LFS object outlives a force-push. Rewrite an edited capture with `encodePng` from `src/core/png.mts`,
+  because other tools drop the `Viewport` `tEXt` chunk a stitched capture carries. The map's location needs nothing,
+  since the in-game location is spoofed.

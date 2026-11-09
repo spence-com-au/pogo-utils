@@ -13,7 +13,7 @@ import type { Phone } from '../inventory/webusb.js';
 import { DEMO_SERIAL, type PhoneStore } from '../phone-store.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { type Tally } from '../tools/battle/run.mts';
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 import { putBack } from './awake.js';
 import { type Command, type Message, type Play } from './protocol.js';
 

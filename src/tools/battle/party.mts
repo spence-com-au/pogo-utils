@@ -11,9 +11,9 @@
  * own species a card's nearest others crowd within 0.04 of each other, and `MARGIN` sits between that and 0.11.
  */
 
-import { type Moves } from '../inventory/moves.mts';
-import { ocrLine } from '../inventory/ocr.mts';
-import { crop, median, rgb, type Image } from '../inventory/png.mts';
+import { type Moves } from '../../core/moves.mts';
+import { ocrLine } from '../../core/ocr.mts';
+import { crop, median, rgb, type Image } from '../../core/png.mts';
 import { around, down, place, tall, type Area, type Size } from './layout.mts';
 
 /**

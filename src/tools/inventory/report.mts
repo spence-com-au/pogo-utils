@@ -8,12 +8,12 @@
 import { ARTWORK_FROM, signatureOf, type Colourings } from './artwork.mts';
 import { costumeOf, DEX, type Wardrobe } from './costume.mts';
 import { parseDetail, powerUpOn, readLines, type Detail } from './detail.mts';
-import { type Form, type GameData } from './game-master.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
 import { identify, settledForm, type Identity } from './identify.mts';
-import { parseMoves, type Moves } from './moves.mts';
-import { type Line } from './ocr.mts';
+import { parseMoves, type Moves } from '../../core/moves.mts';
+import { type Line } from '../../core/ocr.mts';
 import { findOverlay, ivsOf, readOverlay, type Overlay, type OverlayBox } from './overlay.mts';
-import { screenIn, type Image } from './png.mts';
+import { screenIn, type Image } from '../../core/png.mts';
 
 /** What every reader made of one screenshot, with the lines OCR handed them for anyone asking why. */
 export interface Reading {
