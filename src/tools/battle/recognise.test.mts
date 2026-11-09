@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
   countdown,
+  fleeButton,
   opponentShields,
   ownShields,
   pokemonLeft,
@@ -80,6 +81,29 @@ const countdowns = pngs.filter((name) => name.startsWith('shield-') || name.star
 
 test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the countdown only where it is up', (name) => {
   expect(countdown(decodePng(readFileSync(FIXTURES + name)))).toBe(countdowns.includes(name));
+});
+
+/**
+ * The button to flee the battle, wherever it is drawn clear of PGSharp's timer, which lies over the top of it on most of
+ * the Pixel 4 XL's stills and over the middle of it on every Pixel 8 Pro's: through the fight, under cloud and a night
+ * sky, through `Get Ready!` and the banners, and back after Avalanche's minigame with our bar not yet back. The
+ * minigame's stills hide it.
+ */
+const fleeing = [
+  'battle-overcast',
+  'battle-tap-ring-start',
+  'battle-tap-ring',
+  'other-two-bars',
+  'playing-banner-gardevoir',
+  'playing-banner-ursaluna',
+  'playing-flee-avalanche',
+  'playing-ready-cloud',
+  'playing-ready-zamazenta',
+  'playing-slate-night',
+].map((name) => `${name}.png`);
+
+test.each(pngs)('%s shows the button to flee only where it is drawn clear', (name) => {
+  expect(fleeButton(decodePng(readFileSync(FIXTURES + name)))).toBe(fleeing.includes(name));
 });
 
 test('follows a charged move coming ready and being thrown through the decoder', async () => {

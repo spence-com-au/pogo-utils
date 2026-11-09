@@ -161,16 +161,16 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 });
 
 /**
- * `count` frames from `from` milliseconds, 33ms apart, each read as `playing` with `bubbles` found on it, and our bar
- * where `bar` says.
+ * `count` frames from `from` milliseconds, 33ms apart, each read as `playing` with `bubbles` found on it, and what the
+ * minigame hides back where `back` says.
  */
 const frames = (
   player: Player,
   from: number,
   count: number,
   bubbles: readonly (readonly [Point, Point])[],
-  bar = false,
-) => Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles, bar }));
+  back = false,
+) => Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles, back }));
 
 const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
 
@@ -201,8 +201,9 @@ test('leaves alone what is found once the bubbles have been gone a while, the mo
 });
 
 // In a kept run, Close Combat's colour was found on Zamazenta's red body on and off for 1.8s after its bubbles, never
-// more than 0.29s apart, as the move played out with our bar back under its `used` banner.
-test('leaves alone what is found once our bar shows again, however closely it follows the bubbles', () => {
+// more than 0.29s apart, as the move played out: the button to flee was back 0.19s after the last bubble, and our bar
+// 1.56s after.
+test('leaves alone what is found once what the minigame hides is back, however closely it follows the bubbles', () => {
   const player = new Player(SIZE);
   const chain: [Point, Point] = [
     [0.17, 0.59],
@@ -227,7 +228,7 @@ test('leaves alone what is found once our bar shows again, however closely it fo
 });
 
 // Live, an Outrage was taken to be playing before its minigame began, the opponent's faint having hidden our buttons,
-// and the fight, our bar in it, was found as its bubbles for 0.8s before `Get Ready!`.
+// and the fight, its button to flee and our bar in it, was found as its bubbles for 0.8s before `Get Ready!`.
 test('swipes the bubbles of a minigame taken to be playing before it began', () => {
   const player = new Player(SIZE);
   const fight: [Point, Point] = [
@@ -240,7 +241,7 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [fight], bar: true });
+  player.next('playing', 3000, { minigame: true, bubbles: [fight], back: true });
   frames(player, 3033, 24, [fight], true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);

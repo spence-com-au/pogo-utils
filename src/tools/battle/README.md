@@ -76,8 +76,9 @@ for text and done every few seconds.
   under way, from its tap or the opponent's throw through its banner, `Get Ready!` and minigame, or a faint and the next
   Pokémon flying in), `shield` (the Protect Shield prompt), `switch` (the prompt after a faint) or `other` (the HUD
   hidden by a charged move, the result, a menu). It also reads which charged-move buttons are lit, each side's shields
-  from the hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, and the countdown the
-  opponent's charged move puts up at the top of the screen while its minigame plays.
+  from the hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, the countdown the
+  opponent's charged move puts up at the top of the screen while its minigame plays, and the round button to flee the
+  battle under our panel, which our minigame hides from its first bubble to its last.
 - **[`health.mts`](health.mts)** finds each side's HP bar. The camera moves both bars around the screen, so they are
   searched for: a strip of the fill's green, yellow or red with the bar's outline around it. Where a strip starts across
   the screen says whose it is.
@@ -120,12 +121,13 @@ for text and done every few seconds.
   length. Where none have been found, rows are swept instead; once some have, since the run took the throw to be
   [playing](#the-run-loop), a frame with none is left alone, the bubbles being over and the move playing out with
   nothing to pop. Bubbles found before then may be no minigame's, a faint's shards or a Poké Ball's flash after a tap
-  that came to nothing. Whatever is found once our HP bar, which the minigame's camera hides, shows again is left alone
-  too, the move playing out: Outrage's smoke, Avalanche's chunks or Close Combat's colour on Zamazenta's red body.
-  `Player` swipes the minigame from a charged-move tap until the throw plays, and from when the run finds a throw
-  playing that no tap began, as where the opponent's move came first. The minigame is over once a frame hides the HUD,
-  though not within 2.5s of the tap, Avalanche's wave of ice hiding it for a moment as it begins, or once the fight's
-  own frames have held for 0.3s, a move sometimes playing out with the HUD up throughout.
+  that came to nothing. Whatever is found once the button to flee the battle or our HP bar, both of which the minigame
+  hides, shows again is left alone too, the move playing out: Outrage's smoke, Avalanche's chunks or Close Combat's
+  colour on Zamazenta's red body. The button is mostly the sooner, 0.19s after Close Combat's last bubble where our bar
+  took 1.56s. `Player` swipes the minigame from a charged-move tap until the throw plays, and from when the run finds a
+  throw playing that no tap began, as where the opponent's move came first. The minigame is over once a frame hides the
+  HUD, though not within 2.5s of the tap, Avalanche's wave of ice hiding it for a moment as it begins, or once the
+  fight's own frames have held for 0.3s, a move sometimes playing out with the HUD up throughout.
 
 ### Between battles
 
@@ -177,11 +179,11 @@ for text and done every few seconds.
   a tap goes to PGSharp. They are views inside the game's own window, so `uiautomator dump` lists each with its bounds.
   - **Where it matters:** each reader exports the areas it samples, reads and taps, as `areas` beside it, with spares
     where it has them: two of a cell's three tint samples are enough, and two of the main menu's four labels. In battle
-    that is the HUD, the type icons, the buttons and their labels, the banner, the prompts, the bench and the HP bars,
-    the bars where they have been drawn during the fight rather than everywhere the camera can swing them.
-    [`areas.test.mts`](areas.test.mts) holds each reader to its own: every fixture of its screens must read the same
-    with everything outside them shuffled, and a reader of the whole screen's OCR is handed only the lines wholly inside
-    them.
+    that is the HUD, the type icons, the button to flee, the buttons and their labels, the banner, the prompts, the
+    bench and the HP bars, the bars where they have been drawn during the fight rather than everywhere the camera can
+    swing them. [`areas.test.mts`](areas.test.mts) holds each reader to its own: every fixture of its screens must read
+    the same with everything outside them shuffled, and a reader of the whole screen's OCR is handed only the lines
+    wholly inside them.
   - **The swipes go around it** rather than refuse it: the minigame's bubbles are anywhere in the middle of the screen,
     and a swipe begun on the star would drag it. A swipe that would begin on the overlay is made the other way, and one
     with both ends on it not at all, a bubble missed rather than the star moved.

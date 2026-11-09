@@ -445,6 +445,53 @@ export function pokemonLeft(image: Image): { own: number | null; opponent: numbe
   return { own: left(BALLS.own), opponent: left(BALLS.opponent) };
 }
 
+/**
+ * The button to flee the battle, round and under our panel at the far left: a white disc with a teal running figure at
+ * its middle, inside a thin dark rim 16 to 17 px out of 360 and a pale translucent band beyond it. Centred at 28.5,120
+ * on a Pixel 4 XL's frames and a Pixel 8 Pro's alike, so pinned to the top. It is up through the fight, `Get Ready!`
+ * and the banners, and the minigame hides it from its first bubble to its last.
+ *
+ * Told by its disc, white on a circle clear of the figure, and by its rim, darker than the disc beside it: cloud where
+ * the button is not is as white at the rim as at the disc, and a night sky is as dark at the disc as at the rim. Over
+ * the 176,337 frames from 6s before each of 235 throws of ours to 12s after it, in 18 kept runs, the rim read darker
+ * at 5 or fewer of its 24 points on 63,676 frames, at 17 or more on 111,579 and between on 1,082.
+ */
+const FLEE = { x: 0.079, y: 0.333, disc: 0.035, rim: [0.042, 0.045, 0.048, 0.051], points: 24 } as const;
+
+/**
+ * How much of the disc's circle must be white, and of the rim's darker than `RIMMED` of the disc beside it. Anywhere
+ * from 0.66 to 0.75 of each, with `RIMMED` from 0.75 to 0.85, had `Player` stop swiping sooner after the same 84
+ * throws.
+ */
+const DISC_WHITE = 0.75;
+const RIM_SHARE = 0.75;
+const RIMMED = 0.8;
+
+/** Whether the button to flee the battle is drawn. */
+export function fleeButton(image: Image): boolean {
+  const at = (radius: number, angle: number) =>
+    rgb(image, (FLEE.x + radius * Math.cos(angle)) * image.width, (FLEE.y + radius * Math.sin(angle)) * image.width);
+
+  let whites = 0;
+  let rimmed = 0;
+
+  for (let k = 0; k < FLEE.points; k++) {
+    const angle = (2 * Math.PI * k) / FLEE.points;
+    const disc = at(FLEE.disc, angle);
+    const lit = luminance(...disc);
+
+    if (lit > 200 && chroma(...disc) < 40) {
+      whites++;
+    }
+
+    if (Math.min(...FLEE.rim.map((radius) => luminance(...at(radius, angle)))) < RIMMED * lit) {
+      rimmed++;
+    }
+  }
+
+  return whites / FLEE.points >= DISC_WHITE && rimmed / FLEE.points >= RIM_SHARE;
+}
+
 export function recognise(image: Image): State {
   if (
     SWITCH_PANEL.every((box) => near(mean(image, box, BOTTOM), SLATE, 12)) &&
@@ -499,5 +546,6 @@ export function areas(screen: Size): Area[] {
     },
     { name: "each side's shields", boxes: at([...OWN_SHIELDS, ...OPPONENT_SHIELDS], TOP) },
     { name: "each side's Poké Balls", boxes: at([...BALLS.own, ...BALLS.opponent].map(ball), TOP) },
+    { name: 'the button to flee the battle', boxes: [around([FLEE.x, FLEE.y], Math.max(...FLEE.rim), TOP, screen)] },
   ];
 }
