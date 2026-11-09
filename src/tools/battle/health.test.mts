@@ -39,6 +39,10 @@ test.each([
   // outline, at 2%.
   ['other-pixel8-countdown-xerneas-foliage', 0.43, 0.24],
   ['playing-pixel8-xerneas-foliage', 0.6, 0.98],
+
+  // Our bar swept up the screen, the left end of its fill's bottom row blurred pale, which split the fill into strips
+  // too thin to read and left the foliage between the letters above it read as it at 3%.
+  ['other-pixel8-xerneas-sweep', 0.43, 0.22],
 ])('%s: %f of ours left and %f of theirs', (name, own, opponent) => {
   const health = read(name);
 
@@ -94,6 +98,14 @@ test('foliage between the letters, further above our bar, is not read as it', ()
 
   expect(within(health.own, 0.63), `ours read ${health.own}`).toBe(true);
   expect(health.opponent).toBeNull();
+});
+
+test('foliage split as a bar sweeping by is, beside a bar found whole, is not read as it', () => {
+  // Red foliage slanting across four rows just left of Lugia's bar at 76%, split in two and joined again, which read as
+  // the bar at 6%.
+  const health = read('battle-lugia-foliage-split');
+
+  expect(within(health.opponent, 0.76), `theirs read ${health.opponent}`).toBe(true);
 });
 
 test('a bar just above another is read rather than taken for artwork', () => {
