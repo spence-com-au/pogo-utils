@@ -84,6 +84,7 @@
     "src/**/*.tsx",
     "src/tools/battle/assets.mts",
     "src/tools/battle/battle.mts",
+    "src/tools/battle/bench.mts",
     "src/tools/battle/damage.mts",
     "src/tools/battle/energy.mts",
     "src/tools/battle/health.mts",

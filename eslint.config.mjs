@@ -55,7 +55,7 @@ export default [
     // A name declared again in a nested scope, as another thing, leaves a reader to work out which of the two each use
     // means. Only the battle's loop and the modules split out of it are held to it so far; the rest of the repository
     // still has names to rename first (#949).
-    files: ['src/tools/battle/battle.mts', 'src/tools/battle/run.mts'],
+    files: ['src/tools/battle/battle.mts', 'src/tools/battle/bench.mts', 'src/tools/battle/run.mts'],
     rules: {
       '@typescript-eslint/no-shadow': 'error',
     },

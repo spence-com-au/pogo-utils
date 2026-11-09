@@ -4,8 +4,9 @@
  */
 
 import { type GameData } from '../inventory/game-master.mts';
+import { Bench } from './bench.mts';
 import { type Colour } from './minigame.mts';
-import { NO_STAGE_PAIR, NO_STAGES, type Side, type StagePair, type Stages } from './damage.mts';
+import { NO_STAGE_PAIR, NO_STAGES, type StagePair } from './damage.mts';
 import { Energy, Hits, OurEnergy, type Hold, type Matchup } from './energy.mts';
 import { Steady } from './health.mts';
 import { type Point, type Size } from './layout.mts';
@@ -15,13 +16,6 @@ import { Player } from './play.mts';
 import { unseen, type Reading, type Sighting } from './read.mts';
 import { type State } from './recognise.mts';
 import { type Reporter } from './reporter.mts';
-import { type Switch } from './strategy.mts';
-
-/** Energy of ours on the bench: the charged moves lit as it left the field, and the Pokémon as then read. */
-export interface Bank {
-  moves: string[];
-  own: Side;
-}
 
 export class Battle {
   /** What to do about each frame, made for the frames' size, which every frame of a run shares. */
@@ -56,55 +50,13 @@ export class Battle {
   theirShields = 2;
   ourShields = 2;
 
-  // Whether the opponent's switch just read is still to be answered, and the switch of ours chosen, tapped on the first
-  // frame `Player` lets a bench card be once the opponent's newcomer has flown in, at `landing`: a counter to the
-  // opponent's switch, or a switch to bank energy, `strip` where it is to draw a shield. Once tapped, the switch is
-  // checked by the first read `SWITCHED_MS` on to name ours, or failing that to read its CP: the one tapped away from
-  // still out is the tap refused, which leaves it out. And whether a tap has been dropped since the newcomer came in.
-  answer = false;
-  counter: (Switch & { at: Point; strip: boolean }) | undefined;
-  landing = -Infinity;
-  dropped = false;
-
-  // Whether the opponent out came in by a switch rather than after a faint, and so has its switch timer to run before
-  // it can switch away from ours; and the opponent ours last stayed in against, doomed, rather than switch from.
-  switchedIn = false;
-  stayedFor: string | null = null;
-  switching:
-    | {
-        from: number;
-        slot: number;
-        to: string;
-        cp: number | null;
-        at: number;
-        stages: Stages;
-
-        /** What the slot switched to had banked, given back to it where the switch is refused. */
-        bank: Bank | undefined;
-
-        /** The slot sent in to draw a shield before this switch, still out where the switch is refused. */
-        stripping: number | undefined;
-
-        /** How soon another switch to bank energy could be tried before this one, again so where its tap is dropped. */
-        calm: number;
-      }
-    | undefined;
+  /** Our bench: the switches to it, the energy banked on it and our switch timer. */
+  readonly bench: Bench;
 
   // Whether the opponent's energy is counted from a known point: the zero a battle starts at, for a lead never gone from
   // the field, or a throw since it came in whose banner settled what the throw cost. One sent in from the bench may
   // carry energy banked that the count cannot see, so it is not, until it throws.
   anchored = true;
-
-  // The energy each of ours left the field with by a switch, as the charged moves lit as it went, and the Pokémon as it
-  // was then read, which a finish is judged by: it keeps the energy on the bench, and throws as it comes back in. The
-  // slot sent in to draw a shield with its own, which is not switched away again to draw another. And how soon another
-  // switch to bank energy may be tried, by our switch timer and its refusals, and when a switch of ours last went
-  // through, which alone starts the timer: a tap refused more than `TIMER_MS` after one, or with none, is taken as
-  // dropped.
-  readonly banked = new Map<number, Bank>();
-  stripping: number | undefined;
-  calmAt = -Infinity;
-  swappedAt = -Infinity;
 
   // How many Pokémon each side has left as the HUD's Poké Balls last showed it, never more than the last count, a faint
   // being for good; null until read. `leftAtName` is the opponent's count when its name was first read, which a lower
@@ -228,6 +180,7 @@ export class Battle {
     log: Reporter['event'],
   ) {
     this.player = new Player(screen);
+    this.bench = new Bench(data, meta, log);
     this.energy = new Energy(data, meta);
     this.ourEnergy = new OurEnergy(
       data,
@@ -263,6 +216,6 @@ export class Battle {
     this.steady.forget('own');
     this.stages = { ...this.stages, own: NO_STAGES };
     this.readAt = -Infinity;
-    this.counter = undefined;
+    this.bench.forget();
   }
 }

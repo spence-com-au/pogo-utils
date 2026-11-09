@@ -22,7 +22,7 @@ import {
 import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
 import { BOTTOM, place, type Size } from './layout.mts';
 import { readCard } from './selection.mts';
-import { BENCH, BENCH_ANCHOR, SWITCH_CARDS } from './play.mts';
+import { SWITCH_CARDS } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth } from './health.mts';
 import { merge, readBanner, readBattle, settle, type Reading } from './read.mts';
@@ -35,20 +35,7 @@ import {
   recognise,
   type State,
 } from './recognise.mts';
-import {
-  activeOf,
-  beforeFainting,
-  bestButton,
-  clearerOf,
-  counterOf,
-  nextOut,
-  refugeOf,
-  resisterOf,
-  stripperOf,
-  typesOf,
-  type Pick,
-  type Switch,
-} from './strategy.mts';
+import { activeOf, beforeFainting, bestButton, typesOf, type Pick } from './strategy.mts';
 import { afterThrow, chargePriority, finisher, NO_STAGES, wouldFaint, wouldShield, type Verdict } from './damage.mts';
 import { iconColour, readTypes } from './typing.mts';
 import { holding, spare, untilTheirsLands, wornDown, type Matchup } from './energy.mts';
@@ -57,6 +44,7 @@ import { checkOverlay, named, swipeAround, swipesAround } from './overlay.mts';
 import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { Battle } from './battle.mts';
+import { SWITCHED_MS, type Field } from './bench.mts';
 
 export interface Clock {
   now(): number;
@@ -156,39 +144,6 @@ const RELIT_MS = 1_000;
  * on it was told as thrown 3.5s into the pick. Through the rest of the pick nothing is lit to throw.
  */
 const FADING_MS = 500;
-
-/**
- * How long after a bench card's tap our HUD is read again to see whether the switch took, in milliseconds. Recorded on
- * the Pixel 4 XL, the bench showed the switch by 135.5s and the HUD, hidden behind a banner meanwhile, came back naming
- * the newcomer at 136.3s; a read before then could still find the Pokémon tapped away from.
- */
-const SWITCHED_MS = 2_000;
-
-/**
- * How long after a read first names a newcomer of the opponent's a bench card's tap waits, in milliseconds: until the
- * newcomer has flown in, under `Go, Dragonite!` across the field, through which the game drops the tap. Recorded in GO
- * Battle League on both phones, the banner was last drawn 2.0s after the HUD first named Magmar, Kyurem and Garchomp,
- * 1.9s after Articuno, and 1.5s after Dragonite, our charged move hiding the HUD until then: the game master's
- * three-turn `flyinDurationTurns`, 1.5s, shown half a second after the HUD changes. The read names the newcomer no
- * sooner than the HUD does. Both counters tapped the moment the newcomer was read went in under the banner, and did
- * nothing.
- */
-const FLY_IN_MS = 2_000;
-
-/**
- * How long after a switch of ours another to bank energy is not tried, and a tap refused is taken as the switch timer's
- * rather than dropped, in milliseconds: our switch timer, which is not read off the screen, and a tap it refuses costs
- * the turn it is made in. The game master's `quickSwapCooldownDurationSeconds` is 45. Live, the bench's cards were
- * still half dark with it 40s after a switch, so it may stand still through charged moves; a timer running longer has
- * its refusal taken as a dropped tap, tried once more at the cost of a turn, after which `REFUSED_MS` more go by.
- */
-const TIMER_MS = 45_000;
-
-/**
- * How long after the switch timer refused a switch of ours, or a second tap was dropped against the same newcomer,
- * another to bank energy is not tried, in milliseconds.
- */
-const REFUSED_MS = 10_000;
 
 /**
  * How long a battle must be off its field — the minigame, a prompt, a charged move playing — before it is told how long
@@ -719,54 +674,18 @@ export async function run(
           throw read.error;
         }
 
-        // Judged by which of the two our HUD names, where the read names either and they differ, before our CP:
-        // Palkia's `CP 4673` read as `CP 44673`, and so as no CP at all, for 16s after its switch was dropped, its name
-        // read throughout. Judged ahead of a newcomer of theirs the same read names, so that a drop counts against the
-        // one it was tapped against. A read begun too soon to judge by has the next begin as soon as one can.
-        if (battle.switching && at - battle.switching.at >= SWITCHED_MS) {
-          const { own, ownCp } = read;
-          const was = party[battle.switching.from]?.species;
-          const byName = own !== null && was !== battle.switching.to && (own === was || own === battle.switching.to);
-          const stayed = byName ? own === was : ownCp === null ? undefined : ownCp === battle.switching.cp;
+        // The switch of ours under way judged ahead of a newcomer of theirs the same read names, so that a drop counts
+        // against the one it was tapped against. A read begun too soon to judge by has the next begin as soon as one
+        // can.
+        const judged = battle.bench.judge(read, at, party, clock.now());
 
-          if (stayed) {
-            battle.sent = battle.switching.from;
-            battle.stages = { ...battle.stages, own: battle.switching.stages };
-            battle.banked.delete(battle.switching.from);
-            battle.stripping = battle.switching.stripping;
-
-            if (battle.switching.bank) {
-              battle.banked.set(battle.switching.slot, battle.switching.bank);
-            }
-
-            // Refused by the timer, the next switch to bank energy waits `REFUSED_MS`, as it does after a second tap
-            // dropped against the same newcomer, something besides its flying in being in the way. The first dropped,
-            // the switch is decided again as though never tapped, an opponent switched in answered afresh.
-            const timer = battle.switching.at - battle.swappedAt < TIMER_MS;
-            const retry = !timer && !battle.dropped;
-
-            battle.dropped ||= !timer;
-            battle.calmAt = retry ? battle.switching.calm : clock.now() + REFUSED_MS;
-            battle.answer ||= retry && battle.switchedIn;
-            log(
-              `${battle.switching.to} not sent in`,
-              'own',
-              timer
-                ? 'the switch timer is running'
-                : `taken as dropped, no switch of ours in the last ${TIMER_MS / 1_000}s`,
-            );
-          }
-
-          if (stayed === false) {
-            battle.swappedAt = battle.switching.at;
-            battle.undefer('ours switched out');
-          }
-
-          if (stayed !== undefined) {
-            battle.switching = undefined;
-          }
-        } else if (battle.switching) {
-          battle.readAt = Math.min(battle.readAt, battle.switching.at + SWITCHED_MS - READ_MS);
+        if (judged?.kind === 'refused') {
+          battle.sent = judged.from;
+          battle.stages = { ...battle.stages, own: judged.stages };
+        } else if (judged?.kind === 'took') {
+          battle.undefer('ours switched out');
+        } else if (judged?.kind === 'early') {
+          battle.readAt = Math.min(battle.readAt, judged.due - READ_MS);
         }
 
         const prior = battle.seen.opponent;
@@ -807,12 +726,8 @@ export async function run(
               'opponent',
             );
             battle.stages = { ...battle.stages, their: NO_STAGES };
-            battle.answer = !gone;
-            battle.switchedIn = !gone;
             battle.anchored = false;
-            battle.counter = undefined;
-            battle.landing = at + FLY_IN_MS;
-            battle.dropped = false;
+            battle.bench.newcomer(at, !gone);
           }
 
           battle.leftAtName = battle.left.opponent;
@@ -820,28 +735,14 @@ export async function run(
         }
       }
 
-      // A throw of the one before's still to play never will. A switch of ours under way is overtaken by the faint,
-      // whatever the HUD shows next being the card sent in. Which of the two fainted cannot be told, the CP that would
-      // say whether the switch took being cleared with the HUD, so neither is trusted to have banked: the one switched
-      // from loses what the switch banked, which would have it sent back in to finish if it was the one that fainted,
-      // and the one switched to gets back what it had. The switch timer is taken to run from it, as it does if it took.
+      // A throw of the one before's still to play never will, and a switch of ours under way is overtaken by the faint.
       if (state === 'switch') {
         battle.drop(`${battle.seen.own ?? 'ours'} fainted first`);
         battle.undefer('ours fainted');
         battle.forgetOwn();
         battle.faintAt = clock.now();
         battle.switchAt = battle.faintAt;
-
-        if (battle.switching) {
-          battle.swappedAt = battle.switching.at;
-          battle.banked.delete(battle.switching.from);
-
-          if (battle.switching.bank) {
-            battle.banked.set(battle.switching.slot, battle.switching.bank);
-          }
-        }
-
-        battle.switching = undefined;
+        battle.bench.fainted();
       }
 
       // Read at the shield prompt as well as through the fight: the prompt hides the HUD, but not the bars.
@@ -1222,7 +1123,7 @@ export async function run(
         pick &&
         lit.includes(pick.x) &&
         !battle.pending &&
-        !battle.switching
+        !battle.bench.switching
           ? battle.seen.moves.get(pick.x)
           : undefined;
       const ongoing = deferrable !== undefined && battle.deferring?.move === deferrable ? battle.deferring : undefined;
@@ -1233,9 +1134,7 @@ export async function run(
           : untilTheirsLands(data, deferrable, us, opponent, battle.ourShields, verdict, shielding, affordable, waited);
 
       const standing =
-        battle.switching !== undefined && battle.deferring?.held === true && throwing === pick
-          ? battle.deferring
-          : undefined;
+        battle.bench.switching && battle.deferring?.held === true && throwing === pick ? battle.deferring : undefined;
       const rule = standing ? standing.weigh(standing.waited) : weigh(battle.deferring?.waited ?? 0);
       const hold = holding(rule, fears);
       const current = ongoing ?? standing;
@@ -1262,7 +1161,7 @@ export async function run(
       } else if (current?.held && hold && !hold.held) {
         log(`no longer holding ${current.move}`, 'own', hold.why);
         current.held = false;
-      } else if (battle.deferring?.held && !ongoing && lit.length > 0 && !battle.switching) {
+      } else if (battle.deferring?.held && !ongoing && lit.length > 0 && !battle.bench.switching) {
         // Another throw taking over, on a frame with a button lit rather than one hidden by a throw or a prompt; not the
         // held move still chosen, its button misread unlit for a frame. Not while a switch of ours is under way, which
         // tells the hold's end once it is seen to go through.
@@ -1323,36 +1222,39 @@ export async function run(
       // Whatever the read under way finds, it is of a screen the battle has since come back from.
       reading = undefined;
 
+      // The battle as this frame shows it, which our switches are decided by. A move is to be thrown now where one is
+      // lit to throw and no hold keeps it.
+      const field: Field = {
+        now: clock.now(),
+        party,
+        fainted: battle.fainted,
+        facing,
+        hp: health,
+        shields: { ours: battle.ourShields, theirs: battle.theirShields },
+        stages: battle.stages,
+        fighting,
+        anchored: battle.anchored,
+        screen: frame,
+        slot,
+        cap,
+        moves: battle.seen.moves,
+        lit,
+        best,
+        finish: finish !== undefined,
+        throwing: spared === undefined && !hold?.held && lit.some((x) => best === undefined || x === best),
+        pending: battle.pending !== undefined,
+        lastHit,
+        estimate,
+        affordable,
+        seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
+      };
+
       // The switch prompt's cards are the slots not fainted bar the one out, in party order.
       if (state === 'switch' && !battle.prompt) {
         battle.promptedAt = battle.left.own ?? battle.promptedAt;
         const gone = battle.caught?.slot ?? slot;
         const out = new Set([...battle.fainted, ...(gone === undefined ? [] : [gone])]);
-
-        // Which benched slot's banked energy finishes the opponent as it lands, as a lit move of the one out would.
-        const league = cap;
-        const finishing = new Map(
-          league === undefined
-            ? []
-            : [...battle.banked].flatMap(([waiting, bank]) => {
-                const moves = new Map(bank.moves.map((move, i) => [i, move]));
-                const lands = finisher(
-                  data,
-                  moves,
-                  moves.keys(),
-                  bank.own,
-                  facing.opponent,
-                  health.opponent,
-                  battle.theirShields,
-                  league,
-                  { own: NO_STAGES, their: battle.stages.their },
-                );
-                const move = lands && moves.get(lands.x);
-
-                return move === undefined ? [] : [[waiting, move] as const];
-              }),
-        );
-        const chosen = nextOut(data, party, out, them, meta, finishing);
+        const chosen = battle.bench.next(field, out);
         const next = chosen?.slot;
         const measured =
           next === undefined ? undefined : SWITCH_CARDS[[...party.keys()].filter((i) => !out.has(i)).indexOf(next)];
@@ -1369,187 +1271,9 @@ export async function run(
         battle.caught = undefined;
       }
 
-      // Where a benched slot's card is, the bench's cards being the slots not fainted bar the one out, in party order.
-      const benched = (chosen: Switch | undefined, strip: boolean) => {
-        const measured =
-          chosen && BENCH[[...party.keys()].filter((i) => i !== slot && !battle.fainted.has(i)).indexOf(chosen.slot)];
+      battle.bench.decide(field);
 
-        return chosen && measured && { ...chosen, at: place(measured, BENCH_ANCHOR, frame), strip };
-      };
-
-      // The moves lit, which a switch banks: the energy for each stays with ours on the bench.
-      const banking = lit.flatMap((x) => battle.seen.moves.get(x) ?? []);
-
-      // No shield of ours left, our HP read so low that a hit the opponent may land would faint us, the move to throw
-      // lit and a shield of theirs to draw: the throw goes rather than any switch, there being little left of ours to
-      // save. A faint feared rather than counted, unlike a throw for fear of fainting: an opponent switched in may
-      // carry energy banked that the count, starting it at nothing, cannot see, and the counter and refuge switches
-      // answer just such a one: so every move it is allowed, not only those the count affords, its banked energy
-      // unseen. Live, a Zapdos threw two seconds after coming back in. But on a hit calculated, never on a guess for
-      // something unread, bar their CP, which is taken as the cap as the shield takes it. And only where the move to
-      // throw is lit already, so that staying in is a throw and not a swipe. Live, a Galarian Moltres at a tenth of its
-      // HP stayed in against a Kyogre switched in, threw Fly into its last shield and fainted; Kyogre had none left for
-      // the battle.
-      const aimed = best !== undefined && lit.includes(best) ? battle.seen.moves.get(best) : undefined;
-      const feared =
-        battle.ourShields === 0 && battle.theirShields > 0 && aimed !== undefined && cap !== undefined
-          ? wouldFaint(data, facing.own, facing.opponent, health.own, cap, {
-              meta,
-              seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
-              stages: battle.stages,
-            })
-          : undefined;
-      const doomed = feared !== undefined && feared.faints && feared.hardest !== undefined;
-
-      // The opponent's switch answered once, on the first frame the bench is drawn for and again where its tap is
-      // dropped, by a counter of ours where one is benched; and for as long as the newcomer stays out, its switch timer
-      // spent, ours threatened by it banks a move lit by switching to one safe from it, whenever one lights. Neither
-      // where a lit move would finish the newcomer, the bench tap going ahead of the throw, nor where ours is doomed,
-      // which is logged once per opponent.
-      const stay = (chosen: Switch | undefined) => {
-        if (chosen && doomed) {
-          if (battle.stayedFor !== theirName()) {
-            battle.stayedFor = theirName();
-            log(
-              `staying in against ${theirName()}`,
-              'own',
-              `${aimed} drawn into a shield before ${own ?? 'ours'} faints`,
-            );
-          }
-
-          return undefined;
-        }
-
-        return benched(chosen, false);
-      };
-
-      if (battle.answer && slot !== undefined && fighting && !battle.switching) {
-        battle.answer = false;
-        battle.counter =
-          finish || slot === battle.stripping
-            ? undefined
-            : stay(counterOf(data, party, slot, us, battle.fainted, them, meta));
-      }
-
-      if (
-        !battle.counter &&
-        !battle.switching &&
-        !finish &&
-        battle.switchedIn &&
-        fighting &&
-        banking.length > 0 &&
-        slot !== undefined &&
-        slot !== battle.stripping &&
-        clock.now() >= battle.calmAt
-      ) {
-        battle.counter = stay(refugeOf(data, party, slot, us, battle.fainted, them, meta));
-      }
-
-      // A lit move that would finish the opponent but for its shield is kept, and a benched slot with energy banked
-      // sent in to draw the shield: ours throws it once the shields are gone, sent back in after the one sent faints
-      // where it took the last. Not from a slot sent in to draw one itself, which throws rather than switch away again,
-      // nor while the switch timer may still be running from a switch it refused.
-      if (
-        !battle.counter &&
-        !battle.switching &&
-        !doomed &&
-        fighting &&
-        slot !== undefined &&
-        slot !== battle.stripping &&
-        battle.theirShields > 0 &&
-        cap !== undefined &&
-        clock.now() >= battle.calmAt
-      ) {
-        const blocked = finisher(
-          data,
-          battle.seen.moves,
-          lit,
-          facing.own,
-          facing.opponent,
-          health.opponent,
-          0,
-          cap,
-          battle.stages,
-        );
-        const moves = new Map([...battle.banked].map(([waiting, bank]) => [waiting, bank.moves]));
-        const chosen = blocked && stripperOf(data, party, slot, battle.fainted, moves, them, meta);
-        const held = blocked && battle.seen.moves.get(blocked.x);
-
-        battle.counter = benched(chosen && { ...chosen, why: `${chosen.why}; ${held ?? 'ours'} ${blocked.why}` }, true);
-      }
-
-      // While the opponent's count is anchored, ours switches to a benched Pokémon resisting the charged move of the
-      // opponent's that hits it super effectively, one fast move before the count affords it: that fast move lands on
-      // the newcomer, and so does the throw. Fired with shields or without, the switch costing the switch timer rather
-      // than a shield, and whether or not ours is doomed, the hit it would faint to going to the newcomer instead. Not
-      // where a lit move would finish the opponent, which goes instead, nor where one is to be thrown now, which goes
-      // first, the fight standing still through a throw so that the opponent gains nothing meanwhile; a lit move held
-      // for another is banked by the switch, as the refuge banks one. Not inside `TIMER_MS` of a switch of ours, as no
-      // switch is, a faint starting no timer.
-      const throwingNow = spared === undefined && !hold?.held && lit.some((x) => best === undefined || x === best);
-
-      if (
-        !battle.counter &&
-        !battle.switching &&
-        !finish &&
-        !battle.pending &&
-        !throwingNow &&
-        fighting &&
-        battle.anchored &&
-        slot !== undefined &&
-        estimate &&
-        affordable !== undefined &&
-        clock.now() >= battle.calmAt
-      ) {
-        const chosen = resisterOf(
-          data,
-          party,
-          slot,
-          us,
-          battle.fainted,
-          them,
-          battle.theirMoves.get(battle.seen.opponent ?? ''),
-          meta,
-        );
-        const due = chosen && affordable >= chosen.cost;
-
-        battle.counter = due
-          ? benched(
-              { ...chosen, why: `${chosen.move} affordable after one more ${estimate.fast}; ${chosen.why}` },
-              false,
-            )
-          : undefined;
-      }
-
-      // Ours with its attack or defense dropped, by its own throw once it has played or by the opponent's that the
-      // banner named, switches to a benched Pokémon safe from every move the opponent may hold, which clears the drop
-      // and banks whatever is lit: ours comes back whole, its energy kept. Players in three of four championship finals
-      // did so. Never into a Pokémon the opponent could farm energy off, so with none safe it stays in. It gives way to
-      // whatever the other switches give way to: a lit move that would finish the opponent, a throw tapped and not yet
-      // played, ours doomed, and our last hit, after which a drop no longer matters; and to the other switches
-      // themselves, and our switch timer. Not from a slot sent in to draw a shield, which throws rather than switch away.
-      if (
-        !battle.counter &&
-        !battle.switching &&
-        !finish &&
-        !battle.pending &&
-        !lastHit &&
-        fighting &&
-        slot !== undefined &&
-        slot !== battle.stripping &&
-        clock.now() >= battle.calmAt
-      ) {
-        battle.counter = stay(clearerOf(data, party, slot, us, battle.stages.own, battle.fainted, them, meta));
-      }
-
-      // A switch decided on while the opponent's newcomer flies in is tapped once it has, nothing thrown meanwhile: the
-      // energy lit is the switch's to bank. Given up where a lit move comes to finish the newcomer, or ours comes to be
-      // doomed, meanwhile, which none of the switches is decided on; doomed, it is told as staying in.
-      if (battle.counter && clock.now() < battle.landing && (finish || doomed)) {
-        battle.counter = doomed ? stay(battle.counter) : undefined;
-      }
-
-      const flying = battle.counter !== undefined && clock.now() < battle.landing;
+      const flying = battle.bench.flying(clock.now());
       const fading = clock.now() - battle.theirFaintAt < FADING_MS;
       const card = battle.prompt?.card;
 
@@ -1565,7 +1289,7 @@ export async function run(
         shield,
         minigame: playing,
         ...(card && { card }),
-        ...(battle.counter && !flying && { bench: battle.counter.at }),
+        ...(battle.bench.chosen && !flying && { bench: battle.bench.chosen.at }),
         ...(bubbles && { bubbles }),
       });
 
@@ -1600,33 +1324,13 @@ export async function run(
           }
 
           battle.offered = { why: shielding.why, taken: true };
-        } else if (action.what === 'bench' && battle.counter && slot !== undefined) {
+        } else if (action.what === 'bench' && battle.bench.chosen && slot !== undefined) {
           // Taken to have gone in until the HUD says otherwise, the newcomer read afresh as after a faint.
-          const to = party[battle.counter.slot]?.species ?? '?';
-          const banks = banking.length > 0 ? `, banking ${banking.join(' and ')}` : '';
+          const to = battle.bench.chosen.slot;
 
-          battle.drop(`switched to ${to} first`);
-          log(
-            `switching to ${to} against ${battle.seen.opponent ?? 'the opponent'}${banks}`,
-            'own',
-            battle.counter.why,
-          );
-          battle.switching = {
-            from: slot,
-            slot: battle.counter.slot,
-            to,
-            cp: battle.seen.ownCp,
-            at: clock.now(),
-            stages: battle.stages.own,
-            bank: battle.banked.get(battle.counter.slot),
-            stripping: battle.stripping,
-            calm: battle.calmAt,
-          };
-          battle.banked.delete(battle.counter.slot);
-          battle.banked.set(slot, { moves: banking, own: facing.own });
-          battle.stripping = battle.counter.strip ? battle.counter.slot : undefined;
-          battle.calmAt = clock.now() + TIMER_MS;
-          battle.sent = battle.counter.slot;
+          battle.drop(`switched to ${party[to]?.species ?? '?'} first`);
+          battle.bench.tapped(field);
+          battle.sent = to;
           battle.forgetOwn();
           battle.readAt = clock.now() - READ_MS + SWITCHED_MS;
         } else {
@@ -1651,8 +1355,7 @@ export async function run(
 
           if (battle.prompt.next !== undefined) {
             battle.sent = battle.prompt.next;
-            battle.banked.delete(battle.prompt.next);
-            battle.stripping = undefined;
+            battle.bench.sentIn(battle.prompt.next);
             const gone =
               battle.prompt.fainted === undefined || battle.prompt.told
                 ? ''
