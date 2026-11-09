@@ -10,7 +10,6 @@
 import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { signaturesFor, signatureOfIcon, type Colourings } from './artwork.mts';
 import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from './game-master.mts';
 import { decodePng, type Image } from './png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -571,16 +570,6 @@ export async function cachedAs<T>(
 
 async function cachedJson(dir: string, file: string, url: string, refresh: boolean): Promise<unknown> {
   return cachedAs(dir, file, url, refresh, (bytes) => JSON.parse(String(bytes)));
-}
-
-/**
- * The colourings of every form the artwork could settle, downloading the icons once and caching them beside the game
- * master.
- */
-export function iconsFor(dir: string, data: GameData, refresh = false): Promise<Map<Form, Colourings>> {
-  return signaturesFor(data, (file) =>
-    cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, (bytes) => signatureOfIcon(decodePng(bytes))),
-  );
 }
 
 /** An icon out of the cache beside the game master, downloaded the first time it is asked for. */

@@ -28,7 +28,8 @@
  */
 
 import { said } from '../../errors.ts';
-import { FETCH_BATCH, hsv } from './artwork.mts';
+import { FETCH_BATCH } from '../../pokedex/icons.ts';
+import { hsv } from './artwork.mts';
 import { REFERENCES } from './costume-references.mts';
 import { type GameData } from './game-master.mts';
 import { type Image } from './png.mts';

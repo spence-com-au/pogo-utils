@@ -63,12 +63,12 @@
 import { said } from '../src/errors.ts';
 import { adbCli, adbHeld } from '../src/tools/inventory/adb-cli.mts';
 import { Device, type Transport } from '../src/tools/inventory/adb.mts';
-import { type Colourings } from '../src/tools/inventory/artwork.mts';
+import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
 import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
 import { measuresIn, parseDetail, powerUpOn, readLines, type Detail } from '../src/tools/inventory/detail.mts';
 import { DEX, wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
-import { CACHE, cachedIcon, iconsFor, loadGameData } from '../src/tools/inventory/download.mts';
+import { CACHE, cachedIcon, loadGameData } from '../src/tools/inventory/download.mts';
 import { closest, type Form, type GameData } from '../src/tools/inventory/game-master.mts';
 import { clearable, identify, settledForm, shadowOf, type Identity } from '../src/tools/inventory/identify.mts';
 import { movesCutOff, parseMoves, type Moves } from '../src/tools/inventory/moves.mts';
@@ -337,6 +337,10 @@ let wardrobe: Promise<Wardrobe | null> | null = null;
  */
 const wardrobeOn = (data: GameData) => () => (wardrobe ??= wardrobeFor(data, cachedIcon(CACHE, options.refresh)));
 
+/** The colourings of every form the artwork could settle, its icons out of the same cache. */
+const iconsFor = (data: GameData) =>
+  signaturesFor(data, async (file) => signatureOfIcon(await cachedIcon(CACHE, options.refresh)(file)));
+
 /**
  * Everything each reader makes of one screenshot, for tuning: `readScreen` does the reading, which the Inventory page
  * shares, and this prints it. The answer first, each field once and coloured by where it came from; then, for
@@ -430,7 +434,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
   const device = new Device(adbCli(options.serial));
   await device.check();
   const data = await loadGameData(CACHE, options.refresh);
-  const icons = await iconsFor(CACHE, data, options.refresh);
+  const icons = await iconsFor(data);
 
   // The chips under the HP say which tags a Pokémon carries, so this is a vocabulary rather than a list to search for:
   // the names are the user's own, and only something to match against can say that `Shiny SJ` is the `Shiny` chip with
@@ -1230,7 +1234,7 @@ async function snap() {
   }
 
   const data = await gameData();
-  const read = await report(image, data, await iconsFor(CACHE, data, options.refresh));
+  const read = await report(image, data, await iconsFor(data));
 
   const refused = refusals(read);
 
@@ -1333,7 +1337,7 @@ if (command === 'scan') {
   await snap();
 } else if (command === 'parse' && rest.length > 0) {
   const data = await loadGameData(CACHE, options.refresh);
-  const icons = await iconsFor(CACHE, data, options.refresh);
+  const icons = await iconsFor(data);
 
   // Ahead of the first header rather than under it, being about every screen below.
   key();

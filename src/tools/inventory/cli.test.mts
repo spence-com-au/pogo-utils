@@ -20,8 +20,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
-import { typeable } from './adb.mts';
-import { CLEAR_KEYS } from './storage.mts';
+import { CLEAR_KEYS, typeable } from './adb.mts';
 import { reads } from './test-cache.mts';
 
 const run = promisify(execFile);

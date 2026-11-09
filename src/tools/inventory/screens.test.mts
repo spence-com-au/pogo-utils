@@ -17,11 +17,11 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
-import { closest, fitsHeight, type Form, type GameData, type IVs } from './game-master.mts';
+import { closest, fitsHeight, type Form, type GameData, type IVs, type Size } from './game-master.mts';
 import { ambiguous, nearest, type Colourings } from './artwork.mts';
 import { wardrobeFor, type Wardrobe } from './costume.mts';
 import { decodePng, screenIn } from './png.mts';
-import { sizeOf, type Gender, type Size } from './badges.mts';
+import { sizeOf, type Gender } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
 import { dexOn } from './pokedex.mts';

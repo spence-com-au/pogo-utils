@@ -23,6 +23,7 @@
  */
 
 import { said } from '../../errors.ts';
+import { FETCH_BATCH } from '../../pokedex/icons.ts';
 import { type Form, type GameData } from './game-master.mts';
 import { luminance, rgb, type Image } from './png.mts';
 import { progress } from './progress.mts';
@@ -437,9 +438,6 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 
   return { drawn, short };
 }
-
-/** How many icons to fetch at once. Each is some 24 KB, so the time goes on round trips rather than bytes. */
-export const FETCH_BATCH = 16;
 
 /**
  * The colourings of every form the artwork could settle, each icon fetched and read by `read`, which is where the two

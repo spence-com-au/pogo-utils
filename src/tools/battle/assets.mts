@@ -10,8 +10,7 @@
  */
 
 import { said } from '../../errors.ts';
-import { ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/icons.ts';
-import { FETCH_BATCH } from '../inventory/artwork.mts';
+import { FETCH_BATCH, ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/icons.ts';
 import { type GameData } from '../inventory/game-master.mts';
 import { decodePng, type Image } from '../inventory/png.mts';
 import { GRID, silhouetteOfIcon, type Icon } from './party.mts';

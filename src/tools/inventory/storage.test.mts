@@ -4,12 +4,12 @@
  * one storage screen.
  */
 
-import { Device, KEY, type Transport } from './adb.mts';
+import { CLEAR_KEYS, Device, KEY, type Transport } from './adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { type GameData } from './game-master.mts';
 import { useEngine } from './ocr.mts';
 import { decodePng, encodePng, type Image } from './png.mts';
-import { CLEAR_KEYS, dialogOpen, storage, unsearchable } from './storage.mts';
+import { dialogOpen, storage, unsearchable } from './storage.mts';
 import { useTestEngine } from './test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';

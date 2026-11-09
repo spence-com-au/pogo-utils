@@ -5,7 +5,7 @@
  * and the symbol need no OCR at all.
  */
 
-import { closest } from './game-master.mts';
+import { closest, type Size } from './game-master.mts';
 import { fold, ocr, ocrLine, type Line } from './ocr.mts';
 import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } from './png.mts';
 
@@ -14,9 +14,6 @@ import { chroma, crop, isolate, luminance, rgb, scale, threshold, type Image } f
  * with no gender, so each value is the search that finds the Pokémon it describes.
  */
 export type Gender = 'male' | 'female' | 'genderunknown';
-
-/** The four bands the game records, each of which `src/search/terms.ts` has a search for. */
-export type Size = 'XXL' | 'XL' | 'XS' | 'XXS';
 
 interface Patch {
   left: number;
