@@ -4,13 +4,13 @@
  * silhouettes the site publishes rather than the 40 MB of icons they are outlined from.
  */
 
+import { fetchBytes, gameData } from '../core/browser/fetch.js';
+import { type GameData } from '../core/game-master.mts';
 import { said } from '../errors.js';
 import { SILHOUETTES } from '../generated.js';
-import { fetchBytes, gameData } from '../inventory/reader.js';
 import { decodeSilhouettes, typeIcons, type Download, type Silhouettes } from '../tools/battle/assets.mts';
 import { loadMeta } from '../tools/battle/meta.mts';
 import { type Options } from '../tools/battle/run.mts';
-import { type GameData } from '../tools/inventory/game-master.mts';
 
 /**
  * A page has nothing to keep a copy on, so the name a cache would keep it under goes unused, but given `kept` it

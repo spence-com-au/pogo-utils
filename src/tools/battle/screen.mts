@@ -4,7 +4,7 @@
  * decodes with WebCodecs, in `src/battle/feed.ts`. Each hands `Screen` a `Feed`, which is all it knows of either.
  */
 
-import { type Image } from '../inventory/png.mts';
+import { type Image } from '../../core/png.mts';
 import { RECORD_LIMIT_S } from './record-command.mts';
 
 /**

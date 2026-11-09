@@ -6,7 +6,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { Bench, type Field } from './bench.mts';
 import { NO_STAGE_PAIR, NO_STAGES } from './damage.mts';
 import { place } from './layout.mts';
@@ -14,9 +14,7 @@ import { type Card } from './party.mts';
 import { BENCH, BENCH_ANCHOR } from './play.mts';
 import { nextOut } from './strategy.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** A stream frame's size, which the bench's cards are placed on. */
 const SCREEN = { width: 360, height: 760 };

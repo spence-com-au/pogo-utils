@@ -4,17 +4,17 @@
  * one storage screen.
  */
 
-import { Device, KEY, type Transport } from './adb.mts';
+import { CLEAR_KEYS, Device, KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
-import { type GameData } from './game-master.mts';
-import { useEngine } from './ocr.mts';
-import { decodePng, encodePng, type Image } from './png.mts';
-import { CLEAR_KEYS, dialogOpen, storage, unsearchable } from './storage.mts';
-import { useTestEngine } from './test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { useEngine } from '../../core/ocr.mts';
+import { decodePng, encodePng, type Image } from '../../core/png.mts';
+import { dialogOpen, storage, unsearchable } from './storage.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** `DEFAULTS` with nothing waited for, there being no animation here to let settle. */
 const CONFIG: Config = {

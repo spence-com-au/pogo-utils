@@ -4,28 +4,14 @@
  * OCR engine was installed.
  */
 
-import { Device, KEY, typeable } from './adb.mts';
+import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
 import { CP_LABEL, parseDetail, readLines } from './detail.mts';
-import { type GameData } from './game-master.mts';
-import { centre, findLine, fold, type Line } from './ocr.mts';
-import { luminance, median, rgb, type Image } from './png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
+import { luminance, median, rgb, type Image } from '../../core/png.mts';
 import { isDetail } from './report.mts';
 import { SCROLL_STRIP } from './stitch.mts';
-
-/**
- * How many backspaces clear the search box, and **the longest term `unsearchable` will pass** — one number on purpose,
- * the box having no length of its own: all 234 characters of a patterned run landed with no sign of a cap, so what
- * bounds it is what is typed into it.
- *
- * Longer than the 50 characters a re-snap sends, since a clear shorter than the term leaves its tail in the box and the
- * next term is typed onto the end of it. The failure is silent, which is what makes the bound worth enforcing: the
- * field scrolls, so a merged term looks exactly like a clean one and the only symptom is a result count quietly wrong.
- *
- * Generous because generosity is free — `device.key` sends every code in one `input keyevent`, and a backspace on an
- * empty field does nothing. A term typed into the box by hand can still exceed it; clear it by hand too.
- */
-export const CLEAR_KEYS = 300;
 
 /**
  * A button only a dialog over a detail screen carries: `CANCEL` on the power-up sheet, `YES` on the evolve prompt. The
@@ -117,17 +103,6 @@ const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== 
 const isSuggestions = (lines: readonly Line[]) => findLine(lines, /^(recent|see more|recommended)$/) !== undefined;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-/** Replaces what the focused search box holds with `term`: cleared by `CLEAR_KEYS`, typed unless empty, and entered. */
-export async function replaceSearch(device: Device, term: string): Promise<void> {
-  await device.key(KEY.MOVE_END, ...Array<number>(CLEAR_KEYS).fill(KEY.DEL));
-
-  if (term) {
-    await device.type(term);
-  }
-
-  await device.key(KEY.ENTER);
-}
 
 /**
  * Getting about storage on the phone: to the grid, a search typed into it, and where the first tile of what it left is.

@@ -4,8 +4,8 @@
  * sends the H.264 it is given.
  */
 
-import type { Phone as Connection, Process } from '../inventory/webusb.js';
-import { encodePng } from '../tools/inventory/png.mts';
+import type { Phone as Connection, Process } from '../core/browser/webusb.js';
+import { encodePng } from '../core/png.mts';
 import { answeringShell, settingsShell, stream } from './demo.js';
 
 /**

@@ -10,7 +10,7 @@ import { GAME_MASTER, SILHOUETTES } from '../generated.js';
 import { typeIcon } from '../pokedex/icons.js';
 import { encodeSilhouettes } from '../tools/battle/assets.mts';
 import { GRID } from '../tools/battle/party.mts';
-import { encodePng } from '../tools/inventory/png.mts';
+import { encodePng } from '../core/png.mts';
 import { loadBattle, metaOf } from './load.js';
 
 const SILHOUETTE = new Uint8Array(GRID * GRID).map((_, at) => at % 3 && 1);

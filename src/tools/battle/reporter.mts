@@ -1,7 +1,7 @@
 /**
  * What `run` tells of itself: each `event` something done once, as a tap or a battle's start, and its `status`, how the
- * run and the battle stand, sent again on every frame. Apart from `report.mts`, which draws them into a terminal, so
- * that the battle's Worker can send them to a page and the page can draw them.
+ * run and the battle stand, sent again on every frame. Apart from `node/report.mts`, which draws them into a terminal,
+ * so that the battle's Worker can send them to a page and the page can draw them.
  */
 
 import { type Tally } from './run.mts';

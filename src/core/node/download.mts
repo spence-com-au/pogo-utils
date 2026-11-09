@@ -1,7 +1,7 @@
 /**
  * The game master, the string table and the icon listing, downloaded and cached on disk, which is the half of
- * `game-master.mts` only `pnpm inventory` has: a browser has no disk to keep a week's copy on, and the Inventory page
- * reads the vended `fixtures/game-master.json` the build publishes rather than the 23 MB it is made from.
+ * `../game-master.mts` only the CLIs have: a browser has no disk to keep a week's copy on, and the pages read the
+ * vended `data/game-master.json` the build publishes rather than the 23 MB it is made from.
  *
  * Every download is cached for a week, the game master being 19 MB and a scan of a few thousand Pokémon not the moment
  * to discover the network is down.
@@ -10,9 +10,8 @@
 import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { signaturesFor, signatureOfIcon, type Colourings } from './artwork.mts';
-import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from './game-master.mts';
-import { decodePng, type Image } from './png.mts';
+import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from '../game-master.mts';
+import { decodePng, type Image } from '../png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -571,16 +570,6 @@ export async function cachedAs<T>(
 
 async function cachedJson(dir: string, file: string, url: string, refresh: boolean): Promise<unknown> {
   return cachedAs(dir, file, url, refresh, (bytes) => JSON.parse(String(bytes)));
-}
-
-/**
- * The colourings of every form the artwork could settle, downloading the icons once and caching them beside the game
- * master.
- */
-export function iconsFor(dir: string, data: GameData, refresh = false): Promise<Map<Form, Colourings>> {
-  return signaturesFor(data, (file) =>
-    cachedAs(join(dir, 'icons'), file, ICON_BASE + file, refresh, (bytes) => signatureOfIcon(decodePng(bytes))),
-  );
 }
 
 /** An icon out of the cache beside the game master, downloaded the first time it is asked for. */

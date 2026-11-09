@@ -7,8 +7,8 @@
  * swipes coming too fast to start a process for each.
  */
 
-import { NO_ANSWER, TIMEOUT_MS, type Transport } from './adb.mts';
-import { holdShell } from './held-shell.mts';
+import { NO_ANSWER, TIMEOUT_MS, type Transport } from '../adb.mts';
+import { holdShell } from '../held-shell.mts';
 import { execFile, spawn } from 'node:child_process';
 
 /** The phone `serial` names, or the only one plugged in where it names none. */
@@ -40,11 +40,11 @@ export function adbCli(serial?: string): Transport {
 }
 
 /**
- * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, as `held-shell.mts`
- * holds one, which is how `pnpm battle` taps and swipes and what `pnpm inventory scan` makes its touchscreen on: a
- * fresh `adb` process for each of a battle's six swipes a second cost a median 50ms over a Training battle on a Pixel 4
- * XL, against a fast move's 80ms swipe. The state, being no shell command, and the screenshot, being binary, stay a
- * process each.
+ * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, as
+ * `../held-shell.mts` holds one, which is how `pnpm battle` taps and swipes and what `pnpm inventory scan` makes its
+ * touchscreen on: a fresh `adb` process for each of a battle's six swipes a second cost a median 50ms over a Training
+ * battle on a Pixel 4 XL, against a fast move's 80ms swipe. The state, being no shell command, and the screenshot,
+ * being binary, stay a process each.
  */
 export function adbHeld(serial?: string): Transport & { close(): void } {
   const prefix = serial ? ['-s', serial] : [];

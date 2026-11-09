@@ -1,9 +1,9 @@
 /**
  * One shell held open on the phone, commands written to it one after another, apart from whatever carries its bytes:
- * the `adb` binary's `adb shell` in `adb-cli.mts`, and Tango's process over WebUSB in the battle Worker. Each command's
- * end is a marker line the shell prints after it with its exit status, which no command's own output carries. The
- * shell writes stderr to stdout, so that what a command wrote to either comes back in order ahead of its marker and is
- * all its own: a command that fails is told by what it wrote, and one that succeeds answers that too, as its output,
+ * the `adb` binary's `adb shell` in `node/adb-cli.mts`, and Tango's process over WebUSB in the battle Worker. Each
+ * command's end is a marker line the shell prints after it with its exit status, which no command's own output carries.
+ * The shell writes stderr to stdout, so that what a command wrote to either comes back in order ahead of its marker and
+ * is all its own: a command that fails is told by what it wrote, and one that succeeds answers that too, as its output,
  * where a separate stderr would arrive on its own stream in either order.
  *
  * A dropped connection must still fail loudly rather than leave commands written into nothing: the shell ending, a
@@ -11,7 +11,7 @@
  * it. `close` ends the shell once nothing more is to be sent, and anything sent after fails at once.
  */
 
-import { said } from '../../errors.ts';
+import { said } from '../errors.ts';
 import { NO_ANSWER, TIMEOUT_MS } from './adb.mts';
 
 /** How the shell's stdin is reached: written to, ended once nothing more is to be sent, and stopped outright. */

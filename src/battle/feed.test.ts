@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { fixture } from '../testing/fixture.js';
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 import { codecOf, decodeFrames, feed } from './feed.js';
 import { FakeChunk, FakeDecoder } from './test-phone.js';
 

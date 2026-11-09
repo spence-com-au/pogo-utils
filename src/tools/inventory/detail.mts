@@ -7,20 +7,10 @@
  * white text over artwork as PGSharp's digits are.
  */
 
-import { closest, cpOf, type GameData } from './game-master.mts';
-import { fold, ocr, ocrLine, type Line } from './ocr.mts';
-import { brighten, crop, isolate, luminance, rgb, scale, type Image } from './png.mts';
-import {
-  badgeEnd,
-  genderOf,
-  isFavourite,
-  isLucky,
-  isLuckyCaption,
-  sizeOf,
-  tagsOn,
-  type Gender,
-  type Size,
-} from './badges.mts';
+import { closest, cpOf, type GameData, type Size } from '../../core/game-master.mts';
+import { fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
+import { brighten, crop, isolate, luminance, rgb, scale, type Image } from '../../core/png.mts';
+import { badgeEnd, genderOf, isFavourite, isLucky, isLuckyCaption, sizeOf, tagsOn, type Gender } from './badges.mts';
 import { OVERLAY_CHROMA, OVERLAY_LUMINANCE, TRIPLE } from './overlay.mts';
 export interface Detail {
   name: string | null;

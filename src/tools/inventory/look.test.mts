@@ -5,20 +5,20 @@
  */
 
 import { DEFAULTS, type Config } from './config.mts';
-import { type GameData } from './game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { UNMEASURED_SWIPE, lookForMoves, type Looking } from './look.mts';
 import { type Overlay } from './overlay.mts';
-import { decodePng, type Image } from './png.mts';
+import { decodePng, type Image } from '../../core/png.mts';
 import { type Reading } from './scan.mts';
 import { offsetBetween } from './stitch.mts';
-import { useTestEngine } from './test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 import { scrolling } from './test-phone.mts';
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
 
 afterAll(useTestEngine());
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 const ELGYEM = DATA.forms.find((f) => f.species === 'Elgyem') ?? null;
 
 /** `DEFAULTS` with nothing waited for, a recording having no animation to let settle. */

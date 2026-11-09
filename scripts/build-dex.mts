@@ -8,7 +8,7 @@
  * Usage: `node scripts/build-dex.mts [--check]`
  */
 
-import { CACHE, cachedAs } from '../src/tools/inventory/download.mts';
+import { CACHE, cachedAs } from '../src/core/node/download.mts';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

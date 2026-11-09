@@ -8,10 +8,10 @@
  * wholly inside its areas, as though everything else were covered.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng, type Image } from '../inventory/png.mts';
-import { ocr, type Line } from '../inventory/ocr.mts';
-import { useWasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, type Image } from '../../core/png.mts';
+import { ocr, type Line } from '../../core/ocr.mts';
+import { useWasmEngine } from '../../core/node/test-engine.mts';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test } from 'vitest';
@@ -41,9 +41,7 @@ const fixtures = (pattern: RegExp) =>
     .map((file) => file.replace(/[.]png$/, ''))
     .filter((name) => pattern.test(name));
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const ICONS = readdirSync(new URL('fixtures/icons/', import.meta.url)).map((icon) => ({
   species: DATA.forms.find((form) => form.icon === icon)?.species ?? icon,

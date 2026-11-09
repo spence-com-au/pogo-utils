@@ -5,7 +5,7 @@
  */
 
 import { type Detail } from './detail.mts';
-import { type Form, type GameData } from './game-master.mts';
+import { type Form, type GameData } from '../../core/game-master.mts';
 import { identify, type Identity } from './identify.mts';
 import { type Looked } from './look.mts';
 import { type Overlay } from './overlay.mts';
@@ -14,7 +14,7 @@ import { Marks, type Flag } from './scan.mts';
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const BLANK = { width: 40, height: 80, data: new Uint8Array(40 * 80 * 4) };
 

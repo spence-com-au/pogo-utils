@@ -5,17 +5,15 @@
 
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
-import { type Line } from '../inventory/ocr.mts';
-import { decodePng } from '../inventory/png.mts';
-import { useWasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Line } from '../../core/ocr.mts';
+import { decodePng } from '../../core/png.mts';
+import { useWasmEngine } from '../../core/node/test-engine.mts';
 import { merge, readBanner, readBattle, unseen } from './read.mts';
 
 afterAll(useWasmEngine());
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const read = async (name: string) => {
   const sighting = await readBattle(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))), DATA);

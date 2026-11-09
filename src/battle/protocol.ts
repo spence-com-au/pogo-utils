@@ -4,7 +4,7 @@
  * handed to it for the run and back to the page after.
  */
 
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 import { type Status } from '../tools/battle/reporter.mts';
 import { type Options, type Tally } from '../tools/battle/run.mts';
 

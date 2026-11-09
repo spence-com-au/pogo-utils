@@ -9,10 +9,10 @@
  * the latest frame.
  */
 
-import { type Image } from '../inventory/png.mts';
-import { type Size } from './layout.mts';
-import { decodeArgs, RECORD_LIMIT_S, recordCommand } from './record-command.mts';
-import { type Feed } from './screen.mts';
+import { type Image } from '../../../core/png.mts';
+import { type Size } from '../layout.mts';
+import { decodeArgs, RECORD_LIMIT_S, recordCommand } from '../record-command.mts';
+import { type Feed } from '../screen.mts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { type Readable } from 'node:stream';
 

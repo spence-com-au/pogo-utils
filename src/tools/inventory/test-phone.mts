@@ -4,8 +4,8 @@
  * and answers every other shell command with nothing.
  */
 
-import { Device } from './adb.mts';
-import { encodePng, type Image } from './png.mts';
+import { Device } from '../../core/adb.mts';
+import { encodePng, type Image } from '../../core/png.mts';
 
 export function scrolling(screens: readonly Image[]) {
   const swipes: { way: 'up' | 'down'; by: number }[] = [];

@@ -7,15 +7,13 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng, type Image } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, type Image } from '../../core/png.mts';
 import { down, TOP } from './layout.mts';
 import { type Colour } from './minigame.mts';
 import { iconColour, readTypes } from './typing.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const png = (name: string) => decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url)));
 

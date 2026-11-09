@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, expect, test, vi } from 'vitest';
 import { costumeOf, measure, wardrobeFor, wardrobeOf, type Wardrobe } from './costume.mts';
 import { REFERENCES } from './costume-references.mts';
-import { type GameData } from './game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { type Identity } from './identify.mts';
 import { findOverlay } from './overlay.mts';
-import { decodePng, screenIn } from './png.mts';
+import { decodePng, screenIn } from '../../core/png.mts';
 import { artworkFrom, costumeIn } from './report.mts';
-import { useTestEngine } from './test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 
 afterAll(useTestEngine());
 
@@ -15,7 +15,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** Pikachu with two of its costumes, which is all a wardrobe's loading needs and keeps the registration quick. */
 const CAP = DATA.costumes.find((c) => c.name === 'Gofest 2026 Cap Red');

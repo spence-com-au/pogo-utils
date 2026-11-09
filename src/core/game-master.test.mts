@@ -22,7 +22,7 @@ import {
   type GameData,
 } from './game-master.mts';
 
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const form = (species: string, name: string | null = null) => {
   const found = DATA.forms.find((f) => f.species === species && f.form === name && !f.costume);

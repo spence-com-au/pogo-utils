@@ -4,8 +4,8 @@
  * read on the way, off the selection screen, for the moves each brings.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
-import { type Image } from '../inventory/png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { type Image } from '../../core/png.mts';
 import { type Size } from './layout.mts';
 import {
   CAPS,

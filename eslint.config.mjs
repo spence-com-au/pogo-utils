@@ -81,6 +81,18 @@ export default [
     },
   },
 
+  {
+    files: ['src/core/**'],
+    rules: importsNone('(^|\\/)(tools|inventory|battle)\\/', '`src/core/` imports no tool.'),
+  },
+  {
+    files: ['src/tools/battle/**', 'src/battle/**'],
+    rules: importsNone(
+      '(^|\\/)inventory\\/',
+      'The battle tool reaches what it shares with the inventory through `src/core/`.',
+    ),
+  },
+
   // A name declared again inside a scope that already holds it reads as the outer one: `back` the swipe to the Pokémon
   // before and `back` the distance a look scrolled down. `hoist: 'all'` because a closure is as often declared above
   // the name it shadows as below it. Only the scan's wiring and the modules it calls, the rest of the repository not
@@ -98,3 +110,16 @@ export default [
     },
   },
 ];
+
+/**
+ * The rules refusing an import whose specifier `regex` matches. The phone, its screen and the game master are reached
+ * through `src/core/`, which every tool stands on and so imports none of them, and the battle tool reaches none of them
+ * through the inventory tool. `no-restricted-imports` sees a static import alone, so an `import()` is refused by its
+ * specifier too.
+ */
+function importsNone(regex, message) {
+  return {
+    'no-restricted-imports': ['error', { patterns: [{ regex, message }] }],
+    'no-restricted-syntax': ['error', { selector: `ImportExpression > Literal[value=/${regex}/]`, message }],
+  };
+}

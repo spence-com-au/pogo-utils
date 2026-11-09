@@ -10,7 +10,7 @@
  * the screen gives way to the throw: 13 frames that half-second samples of the same footage stepped over.
  */
 
-import { decodePng } from '../inventory/png.mts';
+import { decodePng } from '../../core/png.mts';
 import { createReadStream, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
@@ -24,7 +24,7 @@ import {
   type State,
 } from './recognise.mts';
 import { streamSize } from './record-command.mts';
-import { decodeFrames } from './stream.mts';
+import { decodeFrames } from './node/stream.mts';
 
 const FIXTURES = fileURLToPath(new URL('fixtures/', import.meta.url));
 

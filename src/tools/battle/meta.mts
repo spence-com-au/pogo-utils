@@ -13,8 +13,8 @@
  */
 
 import { said } from '../../errors.ts';
-import { type GameData } from '../inventory/game-master.mts';
-import { fold } from '../inventory/ocr.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { fold } from '../../core/ocr.mts';
 import { type Download } from './assets.mts';
 
 const PVPOKE = 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data';

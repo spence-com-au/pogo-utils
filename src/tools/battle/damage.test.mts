@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { cpOf, multiplierOf, type Form, type GameData } from '../inventory/game-master.mts';
+import { cpOf, multiplierOf, type Form, type GameData } from '../../core/game-master.mts';
 import {
   afterThrow,
   buildsOf,
@@ -24,9 +24,7 @@ import {
 } from './damage.mts';
 import { type Meta } from './meta.mts';
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const ULTRA = 2500;
 const CHARIZARD = { species: 'Charizard', cp: 2495 };

@@ -1,6 +1,6 @@
 /**
  * The demo phone's side of ADB: a `Transport` over recordings rather than a phone, which the phone button holds in
- * `src/inventory/demo.ts` for a reader with no phone to see what the phone tabs do. Here rather than there so a test
+ * `src/demo-phone.ts` for a reader with no phone to see what the phone tabs do. Here rather than there so a test
  * can drive it under Node, through the same `Device` and walk to storage the pages drive it through.
  *
  * It answers the game's side of that walk rather than a script of it: a tap on a detail screen leaves it for storage,
@@ -10,9 +10,9 @@
  */
 
 import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
-import { KEY, type Transport } from './adb.mts';
+import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
-import { decodePng, encodePng, screenIn } from './png.mts';
+import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 
 /** `read` answers a recording's bytes by its path in the repository, which is where the site publishes it too. */
 export function demoTransport(read: (path: string) => Promise<Uint8Array>): Transport {

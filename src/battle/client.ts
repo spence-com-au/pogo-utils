@@ -9,11 +9,11 @@
 import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
 import { BATTLE_WORKER } from '../generated.js';
-import type { Phone } from '../inventory/webusb.js';
+import type { Phone } from '../core/browser/webusb.js';
 import { DEMO_SERIAL, type PhoneStore } from '../phone-store.js';
 import { type Reporter } from '../tools/battle/reporter.mts';
 import { type Tally } from '../tools/battle/run.mts';
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 import { putBack } from './awake.js';
 import { type Command, type Message, type Play } from './protocol.js';
 
@@ -53,8 +53,8 @@ export async function lend(
   // need not load. The demo phone comes back as the phone button holds it, its battle being the Worker's alone.
   reconnect: (serial: string) => Promise<Phone> = async (serial) =>
     serial === DEMO_SERIAL
-      ? (await loadChunk(() => import('../inventory/demo.js'))).demoPhone()
-      : (await loadChunk(() => import('../inventory/webusb.js'))).reconnect(serial),
+      ? (await loadChunk(() => import('../demo-phone.js'))).demoPhone()
+      : (await loadChunk(() => import('../core/browser/webusb.js'))).reconnect(serial),
 ): Promise<Run> {
   // Out of the store before anything is awaited, so that a second `lend` meanwhile finds none to lend.
   const phone = store.release();

@@ -4,13 +4,13 @@
  * its first pixel.
  */
 
-import { rgb } from '../inventory/png.mts';
+import { rgb } from '../../../core/png.mts';
 import { spawn } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { expect, test, vi } from 'vitest';
-import { streamSize } from './record-command.mts';
-import { Screen } from './screen.mts';
+import { streamSize } from '../record-command.mts';
+import { Screen } from '../screen.mts';
 import { decodeFrames, feed, type Recording } from './stream.mts';
 import { HELD_MS, Video } from './video.mts';
 

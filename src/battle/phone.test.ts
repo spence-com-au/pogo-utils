@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { fixture } from '../testing/fixture.js';
-import { create, report, write } from '../tools/inventory/touchscreen.mts';
+import { create, report, write } from '../core/touchscreen.mts';
 import { battlePhone, heldShell } from './phone.js';
 import { FakeChunk, FakeDecoder, fakeConnection } from './test-phone.js';
 

@@ -8,9 +8,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test } from 'vitest';
-import { type GameData } from '../inventory/game-master.mts';
-import { decodePng, type Image } from '../inventory/png.mts';
-import { useWasmEngine } from '../inventory/test-engine.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, type Image } from '../../core/png.mts';
+import { useWasmEngine } from '../../core/node/test-engine.mts';
 import { type Point } from './layout.mts';
 import { MENU_AFTER_MS, MenuReader, type Read } from './menu-reader.mts';
 import { type Menu, type Mode } from './menus.mts';
@@ -20,9 +20,7 @@ import { type Options } from './run.mts';
 
 afterAll(useWasmEngine());
 
-const DATA = JSON.parse(
-  readFileSync(new URL('../inventory/fixtures/game-master.json', import.meta.url), 'utf8'),
-) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 const fixture = (name: string) =>
   decodePng(readFileSync(fileURLToPath(new URL(`fixtures/${name}.png`, import.meta.url))));

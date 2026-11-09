@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, GAME_MASTER, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from './served-types.mts';
 
 /**
@@ -20,14 +20,9 @@ export const PUBLISHED = [
   '*.html',
   'favicon.svg',
 
-  // `src/generated.ts`'s five indexes are in here, so none is named separately: `copyInto` throws rather than copying
-  // a path twice, and the directory is what the pages fetch them under.
+  // `src/generated.ts`'s five indexes and the vended game master are in here, so none is named separately: `copyInto`
+  // throws rather than copying a path twice, and the directory is what the pages fetch them under.
   'data',
-
-  // The game master the Inventory page reads a screen against: the corpus's own vended copy, at the position it holds
-  // here, rather than a second copy that could drift from the one the tests pin — or the 23 MB upstream the vend exists
-  // to avoid fetching.
-  GAME_MASTER,
 
   // What the demo phone shows, out of the corpus for the same reason. These are in Git LFS, which a checkout leaves as
   // pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to.

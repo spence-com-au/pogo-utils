@@ -5,19 +5,19 @@
  */
 
 import { DEMO_DETAILS, DEMO_STORAGE } from '../../generated.ts';
-import { Device } from './adb.mts';
+import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
 import { readLines } from './detail.mts';
-import { type GameData } from './game-master.mts';
-import { decodePng, screenIn, type Image } from './png.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, screenIn, type Image } from '../../core/png.mts';
 import { storage } from './storage.mts';
-import { useTestEngine } from './test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
 import { readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
 
 const ROOT = new URL('../../../', import.meta.url);
-const DATA = JSON.parse(readFileSync(new URL('fixtures/game-master.json', import.meta.url), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** `DEFAULTS` with nothing waited for, there being no animation here to let settle. */
 const CONFIG: Config = {

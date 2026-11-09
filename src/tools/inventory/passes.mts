@@ -4,7 +4,7 @@
  * a storage it makes up, the script reaching storage and the walk only through what it hands in.
  */
 
-import { type Line } from './ocr.mts';
+import { type Line } from '../../core/ocr.mts';
 import { Marks, shortfall, type Flag, type Reading } from './scan.mts';
 
 /** What a pass needs of storage, as `storage` answers it, and of the walk the script makes over the phone. */

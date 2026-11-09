@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { type Image } from '../inventory/png.mts';
+import { type Image } from '../../core/png.mts';
 import { Screen, type Feed } from './screen.mts';
 
 /** How long each recording runs before the next starts, on the fake clock. */

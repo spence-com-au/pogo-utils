@@ -10,7 +10,7 @@
  * next from `HELD_MS` before its first byte, about the moment its first picture shows, so nothing is shown twice.
  */
 
-import { Pictures, type Picture } from './pictures.mts';
+import { Pictures, type Picture } from '../pictures.mts';
 import { type Recording } from './stream.mts';
 
 /** The packet ids: the program map's, and the video's, which carries the clock too. */

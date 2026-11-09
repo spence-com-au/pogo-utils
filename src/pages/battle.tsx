@@ -18,7 +18,7 @@ import { DEMO_SERIAL, phoneStore, usePhone } from '../phone-store.js';
 import { LEADERS, LEAGUES } from '../tools/battle/menus.mts';
 import { OptionError, readOptions, type Asked } from '../tools/battle/options.mts';
 import { energyOf, PARTY, summary, type Fight, type Side } from '../tools/battle/reporter.mts';
-import { type Image } from '../tools/inventory/png.mts';
+import { type Image } from '../core/png.mts';
 
 /**
  * The form as typed: every field, whichever mode leaves it out. Each mode has its own league, Training's one of three

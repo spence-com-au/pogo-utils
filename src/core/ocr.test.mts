@@ -4,7 +4,7 @@
  * they are pinned here.
  */
 
-import { tesseractCli } from './ocr-cli.mts';
+import { tesseractCli } from './node/ocr-cli.mts';
 import { centre, findLine, fold, ocr, ocrLine, useEngine, type Line } from './ocr.mts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

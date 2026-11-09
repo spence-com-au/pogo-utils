@@ -12,7 +12,7 @@
  * Through nothing but `shell`, as `src/battle/awake.ts` is, so that a page could run it over WebUSB as well.
  */
 
-import { type Transport } from '../inventory/adb.mts';
+import { type Transport } from '../../core/adb.mts';
 
 /** Where the dex is written: the shell user's own directory, which it may both write to and run from. */
 const PATH = '/data/local/tmp/pogo-utils-screen-power.dex';

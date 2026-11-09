@@ -12,7 +12,7 @@
  * next type's, Water's 24 against Flying's 39 being the closest. Its emblem was 6% to 23% of the disc.
  */
 
-import { median, rgb, type Image } from '../inventory/png.mts';
+import { median, rgb, type Image } from '../../core/png.mts';
 import { type Colour } from './minigame.mts';
 import { around, down, TOP, type Area, type Size } from './layout.mts';
 

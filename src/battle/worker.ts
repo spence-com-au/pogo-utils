@@ -5,9 +5,10 @@
  * fetched against the page's URL, as every path the site publishes is relative to the page.
  */
 
+import { fetchBytes } from '../core/browser/fetch.js';
+import { wasmEngine } from '../core/browser/ocr.js';
+import { reconnect } from '../core/browser/webusb.js';
 import { DEMO_BATTLE } from '../generated.js';
-import { fetchBytes, wasmEngine } from '../inventory/reader.js';
-import { reconnect } from '../inventory/webusb.js';
 import { DEMO_SERIAL } from '../phone-store.js';
 import { demoConnection } from './demo.js';
 import { decodeFrames } from './feed.js';

@@ -402,14 +402,14 @@ up, so the page says when a species is wanted but the feed cannot alert on it: M
 only a raid will ever produce one.
 
 The pictures are the game's own, hotlinked from [PokeMiners' `pogo_assets`](https://github.com/PokeMiners/pogo_assets) —
-the same 256×256 renders [`src/tools/inventory/game-master.mts`](src/tools/inventory/game-master.mts) matches a
-screenshot against, so the two cannot disagree about what a species looks like. Most of the dex is `pm{dex}.icon.png`,
-which the number alone derives; `build:sprites` ([`scripts/build-sprites.mts`](scripts/build-sprites.mts)) writes the
-113 it does not — and beside them, in `data/pokemon-types.json`, each species' types off the same form, which colour its
-entry — read out of the committed game master so the build reaches no network. 961 species draw a render that way. The
-other 64 have no artwork in the game at all — 62 of them are species it has not released, the exceptions being
-Scatterbug and Spewpa — and fall back to [PokeAPI](https://github.com/PokeAPI/sprites), which covers the dex by number.
-A species whose picture does not load keeps its number.
+the same 256×256 renders [`src/core/game-master.mts`](src/core/game-master.mts) matches a screenshot against, so the two
+cannot disagree about what a species looks like. Most of the dex is `pm{dex}.icon.png`, which the number alone derives;
+`build:sprites` ([`scripts/build-sprites.mts`](scripts/build-sprites.mts)) writes the 113 it does not — and beside them,
+in `data/pokemon-types.json`, each species' types off the same form, which colour its entry — read out of the committed
+game master so the build reaches no network. 961 species draw a render that way. The other 64 have no artwork in the
+game at all — 62 of them are species it has not released, the exceptions being Scatterbug and Spewpa — and fall back to
+[PokeAPI](https://github.com/PokeAPI/sprites), which covers the dex by number. A species whose picture does not load
+keeps its number.
 
 A species the game draws only as a form — Unown, Burmy, Mimikyu — has no picture of its own, so the table names one of
 its forms. Which one comes from [`src/pokemon/pokedex.ts`](src/pokemon/pokedex.ts): `addForms` lists a species' forms in
@@ -590,19 +590,19 @@ With no phone to hand, `?demo` in the address (`/?demo#/inventory`) makes the sa
 which answers from recorded screens rather than an account, so each tab can be tried without one; a second press puts it
 away. It is kept out of the standard bar, being for trying the site rather than using it.
 
-The readers run in the browser unchanged. [`png.mts`](src/tools/inventory/png.mts) decodes with
+The readers run in the browser unchanged. [`png.mts`](src/core/png.mts) decodes with
 [fflate](https://github.com/101arrowz/fflate) rather than `node:zlib`, keeping both the `Viewport` chunk a stitch
 carries and the uncorrected colours [`artwork.mts`](src/tools/inventory/artwork.mts) picks a form by, which
 `createImageBitmap` would lose. OCR is an `Engine` installed by whatever runs the readers: the CLI in
-[`ocr-cli.mts`](src/tools/inventory/ocr-cli.mts), and [tesseract.js](https://github.com/naptha/tesseract.js)
-(Apache-2.0) in [`ocr-wasm.mts`](src/tools/inventory/ocr-wasm.mts), with the whitelist and page segmentation mode passed
-per read and TSV asked for as the CLI's `tessedit_create_tsv` is. It reads with the CLI's own model, `eng.traineddata`
-from `tessdata_fast` 4.1.0 — what `apt` and `brew` both install — fetched once from that tag and kept in the browser.
+[`ocr-cli.mts`](src/core/node/ocr-cli.mts), and [tesseract.js](https://github.com/naptha/tesseract.js) (Apache-2.0) in
+[`ocr-wasm.mts`](src/core/ocr-wasm.mts), with the whitelist and page segmentation mode passed per read and TSV asked for
+as the CLI's `tessedit_create_tsv` is. It reads with the CLI's own model, `eng.traineddata` from `tessdata_fast` 4.1.0 —
+what `apt` and `brew` both install — fetched once from that tag and kept in the browser.
 
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, the form icons from
 `pogo_assets` that the Pokédex page already draws, and the game master — the vended
-[`fixtures/game-master.json`](src/tools/inventory/fixtures/game-master.json), which the build publishes rather than the
-page fetching the 23 MB it is made from. The screenshot and its reading stay in memory, and leave only as a download.
+[`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23 MB it
+is made from. The screenshot and its reading stay in memory, and leave only as a download.
 
 The corpus is what holds the page to the CLI, and CI runs [`screens.test.mts`](src/tools/inventory/screens.test.mts)
 both ways: under the CLI, and under the WebAssembly engine with `INVENTORY_OCR=wasm pnpm test:corpus`, handed the CLI's

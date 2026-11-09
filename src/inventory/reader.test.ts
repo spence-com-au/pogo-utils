@@ -1,10 +1,10 @@
 /**
- * What the reader keeps for the page, and when it lets go of it. The game master, the engine and the icons are each
- * fetched once and held, but a fetch that failed must not be: a rejected promise kept would answer every later read
- * with the network as it was the first time, and leave the page broken until it was reloaded. The Pikachu wardrobe is
- * the same, held only once it has the plain icon. Besides the caching, the storage search's refusal of a term before it
- * touches anything, and how many workers the engine is given. The engine, the game master and the readers over them
- * are stood in for, so these are claims about the caching and the wiring and not the reading.
+ * What the reader keeps for the page, and when it lets go of it. The engine and the icons are each made once and held,
+ * but one that failed must not be: a rejected promise kept would answer every later read with the network as it was the
+ * first time, and leave the page broken until it was reloaded. The Pikachu wardrobe is the same, held only once it has
+ * the plain icon. Besides the caching, the storage search's refusal of a term before it touches anything. The engine,
+ * the game master and the readers over them are stood in for, so these are claims about the caching and the wiring and
+ * not the reading.
  */
 
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -26,9 +26,9 @@ vi.mock('../tools/inventory/artwork.mts', () => ({
   signaturesFor: mocks.signaturesFor,
 }));
 vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));
-vi.mock('../tools/inventory/ocr.mts', () => ({ useEngine: mocks.useEngine }));
-vi.mock('../tools/inventory/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
-vi.mock('../tools/inventory/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
+vi.mock('../core/ocr.mts', () => ({ useEngine: mocks.useEngine }));
+vi.mock('../core/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
+vi.mock('../core/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
 vi.mock('../tools/inventory/report.mts', () => ({ readScreen: mocks.readScreen }));
 vi.mock('../tools/inventory/storage.mts', () => ({ storage: mocks.storage, unsearchable: mocks.unsearchable }));
 
@@ -68,60 +68,6 @@ test('a page that is not a secure context cannot read, and says why', async () =
 
   vi.stubGlobal('window', { isSecureContext: false });
   expect(unreadable()).toMatch(/secure context/);
-});
-
-test('a response that is not ok fails, naming the URL and the status', async () => {
-  const { fetchOk } = await load();
-
-  fetch.mockResolvedValueOnce(new Response('', { status: 404, statusText: 'Not Found' }));
-
-  await expect(fetchOk('https://example.test/icon.png')).rejects.toThrow(
-    /^https:\/\/example\.test\/icon\.png: 404 Not Found$/,
-  );
-});
-
-/** HTTP/2 sends no reason phrase, and the status then ends the message rather than a space after it. */
-test('a status without a reason phrase is named as the bare number', async () => {
-  const { fetchOk } = await load();
-
-  fetch.mockResolvedValueOnce(new Response('', { status: 404 }));
-
-  await expect(fetchOk('https://example.test/icon.png')).rejects.toThrow(/^https:\/\/example\.test\/icon\.png: 404$/);
-});
-
-test('the bytes of a response are read whole', async () => {
-  const { fetchBytes } = await load();
-
-  fetch.mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3])));
-
-  expect(await fetchBytes('https://example.test/icon.png')).toEqual(new Uint8Array([1, 2, 3]));
-});
-
-test('the game master is fetched once, however many ask', async () => {
-  const { gameData } = await load();
-
-  expect(await Promise.all([gameData(), gameData()])).toEqual([data, data]);
-  expect(await gameData()).toEqual(data);
-  expect(fetch).toHaveBeenCalledTimes(1);
-});
-
-test('a game master that failed to arrive is fetched again by the next call', async () => {
-  const { gameData } = await load();
-
-  fetch.mockRejectedValueOnce(new Error('offline'));
-
-  await expect(gameData()).rejects.toThrow('offline');
-  await expect(gameData()).resolves.toEqual(data);
-  expect(fetch).toHaveBeenCalledTimes(2);
-});
-
-test('a game master the server refused is fetched again by the next call', async () => {
-  const { gameData } = await load();
-
-  fetch.mockResolvedValueOnce(new Response('', { status: 503, statusText: 'Service Unavailable' }));
-
-  await expect(gameData()).rejects.toThrow(/503 Service Unavailable/);
-  await expect(gameData()).resolves.toEqual(data);
 });
 
 test('the engine is installed and the icons read once, for every screen after the first', async () => {
@@ -187,46 +133,6 @@ test('a wardrobe that arrived is kept, and asked for once however many Pikachu a
   expect(mocks.wardrobeFor).toHaveBeenCalledWith(data, expect.any(Function));
 });
 
-test.each([
-  [16, 4],
-  [2, 2],
-  [0, 1],
-  [undefined, 1],
-])('an engine on a device reporting %s cores gets %s workers: at most four, at least one', async (cores, workers) => {
-  const { wasmEngine } = await load();
-
-  vi.stubGlobal('navigator', { hardwareConcurrency: cores });
-  wasmEngine('https://spence.com.au/pogo-utils/');
-
-  expect(mocks.tesseractWasm).toHaveBeenCalledWith(expect.objectContaining({ workers }));
-});
-
-test('the engine finds its worker and cores against the base it is given, which a Worker has none of', async () => {
-  const { wasmEngine } = await load();
-
-  wasmEngine('https://worker.test/app/');
-
-  expect(mocks.tesseractWasm).toHaveBeenCalledWith(
-    expect.objectContaining({
-      workerPath: expect.stringMatching(/^https:\/\/worker\.test\/app\/.+\/worker\.min\.js$/),
-      corePath: expect.stringMatching(/^https:\/\/worker\.test\/app\/.+\/$/),
-    }),
-  );
-});
-
-test('the engine hears the model download only where it is given someone to tell', async () => {
-  const { wasmEngine } = await load();
-  const progress = vi.fn();
-
-  wasmEngine('https://spence.com.au/pogo-utils/');
-  wasmEngine('https://spence.com.au/pogo-utils/', progress);
-
-  const [quiet, heard] = mocks.tesseractWasm.mock.calls.map(([options]) => options);
-
-  expect(quiet).not.toHaveProperty('progress');
-  expect(heard).toHaveProperty('progress', progress);
-});
-
 /** The bytes a screenshot arrives as, which `decodePng` above hands on as they are. */
 const screen = Uint8Array.of(1, 2, 3);
 
@@ -254,7 +160,7 @@ test('a search the phone cannot be sent is refused before the phone, engine or n
 
 test('a search is typed into storage on the phone, and the count the game gave is what is answered', async () => {
   const { searchStorage } = await load();
-  const { Device } = await import('../tools/inventory/adb.mts');
+  const { Device } = await import('../core/adb.mts');
   const lines = ['a screen read'];
   const search = vi.fn(async () => lines);
   const matches = vi.fn(() => 3);

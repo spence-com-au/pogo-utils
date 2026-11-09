@@ -6,7 +6,7 @@
  * over WebUSB as well.
  */
 
-import { type Transport } from '../inventory/adb.mts';
+import { type Transport } from '../../core/adb.mts';
 
 export type Shell = Pick<Transport, 'shell'>;
 

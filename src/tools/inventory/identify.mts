@@ -9,8 +9,16 @@
  * asks the readers to agree with each other rather than each being separately right.
  */
 
-import { closest, cpOf, fitsHeight, levelsOf, multiplierOf, type Form, type GameData } from './game-master.mts';
-import { fold } from './ocr.mts';
+import {
+  closest,
+  cpOf,
+  fitsHeight,
+  levelsOf,
+  multiplierOf,
+  type Form,
+  type GameData,
+} from '../../core/game-master.mts';
+import { fold } from '../../core/ocr.mts';
 import { nearest, numbersOf, type Colourings, type Signature } from './artwork.mts';
 import { type Detail } from './detail.mts';
 import { type Overlay } from './overlay.mts';

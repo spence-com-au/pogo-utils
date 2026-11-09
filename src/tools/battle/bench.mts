@@ -4,7 +4,7 @@
  * from whether each switch tapped went through.
  */
 
-import { type GameData } from '../inventory/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { finisher, NO_STAGES, wouldFaint, type Side, type StagePair, type Stages } from './damage.mts';
 import { type Estimate, type Matchup } from './energy.mts';
 import { type Health } from './health.mts';

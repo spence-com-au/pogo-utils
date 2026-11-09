@@ -19,10 +19,10 @@
  * given longer than the default.
  */
 
-import { KEY } from './adb.mts';
-import { GAME_MASTER_CACHE, ICON_CACHE } from './download.mts';
-import { type GameData } from './game-master.mts';
-import { decodePng, encodePng, screenIn } from './png.mts';
+import { KEY } from '../../core/adb.mts';
+import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
+import { type GameData } from '../../core/game-master.mts';
+import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -37,7 +37,7 @@ const run = promisify(execFile);
 
 const SCRIPT = fileURLToPath(new URL('../../../scripts/inventory.mts', import.meta.url));
 const FIXTURES = new URL('fixtures/', import.meta.url);
-const DATA = JSON.parse(readFileSync(new URL('game-master.json', FIXTURES), 'utf8')) as GameData;
+const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
 /** Four minutes where the default is one, a run reading a dozen screens and sharing the machine with the others. */
 const SLOW = 240_000;

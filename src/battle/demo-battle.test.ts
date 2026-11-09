@@ -14,12 +14,12 @@
 import { afterAll, expect, test } from 'vitest';
 
 import { DEMO_BATTLE } from '../generated.js';
-import type { Phone as Connection } from '../inventory/webusb.js';
+import type { Phone as Connection } from '../core/browser/webusb.js';
 import { fixture } from '../testing/fixture.js';
-import { type GameData } from '../tools/inventory/game-master.mts';
-import { useEngine } from '../tools/inventory/ocr.mts';
-import { tesseractWasm } from '../tools/inventory/ocr-wasm.mts';
-import { type Image } from '../tools/inventory/png.mts';
+import { type GameData } from '../core/game-master.mts';
+import { useEngine } from '../core/ocr.mts';
+import { tesseractWasm } from '../core/ocr-wasm.mts';
+import { type Image } from '../core/png.mts';
 import { type Size } from '../tools/battle/layout.mts';
 import { type Phone } from '../tools/battle/phone.mts';
 import { Pictures, type Picture } from '../tools/battle/pictures.mts';
@@ -70,7 +70,7 @@ const CLIP = new URL(`../../${DEMO_BATTLE.clip}`, import.meta.url);
 const H264 = fixture(CLIP);
 
 const DATA = JSON.parse(
-  new TextDecoder().decode(fixture(new URL('../tools/inventory/fixtures/game-master.json', import.meta.url))),
+  new TextDecoder().decode(fixture(new URL('../../data/game-master.json', import.meta.url))),
 ) as GameData;
 
 /** The clip's picture size, which `ffmpeg` puts its frames out at. */

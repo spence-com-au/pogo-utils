@@ -9,7 +9,7 @@
  * read with OCR once the screen has settled.
  */
 
-import { chroma, luminance, median, rgb, type Image } from '../inventory/png.mts';
+import { chroma, luminance, median, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, spanning, TOP, type AnchoredBox, type Area, type Size } from './layout.mts';
 import { type Colour } from './minigame.mts';
 
