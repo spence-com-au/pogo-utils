@@ -38,7 +38,10 @@ export type Mode =
 export const CAPS: Readonly<Record<League, number | null>> = { great: 1500, ultra: 2500, master: null };
 
 export type Menu =
-  | { screen: 'map' | 'main' | 'training' | 'gbl' | 'welcome' | 'intro' | 'league' | 'result'; tap: Point }
+  | { screen: 'map' | 'main' | 'training' | 'gbl' | 'welcome' | 'intro' | 'result'; tap: Point }
+
+  // GO Battle League's card by its title as read, which `--league` gives only the start of; Training's carries none.
+  | { screen: 'league'; tap: Point; title?: string }
 
   // The league's CP cap as GO Battle League's party screen states it: `null` for no limit, `undefined` where unread.
   // And the CP over each card, off the same read; Training's party screen is told by colour, and read for none.
@@ -540,7 +543,7 @@ export async function readMenu(
       }
 
       if (chosen[0]) {
-        return { screen: 'league', tap: chosen[0].tap };
+        return { screen: 'league', ...chosen[0] };
       }
 
       // The heading over the first card read, and none is the one: the list is the leagues on now from its top, and it

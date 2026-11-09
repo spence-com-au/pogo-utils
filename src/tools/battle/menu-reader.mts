@@ -23,7 +23,7 @@ import { cardAt, readCps, readParty, type Card, type Icon } from './party.mts';
 import { type Phone } from './phone.mts';
 import { settle, type Reading } from './read.mts';
 import { type Reporter } from './reporter.mts';
-import type { Clock } from './run.mts';
+import type { Clock, Options } from './run.mts';
 import { readCard } from './selection.mts';
 
 /**
@@ -73,6 +73,7 @@ export class MenuReader {
   readonly #mode: Mode;
   readonly #data: GameData;
   readonly #icons: readonly Icon[];
+  readonly #metaOf: Options['metaOf'];
   readonly #log: Reporter['event'];
   readonly #watch: Watch;
 
@@ -103,14 +104,18 @@ export class MenuReader {
   #lastTried: ({ species: string | null; cp: number } | undefined)[] = [];
 
   // The league's CP cap, which a CP read over it is a misread of: Training's by its league, GO Battle League's as its
-  // party screen states it, and until then as PvPoke has the league named. `undefined` until known, and then every
-  // shield is taken.
+  // party screen states it, and until then as PvPoke has the league tapped, or `--league` before one is. `undefined`
+  // until known, and then every shield is taken.
   #cap: number | null | undefined;
+
+  // The meta of the league being played, and the title of the league card it is the meta of, none until one is tapped.
+  #meta: Meta | null | undefined;
+  #metaFor: string | undefined;
 
   constructor(
     phone: Phone,
     clock: Clock,
-    { mode, data, icons, meta }: { mode: Mode; data: GameData; icons: readonly Icon[]; meta?: Meta | null },
+    { mode, data, icons, meta, metaOf }: Pick<Options, 'mode' | 'data' | 'icons' | 'meta' | 'metaOf'>,
     log: Reporter['event'],
     watch: Watch,
   ) {
@@ -119,9 +124,11 @@ export class MenuReader {
     this.#mode = mode;
     this.#data = data;
     this.#icons = icons;
+    this.#metaOf = metaOf;
     this.#log = log;
     this.#watch = watch;
     this.#cap = mode.mode === 'training' ? CAPS[mode.league] : meta?.cap;
+    this.#meta = meta;
   }
 
   /** The party as last read, each card with its moves where the selection screen showed them. */
@@ -132,6 +139,11 @@ export class MenuReader {
   /** The league's CP cap: `null` for none, and `undefined` until known. */
   get cap(): number | null | undefined {
     return this.#cap;
+  }
+
+  /** The meta of the league being played: as the run was given it, until a league card is tapped. */
+  get meta(): Meta | null | undefined {
+    return this.#meta;
   }
 
   /** What the screen was last read as, between battles. */
@@ -286,6 +298,25 @@ export class MenuReader {
       }
     }
 
+    // Loaded before the card is tapped, so the time a fetch takes is not counted towards `LOST_MS` from the tap.
+    const metaOf = this.#metaOf;
+
+    if (
+      menu.screen === 'league' &&
+      'tap' in menu &&
+      menu.title !== undefined &&
+      menu.title !== this.#metaFor &&
+      metaOf
+    ) {
+      this.#metaFor = menu.title;
+      this.#meta = await metaOf(menu.title, this.#log);
+      this.#cap = this.#meta?.cap;
+
+      if (this.#meta) {
+        this.#log(ranking(this.#meta));
+      }
+    }
+
     // A scroll is not progress: a tab already at its foot whose portraits go unmatched would be scrolled for ever, so
     // the scrolls count towards `LOST_MS` from the tap that opened the tab. Matchmaking is: it is waited out, however
     // long GO Battle League takes to find an opponent.
@@ -358,6 +389,10 @@ export class MenuReader {
     return { cards: read, back: true };
   }
 }
+
+/** How a meta is told as the run takes it up: the cup and CP PvPoke ranks it at, and how many species it ranks. */
+export const ranking = (meta: Meta) =>
+  `opponents' moves as PvPoke ranks ${meta.cup} at ${meta.cap ?? 'any'} CP: ${meta.movesets.size} species`;
 
 /** Whether `card` is the one tried before as `was`: the same species, and the same CP unless this one's went unread. */
 const sameCard = (was: { species: string | null; cp: number } | undefined, card: Card) =>

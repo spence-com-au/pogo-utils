@@ -275,11 +275,12 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
   pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded and cached
   for a week; tests read the vended [`../inventory/fixtures/game-master.json`](../inventory/fixtures/game-master.json).
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
-  League. It matches `--league` to PvPoke's cup by title; a cup PvPoke doesn't list falls back to its league's open
-  rankings. For each species it gives the moves its players run and the recommended fast move. A species' forms and
-  shadow are merged, since the HUD names only the species; the type icons narrow the forms afterwards, but nothing on
-  screen tells a shadow apart. If nothing matches, or PvPoke can't be reached, every move stays allowed for. Training
-  never uses it.
+  League. It matches `--league` to PvPoke's cup by title before the run, then the title of the league card the run taps,
+  which can be a different cup: `--league master` taps Master League: Mega Edition while it is on. A cup PvPoke doesn't
+  list falls back to its league's open rankings. For each species it gives the moves its players run and the recommended
+  fast move. A species' forms and shadow are merged, since the HUD names only the species; the type icons narrow the
+  forms afterwards, but nothing on screen tells a shadow apart. If nothing matches, or PvPoke can't be reached, every
+  move stays allowed for. Training never uses it.
 - **[`assets.mts`](assets.mts)** reads the type icons and outlines the form icons, and `meta.mts` reads PvPoke's files,
   each with whatever `Download` its caller hands it: the CLI's week-long cache, or `fetch` in a page
   ([`src/battle/load.ts`](../../battle/load.ts)).

@@ -34,7 +34,7 @@ import { type Phone } from './phone.mts';
 import { type Fight, type Reporter } from './reporter.mts';
 import { Battle } from './battle.mts';
 import { SWITCHED_MS, type Field } from './bench.mts';
-import { MenuReader } from './menu-reader.mts';
+import { MenuReader, ranking } from './menu-reader.mts';
 
 export interface Clock {
   now(): number;
@@ -216,6 +216,13 @@ export interface Options {
    * theirs for shielding and for who goes in. Absent, as in Training, every move its species can hold is allowed for.
    */
   meta?: Meta | null;
+
+  /**
+   * The meta of a league by the title its card on the league chooser reads, said to `warn` where there is none: loaded
+   * in place of `meta` for the card tapped, which `--league` names only the start of. `master` taps Master League: Mega
+   * Edition while it is on, which PvPoke ranks apart from the open league. Absent, `meta` is kept whatever is tapped.
+   */
+  metaOf?: (league: string, warn: (line: string) => void) => Promise<Meta | null>;
   count?: number;
 
   /**
@@ -233,14 +240,14 @@ export interface Options {
  */
 export async function run(
   phone: Phone,
-  { mode, data, icons, typeIcons, meta, count = Infinity, keep }: Options,
+  { mode, data, icons, typeIcons, meta, metaOf, count = Infinity, keep }: Options,
   clock: Clock,
   report: Reporter = { event: () => {}, status: () => {} },
 ): Promise<Tally> {
   const log = (line: string, side?: 'own' | 'opponent', why?: string) => report.event(line, side, why);
 
   if (meta) {
-    log(`opponents' moves as PvPoke ranks ${meta.cup} at ${meta.cap ?? 'any'} CP: ${meta.movesets.size} species`);
+    log(ranking(meta));
   }
 
   const coloursBy = (colour: (icon: Image) => Colour) =>
@@ -305,7 +312,7 @@ export async function run(
   };
 
   // The menus between battles, which tell of progress through them as the battle's frames do.
-  const menus = new MenuReader(phone, clock, { mode, data, icons, meta }, log, {
+  const menus = new MenuReader(phone, clock, { mode, data, icons, meta, metaOf }, log, {
     progress: () => {
       known = clock.now();
     },
@@ -314,7 +321,7 @@ export async function run(
 
   // The battle under way, or the last one played: made afresh on each battle's first frame, and before any for the
   // frames' size, which every frame of a run shares.
-  let battle = new Battle(first, data, meta, menus.party, log);
+  let battle = new Battle(first, data, menus.meta, menus.party, log);
 
   // The state of the frame before, which the shield prompt's showing is told from: the opponent's charged move.
   let last: State = 'other';
@@ -388,7 +395,7 @@ export async function run(
     // A battle begins afresh on its first frame, before anything that frame shows is counted to it.
     if (state !== 'other' && !battling) {
       log(`battle ${battles + 1} started`);
-      battle = new Battle(frame, data, meta, party, log);
+      battle = new Battle(frame, data, menus.meta, party, log);
     }
 
     const theirName = () => battle.seen.opponent ?? 'the opponent';
@@ -817,7 +824,7 @@ export async function run(
         cap === undefined
           ? { faints: true, why: "the league's cap unread" }
           : wouldFaint(data, facing.own, facing.opponent, health.own, cap, {
-              meta,
+              meta: menus.meta,
               seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
               affordable,
               stages: battle.stages,
@@ -848,7 +855,7 @@ export async function run(
         battle.ourShields === 0 &&
         !(verdict.faints && verdict.afforded !== undefined)
           ? wouldFaint(data, facing.own, facing.opponent, health.own, cap ?? null, {
-              meta,
+              meta: menus.meta,
               seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
               affordable: affordable + estimate.gain,
               stages: battle.stages,
@@ -1011,7 +1018,7 @@ export async function run(
                 seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
                 fast: ours?.fast,
               },
-              meta,
+              menus.meta,
             )
           : undefined;
 

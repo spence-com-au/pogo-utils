@@ -16,6 +16,7 @@ import { MENU_AFTER_MS, MenuReader, type Read } from './menu-reader.mts';
 import { type Menu, type Mode } from './menus.mts';
 import { cardAt, silhouetteOfIcon } from './party.mts';
 import { type Phone } from './phone.mts';
+import { type Options } from './run.mts';
 
 afterAll(useWasmEngine());
 
@@ -36,11 +37,12 @@ const TRAINING: Mode = { mode: 'training', leader: 'blanche', league: 'ultra' };
 const GBL: Mode = { mode: 'gbl', league: 'ultra' };
 
 /**
- * A reader in `mode` of a phone whose every screenshot is `screen`, and what it was told and did: the events it told,
- * each tap and swipe, how many screenshots it took and how often it told of progress. `lost` is what the run answers
- * when asked whether it is lost, and `time` the clock, which moves only as the reader waits or a test moves it.
+ * A reader in `mode` of a phone whose every screenshot is `screen`, loading a league's meta by `metaOf`, and what it was
+ * told and did: the events it told, each tap and swipe, how many screenshots it took and how often it told of progress.
+ * `lost` is what the run answers when asked whether it is lost, and `time` the clock, which moves only as the reader
+ * waits or a test moves it.
  */
-function readerOf(screen: Image, mode: Mode = TRAINING) {
+function readerOf(screen: Image, mode: Mode = TRAINING, metaOf?: Options['metaOf']) {
   const told = {
     events: [] as string[],
     taps: [] as Point[],
@@ -78,7 +80,7 @@ function readerOf(screen: Image, mode: Mode = TRAINING) {
   const reader = new MenuReader(
     phone,
     clock,
-    { mode, data: DATA, icons: ICONS },
+    { mode, data: DATA, icons: ICONS, metaOf },
     (line, _, why) => told.events.push(why ? `${line}: ${why}` : line),
     { progress: () => told.progress++, lost: () => told.lost },
   );
@@ -210,4 +212,32 @@ test("tries a party's cards on the selection screen once, and taps USE THIS PART
   expect(await reader.act(menu)).toBe('acted');
   expect(told.taps).toEqual([cardAt(0, party), [0.5, 0.87]]);
   expect(reader.party.map(({ cp }) => cp)).toEqual([2490, 2470, 2450]);
+});
+
+// The cap is the meta's until GO Battle League's party screen states its own. The same card tapped again is not loaded
+// again, and a league PvPoke ranks no meta for leaves none in force.
+test('takes up the meta of the league card tapped, once for each title', async () => {
+  const loaded: string[] = [];
+  const ultra = { cup: 'all', cap: 2500, movesets: new Map() };
+
+  const metaOf = (league: string) => {
+    loaded.push(league);
+    return Promise.resolve(league === 'ultra league' ? ultra : null);
+  };
+
+  const { reader, told } = readerOf(fixture('menu-gbl-league'), GBL, metaOf);
+  const league = (title: string) => reading(fixture('menu-gbl-league'), { screen: 'league', tap: [0.5, 0.5], title });
+
+  expect(await reader.act(league('ultra league'))).toBe('acted');
+  expect(await reader.act(league('ultra league'))).toBe('acted');
+  expect(reader.meta).toBe(ultra);
+  expect(reader.cap).toBe(2500);
+
+  expect(await reader.act(league('master league: mega'))).toBe('acted');
+  expect(reader.meta).toBe(null);
+  expect(reader.cap).toBe(undefined);
+  expect(loaded).toEqual(['ultra league', 'master league: mega']);
+  expect(told.events.filter((line) => line.startsWith("opponents' moves"))).toEqual([
+    "opponents' moves as PvPoke ranks all at 2500 CP: 0 species",
+  ]);
 });
