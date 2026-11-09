@@ -13,7 +13,7 @@ import { titleise } from '../../pokemon/names.ts';
 import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from '../game-master.mts';
 import { decodePng, type Image } from '../png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 /**
  * The game master as alexelgt's bot dumps it from the game, about once a day: the array of `{ templateId, data }` the
@@ -54,8 +54,14 @@ export const GAME_MASTER_CACHE = `game-master-${new URL(GAME_MASTER).pathname.sp
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
-/** Where the downloads are kept between runs. */
-export const CACHE = '.cache/inventory';
+/**
+ * Where the downloads are kept between runs, under the working directory and resolved against it once, as the module
+ * loads. Absolute because a relative one spins a core forever once the working directory is deleted: `cached`'s
+ * recursive `mkdirSync` retries a relative path's `ENOENT` without end on Node 24, which Node fixed in 26.11.0 and has
+ * not backported ([nodejs/node#66268](https://github.com/nodejs/node/issues/66268)). Resolved here, a directory already
+ * gone throws `ENOENT` from `process.cwd()` before anything starts, and one deleted later is made again.
+ */
+export const CACHE = resolve('.cache/inventory');
 
 interface Template {
   templateId: string;
