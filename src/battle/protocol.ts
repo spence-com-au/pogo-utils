@@ -12,10 +12,10 @@ import { type Options, type Tally } from '../tools/battle/run.mts';
  * What the page starts a run with: what `run` is to play, loaded by the page, and the page's URL, which the Worker finds
  * the OCR engine's files against. Neither could be had from the Worker's own URL, which is its script's, under
  * `src/battle/`, where every path the site publishes is relative to the page. No frames are kept, there being nowhere
- * in a page to keep them.
+ * in a page to keep them, and the meta of the league tapped is loaded by the Worker, a message carrying no function.
  */
 export interface Play {
-  battle: Omit<Options, 'keep'>;
+  battle: Omit<Options, 'keep' | 'metaOf'>;
   base: string;
 }
 

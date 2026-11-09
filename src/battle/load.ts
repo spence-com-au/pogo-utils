@@ -14,7 +14,7 @@ import { loadMeta } from '../tools/battle/meta.mts';
  * A page has nothing to keep a copy on, so the name a cache would keep it under goes unused. A body that will not
  * decode is named by its URL, as `cachedAs` names it for the CLI, `fetchOk` naming it already for a status.
  */
-const download: Download = async (_file, url, decode) => {
+export const download: Download = async (_file, url, decode) => {
   const bytes = await fetchBytes(url);
 
   try {
@@ -35,7 +35,7 @@ export async function loadBattle(league: string | null) {
       decodeSilhouettes(JSON.parse(new TextDecoder().decode(bytes)) as Silhouettes),
     ),
     typeIcons(data, download),
-    league === null ? null : loadMeta(download, data, league),
+    league === null ? null : loadMeta(download, data, league, (line) => console.error(line)),
   ]);
 
   return { data, icons: [...silhouettes.values()], typeIcons: types, meta };

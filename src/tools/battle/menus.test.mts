@@ -293,15 +293,16 @@ test('scrolls the Battle tab back up to GO Battle League, and never taps a leade
   });
 });
 
-// Next week's leagues are listed faded under the ones on now, Master League among them: only the one on now is tapped.
+// Next week's leagues are listed faded under the ones on now, Master League among them: only the one on now is tapped,
+// and its title is the league played, which PvPoke can rank apart from the one `--league` names.
 test.each([
-  ['ultra', 0.54, 0.43],
-  ['Master League', 0.64, 0.57],
-  ['fantasy cup', 0.62, 0.71],
-])('taps the GO Battle League %s card', async (league, x, y) => {
+  ['ultra', 'ultra league', 0.54, 0.43],
+  ['Master League', 'master league mega edition', 0.64, 0.57],
+  ['fantasy cup', 'fantasy cup great league edition', 0.62, 0.71],
+])('taps the GO Battle League %s card, titled %s', async (league, title, x, y) => {
   const menu = await readMenu(fixture('menu-gbl-league'), { ...GBL, league });
 
-  expect(menu.screen).toBe('league');
+  expect(menu).toMatchObject({ screen: 'league', title });
   expect(near(menu, x, y)).toBe(true);
 });
 

@@ -194,8 +194,10 @@ if (command === 'run') {
   // The type icons are 18 small files, cached beside the form icons.
   const types = await typeIcons(data, cache(join(CACHE, 'types')));
 
-  // What GO Battle League's players run in the league, out of PvPoke's rankings; Training allows for every move.
-  const meta = mode.mode === 'gbl' ? await loadMeta(cache(CACHE), data, mode.league) : null;
+  // What GO Battle League's players run in the league, out of PvPoke's rankings; Training allows for every move. Loaded
+  // for `--league` before the run, and again by the run for the title of the league it taps.
+  const metaOf = (league: string, warn: (line: string) => void) => loadMeta(cache(CACHE), data, league, warn);
+  const meta = mode.mode === 'gbl' ? await metaOf(mode.league, (line) => console.error(line)) : null;
 
   // Awake for as long as it runs: the setting is read first and put back as found on every way out, `restore` and the
   // signal handler in place before it is changed.
@@ -302,7 +304,7 @@ if (command === 'run') {
 
     const tally = await run(
       phone,
-      { mode, data, icons, typeIcons: types, meta, count, ...(frames && { keep: frames.keep }) },
+      { mode, data, icons, typeIcons: types, meta, metaOf, count, ...(frames && { keep: frames.keep }) },
       clock,
       report,
     ).finally(() => panel?.done());

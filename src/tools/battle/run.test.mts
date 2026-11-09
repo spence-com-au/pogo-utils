@@ -3273,6 +3273,64 @@ test('takes the cap from the league named until the party screen gives it', asyn
   ]);
 });
 
+/** A meta in which Magmar is run with Karate Chop and `charged` alone. */
+const magmarRun = (cup: string, charged: string): Meta => ({
+  cup,
+  cap: null,
+  movesets: new Map([['Magmar', { fast: 'Karate Chop', fastMoves: ['Karate Chop'], chargedMoves: [charged] }]]),
+});
+
+// `--league 'Master League'` taps Master League: Mega Edition while it is on, which PvPoke ranks apart from the open
+// league: Magmar run with Fire Punch in the one `--league` names, which would leave the shield kept, and Fire Blast in
+// the one tapped. Its meta is loaded before the card is tapped, as the meta the shield at 86% with both left is judged
+// by.
+test('judges a shield by the meta of the league card tapped rather than of `--league`', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...league(),
+      ...charizardHit(fixture('shield-charizard-high')),
+      league: { frame: fixture('menu-gbl-league'), tap: { at: [0.64, 0.57], to: 'party' } },
+      result: { frame: fixture('menu-gbl-result-last'), tap: { at: [0.5, 0.935], to: 'collect' } },
+      collect: { frame: fixture('menu-gbl-collect') },
+    },
+    'league',
+  );
+  const report = recorder();
+  const asked: { league: string; taps: string[] }[] = [];
+
+  const metaOf = (league: string) => {
+    asked.push({ league, taps: [...taps] });
+
+    return Promise.resolve(magmarRun('mega', 'Fire Blast'));
+  };
+
+  const mode = { mode: 'gbl', league: 'Master League' } as const;
+  await play(phone, { mode, meta: magmarRun('all', 'Fire Punch'), metaOf, count: 1 }, clock, report);
+
+  expect(asked).toEqual([{ league: 'master league mega edition', taps: [] }]);
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual(['prompt']);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    expect.stringMatching(/^own: took shield: Fire Blast would take ~48%/),
+  ]);
+});
+
+// The chooser comes round again with each set, and the same card is the meta already loaded.
+test('loads the meta of a league card once, however many sets tap it', async () => {
+  const { phone, clock, taps } = scripted(league(), 'map');
+  const asked: string[] = [];
+
+  const metaOf = (league: string) => {
+    asked.push(league);
+
+    return Promise.resolve(null);
+  };
+
+  await play(phone, { mode: GBL, metaOf, count: 2 }, clock);
+
+  expect(taps.filter((scene) => scene === 'league')).toHaveLength(2);
+  expect(asked).toEqual(['ultra league']);
+});
+
 /**
  * A second either side of the shield prompt is handed to `keep`, each frame once, with when it was first seen: the
  * fight before it and the prompt and the frame after it, but not the lead's three seconds earlier nor a frame first
