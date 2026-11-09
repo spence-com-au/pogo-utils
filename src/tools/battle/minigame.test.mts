@@ -58,6 +58,22 @@ test.each([
   expect(across).toBeGreaterThan(length);
 });
 
+/**
+ * Palkia's Aqua Tail at night, a bubble popped a moment before swelling paler in the middle of the frame, the biggest
+ * blob on it, and three still to pop around it: at the bottom left, and at the right going up.
+ */
+test('a bubble popped is swiped after those still to pop', () => {
+  const [first] = bubbleSwipes(png('playing-minigame-palkia-popped'), colour('WATER'));
+  const live = [
+    [0, 0.79, 0.26, 0.91],
+    [0.62, 0.37, 0.85, 0.48],
+    [0.77, 0.23, 1, 0.34],
+  ];
+
+  expect(first && live.some((box) => crosses(first, box))).toBe(true);
+  expect(first && crosses(first, [0.45, 0.56, 0.75, 0.68])).toBe(false);
+});
+
 test('the Get Ready! before the bubbles has none to swipe', () => {
   expect(bubbleSwipes(png('playing-minigame-ready'), colour('DARK'))).toEqual([]);
 });

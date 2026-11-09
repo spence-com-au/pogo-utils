@@ -10,7 +10,8 @@
  * of the icon's colour in each channel, the rest white. The sky and grass, matching a type's hue, do not hold the same
  * share across their channels; a Pokémon's body of the same colour is far bigger than a bubble and has no emblem on it.
  *
- * Bubbles come in chains, which overlap into one blob, so each blob is swiped along its length.
+ * Bubbles come in chains, which overlap into one blob, so each blob is swiped along its length. A bubble popped swells
+ * and pales before it goes, so a blob paler than the most saturated on the frame is swiped only after the rest.
  */
 
 import { scale, type Image } from '../../core/png.mts';
@@ -62,6 +63,15 @@ const PALE = 40;
  */
 const AREA = { least: 20, most: 10000 } as const;
 const FILL = 0.25;
+
+/**
+ * How much of the share of the most saturated blob on a frame another has to hold to be swiped among the bubbles, rather
+ * than after them. A bubble popped swells and pales where it was for about a quarter of a second before it goes, the
+ * biggest blob on the frame meanwhile: in a night Training battle against Candela, an Aqua Tail bubble went from about
+ * 700 pixels and a share of 0.95, as the bubbles beside it held, to 2,060 and 0.75. The bubbles still to pop on one
+ * frame can differ by 12%: Mamoswine's chain held 0.78 beside a lone bubble's 0.89.
+ */
+const FADED = 0.85;
 
 /** How much white a blob's box has to hold beside it, the emblem on each bubble and its rim. */
 const EMBLEM = 0.08;
@@ -131,11 +141,11 @@ function agreesLit(pixel: Colour, colour: Colour): boolean {
 }
 
 /**
- * Whether a pixel is `colour` washed towards white, by the same share in each channel that tells under some light.
- * How much share there is, and how pale the channels that do not tell are, are judged under full white: dimmed, the
- * `PALE` guard let Mewtwo's lavender back in.
+ * The share of `colour` a pixel holds washed towards white, the same in each channel that tells under some light, or
+ * 0 where it is not so washed. How much share there is, and how pale the channels that do not tell are, are judged
+ * under full white: dimmed, the `PALE` guard let Mewtwo's lavender back in.
  */
-function washed(pixel: Colour, colour: Colour): boolean {
+function washed(pixel: Colour, colour: Colour): number {
   // Run on every pixel of the field each frame, so written without the arrays a `map` would make, and with the tests
   // that turn most pixels away before `agreesLit`, the dearest.
   let sum = 0;
@@ -153,26 +163,27 @@ function washed(pixel: Colour, colour: Colour): boolean {
   const mean = sum / told;
 
   if (told < 2 || mean < SHARE.least || mean > SHARE.most) {
-    return false;
+    return 0;
   }
 
   for (let i = 0; i < 3; i++) {
     const from = 255 - (colour[i] ?? 0);
 
     if (from <= CHANNEL_FROM_WHITE && 255 - mean * from - (pixel[i] ?? 0) > PALE) {
-      return false;
+      return 0;
     }
   }
 
-  return agreesLit(pixel, colour);
+  return agreesLit(pixel, colour) ? mean : 0;
 }
 
 const white = ([r, g, b]: Colour) =>
   Math.min(r, g, b) >= WHITE.least && Math.max(r, g, b) - Math.min(r, g, b) <= WHITE.spread;
 
 /**
- * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, the biggest blob first:
- * along each blob's length, through its middle, and a little past either end.
+ * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, the biggest blob first of
+ * those as saturated as `FADED` asks, then the biggest of the rest: along each blob's length, through its middle, and a
+ * little past either end.
  */
 export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
@@ -186,7 +197,7 @@ export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
     mask[i] = washed(pixel(i), colour) ? 1 : 0;
   }
 
-  const swipes: { area: number; swipe: [Point, Point] }[] = [];
+  const swipes: { area: number; share: number; swipe: [Point, Point] }[] = [];
   const seen = new Uint8Array(width * height);
 
   for (let start = top * width; start < bottom * width; start++) {
@@ -233,10 +244,15 @@ export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
       continue;
     }
 
-    swipes.push({ area: blob.length, swipe: along(xs, ys, width, height) });
+    // Told again over the blobs kept rather than kept for every pixel of the field, which would take four times the mask.
+    const share = blob.reduce((sum, i) => sum + washed(pixel(i), colour), 0) / blob.length;
+    swipes.push({ area: blob.length, share, swipe: along(xs, ys, width, height) });
   }
 
-  return swipes.sort((a, b) => b.area - a.area).map(({ swipe }) => swipe);
+  const vivid = Math.max(...swipes.map(({ share }) => share));
+  const unfaded = ({ share }: { share: number }) => Number(share >= FADED * vivid);
+
+  return swipes.sort((a, b) => unfaded(b) - unfaded(a) || b.area - a.area).map(({ swipe }) => swipe);
 }
 
 /** A swipe along a blob's longest axis, through its middle and `OVERRUN` past each end. */
