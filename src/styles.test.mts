@@ -171,7 +171,7 @@ test('no other stylesheet selects a class the top bar is styled by', () => {
   const bar = selectedClasses(readFileSync(join(STYLES, 'nav.css'), 'utf8'));
   const taken: string[] = [];
 
-  for (const sheet of sources('.css').filter((sheet) => sheet !== join(STYLES, 'nav.css'))) {
+  for (const sheet of sources('.css').filter((file) => file !== join(STYLES, 'nav.css'))) {
     for (const name of selectedClasses(readFileSync(sheet, 'utf8'))) {
       if (bar.has(name)) {
         taken.push(`${sheet.slice(ROOT.length + 1)} selects .${name}, which the top bar is styled by`);

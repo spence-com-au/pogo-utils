@@ -228,7 +228,7 @@ function parse(all: readonly Token[]): Node {
     }
 
     if (token.kind === 'open') {
-      const inside = conjunction(negated, depth + 1);
+      const bracketed = conjunction(negated, depth + 1);
 
       if (next()?.kind !== 'close') {
         throw new Error('A `(` is never closed');
@@ -236,7 +236,7 @@ function parse(all: readonly Token[]): Node {
 
       at += 1;
 
-      return inside;
+      return bracketed;
     }
 
     if (token.kind !== 'term') {

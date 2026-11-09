@@ -151,6 +151,13 @@ const everything = (spans: readonly Span[]) =>
  * those quotations would trade every shortened name for a search that finds nothing.
  */
 function dexOf(fragment: string): number[] | null {
+  // A catalogue term is no name to the game. `dark` is the Dark type, where read as a name it reaches Darkrai alone: the
+  // pill `dark` would be written `491`, a ruled-out `!dark` letting every other Dark type through, and `+darkrai` would
+  // be cut to `+dark`, the type's text behind a `+`, which nothing says the game reads as a family.
+  if (IDS_BY_TERM.has(fragment)) {
+    return null;
+  }
+
   const contains = SPECIES.filter((species) => species.name.includes(fragment));
   const begins = SPECIES.filter((species) => species.name.startsWith(fragment));
 
@@ -177,12 +184,6 @@ function shortName(token: string, negated: boolean): { text: string; spans: Span
 
   if (span) {
     return { text: token, spans: [span], numbered: false };
-  }
-
-  // `dark` is the Dark type, where read as a name it reaches Darkrai alone and would be written `491` — so a ruled-out
-  // `!dark` would let every other Dark type through.
-  if (IDS_BY_TERM.has(token)) {
-    return { text: token, spans: null, numbered: false };
   }
 
   const family = token.startsWith('+');
@@ -376,8 +377,8 @@ function shortSpans(junction: Group['junction'], parts: readonly Node[]): Node[]
 
     // A dex pill is read through the writer that produced it, so the two cannot drift over which bound an empty box
     // falls back to.
-    const written = pill?.kind === 'range' && pill.id === 'dex' ? leafText(pill) : null;
-    const bounds = written ? spanOf(written) : null;
+    const dexText = pill?.kind === 'range' && pill.id === 'dex' ? leafText(pill) : null;
+    const bounds = dexText ? spanOf(dexText) : null;
 
     return bounds ? [{ part, spans: [bounds] }] : [];
   });
@@ -546,8 +547,8 @@ export function current(state: State) {
   }
 
   const { state: shortened, rewrites, lossy } = optimise(state);
-  const short = compose(shortened);
-  const worth = short.query.length > 0 && short.query.length < plain.query.length;
+  const shorter = compose(shortened);
+  const worth = shorter.query.length > 0 && shorter.query.length < plain.query.length;
 
-  return worth ? { ...short, was: plain.query.length, rewrites, lossy } : unchanged;
+  return worth ? { ...shorter, was: plain.query.length, rewrites, lossy } : unchanged;
 }

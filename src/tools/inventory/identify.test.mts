@@ -136,7 +136,7 @@ test('the candy each form costs is the one its evolution branches state', () => 
 test('the forms only the candy separates are Sinistea’s and Poltchageist’s', () => {
   const groups = new Map<string, Form[]>();
 
-  for (const f of DATA.forms.filter((f) => !f.costume && f.evolveCandy.length > 0)) {
+  for (const f of DATA.forms.filter((form) => !form.costume && form.evolveCandy.length > 0)) {
     const key = JSON.stringify([f.dex, f.types, f.attack, f.defense, f.stamina]);
     groups.set(key, [...(groups.get(key) ?? []), f]);
   }

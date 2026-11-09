@@ -635,14 +635,14 @@ test('reads each card’s moves off the selection screen before using the party,
 // number ruled out, is not put back.
 test('names nobody a card its CP alone found where its panel names nobody', async () => {
   const scenes = masterParty();
-  const unnamed = painted(fixture('menu-pixel8-held-palkia'), [255, 255, 255], [0.085, 0.38, 0.235, 0.45]);
+  const blanked = painted(fixture('menu-pixel8-held-palkia'), [255, 255, 255], [0.085, 0.38, 0.235, 0.45]);
   const { phone, clock } = scripted(
     {
       ...scenes,
       found0: {
         ...scenes.found0,
         frame: fixture('menu-pixel8-search-palkia'),
-        hold: { at: SELECTION.first, shows: unnamed },
+        hold: { at: SELECTION.first, shows: blanked },
       },
     },
     'party',
@@ -1018,6 +1018,27 @@ test('aims the minigame’s swipes at its bubbles', async () => {
     expect(Math.min(from[0], to[0])).toBeLessThan(0.45);
     expect(Math.max(from[0], to[0])).toBeGreaterThan(0.45);
   }
+});
+
+/**
+ * Avalanche played out in a kept run under `98% used Avalanche!`, our bar back, and the white lines of the field found
+ * as its bubbles 0.3s after the last of them, too soon for their gap to end them.
+ */
+test('touches nothing once our bar is back after the minigame, whatever is found as its bubbles', async () => {
+  const { phone, clock, strokes } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fixture('charged-avalanche'), tap: { at: [0.499, 0.889], to: 'minigame' } },
+      minigame: { frame: fixture('playing-minigame-mamoswine'), lasts: { ms: 6000, to: 'played' } },
+      played: { frame: fixture('playing-banner-avalanche'), lasts: { ms: 1500, to: 'won' } },
+    },
+    'fight',
+  );
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock);
+
+  expect(strokes.some(({ scene }) => scene === 'minigame')).toBe(true);
+  expect(strokes.filter(({ scene }) => scene === 'played')).toEqual([]);
 });
 
 /**
@@ -1407,7 +1428,7 @@ function sneaking(
 }
 
 /** What is told of a hold and its throw, and of the opponent's throw meanwhile. */
-const holds = (events: readonly string[]) =>
+const holdsOf = (events: readonly string[]) =>
   events.filter((line) => /^own: (threw|holding|no longer holding)|threw a charged move/.test(line));
 
 const HOLDING =
@@ -1492,7 +1513,7 @@ test.each([
     await play(phone, { mode: ULTRA, data: SNEAK_LOWERS, meta: MAMOSWINE_RUN, count: 1 }, clock, report);
 
     expect(taps.filter((scene) => scene === 'lit' || scene === 'relit' || scene === tapped)).toEqual([tapped]);
-    expect(holds(report.events)).toEqual(said);
+    expect(holdsOf(report.events)).toEqual(said);
   },
 );
 
@@ -1523,7 +1544,7 @@ test.each([
   await play(phone, { mode: ULTRA, data: SNEAK_LOWERS, meta: MAMOSWINE_RUN, count: 1 }, clock, report);
 
   expect(taps).toContain('lit');
-  expect(holds(report.events)).toEqual([said]);
+  expect(holdsOf(report.events)).toEqual([said]);
 });
 
 /**
@@ -1585,7 +1606,7 @@ async function mirror(scenes: Record<string, Scene>, count = 1): Promise<{ taps:
 
   await play(phone, { mode: ULTRA, data: ENTEI_HYDRO_PUMP, icons, count }, clock, report);
 
-  return { taps: taps.filter((scene) => scene in scenes), said: holds(report.events) };
+  return { taps: taps.filter((scene) => scene in scenes), said: holdsOf(report.events) };
 }
 
 /**
@@ -2743,11 +2764,11 @@ test('answers a switch prompt that reads as the fight for a frame as it slides i
 test('answers no switch prompt while all three of our Poké Balls are red', async () => {
   const prompt = fixture('switch-glaceon');
   const ball = { x: Math.round(0.058 * prompt.width), y: Math.round(0.2026 * prompt.width) };
-  const painted = { ...prompt, data: prompt.data.slice() };
+  const allRed = { ...prompt, data: prompt.data.slice() };
 
   for (let y = ball.y - 4; y <= ball.y + 4; y++) {
     for (let x = ball.x - 4; x <= ball.x + 4; x++) {
-      painted.data.set([220, 40, 40, 255], (y * painted.width + x) * 4);
+      allRed.data.set([220, 40, 40, 255], (y * allRed.width + x) * 4);
     }
   }
 
@@ -2755,7 +2776,7 @@ test('answers no switch prompt while all three of our Poké Balls are red', asyn
     {
       ...battleAndBack(),
       fight: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'slate' } },
-      slate: { frame: painted, tap: { at: [0.33, 0.87], to: 'stuck' }, lasts: { ms: 3000, to: 'won' } },
+      slate: { frame: allRed, tap: { at: [0.33, 0.87], to: 'stuck' }, lasts: { ms: 3000, to: 'won' } },
       stuck: { frame: fixture('other-loss') },
     },
     'party',
@@ -3333,8 +3354,8 @@ test('judges a shield by the meta of the league card tapped rather than of `--le
   const report = recorder();
   const asked: { league: string; taps: string[] }[] = [];
 
-  const metaOf = (league: string) => {
-    asked.push({ league, taps: [...taps] });
+  const metaOf = (title: string) => {
+    asked.push({ league: title, taps: [...taps] });
 
     return Promise.resolve(magmarRun('mega', 'Fire Blast'));
   };
@@ -3354,8 +3375,8 @@ test('loads the meta of a league card once, however many sets tap it', async () 
   const { phone, clock, taps } = scripted(league(), 'map');
   const asked: string[] = [];
 
-  const metaOf = (league: string) => {
-    asked.push(league);
+  const metaOf = (title: string) => {
+    asked.push(title);
 
     return Promise.resolve(null);
   };

@@ -22,7 +22,7 @@ async function adb(then: string, ...args: string[]) {
   const env = { ...process.env, PATH: `${bin}:${dirname(process.execPath)}` };
 
   const { code, stdout, stderr } = await promisify(execFile)('node', [SCRIPT, ...args], { env }).then(
-    ({ stdout, stderr }) => ({ code: 0, stdout, stderr }),
+    (output) => ({ code: 0, ...output }),
     (error: { code: number; stdout: string; stderr: string }) => error,
   );
   const said = existsSync(join(bin, 'args'))

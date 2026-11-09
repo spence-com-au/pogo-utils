@@ -441,20 +441,20 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   }
 
   function toggleType(eventType: string) {
-    const hidden = hiddenFor(prefs, view);
+    const stored = hiddenFor(prefs, view);
 
     // The unhidden type's chip shows as on whatever storage says, so a click on it turns it off. Where storage hides
     // the type already, dropping the un-hide is all that takes.
     if (eventType === unhidden) {
       setUnhidden(undefined);
 
-      if (hidden.has(eventType)) {
+      if (stored.has(eventType)) {
         return;
       }
     }
 
-    if (!hidden.delete(eventType)) {
-      hidden.add(eventType);
+    if (!stored.delete(eventType)) {
+      stored.add(eventType);
     }
 
     // Named from the scope rather than the set, so the two cannot disagree about where a click just went — the one way
@@ -899,7 +899,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     const todayX = ((startOfDay(now).getTime() - rangeStartMs) / DAY_MS) * TRACK_DAY_PX;
     const shown = rows.reduce((sum, row) => sum + row.items.length, 0);
 
-    const drawn = rows.flatMap(({ track, items, lanes }) => {
+    const drawnRows = rows.flatMap(({ track, items, lanes }) => {
       const height = Math.max(1, lanes) * (TRACK_BAR_H + TRACK_LANE_GAP) + TRACK_LANE_GAP;
 
       return [
@@ -948,7 +948,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                   </span>
                 ))}
               </div>
-              {drawn}
+              {drawnRows}
               <div class="track-today" style={{ left: `${TRACK_LABEL_PX + todayX}px` }} />
             </div>
           </div>

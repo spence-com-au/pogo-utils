@@ -222,7 +222,7 @@ function running(commands: number[]): boolean {
 }
 
 // Not a number outside a Claude session, which has no lease to take or let go.
-const pid = Number(process.env.CLAUDE_PID);
+const claudePid = Number(process.env.CLAUDE_PID);
 
 switch (process.argv[2]) {
   case 'start': {
@@ -240,7 +240,7 @@ switch (process.argv[2]) {
     const args = process.argv.slice(3);
     const adb = realAdb();
     const at = args.findIndex((arg, i) => !arg.startsWith('-') && !VALUED.has(args[i - 1] ?? ''));
-    const started = stat(pid)?.[STARTED];
+    const started = stat(claudePid)?.[STARTED];
     const every = EVERY.has(args[at] ?? '');
 
     const serial =
@@ -249,7 +249,7 @@ switch (process.argv[2]) {
     if (started && every) {
       const others = open()
         .prepare('SELECT * FROM use WHERE pid != ? ORDER BY since DESC')
-        .all(pid) as unknown as Use[];
+        .all(claudePid) as unknown as Use[];
 
       const held = others.find(live);
 
@@ -265,7 +265,7 @@ switch (process.argv[2]) {
       const mine: Use = {
         serial,
         command: Number(stat('self')?.[SESSION]),
-        pid,
+        pid: claudePid,
         started,
         session: process.env.CLAUDE_CODE_SESSION_ID ?? '',
         cwd: process.cwd(),
@@ -276,13 +276,13 @@ switch (process.argv[2]) {
       const held = exclusively(db, () => {
         const others = db
           .prepare('SELECT * FROM use WHERE serial = ? AND pid != ? ORDER BY since DESC')
-          .all(serial, pid) as unknown as Use[];
+          .all(serial, claudePid) as unknown as Use[];
 
         if (others.some(live)) {
           return others[0];
         }
 
-        db.prepare('DELETE FROM use WHERE serial = ? AND pid != ?').run(serial, pid);
+        db.prepare('DELETE FROM use WHERE serial = ? AND pid != ?').run(serial, claudePid);
         db.prepare(
           `INSERT OR REPLACE INTO use VALUES (:serial, :command, :pid, :started, :session, :cwd, :since, :args)`,
         ).run({ ...mine });
@@ -310,17 +310,17 @@ switch (process.argv[2]) {
     // ones that run agents.
     const agents = new Set(['subagent', 'workflow', 'teammate']);
 
-    if (!pid || tasks?.some((task) => agents.has(task.type) && task.status === 'running')) {
+    if (!claudePid || tasks?.some((task) => agents.has(task.type) && task.status === 'running')) {
       break;
     }
 
     const db = open();
 
     exclusively(db, () => {
-      const uses = db.prepare('SELECT command FROM use WHERE pid = ?').all(pid) as Pick<Use, 'command'>[];
+      const uses = db.prepare('SELECT command FROM use WHERE pid = ?').all(claudePid) as Pick<Use, 'command'>[];
 
       if (!running(uses.map(({ command }) => command))) {
-        db.prepare('DELETE FROM use WHERE pid = ?').run(pid);
+        db.prepare('DELETE FROM use WHERE pid = ?').run(claudePid);
       }
     });
 
@@ -328,8 +328,8 @@ switch (process.argv[2]) {
   }
 
   case 'end':
-    if (pid) {
-      open().prepare('DELETE FROM use WHERE pid = ?').run(pid);
+    if (claudePid) {
+      open().prepare('DELETE FROM use WHERE pid = ?').run(claudePid);
     }
 
     break;

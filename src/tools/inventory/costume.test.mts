@@ -33,11 +33,11 @@ test('the two costumes are the ones asked for', () =>
 test('a costume whose icon cannot be had is left out of the wardrobe', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-  const wardrobe = await wardrobeFor(TWO, (file) =>
+  const built = await wardrobeFor(TWO, (file) =>
     file === HAT?.icon ? Promise.reject(new Error(`${file}: 404 Not Found`)) : fixture(file),
   );
 
-  expect(new Set(wardrobe?.drawn.map((d) => d.costume))).toStrictEqual(new Set(['', 'Gofest 2026 Cap Red']));
+  expect(new Set(built?.drawn.map((d) => d.costume))).toStrictEqual(new Set(['', 'Gofest 2026 Cap Red']));
 });
 
 // Everything is registered onto the plain icon, so without it there is nothing to read a costume against.
@@ -120,17 +120,17 @@ test.each([[['Twin']], [['Twin', 'Twin2']]])(
 );
 
 const pikachu = { form: DATA.forms.find((f) => f.dex === 25 && f.form === null) } as Identity;
-const image = { width: 1, height: 1, data: new Uint8Array(4) };
+const pixel = { width: 1, height: 1, data: new Uint8Array(4) };
 
 test('a Pikachu with no wardrobe is unread, and says why', async () =>
-  expect(await costumeIn(image, null, pikachu, () => Promise.resolve(null), null)).toStrictEqual({
+  expect(await costumeIn(pixel, null, pikachu, () => Promise.resolve(null), null)).toStrictEqual({
     costume: null,
     note: "Pikachu's own icon could not be had, so its costume was not read",
   }));
 
 test('a Pikachu the search did not find wears none, without a wardrobe being fetched', async () => {
-  const wardrobe = vi.fn(() => Promise.resolve(null));
+  const fetchWardrobe = vi.fn(() => Promise.resolve(null));
 
-  expect(await costumeIn(image, null, pikachu, wardrobe, false)).toStrictEqual({ costume: [], note: null });
-  expect(wardrobe).not.toHaveBeenCalled();
+  expect(await costumeIn(pixel, null, pikachu, fetchWardrobe, false)).toStrictEqual({ costume: [], note: null });
+  expect(fetchWardrobe).not.toHaveBeenCalled();
 });

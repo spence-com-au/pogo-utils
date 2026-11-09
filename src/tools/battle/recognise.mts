@@ -182,14 +182,14 @@ const TITLE_WHITE = 0.1;
 
 /** The share of a box that is white, as the switch prompt's title is on its slate. */
 function whiteIn(image: Image, box: AnchoredBox, anchor = BOTTOM): number {
-  let [white, n] = [0, 0];
+  let [whites, n] = [0, 0];
 
   for (const colour of pixels(image, box, anchor)) {
-    white += luminance(...colour) > 200 ? 1 : 0;
+    whites += luminance(...colour) > 200 ? 1 : 0;
     n++;
   }
 
-  return white / Math.max(n, 1);
+  return whites / Math.max(n, 1);
 }
 
 /**
@@ -428,8 +428,8 @@ const BALLS = {
 } as const;
 
 const ball = (x: number): AnchoredBox => [x - 0.006, 0.1963, x + 0.006, 0.209];
-const red = ([r, g, b]: Colour) => r > 150 && r - g > 60 && r - b > 60;
-const grey = ([r, g, b]: Colour) => r < 130 && Math.abs(r - g) < 45 && Math.abs(g - b) < 20;
+const redBall = ([r, g, b]: Colour) => r > 150 && r - g > 60 && r - b > 60;
+const greyBall = ([r, g, b]: Colour) => r < 130 && Math.abs(r - g) < 45 && Math.abs(g - b) < 20;
 
 /**
  * How many Pokémon each side has left able to battle, or null for a side where a ball reads as neither colour, as
@@ -439,7 +439,7 @@ export function pokemonLeft(image: Image): { own: number | null; opponent: numbe
   const left = (xs: readonly number[]) => {
     const colours = xs.map((x) => mean(image, ball(x), TOP));
 
-    return colours.every((colour) => red(colour) || grey(colour)) ? colours.filter(red).length : null;
+    return colours.every((colour) => redBall(colour) || greyBall(colour)) ? colours.filter(redBall).length : null;
   };
 
   return { own: left(BALLS.own), opponent: left(BALLS.opponent) };

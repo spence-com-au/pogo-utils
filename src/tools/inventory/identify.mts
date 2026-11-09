@@ -176,9 +176,9 @@ export function identify(
   const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
 
   const shows = (f: Form, level: number) => {
-    const multiplier = multiplierOf(data, level);
+    const cpm = multiplierOf(data, level);
 
-    return iv !== null && multiplier !== null && printed.includes(cpOf(f, iv, multiplier));
+    return iv !== null && cpm !== null && printed.includes(cpOf(f, iv, cpm));
   };
 
   if (printed.length > 0 && iv !== null && detail.hp !== null) {

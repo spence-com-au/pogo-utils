@@ -2567,10 +2567,6 @@ test(
 /**
  * That no committed capture reads as having a dialog over it, the corpus being every screen there is to measure
  * `dialogOpen`'s scrim against: a detail screen it tripped on would be closed with Back and its reading thrown away.
- *
- * Under tesseract.js, `overworld.png` is the exception: it reads a `yes` into the map's scenery, at 697,242, which
- * `dialogOpen` takes for a dialog's button. It is pinned rather than passed over, since `toStorage` asks before the
- * menu tap it makes from the map, and on a map that read so would press Back instead (#935).
  */
 test(
   'no capture reads as having a dialog open over it',
@@ -2585,7 +2581,7 @@ test(
       }
     }
 
-    expect(open).toStrictEqual(ON_WASM ? ['overworld.png'] : []);
+    expect(open).toStrictEqual([]);
   },
   WHOLE_CORPUS_TIMEOUT,
 );
@@ -2767,13 +2763,13 @@ test(
 test(
   'the moves read off every committed capture are the ones on it',
   async () => {
-    const read: Record<string, Moves> = {};
+    const moves: Record<string, Moves> = {};
 
     for (const file of COMMITTED) {
-      read[file] = (await readingOf(file)).moves;
+      moves[file] = (await readingOf(file)).moves;
     }
 
-    expect(read).toStrictEqual({
+    expect(moves).toStrictEqual({
       'applin.png': { fast: 'Astonish', charged: ['Struggle'] },
       'articuno-galar.png': { fast: 'Confusion', charged: ['Fly'] },
       'articuno-kanto.png': { fast: 'Powder Snow', charged: ['Ice Beam'] },
@@ -2849,7 +2845,7 @@ test(
     for (const file of STITCHES) {
       const { lines, image, identity } = await readingOf(file);
       const shown = await parseMoves(lines, DATA, identity.form, image);
-      const whole = read[file];
+      const whole = moves[file];
 
       assert.ok(whole, `${file} read no moves at all`);
       expect(whole.charged.length, `${file} lost a charged move the screen in it shows`).toBeGreaterThanOrEqual(

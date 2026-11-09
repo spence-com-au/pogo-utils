@@ -69,9 +69,12 @@ export interface Detail {
 
 export type Max = 'dynamax' | 'gigantamax';
 
+/** How far down a screen `readLines` reads it a second time inverted, as a fraction of its height. */
+export const SKY = 1 / 5;
+
 /** Everything OCR read off an image: the whole of it, then the top fifth again inverted, where the CP is white. */
 export async function readLines(image: Image): Promise<Line[]> {
-  const top = Math.round(image.height / 5);
+  const top = Math.round(image.height * SKY);
   const [all, sky] = await Promise.all([ocr(image), ocr(crop(image, 0, 0, image.width, top, true))]);
 
   return [...all, ...sky].sort((a, b) => a.top - b.top || a.left - b.left);
@@ -120,9 +123,9 @@ export function cpOn(text: string, longest: number): string | null {
     return null;
   }
 
-  const digits = (cp: string) => cp.replaceAll('/', '').length;
-  const joined = read.replace(' ', '');
-  const cp = digits(joined) <= longest ? joined : (read.split(' ')[0] ?? '');
+  const digits = (figure: string) => figure.replaceAll('/', '').length;
+  const unspaced = read.replace(' ', '');
+  const cp = digits(unspaced) <= longest ? unspaced : (read.split(' ')[0] ?? '');
 
   return digits(cp) <= longest ? cp : null;
 }
@@ -852,13 +855,13 @@ export function figureIn(image: Image, pill: Pill, first = false): { left: numbe
   let open = false;
 
   for (const glyph of glyphs) {
-    const run = runs.at(-1);
+    const last = runs.at(-1);
 
     if (!narrow(glyph)) {
       open = false;
-    } else if (open && run && glyph.left - run.right < pill.height * FIGURE_GAP) {
-      run.right = glyph.right;
-      run.glyphs++;
+    } else if (open && last && glyph.left - last.right < pill.height * FIGURE_GAP) {
+      last.right = glyph.right;
+      last.glyphs++;
     } else {
       runs.push({ ...glyph, glyphs: 1 });
       open = true;

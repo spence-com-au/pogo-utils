@@ -590,13 +590,13 @@ export async function run(
       // The switch prompt leaves the Poké Balls in view, ours already showing the faint it follows.
       if (state !== 'shield') {
         const balls = reads.pokemonLeft(frame);
-        const counted = {
+        const ballsLeft = {
           own: fewer(battle.left.own, balls.own),
           opponent: fewer(battle.left.opponent, balls.opponent),
         };
 
         for (const side of ['own', 'opponent'] as const) {
-          if ((counted[side] ?? Infinity) < (battle.left[side] ?? -Infinity)) {
+          if ((ballsLeft[side] ?? Infinity) < (battle.left[side] ?? -Infinity)) {
             around(`faint-${side}`);
           }
         }
@@ -605,7 +605,7 @@ export async function run(
         // it, never plays: its button lights again once the newcomer is in. Live, Dragonite tapped Outrage at 867.0s,
         // Mewtwo's Poké Ball went grey at 867.5s and Outrage lit again as Kyogre came in at 873.3s, the pick taken for
         // its minigame and told as thrown at 870.8s.
-        if ((counted.opponent ?? Infinity) < (battle.left.opponent ?? -Infinity)) {
+        if ((ballsLeft.opponent ?? Infinity) < (battle.left.opponent ?? -Infinity)) {
           battle.theirFaintAt = clock.now();
 
           if (battle.pending) {
@@ -614,7 +614,7 @@ export async function run(
           }
         }
 
-        battle.left = counted;
+        battle.left = ballsLeft;
       }
 
       // The battle's read, once it is back, merged before anything this frame shows can clear `seen`: it was read off an
@@ -652,7 +652,7 @@ export async function run(
         const fallen =
           at - battle.faintAt < STALE_MS &&
           read.own !== null &&
-          [...battle.fainted].some((slot) => party[slot]?.species === read.own);
+          [...battle.fainted].some((i) => party[i]?.species === read.own);
 
         battle.seen = merge(
           battle.seen,
@@ -1211,13 +1211,13 @@ export async function run(
         const next = chosen?.slot;
         const measured =
           next === undefined ? undefined : SWITCH_CARDS[[...party.keys()].filter((i) => !out.has(i)).indexOf(next)];
-        const card = measured && place(measured, BOTTOM, frame);
+        const box = measured && place(measured, BOTTOM, frame);
 
         battle.prompt = {
           fainted: gone,
           next,
           why: chosen?.why,
-          card,
+          card: box,
           answered: false,
           told: battle.caught?.told ?? false,
         };
@@ -1244,6 +1244,7 @@ export async function run(
         ...(card && { card }),
         ...(battle.bench.chosen && !flying && { bench: battle.bench.chosen.at }),
         ...(bubbles && { bubbles }),
+        bar: battle.player.minigame && reads.readHealth(frame).own !== null,
       });
 
       // With none of ours left to send in, by the Poké Balls or the faints counted, what reads as the switch prompt is

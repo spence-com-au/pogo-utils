@@ -489,16 +489,16 @@ export async function readMenu(
       return { screen: 'party', tap: party };
     }
 
-    const lines = await read(image);
-    const welcome = welcomeButton(image, lines);
+    const partyLines = await read(image);
+    const welcome = welcomeButton(image, partyLines);
 
     if (welcome) {
       return { screen: 'welcome', tap: welcome };
     }
 
-    const title = partyTitle(lines, image);
+    const title = partyTitle(partyLines, image);
 
-    return { screen: 'party', tap: party, cap: capOf(lines), cps: await readCps(image), ...(title && { title }) };
+    return { screen: 'party', tap: party, cap: capOf(partyLines), cps: await readCps(image), ...(title && { title }) };
   }
 
   if (pokeBall(image)) {

@@ -118,7 +118,7 @@ test('a form that arrives as its number is named by its template, and is still a
     zubat('V0041_POKEMON_ZUBAT_HALLOWEEN_2026_01', 3362),
   ]);
 
-  expect(forms.map(({ species, form, costume }) => ({ species, form, costume }))).toStrictEqual([
+  expect(forms.map(({ species: name, form, costume }) => ({ species: name, form, costume }))).toStrictEqual([
     { species: 'Zubat', form: null, costume: false },
     { species: 'Zubat', form: 'Halloween 2026 01', costume: true },
   ]);

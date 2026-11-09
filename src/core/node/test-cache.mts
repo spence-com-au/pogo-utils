@@ -6,8 +6,8 @@ import { join } from 'node:path';
 
 /**
  * A working directory holding the cache `pnpm inventory` and `pnpm battle` would otherwise download, so a run of either
- * reaches no network. Their `CACHE` is relative, which is why this works at all: the directory a subprocess runs in
- * decides where its cache is, so no flag or stub is needed to move it.
+ * reaches no network. Their `CACHE` is resolved against the working directory, which is why this works at all: the
+ * directory a subprocess runs in decides where its cache is, so no flag or stub is needed to move it.
  *
  * All three files are load-bearing, measured rather than reasoned about — seeded with the game master alone, a `pnpm
  * inventory parse` run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP

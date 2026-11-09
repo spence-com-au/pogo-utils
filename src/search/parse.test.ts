@@ -150,9 +150,9 @@ test('a span arrives as the range pill it is', () => {
    */
   const pills = Object.fromEntries(
     ['cp3000-', 'cp-1500', '-151', 'cp3000-0', 'cp-0'].map((text) => {
-      const tree = treeFor(text);
+      const parsed = treeFor(text);
 
-      return [text, isGroup(tree) ? tree.parts[0] : null];
+      return [text, isGroup(parsed) ? parsed.parts[0] : null];
     }),
   );
 

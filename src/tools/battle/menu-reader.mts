@@ -180,11 +180,11 @@ export class MenuReader {
         (async () => {
           const screenshot = await phone.screenshot();
 
-          const menu = await readMenu(screenshot, { ...this.#mode, result });
+          const seen = await readMenu(screenshot, { ...this.#mode, result });
 
           // Any menu after a battle ends it, not only its result: GO Battle League has gone from a faint straight to its
           // card, with no verdict to read.
-          const ended = result && menu.screen !== 'unknown';
+          const ended = result && seen.screen !== 'unknown';
 
           // The verdict fades in over a ✓ already teal, which is all a result after a battle is known by: the demo
           // battle's first frame of its result has `YOU WIN!` half drawn, too faint to read, and a run that screenshot
@@ -194,9 +194,9 @@ export class MenuReader {
 
           return {
             screenshot,
-            menu,
+            menu: seen,
             ended,
-            outcome: ended && menu.screen === 'result' ? await verdict() : undefined,
+            outcome: ended && seen.screen === 'result' ? await verdict() : undefined,
           };
         })(),
       );
