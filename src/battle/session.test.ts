@@ -18,7 +18,7 @@ vi.mock('./load.js', () => ({ loadBattle: vi.fn() }));
 
 const STORE = {} as PhoneStore;
 const PLAY = { mode: { mode: 'gbl', league: 'great' } as const, count: 3 };
-const LOADED = { data: {}, icons: [], typeIcons: {}, meta: null };
+const LOADED = { data: {}, icons: [], typeIcons: {}, meta: null, pvpoke: new Map() };
 
 /** A run to be ended by hand, with `stop` counted. */
 function aRun() {

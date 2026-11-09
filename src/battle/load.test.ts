@@ -11,7 +11,7 @@ import { typeIcon } from '../pokedex/icons.js';
 import { encodeSilhouettes } from '../tools/battle/assets.mts';
 import { GRID } from '../tools/battle/party.mts';
 import { encodePng } from '../tools/inventory/png.mts';
-import { loadBattle } from './load.js';
+import { loadBattle, metaOf } from './load.js';
 
 const SILHOUETTE = new Uint8Array(GRID * GRID).map((_, at) => at % 3 && 1);
 const WATER = { width: 2, height: 1, data: new Uint8Array([0, 0, 255, 255, 255, 255, 255, 255]) };
@@ -33,12 +33,19 @@ const SERVED: Record<string, string | Uint8Array<ArrayBuffer>> = {
     moves: [],
   }),
   'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/fantasy/overall/rankings-1500.json': '[]',
+  'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-1500.json': '[]',
 };
 
+/** Every address asked of, in order. */
+let fetched: string[];
+
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) =>
-    url in SERVED ? new Response(SERVED[url]) : new Response(null, { status: 404 }),
-  );
+  fetched = [];
+  vi.stubGlobal('fetch', async (url: string) => {
+    fetched.push(url);
+
+    return url in SERVED ? new Response(SERVED[url]) : new Response(null, { status: 404 });
+  });
 });
 
 afterEach(() => {
@@ -56,4 +63,21 @@ test('a GO Battle League run loads the game master, the silhouettes, the type ic
 
 test('Training loads no meta, allowing for every move', async () => {
   expect((await loadBattle(null)).meta).toBe(null);
+});
+
+test('a league card tapped fetches nothing the page loaded for `--league`, and only another cup’s rankings', async () => {
+  const { data, pvpoke } = await loadBattle('fantasy');
+  const warned: string[] = [];
+  const tapped = metaOf(data, structuredClone(pvpoke));
+  fetched = [];
+
+  const fantasy = await tapped('Fantasy Cup: Great League Edition', (line) => warned.push(line));
+  const great = await tapped('Great League', (line) => warned.push(line));
+
+  expect(fantasy && { cup: fantasy.cup, cap: fantasy.cap }).toStrictEqual({ cup: 'fantasy', cap: 1500 });
+  expect(great && { cup: great.cup, cap: great.cap }).toStrictEqual({ cup: 'all', cap: 1500 });
+  expect(fetched).toStrictEqual([
+    'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/rankings/all/overall/rankings-1500.json',
+  ]);
+  expect(warned).toStrictEqual([]);
 });
