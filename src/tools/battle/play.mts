@@ -435,8 +435,9 @@ export class Player {
       // Judged whatever is found on the frame: the move playing out can be found as bubbles with no gap of `OVER_MS`.
       this.#over ||= bar && this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS;
 
-      // A frame read again, the loop having come round before the next, is the same look rather than a second one.
-      if (bubbles && bubbles !== this.#look?.bubbles) {
+      // A frame read again, the loop having come round before the next, is the same look rather than a second one. Told
+      // by what is found on it rather than by the list, which the caller can make afresh for each turn.
+      if (bubbles && JSON.stringify(bubbles) !== JSON.stringify(this.#look?.bubbles)) {
         this.#before = this.#look;
         this.#look = { at: now, bubbles };
       }

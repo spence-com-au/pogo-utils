@@ -193,6 +193,11 @@ test('runs a swipe on ahead of a bubble seen moving, to where it is as the swipe
 
   expect(action.kind === 'swipe' && crosses([action.from, action.to], lands)).toBe(true);
   expect(seen?.[0] && crosses(seen[0], lands)).toBe(false);
+
+  // The same frame read again, the loop come round before the next, its swipes listed afresh: still one look.
+  const again = player.next('playing', 1119, { bubbles: seen?.map(([from, to]) => [from, to] as const) });
+
+  expect(again.kind === 'swipe' && crosses([again.from, again.to], lands)).toBe(true);
 });
 
 test.each([
