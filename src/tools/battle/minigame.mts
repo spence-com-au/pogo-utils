@@ -258,11 +258,15 @@ function along(xs: readonly number[], ys: readonly number[], width: number, heig
   const [ux, uy] = [Math.cos(angle), Math.sin(angle)];
   const offsets = xs.map((x, i) => (x - mx) * ux + ((ys[i] ?? 0) - my) * uy);
   const overrun = OVERRUN * width;
-  const clamp = (v: number, least: number, most: number) => Math.min(Math.max(v, least), most);
-  const end = (t: number): Point => [
-    clamp((mx + ux * t) / width, REACH.left, REACH.right),
-    clamp((my + uy * t) / height, REACH.top, REACH.bottom),
-  ];
+  const end = (t: number) => reachable([(mx + ux * t) / width, (my + uy * t) / height]);
 
   return [end(Math.min(...offsets) - overrun), end(Math.max(...offsets) + overrun)];
 }
+
+const clamp = (v: number, least: number, most: number) => Math.min(Math.max(v, least), most);
+
+/** `point` brought onto the part of the screen a swipe may reach, as `REACH` says. */
+export const reachable = ([x, y]: Point): Point => [
+  clamp(x, REACH.left, REACH.right),
+  clamp(y, REACH.top, REACH.bottom),
+];

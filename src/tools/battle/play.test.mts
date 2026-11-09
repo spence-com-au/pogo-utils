@@ -1,8 +1,10 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
+import { decodePng } from '../../core/png.mts';
 import { BOTTOM, place, type Point } from './layout.mts';
-import { BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
+import { bubbleSwipes, typeColour } from './minigame.mts';
+import { ahead, BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
 import { decodeFrames } from './node/stream.mts';
@@ -32,6 +34,16 @@ const swipes = (actions: readonly Action[]) => actions.flatMap((action) => (acti
 const onBench = ([x, y]: Point) => x > 0.8 && y > 0.53 && y < 0.7;
 const onButton = ([x, y]: Point) =>
   [LEFT, CENTRE, RIGHT].some(([bx, by]) => Math.hypot(x - bx, (y - by) * (760 / 360)) < 0.12);
+
+const png = (path: string) => decodePng(readFileSync(new URL(`fixtures/${path}.png`, import.meta.url)));
+
+/** Whether a swipe passes through a box, sampled along its length. */
+const crosses = ([from, to]: readonly [Point, Point], [left, top, right, bottom]: readonly number[]) =>
+  Array.from({ length: 21 }, (_, i) => i / 20).some((t) => {
+    const [x, y] = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+
+    return x >= (left ?? 0) && x <= (right ?? 1) && y >= (top ?? 0) && y <= (bottom ?? 1);
+  });
 
 test('swipes through the fight, clear of the bench and the charged-move buttons', () => {
   const actions = swipes(play(Array(10).fill('battle')));
@@ -158,6 +170,85 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
   const over = Array.from({ length: 60 }, (_, i) => player.next('playing', 3000 + i * 33, { bubbles: [] }));
 
   expect(over.every((action) => action.kind === 'wait')).toBe(true);
+});
+
+/**
+ * Palkia's Aqua Tail against Candela, at night on a Pixel 8 Pro: the bubble found on the frame of 213.228s, alone, flew
+ * on from 0.49 across on the frame of 213.129s towards the bottom left, and the frame of 213.397s, as the swipe aimed off
+ * it lands, has it centred at 0.22 across and 0.80 down, 37 pixels wide at the finder's 180. Swiped where it was seen,
+ * the swipe passes behind it.
+ */
+test('runs a swipe on ahead of a bubble seen moving, to where it is as the swipe lands', () => {
+  const screen = { width: 360, height: 802 };
+  const player = new Player(screen);
+  const water = typeColour(png('types/POKEMON_TYPE_WATER'));
+  const [before, seen] = ['playing-minigame-palkia-before', 'playing-minigame-palkia'].map((name) =>
+    bubbleSwipes(png(name), water),
+  );
+  const lands: [number, number, number, number] = [0.22 - 0.1, 0.8 - 0.046, 0.22 + 0.1, 0.8 + 0.046];
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 1000, { minigame: true, bubbles: before });
+  const action = player.next('playing', 1099, { bubbles: seen });
+
+  expect(action.kind === 'swipe' && crosses([action.from, action.to], lands)).toBe(true);
+  expect(seen?.[0] && crosses(seen[0], lands)).toBe(false);
+});
+
+test.each([
+  [
+    'standing',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    100,
+  ],
+  [
+    'one of a chain',
+    [
+      [0.1, 0.6],
+      [0.6, 0.6],
+    ],
+    [
+      [0.2, 0.6],
+      [0.7, 0.6],
+    ],
+    100,
+  ],
+  [
+    'swelling where one was, popped',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.35, 0.6],
+      [0.6, 0.6],
+    ],
+    100,
+  ],
+  [
+    'seen moving only too long before',
+    [
+      [0.4, 0.6],
+      [0.5, 0.6],
+    ],
+    [
+      [0.5, 0.6],
+      [0.6, 0.6],
+    ],
+    400,
+  ],
+] as const)('swipes a bubble %s where it was found', (_, was, swipe, apart) => {
+  const screen = { width: 360, height: 760 };
+  const look = { at: 1000 + apart, bubbles: [swipe] };
+
+  expect(ahead(swipe, look, { at: 1000, bubbles: [was] }, look.at, 80, screen)).toBe(swipe);
 });
 
 /**

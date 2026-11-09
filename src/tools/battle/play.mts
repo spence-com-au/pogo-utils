@@ -14,6 +14,7 @@
 
 import { around, BOTTOM, place, type Area, type Point, type Size } from './layout.mts';
 import { FINGER } from './menus.mts';
+import { reachable } from './minigame.mts';
 import { type State } from './recognise.mts';
 
 export type Action =
@@ -177,6 +178,92 @@ const BUBBLES_MS = 2_000;
 const SWIPE_MS = 80;
 
 /**
+ * How long a swipe aimed off a frame takes to land, in milliseconds, from when the frame was drawn: in a kept Training
+ * battle against Candela, the first Aqua Tail bubble swiped was aimed at off the frame of 213.129s, and the game drew
+ * the swipe's trail from 213.251s.
+ */
+const LANDS_MS = 120;
+
+/**
+ * How fast a bubble can move, in widths a second, and how slowly it can and still be taken to be standing: the fastest
+ * of that battle's three minigames crossed 1.6 widths a second, Aqua Tail's from the right edge to the bottom left, and
+ * Close Combat's grew in place, its middle drifting 0.16 widths a second.
+ */
+const FASTEST = 2;
+const MOVING = 0.4;
+
+/** How far apart two frames can be, in milliseconds, for a bubble's move between them to say how it moves now. */
+const STALE_MS = 250;
+
+/**
+ * How long a swipe can be, in widths, and be through one bubble rather than a chain of them, which is swiped along its
+ * length as found: a Water bubble's ran 0.27 to 0.33, its 0.21 to 0.27 and `OVERRUN` either side.
+ */
+const LONE = 0.4;
+
+/**
+ * How much longer one swipe can be than the other for both to be through one bubble a frame apart. A bubble moving
+ * keeps its size, where one popped swells where it was and Dragon's grow as they come in, and either, taken for one
+ * moving, was swiped away from where it stood: Spacial Rend's swipes so led crossed a bubble 27 times in 41 rather than
+ * the 30 they did as found.
+ */
+const SAME = 1.33;
+
+/** The swipes through the bubbles found on a frame, and when the frame was first looked at, in milliseconds. */
+export interface Look {
+  at: number;
+  bubbles: readonly (readonly [Point, Point])[];
+}
+
+/**
+ * `swipe`, through a bubble the frame `look` found, run on to where the bubble will be by the time the swipe ends where
+ * the frame `before` shows it moving alone, rather than in a chain: from where it was seen, the way it moves, to
+ * `LANDS_MS` and the swipe's `ms` on from `at`, and half the swipe beyond. As found where it is not seen moving.
+ *
+ * A move's bubbles fly across the screen: Water's in from the right edge and out at the bottom left, at up to 1.6
+ * widths a second, and Dragon's in from the left at 0.3 to 1.5. Over the 0.12s a swipe takes to land a Water bubble
+ * moves 0.15 widths, past the 0.11 of its radius, so a swipe through where it was passes behind it: of the 40 bubbles
+ * tracked through two Aqua Tails, 12 left at an edge unpopped, and those two minigames reached only `GREAT!`. Begun
+ * where the bubble was seen, a swipe still catches one slower than its move between frames made it look.
+ */
+export function ahead(
+  swipe: readonly [Point, Point],
+  look: Look,
+  before: Look | undefined,
+  at: number,
+  ms: number,
+  { width, height }: Size,
+): readonly [Point, Point] {
+  const seconds = before ? (look.at - before.at) / 1000 : 0;
+
+  if (!before || seconds <= 0 || seconds * 1000 > STALE_MS) {
+    return swipe;
+  }
+
+  // In widths across and down, which a bubble moves the same distance in either way.
+  const tall = height / width;
+  const middle = ([from, to]: readonly [Point, Point]) =>
+    [(from[0] + to[0]) / 2, ((from[1] + to[1]) / 2) * tall] as const;
+  const length = ([from, to]: readonly [Point, Point]) => Math.hypot(to[0] - from[0], (to[1] - from[1]) * tall);
+  const [x, y] = middle(swipe);
+  const [was] = before.bubbles
+    .filter((other) => Math.abs(Math.log(length(other) / length(swipe))) <= Math.log(SAME))
+    .map((other) => middle(other))
+    .map(([bx, by]) => ({ dx: x - bx, dy: y - by, apart: Math.hypot(x - bx, y - by) }))
+    .filter(({ apart }) => apart <= FASTEST * seconds)
+    .sort((a, b) => a.apart - b.apart);
+  const speed = was ? was.apart / seconds : 0;
+
+  if (!was || speed < MOVING || length(swipe) > LONE) {
+    return swipe;
+  }
+
+  const on = (speed * (at - look.at + LANDS_MS + ms)) / 1000 + length(swipe) / 2;
+
+  return [reachable([x, y / tall]), reachable([x + (was.dx / was.apart) * on, (y + (was.dy / was.apart) * on) / tall])];
+}
+
+/**
  * Consecutive frames a state has to hold before a tap answers it. A prompt sliding in or out matches for a frame or two
  * on its own — two such frames turned up in 6,364 of a recorded battle — and a charged move is answered sooner because
  * it does not animate in.
@@ -212,6 +299,7 @@ const FIGHT_MS = 300;
 
 export class Player {
   readonly #taps: { shield: Point; switch: Point };
+  readonly #screen: Size;
   #state: State | undefined;
   #streak = 0;
   #minigame = false;
@@ -239,6 +327,10 @@ export class Player {
    */
   #over = false;
 
+  /** The last frame's bubbles and the one's before, which how each bubble is moving is told from, as `ahead` says. */
+  #look: Look | undefined;
+  #before: Look | undefined;
+
   /** Since when the frames have read as the fight, unbroken, which `FIGHT_MS` of ends a minigame. */
   #fighting: number | undefined;
 
@@ -248,6 +340,7 @@ export class Player {
   /** `screen` is the frames' size, which the prompts' taps are placed on. */
   constructor(screen: Size) {
     this.#taps = { shield: place(TAPS.shield, BOTTOM, screen), switch: place(TAPS.switch, BOTTOM, screen) };
+    this.#screen = screen;
   }
 
   /** Whether the charged-move minigame is being swiped at, which nothing else should hold up. */
@@ -337,15 +430,23 @@ export class Player {
       // Judged whatever is found on the frame: the move playing out can be found as bubbles with no gap of `OVER_MS`.
       this.#over ||= bar && this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS;
 
+      // A frame read again, the loop having come round before the next, is the same look rather than a second one.
+      if (bubbles && bubbles !== this.#look?.bubbles) {
+        this.#before = this.#look;
+        this.#look = { at: now, bubbles };
+      }
+
       const [through] = this.#minigame && !this.#over ? (bubbles ?? []) : [];
 
-      if (through) {
+      if (through && this.#look) {
         if (this.#playing) {
           this.#found =
             this.#found && now - this.#found.to < OVER_MS ? { ...this.#found, to: now } : { from: now, to: now };
         }
 
-        return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
+        const [from, to] = ahead(through, this.#look, this.#before, now, SWIPE_MS, this.#screen);
+
+        return { kind: 'swipe', from, to, ms: SWIPE_MS };
       }
 
       // Judged on a frame with none found, so that a loop held up for a moment does not end the bubbles on its own.
