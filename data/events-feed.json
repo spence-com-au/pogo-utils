@@ -105,8 +105,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/giratina-altered-forme-in-5-star-raid-battles-november-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/giratinaaltered.jpg",
-    "start": "2026-11-04T06:00:00.000",
-    "end": "2026-11-08T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
@@ -204,8 +204,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/mega-sableye-in-mega-raids-october-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/mega-default.jpg",
-    "start": "2026-10-28T06:00:00.000",
-    "end": "2026-11-08T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -435,8 +435,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/shadow-tornadus-incarnate-forme-in-shadow-raids-november-4-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/tornadus.jpg",
-    "start": "2026-11-04T06:00:00.000",
-    "end": "2026-11-08T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
@@ -449,5 +449,16 @@
     "start": "2026-11-24T10:00:00.000",
     "end": "2026-11-30T20:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
+  },
+  {
+    "eventID": "zacian-crowned-sword-zamazenta-crowned-shield-in-5-star-raid-battles-november-2026",
+    "name": "Zacian (Crowned Sword) and Zamazenta (Crowned Shield) in 5-star Raid Battles",
+    "eventType": "raid-battles",
+    "heading": "Raid Battles",
+    "link": "https://leekduck.com/events/zacian-crowned-sword-zamazenta-crowned-shield-in-5-star-raid-battles-november-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/zacian-and-zamazenta-2.jpg",
+    "start": "2026-11-09T10:00:00.000",
+    "end": "2026-11-13T20:00:00.000",
+    "added": "2026-11-09T22:39:30.355Z"
   }
 ]
