@@ -32,6 +32,19 @@ export interface Sighting {
   moves: Map<number, string>;
 }
 
+/** A read run beside the battle: `done` once it has finished, or failed, the failure thrown where the read is used. */
+export interface Reading<T> {
+  done?: T | { error: unknown };
+}
+
+/** Sets `reading`'s `done` once `read` has finished or failed. */
+export function settle<T>(reading: Reading<T>, read: Promise<T>): void {
+  void read.then(
+    (done) => (reading.done = done),
+    (error: unknown) => (reading.done = { error }),
+  );
+}
+
 /** A sighting of nothing yet, which a battle starts from. */
 export const unseen = (): Sighting => ({
   own: null,
