@@ -189,9 +189,15 @@ export function movesetsOf(data: GameData, rankings: readonly Ranking[], pvpoke:
  * The meta of the league named, out of PvPoke's game master and the league's rankings, fetched by `download`: cached
  * for a week as the game master is by `pnpm battle`, and fetched afresh by a page. Null where no ranking fits the
  * league, or where PvPoke cannot be reached and nothing is cached, either of which leaves every move allowed for
- * rather than stopping the run.
+ * rather than stopping the run, and is said to `warn`: a run loading the meta of the league it taps says it in its own
+ * report, which a line on stderr would write over.
  */
-export async function loadMeta(download: Download, data: GameData, league: string): Promise<Meta | null> {
+export async function loadMeta(
+  download: Download,
+  data: GameData,
+  league: string,
+  warn: (line: string) => void,
+): Promise<Meta | null> {
   const json = (bytes: Uint8Array): unknown => JSON.parse(new TextDecoder().decode(bytes));
 
   try {
@@ -199,7 +205,7 @@ export async function loadMeta(download: Download, data: GameData, league: strin
     const format = formatOf(league, pvpoke.formats);
 
     if (!format) {
-      console.error(`  PvPoke ranks nothing called ${league}; every move its species can hold is allowed for`);
+      warn(`  PvPoke ranks nothing called ${league}; every move its species can hold is allowed for`);
 
       return null;
     }
@@ -220,7 +226,7 @@ export async function loadMeta(download: Download, data: GameData, league: strin
 
     return { cup, cap: cp >= NO_CAP ? null : cp, movesets: movesetsOf(data, rankings, pvpoke) };
   } catch (error) {
-    console.error(`  ${said(error)}; every move is allowed for`);
+    warn(`  ${said(error)}; every move is allowed for`);
 
     return null;
   }
