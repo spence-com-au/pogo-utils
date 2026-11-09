@@ -87,6 +87,15 @@ test.each([
   expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
 });
 
+test('foliage between the letters, further above our bar, is not read as it', () => {
+  // Red foliage between the letters of "NOT VERY EFFECTIVE..." near their top, 10 rows above our bar at 63%, which
+  // read as it at 3%; the opponent's bar is not drawn while it sends in Garchomp.
+  const health = read('charged-pixel8-xerneas-foliage-high');
+
+  expect(within(health.own, 0.63), `ours read ${health.own}`).toBe(true);
+  expect(health.opponent).toBeNull();
+});
+
 test('a bar just above another is read rather than taken for artwork', () => {
   // As our Avalanche starts, Sylveon's bar at 22% above our Kyogre's at 53%, both where the opponent's bar starts.
   const health = read('other-two-bars');

@@ -327,10 +327,12 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
  * like it further from where the fill shows past the star, which read from there would be 44–46% of a bar at 56–64%.
  *
  * Just above or below it, a longer, framed strip lies across its columns or the outline's left end beyond them, its fill
- * within 8 rows, and the outline runs along less than `OUTLINE.along` of where the strip's fill has gone. The outline
+ * within 12 rows, and the outline runs along less than `OUTLINE.along` of where the strip's fill has gone. The outline
  * looked for 4 rows out from each finds one between the two, framing both, but only a bar's runs on past its fill. The
- * map between the letters of "NOT VERY EFFECTIVE..." read as our bar at 2–4% while it was at 43–85%; two bars drawn
- * one above the other where the opponent's starts, as a charged move starts, are each a bar.
+ * map between the letters of "NOT VERY EFFECTIVE..." read as our bar at 2–4% while it was at 43–85%, or left it unread:
+ * the game writes them 8–16 rows above the bar's fill on both phones, so a strip of 4 rows or more between them ends
+ * 7–12 rows above it. Two bars drawn one above the other where the opponent's starts, as a charged move starts, are
+ * each a bar.
  */
 function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof typeof STARTS): boolean {
   const unit = image.width / 360;
@@ -358,7 +360,7 @@ function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof 
 
       return (
         gap >= 0 &&
-        gap <= 8 * unit &&
+        gap <= 12 * unit &&
         other.left - 4 * unit < right &&
         strip.left < rightOf(other) &&
         rightOf(other) - other.left > right - strip.left &&
