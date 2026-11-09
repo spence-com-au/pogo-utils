@@ -656,9 +656,14 @@ export async function run(
         // can.
         const judged = battle.bench.judge(read, at, party, clock.now());
 
+        // Refused, ours gets back what the tap forgot of it: its moves too, which the labels may not show again before
+        // its next throw, and without which that throw has no type to look for its minigame's bubbles by (#988). Live,
+        // after two taps to Kyogre were dropped, Zamazenta's Close Combat was tapped within 1.7s, its moves unread, and
+        // its minigame, swept row by row, reached `NICE!`, where the move's 20 other throws all reached `EXCELLENT!`.
         if (judged?.kind === 'refused') {
           battle.sent = judged.from;
           battle.stages = { ...battle.stages, own: judged.stages };
+          battle.seen = { ...battle.seen, moves: new Map([...judged.moves, ...battle.seen.moves]) };
         } else if (judged?.kind === 'took') {
           battle.undefer('ours switched out');
         } else if (judged?.kind === 'early') {

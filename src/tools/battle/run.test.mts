@@ -2228,6 +2228,67 @@ test.each([
   },
 );
 
+/**
+ * Giratina switches to Umbreon to bank Shadow Sneak, as above with our shields held, and the tap is dropped: from the
+ * tap on, the HUD shows Giratina at its CP still with Shadow Sneak's label painted out, as live the labels went unread
+ * after two taps to Kyogre were dropped, and its button painted unlit until the drop is read. Lit again, the switch is
+ * tapped again and dropped again, after which none is tried for `REFUSED_MS`. Lit a third time, Shadow Sneak is thrown
+ * by the moves read before the first tap, which each refusal gives back, and its minigame's Ghost bubbles are swiped
+ * through rather than swept across in rows. With the moves left unread, nothing lit is known to bank, and Shadow Sneak
+ * is thrown unnamed the first time it lights instead, as Close Combat was live.
+ */
+test('aims the swipes of a throw after our switch was dropped at its bubbles', async () => {
+  const stand = { Zeraora: 'Umbreon', Gyarados: 'Giratina' } as Record<string, string>;
+  const icons = ICONS.map((icon) => ({ ...icon, species: stand[icon.species] ?? icon.species }));
+  const balls = [0.058, 0.111, 0.161, 0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+  const red = painted(fixture('charged-shadow-sneak'), [220, 40, 40], ...balls);
+  const mamoswine = painted(red, [224, 161, 238], ...HELD);
+  const unlabelled = painted(mamoswine, [80, 130, 60], [0.3, 1.985, 0.7, 2.06]);
+  const unlit = painted(unlabelled, [107, 105, 112], [140 / 360, 635 / 360, 220 / 360, 676 / 360]);
+  const bench = place(BENCH[0] ?? [0, 0], BENCH_ANCHOR, mamoswine);
+  const { phone, clock, strokes } = scripted(
+    {
+      ...battleAndBack(),
+      party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+      glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
+      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
+      mamoswine: { frame: mamoswine, tap: { at: bench, to: 'dropped' }, lasts: { ms: 6000, to: 'won' } },
+      dropped: { frame: unlit, lasts: { ms: 4000, to: 'relit' } },
+      relit: {
+        frame: unlabelled,
+        tap: [
+          { at: bench, to: 'redropped' },
+          { at: [0.499, 0.889], to: 'minigame' },
+        ],
+        lasts: { ms: 6000, to: 'won' },
+      },
+      redropped: { frame: unlit, lasts: { ms: 4000, to: 'lit' } },
+      lit: { frame: unlabelled, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 6000, to: 'won' } },
+      minigame: minigameNoneFainted(),
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
+
+  const minigame = strokes.filter(({ scene }) => scene === 'minigame');
+
+  expect(report.events.filter((line) => /^own: (Umbreon not sent in|threw)/.test(line))).toEqual([
+    'own: Umbreon not sent in: taken as dropped, no switch of ours in the last 45s',
+    'own: Umbreon not sent in: taken as dropped, no switch of ours in the last 45s',
+    'own: threw Shadow Sneak',
+  ]);
+  expect(minigame.length).toBeGreaterThan(0);
+
+  for (const { from, to } of minigame) {
+    expect([from[1], to[1]].every((y) => y > 0.78 && y < 0.86)).toBe(true);
+    expect(Math.min(from[0], to[0])).toBeLessThan(0.45);
+    expect(Math.max(from[0], to[0])).toBeGreaterThan(0.45);
+  }
+});
+
 /** A meta in which Mamoswine is run with Powder Snow, Avalanche and Bulldoze: its Avalanche hits Giratina 1.6×. */
 const MAMOSWINE_AVALANCHE: Meta = {
   cup: 'all',

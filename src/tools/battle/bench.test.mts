@@ -140,7 +140,12 @@ test('tries a dropped tap once more, then nothing more for `REFUSED_MS`', () => 
 
   expect(bench.switching).toBe(true);
   expect(bench.judge(tyranitar, 4_000, field.party, 4_000), 'read too soon').toEqual({ kind: 'early', due: 5_000 });
-  expect(bench.judge(tyranitar, 5_000, field.party, 5_500)).toEqual({ kind: 'refused', from: 0, stages: NO_STAGES });
+  expect(bench.judge(tyranitar, 5_000, field.party, 5_500)).toEqual({
+    kind: 'refused',
+    from: 0,
+    stages: NO_STAGES,
+    moves: field.moves,
+  });
 
   // Answered afresh, as though never tapped.
   bench.decide({ ...field, now: 6_000 });
