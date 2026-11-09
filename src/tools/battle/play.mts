@@ -103,20 +103,22 @@ export interface Choices {
    * brought onto what a swipe may reach. None found waits through the minigame's lead-in, there being nothing to pop
    * yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
    * otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have been gone
-   * `OVER_MS`, or once `bar` shows, are waited through too, being the move playing out. Undefined, where the bubbles'
+   * `OVER_MS`, or once `back` says, are waited through too, being the move playing out. Undefined, where the bubbles'
    * colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
 
   /**
-   * Whether our HP bar is found on this frame. The minigame's camera hides it, and it shows again as the move plays out
-   * after the bubbles, which from then are over however closely what is found as them follows: Outrage's smoke, Close
-   * Combat's colour on Zamazenta's red body and Crunch's up to the minigame's last frame, each less than `OVER_MS`
-   * after the last bubble. Over 235 throws of 18 kept runs it stopped the swipes after 52, each from under the move's
-   * `used` banner with no bubble left. Ours alone: a bar centred on its Pokémon showed through Crunch's bubbles, read
-   * once as the opponent's.
+   * Whether what the minigame hides is back on this frame: the button to flee the battle, or our HP bar. Both show again
+   * as the move plays out after the bubbles, which from then are over however closely what is found as them follows:
+   * Outrage's smoke, Close Combat's colour on Zamazenta's red body and Crunch's up to the minigame's last frame, each
+   * less than `OVER_MS` after the last bubble. Of the 226 throws in 18 kept runs after which both came back, the button
+   * came first after 194, by a median 0.93s: 0.19s after Close Combat's last bubble, where our bar took 1.56s. Our bar
+   * came first after 32, by 0.26s at most, the button fading in over a night sky. Either stopped the swipes sooner than
+   * our bar alone after 84 throws, by a median 0.94s, and the eight looked at, the five sooner by most among them, had
+   * no bubble left. Not a bar centred on its Pokémon: one showed through Crunch's bubbles, read once as the opponent's.
    */
-  bar?: boolean;
+  back?: boolean;
 }
 
 /**
@@ -162,16 +164,17 @@ const LEAD_IN_MS = 2_500;
  * anything found after is the move playing out, which strikes the opponent with things of its type's colour —
  * Avalanche's ice chunks, Outrage's smoke, Thunderbolt's lightning. Over 218 throws of 17 kept runs, no stretch of
  * bubbles was broken for more than 0.36s, and 129 had the move found 0.5s or more after the last of them, each looked
- * at under its `used` banner or just before it. Found sooner, it is swiped until our bar is back, as `bar` says.
+ * at under its `used` banner or just before it. Found sooner, it is swiped until what the minigame hides is back, as
+ * `back` says.
  */
 const OVER_MS = 500;
 
 /**
- * How long the bubbles have to have been found, unbroken by `OVER_MS`, for that or our bar to end them, in
+ * How long the bubbles have to have been found, unbroken by `OVER_MS`, for that or `back` to end them, in
  * milliseconds. A throw can be taken to be playing before its minigame begins, as when the opponent's faint hides our
  * buttons, and whatever the fight shows meanwhile is found as bubbles: 0.8s and 1.3s of it in kept runs, and the `Get
- * Ready!` after, with none found, would have ended a minigame not yet begun, as our bar in the fight would. Every
- * stretch the move came after ran 2.5s at the least.
+ * Ready!` after, with none found, would have ended a minigame not yet begun, as the fight's button and bar would, and
+ * the button through `Get Ready!` itself. Every stretch the move came after ran 2.5s at the least.
  */
 const BUBBLES_MS = 2_000;
 
@@ -327,8 +330,8 @@ export class Player {
   #found: { from: number; to: number } | undefined;
 
   /**
-   * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or our bar back after them, after which none
-   * are swiped.
+   * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or what the minigame hides back after them,
+   * after which none are swiped.
    */
   #over = false;
 
@@ -379,7 +382,7 @@ export class Player {
       card = this.#taps.switch,
       bench,
       bubbles,
-      bar = false,
+      back = false,
     }: Choices = {},
   ): Action {
     this.#streak = state === this.#state ? this.#streak + 1 : 1;
@@ -404,9 +407,9 @@ export class Player {
     // ends it whenever, the opponent's throw having come first.
     const begun = this.#tapped?.state === 'charged' && now - this.#tapped.at < LEAD_IN_MS;
     this.#fighting = state === 'battle' || state === 'charged' ? (this.#fighting ?? now) : undefined;
-    const back = this.#fighting !== undefined && now - this.#fighting >= FIGHT_MS;
+    const resumed = this.#fighting !== undefined && now - this.#fighting >= FIGHT_MS;
 
-    if (state === 'shield' || state === 'switch' || (state === 'other' && !begun) || back) {
+    if (state === 'shield' || state === 'switch' || (state === 'other' && !begun) || resumed) {
       this.forget();
     } else if (minigame) {
       this.#minigame = true;
@@ -433,7 +436,7 @@ export class Player {
       }
 
       // Judged whatever is found on the frame: the move playing out can be found as bubbles with no gap of `OVER_MS`.
-      this.#over ||= bar && this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS;
+      this.#over ||= back && this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS;
 
       // A frame read again, the loop having come round before the next, is the same look rather than a second one. Told
       // by what is found on it rather than by the list, which the caller can make afresh for each turn.

@@ -53,7 +53,8 @@ test('refuses the open toolbar, naming what it covers and how to clear it', () =
 });
 
 // Dragged in over the screen, the star lies across Blanche's portrait on the Battle tab and where our HP bar is drawn,
-// and the timer where it starts lies across a held Pokémon's panel, which a tall one's types are read off.
+// and the timer where it starts lies across a held Pokémon's panel, which a tall one's types are read off, and the top
+// of the button to flee the battle.
 test('refuses the star and the timer where they cover what is read', () => {
   expect(Object.fromEntries(covered(panelsOf(views('pixel4xl-star'), PIXEL_4_XL), areas(PIXEL_4_XL)))).toEqual({
     star: [
@@ -63,7 +64,7 @@ test('refuses the star and the timer where they cover what is read', () => {
       "the result's verdict",
       'our HP bar',
     ],
-    timer: ["a held Pokémon's panel"],
+    timer: ["a held Pokémon's panel", 'the button to flee the battle'],
   });
 });
 
@@ -83,11 +84,11 @@ test('lets the star low on the left edge be, the timer hidden', () => {
 });
 
 // A Pixel 8 Pro's star near the top of the left edge lies over the opponent's banner, read with OCR, and where our HP
-// bar is drawn; its timer, where it starts, over a held Pokémon's panel.
+// bar is drawn; its timer, where it starts, over a held Pokémon's panel and the button to flee the battle.
 test('refuses a Pixel 8 Pro’s star over the banner and our HP bar', () => {
   expect(Object.fromEntries(covered(panelsOf(views('pixel8pro-star'), PIXEL_8_PRO), areas(PIXEL_8_PRO)))).toEqual({
     star: ["a held Pokémon's panel", 'our HP bar', "the opponent's charged move banner"],
-    timer: ["a held Pokémon's panel"],
+    timer: ["a held Pokémon's panel", 'the button to flee the battle'],
   });
 });
 

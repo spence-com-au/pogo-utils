@@ -23,6 +23,7 @@ import { areas as readAreas, readBanner, readBattle } from './read.mts';
 import {
   areas as recogniseAreas,
   countdown,
+  fleeButton,
   opponentShields,
   ownShields,
   pokemonLeft,
@@ -215,6 +216,7 @@ test.each(fixtures(BATTLE))('tells %s apart as it does whole with all but its ar
     ours: ownShields(on),
     ready: readyButtons(on),
     countdown: countdown(on),
+    flee: fleeButton(on),
   });
 
   expect(told(painted)).toEqual(near(told(image)));
