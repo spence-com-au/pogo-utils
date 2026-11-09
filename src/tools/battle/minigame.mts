@@ -174,7 +174,9 @@ const white = ([r, g, b]: Colour) =>
 
 /**
  * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, the biggest blob first:
- * along each blob's length, through its middle, and a little past either end.
+ * along each blob's length, through its middle, and a little past either end. Their ends can lie past `REACH`, so that
+ * a bubble at an edge keeps its size and middle for whatever is told from them, and `reachable` brings each onto it
+ * before it is swiped.
  */
 export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
@@ -260,7 +262,7 @@ function along(xs: readonly number[], ys: readonly number[], width: number, heig
   const [ux, uy] = [Math.cos(angle), Math.sin(angle)];
   const offsets = xs.map((x, i) => (x - mx) * ux + ((ys[i] ?? 0) - my) * uy);
   const overrun = OVERRUN * width;
-  const end = (t: number) => reachable([(mx + ux * t) / width, (my + uy * t) / height]);
+  const end = (t: number): Point => [(mx + ux * t) / width, (my + uy * t) / height];
 
   return [end(Math.min(...offsets) - overrun), end(Math.max(...offsets) + overrun)];
 }

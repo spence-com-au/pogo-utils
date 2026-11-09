@@ -99,11 +99,12 @@ export interface Choices {
   bench?: Point;
 
   /**
-   * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped. None found
-   * waits through the minigame's lead-in, there being nothing to pop yet, and once this minigame's have been found since
-   * its throw was taken to be playing, there being none left; otherwise it sweeps rows, the finder perhaps missing the
-   * move's bubbles. Those found once they have been gone `OVER_MS`, or once `bar` shows, are waited through too, being
-   * the move playing out. Undefined, where the bubbles' colour is not known, sweeps rows throughout.
+   * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first swiped once
+   * brought onto what a swipe may reach. None found waits through the minigame's lead-in, there being nothing to pop
+   * yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
+   * otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have been gone
+   * `OVER_MS`, or once `bar` shows, are waited through too, being the move playing out. Undefined, where the bubbles'
+   * colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly (readonly [Point, Point])[];
 
@@ -218,7 +219,10 @@ export interface Look {
 /**
  * `swipe`, through a bubble the frame `look` found, run on to where the bubble will be by the time the swipe ends where
  * the frame `before` shows it moving alone, rather than in a chain: from where it was seen, the way it moves, to
- * `LANDS_MS` and the swipe's `ms` on from `at`, and half the swipe beyond. As found where it is not seen moving.
+ * `LANDS_MS` and the swipe's `ms` on from `at`, and half the swipe beyond. As found where it is not seen moving. Either
+ * way it is brought onto what a swipe may reach only once aimed: the bubble's size and middle are told from the swipes
+ * as found, since clamped to `REACH` one at an edge is shorter than on the frame before, failing `SAME`, and its middle
+ * moves less than it does.
  *
  * A move's bubbles fly across the screen: Water's in from the right edge and out at the bottom left, at up to 1.6
  * widths a second, and Dragon's in from the left at 0.3 to 1.5. Over the 0.12s a swipe takes to land a Water bubble
@@ -235,9 +239,10 @@ export function ahead(
   { width, height }: Size,
 ): readonly [Point, Point] {
   const seconds = before ? (look.at - before.at) / 1000 : 0;
+  const found = [reachable(swipe[0]), reachable(swipe[1])] as const;
 
   if (!before || seconds <= 0 || seconds * 1000 > STALE_MS) {
-    return swipe;
+    return found;
   }
 
   // In widths across and down, which a bubble moves the same distance in either way.
@@ -255,7 +260,7 @@ export function ahead(
   const speed = was ? was.apart / seconds : 0;
 
   if (!was || speed < MOVING || length(swipe) > LONE) {
-    return swipe;
+    return found;
   }
 
   const on = (speed * (at - look.at + LANDS_MS + ms)) / 1000 + length(swipe) / 2;

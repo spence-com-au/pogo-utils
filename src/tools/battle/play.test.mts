@@ -248,7 +248,48 @@ test.each([
   const screen = { width: 360, height: 760 };
   const look = { at: 1000 + apart, bubbles: [swipe] };
 
-  expect(ahead(swipe, look, { at: 1000, bubbles: [was] }, look.at, 80, screen)).toBe(swipe);
+  expect(ahead(swipe, look, { at: 1000, bubbles: [was] }, look.at, 80, screen)).toEqual(swipe);
+});
+
+/**
+ * A Water bubble flying in at 1.6 widths a second, first seen with its middle at 0.92 across, its swipe as found running
+ * past `REACH`. Clamped before it was matched, it was shorter on the first frame than on the second, by more than
+ * `SAME`, and was swiped where it was found.
+ */
+test('runs a swipe on ahead of a bubble flying in from the edge', () => {
+  const screen = { width: 360, height: 760 };
+  const was: [Point, Point] = [
+    [0.79, 0.5],
+    [1.05, 0.5],
+  ];
+  const swipe: [Point, Point] = [
+    [0.63, 0.5],
+    [0.89, 0.5],
+  ];
+  const [from, to] = ahead(swipe, { at: 1100, bubbles: [swipe] }, { at: 1000, bubbles: [was] }, 1100, 80, screen);
+
+  expect(from[0]).toBeCloseTo(0.76);
+  expect(to[0]).toBeCloseTo(0.76 - (1.6 * (120 + 80)) / 1000 - 0.26 / 2);
+});
+
+/** Mewtwo's bubbles low on the screen run past where a swipe may reach as found, and are swiped only within it. */
+test('no minigame swipe starts or ends on an edge Android takes for its own gestures', () => {
+  const found = bubbleSwipes(png('playing-minigame-mewtwo'), typeColour(png('types/POKEMON_TYPE_PSYCHIC')));
+  const made = found.map((bubble) => {
+    const player = new Player(SIZE);
+
+    play(['charged', 'charged'], player);
+
+    return player.next('playing', 1000, { minigame: true, bubbles: [bubble] });
+  });
+
+  expect(found.flat().some(([x, y]) => x < 0.05 || x > 0.95 || y > 0.92)).toBe(true);
+  expect(
+    swipes(made)
+      .flatMap(({ from, to }) => [from, to])
+      .every(([x, y]) => x >= 0.05 && x <= 0.95 && y <= 0.92),
+  ).toBe(true);
+  expect(swipes(made)).toHaveLength(found.length);
 });
 
 /**
@@ -335,8 +376,8 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   frames(player, 3033, 24, [fight], true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
-  expect(frames(player, 6003, 30, [chain]).every((action) => action.kind === 'swipe' && action.from === chain[0])).toBe(
-    true,
+  expect(frames(player, 6003, 30, [chain]).map((action) => action.kind === 'swipe' && action.from)).toEqual(
+    Array.from({ length: 30 }, () => chain[0]),
   );
 });
 

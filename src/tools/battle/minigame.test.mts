@@ -75,9 +75,12 @@ test('a Pokémon only partly the colour of its bubbles is not taken for them onc
   expect(bubbleSwipes(png('playing-minigame-mewtwo-over'), colour('PSYCHIC'))).toEqual([]);
 });
 
-test('no swipe starts or ends on an edge Android takes for its own gestures', () => {
-  const swipes = bubbleSwipes(png('playing-minigame-mewtwo'), colour('PSYCHIC'));
+/**
+ * Palkia's Aqua Tail bubble coming in at the right edge is swiped along its whole length as found, past where a swipe
+ * may reach, for its size and middle to be matched against the frame before's; the swipe made is brought within reach.
+ */
+test('a bubble at an edge keeps its length', () => {
+  const swipes = bubbleSwipes(png('playing-minigame-palkia-before'), colour('WATER'));
 
-  expect(swipes.length).toBeGreaterThan(0);
-  expect(swipes.flat().every(([x, y]) => x >= 0.05 && x <= 0.95 && y <= 0.92)).toBe(true);
+  expect(swipes.some(([from, to]) => Math.max(from[0], to[0]) > 0.95)).toBe(true);
 });
