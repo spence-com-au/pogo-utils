@@ -9,7 +9,7 @@ import { type GameData } from '../../core/game-master.mts';
 import { type Line } from '../../core/ocr.mts';
 import { decodePng } from '../../core/png.mts';
 import { useWasmEngine } from '../../core/node/test-engine.mts';
-import { merge, readBanner, readBattle, unseen } from './read.mts';
+import { merge, readBanner, readBattle, readGetReady, unseen } from './read.mts';
 
 afterAll(useWasmEngine());
 
@@ -129,6 +129,21 @@ test('reads the second band off a frame freed while the first is read', async ()
   };
 
   expect(await readBanner(frame, DATA, { own: 'Swampert', opponent: 'Quaquaval' }, readLine)).toBe('Aqua Jet');
+});
+
+// `Get Ready!` in the pill the banner is drawn in: higher on a Pixel 4 XL in GO Battle League on 2026-11-08, over
+// bright cloud too, and lower on a Pixel 8 Pro. Not the opponent's banners, nor a minigame's lead-in or bubbles.
+test.each([
+  ['playing-ready-zamazenta', true],
+  ['playing-ready-cloud', true],
+  ['playing-ready-pixel8-palkia', true],
+  ['playing-banner-ursaluna', false],
+  ['playing-banner-quaquaval', false],
+  ['playing-banner-pixel8-charizard', false],
+  ['playing-minigame-ready', false],
+  ['playing-minigame-pixel8-fly', false],
+])('reads whether %s shows Get Ready!', async (name, ready) => {
+  expect(await readGetReady(decodePng(readFileSync(new URL(`fixtures/${name}.png`, import.meta.url))))).toBe(ready);
 });
 
 /**

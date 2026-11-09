@@ -14,7 +14,7 @@ import { BOTTOM, place } from './layout.mts';
 import { SWITCH_CARDS } from './play.mts';
 import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth } from './health.mts';
-import { merge, readBanner, readBattle, settle } from './read.mts';
+import { merge, readBanner, readBattle, readGetReady, settle } from './read.mts';
 import {
   countdown,
   opponentShields,
@@ -85,7 +85,9 @@ const THROWN = 3;
  * 2.4s, the banner after the opponent's move the longest. The opponent picking its next after fainting to our fast move
  * runs longer, 6s live, but its Poké Ball going grey tells it apart. The minigame's bubbles are no sign of their own:
  * Fly's are found on its own lit button in `charged-pixel8-fly`, and on the sky behind
- * `playing-banner-pixel8-charizard`.
+ * `playing-banner-pixel8-charizard`. Its `Get Ready!` is, and has a throw held behind the opponent's taken to be playing
+ * sooner: the opponent's move hiding the HUD as it played out began the wait again, which ran out 2–2.5s into the
+ * bubbles.
  */
 const PLAYING_MS = 3_500;
 
@@ -545,6 +547,32 @@ export async function run(
         .finally(() => (fought.bannerReading = false));
     }
 
+    // A throw of ours held behind the opponent's begins its minigame with no tap of its own, `Get Ready!` the first sign
+    // of it. Our HP bar is none, the minigame's zoomed camera hiding it as Charizard's Overheat did for 1.4s in a kept
+    // run, and nor are bubbles of our move's colour, which Zamazenta's red body showed under Garchomp's Sand Tomb.
+    // Looked for on the frames of a charged move under way that `Player` is not swiping as our minigame, which a throw
+    // not held back has been since its tap.
+    const { pending } = battle;
+
+    if (
+      pending &&
+      state === 'playing' &&
+      !battle.player.minigame &&
+      !battle.readyReading &&
+      clock.now() - battle.readyAt >= BANNER_EVERY_MS
+    ) {
+      const fought = battle;
+      fought.readyAt = clock.now();
+      fought.readyReading = true;
+
+      void readGetReady(frame)
+        .then((ready) => {
+          pending.ready ||= ready;
+        })
+        .catch((error: unknown) => log(`Get Ready! not read: ${said(error)}`))
+        .finally(() => (fought.readyReading = false));
+    }
+
     if (state !== 'other') {
       // Never more than the last count, a shield once spent staying spent: a banner over the HUD reads as one of theirs
       // held, and leaves ours unread.
@@ -896,11 +924,14 @@ export async function run(
         }
       }
 
-      // The throw pending plays once its minigame has run `PLAYING_MS`, `Player` swiping it as one where the opponent's
-      // move, or a frame of no fight early in the minigame, ended the wait for it that its tap began. Its button lit
-      // again for `RELIT_MS` once that wait has ended, and not tapped again, is the tap dropped, its energy kept.
+      // The throw pending plays once its `Get Ready!` is read or its minigame has run `PLAYING_MS`, `Player` swiping it
+      // as one where the opponent's move, or a frame of no fight early in the minigame, ended the wait for it that its
+      // tap began. Its button lit again for `RELIT_MS` once that wait has ended, and not tapped again, is the tap
+      // dropped, its energy kept.
       const playing =
-        battle.pending !== undefined && battle.unlit !== undefined && clock.now() - battle.unlit >= PLAYING_MS;
+        battle.pending !== undefined &&
+        battle.unlit !== undefined &&
+        (battle.pending.ready || clock.now() - battle.unlit >= PLAYING_MS);
       battle.relit =
         battle.pending && !battle.player.minigame && lit.includes(battle.pending.x)
           ? (battle.relit ?? clock.now())
@@ -1239,7 +1270,12 @@ export async function run(
           battle.drop(`${move ?? 'another'} tapped instead`);
           battle.sparing = undefined;
           battle.mirrored = undefined;
-          battle.pending = { move, x: action.at[0], why: action.at[0] === best ? throwing?.why : undefined };
+          battle.pending = {
+            move,
+            x: action.at[0],
+            why: action.at[0] === best ? throwing?.why : undefined,
+            ready: false,
+          };
         } else if (action.what === 'shield') {
           // Told once, a retap a second later being the same answer to the same prompt.
           if (!battle.offered?.taken) {

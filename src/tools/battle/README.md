@@ -221,17 +221,19 @@ for text and done every few seconds.
    or hold our throw back until after theirs, its minigame then coming with no tap. So a throw is taken to be playing
    once the HUD has shown none of our buttons lit for 3.5s, as its minigame does throughout: every minigame there ran
    5.1s or more, and nothing else after a tap more than 2.4s. Its bubbles are no sign, Fly's being found on its own lit
-   button and on the sky. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the
-   tap dropped, logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw
-   retried. A faint or a switch of ours before it plays drops it too, and a faint with no switch prompt, as when the
-   last of ours is sent in, has `Player` forget the minigame it was waiting for, the next of ours fighting at once. So
-   does the opponent fainting to our fast move, one of its Poké Balls going grey,
-   `Outrage not thrown: Mewtwo fainted first`: the game hides our buttons while it picks its next, 6s live, longer than
-   the 3.5s a throw waits to be taken as playing, and lights the button again once the newcomer is in, its energy kept.
-   Nor is anything thrown for half a second after the Poké Ball goes grey, a button tapped as it fades out being a throw
-   that never plays. Through a `playing` frame other than our minigame's nothing is touched and none of our energy
-   counted, no fast move firing there; one straight from the fight is still the fight for 0.6s, a fast move's flash
-   having washed our buttons' names out for up to 0.46s.
+   button and on the sky. A throw held back is taken to be playing sooner, once OCR reads the `Get Ready!` its minigame
+   opens with, in the pill a banner is drawn in, every 0.3s while the HUD shows a charged move under way: the opponent's
+   move hiding the HUD as it played out began the 3.5s again, and it ran out 2–2.5s into the bubbles, which went
+   unswiped. Its button lit again for 1s and not tapped, once the opponent's move has come between, is the tap dropped,
+   logged as `Fly not thrown: its button lit again with no minigame`; tapped again, it is the same throw retried. A
+   faint or a switch of ours before it plays drops it too, and a faint with no switch prompt, as when the last of ours
+   is sent in, has `Player` forget the minigame it was waiting for, the next of ours fighting at once. So does the
+   opponent fainting to our fast move, one of its Poké Balls going grey, `Outrage not thrown: Mewtwo fainted first`: the
+   game hides our buttons while it picks its next, 6s live, longer than the 3.5s a throw waits to be taken as playing,
+   and lights the button again once the newcomer is in, its energy kept. Nor is anything thrown for half a second after
+   the Poké Ball goes grey, a button tapped as it fades out being a throw that never plays. Through a `playing` frame
+   other than our minigame's nothing is touched and none of our energy counted, no fast move firing there; one straight
+   from the fight is still the fight for 0.6s, a fast move's flash having washed our buttons' names out for up to 0.46s.
 7. **Off the battle:** once a screen has read `other` for 1.5s, take a screenshot and read it as a menu, again beside
    the battle, and tap or scroll it, reading the party's cards off the selection screen on the way. That is
    [`menu-reader.mts`](menu-reader.mts). If nothing at all has been recognised for 20s, stop with `Lost`, keeping the
