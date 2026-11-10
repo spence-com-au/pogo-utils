@@ -28,7 +28,10 @@ vi.mock('../tools/inventory/artwork.mts', () => ({
 vi.mock('../tools/inventory/costume.mts', () => ({ wardrobeFor: mocks.wardrobeFor }));
 vi.mock('../core/ocr.mts', () => ({ useEngine: mocks.useEngine }));
 vi.mock('../core/ocr-wasm.mts', () => ({ MODEL: 'model', tesseractWasm: mocks.tesseractWasm }));
-vi.mock('../core/png.mts', () => ({ decodePng: (bytes: Uint8Array) => bytes }));
+vi.mock('../core/png.mts', () => ({
+  decodePng: (bytes: Uint8Array) => bytes,
+  decodeScreencap: (bytes: Uint8Array) => bytes,
+}));
 vi.mock('../tools/inventory/report.mts', () => ({ readScreen: mocks.readScreen }));
 vi.mock('../tools/inventory/storage.mts', () => ({ storage: mocks.storage, unsearchable: mocks.unsearchable }));
 
@@ -133,7 +136,7 @@ test('a wardrobe that arrived is kept, and asked for once however many Pikachu a
   expect(mocks.wardrobeFor).toHaveBeenCalledWith(data, expect.any(Function));
 });
 
-/** The bytes a screenshot arrives as, which `decodePng` above hands on as they are. */
+/** The bytes a screenshot arrives as, which `decodeScreencap` above hands on as they are. */
 const screen = Uint8Array.of(1, 2, 3);
 
 /** The phone's transport, which answers a screenshot and nothing else. */
