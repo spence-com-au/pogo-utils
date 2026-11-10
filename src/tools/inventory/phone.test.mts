@@ -897,8 +897,13 @@ describe.concurrent('dex', () => {
     },
   );
 
+  /**
+   * A record agreeing with the game but for the first three, walked from 1 to 10 on a phone whose swipe from the third
+   * goes nowhere: each species read replaces its line, and the lines the walk never reached, 4 to 10 among them, stay
+   * as they were, since a walk ending there is what a swipe the phone dropped looks like too.
+   */
   test(
-    "replaces only its own lines of a record, and passes the count where the record agrees with the game's",
+    "replaces the lines it reads and leaves those it never reached, passing a record that agrees with the game's",
     { timeout: SLOW },
     async (context) => {
       const phone = new Pokedex();
@@ -909,7 +914,12 @@ describe.concurrent('dex', () => {
       const stale = record.map((entry) => (entry.dex <= 3 ? { ...entry, caught: false, forms: [] } : entry));
       writeFileSync(join(cwd, 'pokedex.jsonl'), stale.map((entry) => `${JSON.stringify(entry)}\n`).join(''));
 
-      const { code, stderr } = await inventory('dex', '--from', '1', '--to', '3');
+      const { code, stderr } = await inventory('dex', '--from', '1', '--to', '10');
+
+      expect(
+        record.filter((entry) => entry.dex > 3 && entry.dex <= 10),
+        'nothing unreached to keep',
+      ).not.toStrictEqual([]);
 
       expect({ code, mismatched: stderr.match(/^ {2}.* in .*: the game counts .*$/gm) }).toStrictEqual({
         code: 0,

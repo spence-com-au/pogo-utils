@@ -937,18 +937,19 @@ function dexRange() {
     throw new Error(`--from ${from} --to ${to} covers no species: --from is at least 1 and no more than --to`);
   }
 
-  return { from, to, ranged: options.from !== undefined || options.to !== undefined };
+  return { from, to };
 }
 
 /**
  * Walks the Pokédex from `from` to `to` and writes a line for each species it reaches, then checks the whole record
- * against what the game counts. The file is rewritten as each line is read, the lines outside a `--from` and `--to`
- * kept where they were, so a run cut short keeps what it read and leaves the rest of the record alone; and it is not
- * touched until the first entry has been read, so a run that cannot start leaves an earlier one where it was.
+ * against what the game counts. The file is rewritten as each line is read, each species read replacing its own line
+ * and every line past the last one read left as it was, so a run cut short keeps what it read and leaves the rest of
+ * the record alone; and it is not touched until the first entry has been read, so a run that cannot start leaves an
+ * earlier one where it was.
  *
  * `held` is the shell the touchscreen is made on, as the scan's is.
  */
-async function dex(held: Transport, { from, to, ranged }: ReturnType<typeof dexRange>) {
+async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
   const out = passed.includes('out') ? options.out : 'pokedex.jsonl';
   const device = new Device(adbCli(options.serial));
   await device.check();
@@ -987,20 +988,27 @@ async function dex(held: Transport, { from, to, ranged }: ReturnType<typeof dexR
     say: console.error,
   });
 
-  // The lines a ranged run leaves where they are; a run over everything replaces the lot.
-  const kept: Entry[] =
-    !ranged || !existsSync(out)
-      ? []
-      : readFileSync(out, 'utf8')
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => JSON.parse(line) as Entry)
-          .filter((e) => e.dex < from || e.dex > to);
-  const read: Entry[] = [];
-  const record = () => [...kept, ...read].sort((a, b) => a.dex - b.dex);
+  const earlier: Entry[] = existsSync(out)
+    ? readFileSync(out, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as Entry)
+    : [];
+  const read = new Map<number, Entry>();
+
+  // The record as far as the walk has got. Each species read replaces its line, and a line for one the walk passed
+  // over without reading goes, the swipe from the species before it having gone straight past it. A line past the
+  // last species read is left as it was, whatever ended the walk: the end of what has been seen and a swipe the phone
+  // dropped look alike from here, and only the second would make the line stale, which the count says.
+  const record = () => {
+    const reached = Math.max(...read.keys());
+    const left = earlier.filter((e) => !read.has(e.dex) && (e.dex < from || e.dex > reached));
+
+    return [...left, ...read.values()].sort((a, b) => a.dex - b.dex);
+  };
 
   for await (const entry of walk(from, to)) {
-    read.push(entry);
+    read.set(entry.dex, entry);
     writeFileSync(
       out,
       record()
@@ -1019,7 +1027,7 @@ async function dex(held: Transport, { from, to, ranged }: ReturnType<typeof dexR
     );
   }
 
-  console.error(`Wrote ${read.length} species to ${out}; checking them against the Pokédex's own counts`);
+  console.error(`Wrote ${read.size} species to ${out}; checking them against the Pokédex's own counts`);
 
   const { mismatches, unread } = await tally(record());
 
