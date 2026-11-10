@@ -10,6 +10,14 @@
     </extensions>
   </wpt>
 
+  <wpt lat="18.921964" lon="72.834564">
+    <name>Gateway of India</name>
+    <extensions>
+      <pgr:city>Mumbai, Maharashtra</pgr:city>
+      <pgr:country>India</pgr:country>
+    </extensions>
+  </wpt>
+
   <wpt lat="18.938771" lon="72.835336">
     <name>Mumbai</name>
     <extensions>
