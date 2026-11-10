@@ -22,6 +22,17 @@
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
+    "eventID": "december-communityday2026",
+    "name": "December Community Day",
+    "eventType": "community-day",
+    "heading": "Community Day",
+    "link": "https://leekduck.com/events/december-communityday2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/cd-default.jpg",
+    "start": "2026-12-12T14:00:00.000",
+    "end": "2026-12-13T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
     "eventID": "deoxys-normal-defense-attack-speed-formes-in-5-star-raid-battles-november-2026",
     "name": "Deoxys (Normal, Defense, Attack, and Speed Formes) in 5-star Raid Battles",
     "eventType": "raid-battles",
@@ -53,6 +64,17 @@
     "start": "2026-11-21T11:00:00.000",
     "end": "2026-11-21T14:00:00.000",
     "added": "2026-10-28T19:48:47.378Z"
+  },
+  {
+    "eventID": "february-communityday2027",
+    "name": "February Community Day",
+    "eventType": "community-day",
+    "heading": "Community Day",
+    "link": "https://leekduck.com/events/february-communityday2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/cd-default.jpg",
+    "start": "2027-02-06T14:00:00.000",
+    "end": "2027-02-06T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
   },
   {
     "eventID": "gbl-twilight-trails_great-league-mega-edition_ultra-league-mega-edition_master-league-mega-edition-split-3",
@@ -132,6 +154,17 @@
     "added": "2026-11-06T02:47:25.943Z"
   },
   {
+    "eventID": "hatch-day-december-2026",
+    "name": "Hatch Day",
+    "eventType": "event",
+    "heading": "Event",
+    "link": "https://leekduck.com/events/hatch-day-december-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2026-12-26T11:00:00.000",
+    "end": "2026-12-26T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
     "eventID": "into-the-wild-2026",
     "name": "Into the Wild 2026",
     "eventType": "event",
@@ -141,6 +174,50 @@
     "start": "2026-11-09T10:00:00.000",
     "end": "2026-11-13T20:00:00.000",
     "added": "2026-10-14T22:33:58.294Z"
+  },
+  {
+    "eventID": "january-communityday2027",
+    "name": "January Community Day",
+    "eventType": "community-day",
+    "heading": "Community Day",
+    "link": "https://leekduck.com/events/january-communityday2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/cd-default.jpg",
+    "start": "2027-01-16T14:00:00.000",
+    "end": "2027-01-16T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
+    "eventID": "january-communitydayclassic2027",
+    "name": "January Community Day Classic",
+    "eventType": "community-day",
+    "heading": "Community Day",
+    "link": "https://leekduck.com/events/january-communitydayclassic2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/cd-default.jpg",
+    "start": "2027-01-02T14:00:00.000",
+    "end": "2027-01-02T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
+    "eventID": "max-battle-day-december-2026",
+    "name": "Max Battle Day",
+    "eventType": "max-battles",
+    "heading": "Max Battles",
+    "link": "https://leekduck.com/events/max-battle-day-december-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2026-12-05T14:00:00.000",
+    "end": "2026-12-05T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
+    "eventID": "max-battle-day-january-2027",
+    "name": "Max Battle Day",
+    "eventType": "max-battles",
+    "heading": "Max Battles",
+    "link": "https://leekduck.com/events/max-battle-day-january-2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2027-01-23T14:00:00.000",
+    "end": "2027-01-23T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
   },
   {
     "eventID": "max-mondays-2026-11-16",
@@ -385,6 +462,28 @@
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
+    "eventID": "raid-day-december-2026",
+    "name": "Raid Day",
+    "eventType": "raid-day",
+    "heading": "Raid Day",
+    "link": "https://leekduck.com/events/raid-day-december-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2026-12-19T14:00:00.000",
+    "end": "2026-12-19T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
+    "eventID": "raid-day-february-2027",
+    "name": "Raid Day",
+    "eventType": "raid-day",
+    "heading": "Raid Day",
+    "link": "https://leekduck.com/events/raid-day-february-2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2027-02-13T14:00:00.000",
+    "end": "2027-02-13T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
     "eventID": "raidhour20261118",
     "name": "Cresselia and Darkrai Raid Hour",
     "eventType": "raid-hour",
@@ -438,6 +537,28 @@
     "start": null,
     "end": null,
     "added": "2026-10-19T22:36:12.344Z"
+  },
+  {
+    "eventID": "super-mega-raid-day-january-2027",
+    "name": "Super Mega Raid Day",
+    "eventType": "raid-day",
+    "heading": "Raid Day",
+    "link": "https://leekduck.com/events/super-mega-raid-day-january-2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2027-01-09T14:00:00.000",
+    "end": "2027-01-09T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
+  },
+  {
+    "eventID": "super-mega-raid-day-january-30-2027",
+    "name": "Super Mega Raid Day",
+    "eventType": "raid-day",
+    "heading": "Raid Day",
+    "link": "https://leekduck.com/events/super-mega-raid-day-january-30-2027/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2027-01-30T14:00:00.000",
+    "end": "2027-01-30T17:00:00.000",
+    "added": "2026-11-10T04:18:09.675Z"
   },
   {
     "eventID": "twilight-wishes-2026",
