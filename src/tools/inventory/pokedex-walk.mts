@@ -29,6 +29,7 @@ import {
   costumesOn,
   countsOn,
   dexOn,
+  formBand,
   formLabelled,
   formsOn,
   framed,
@@ -613,10 +614,8 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     const notes: string[] = [];
     const tag = String(dex).padStart(4, '0');
     const title = titleOf(top.lines);
-    const alert = alertOf(top.lines);
-    const from = title ? title.top + title.height : top.image.height * 0.42;
-    const to = alert ? alert.top - top.image.width * 0.12 : top.image.height * 0.89;
-    const opened = formsOn(top.image, from, to);
+    const band = formBand(top.image, top.lines);
+    const opened = formsOn(top.image, band.from, band.to);
     const forms = formsOf(dex);
 
     // One form: its CAUGHT tab, from where the entry opened.
@@ -638,21 +637,16 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
     // Where the row of icons is not on the screen the forms run on below its foot, as Unown's 28 do: a drag brings the
     // rest up, and each is placed where it would be on the entry opened by how far the title moved.
-    if (!alert && title) {
+    if (!band.ended && title) {
       await drag([SCROLL_STRIP, 0.6], [SCROLL_STRIP, 0.4], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
       const lower = await shoot(device);
       const moved = titleOf(lower.lines);
-      const below = alertOf(lower.lines);
 
       if (moved) {
         const shift = title.top - moved.top;
         const foot = Math.max(...opened.map((t) => t.box.top + t.box.height)) - shift;
-        const more = formsOn(
-          lower.image,
-          foot + 4,
-          below ? below.top - lower.image.width * 0.12 : lower.image.height * 0.89,
-        );
+        const more = formsOn(lower.image, foot + 4, formBand(lower.image, lower.lines).to);
         const labels = await labelsOf(lower.image, more);
 
         tiles.push(
