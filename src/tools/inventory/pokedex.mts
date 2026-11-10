@@ -840,10 +840,15 @@ export function iconIn(
   return namedFrom(ranked(image, box, frame, look, candidates));
 }
 
-/** The name a ranking settles on: its first, where that is plainly nearer than its second, and undefined where not. */
+/**
+ * The name a ranking settles on: its first, where that is plainly nearer than its second, and undefined where not, or
+ * where there is no second to be nearer than. A cost alone says nothing: over the captures a costume came 11 to 19
+ * from its own icon, and Pikachu's party hat 14 from the plain one, so one candidate would name a costume nothing in
+ * the pool is.
+ */
 export function namedFrom([first, second]: readonly { name: string | null; cost: number }[]):
   string | null | undefined {
-  return !first || (second && first.cost > second.cost * NAMED_BY) ? undefined : first.name;
+  return !first || !second || first.cost > second.cost * NAMED_BY ? undefined : first.name;
 }
 
 /** Every candidate with how far the tile is from its icon, nearest first, which is what `iconIn` decides on. */

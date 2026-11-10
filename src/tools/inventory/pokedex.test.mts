@@ -283,12 +283,14 @@ const BULBASAUR: readonly Candidate[] = [
 
 /**
  * Bulbasaur's three costumes, each named by its icon; and the never-guessing half. Without the Fall 2019 icon, its tile
- * is as far from both the others, and is no one's; and Charizard's one costume sits between `Goggles 2026` and the
+ * is as far from both the others, and is no one's; with one icon alone, nothing is plainly nearer than anything, so
+ * that icon names none of the three, its own included; and Charizard's one costume sits between `Goggles 2026` and the
  * clone's `Copy 2019`, 16.2 against 17.1, which is too near to call.
  */
 test('a costume is named by its icon, and only where one is plainly nearest', async () => {
   expect(await costumes('bulbasaur-2', BULBASAUR)).toStrictEqual(['Spring 2020', 'Jan 2020', 'Fall 2019']);
   expect(await costumes('bulbasaur-2', BULBASAUR.slice(0, 2))).toStrictEqual(['Spring 2020', 'Jan 2020', undefined]);
+  expect(await costumes('bulbasaur-2', BULBASAUR.slice(0, 1))).toStrictEqual([undefined, undefined, undefined]);
 
   const charizard = ['pm6.cJAN_2020_NOEVOLVE', 'pm6.cSPRING_2020_NOEVOLVE', 'pm6.fCOPY_2019', 'pm6.fGOGGLES_2026'].map(
     (file) => ({ name: file, icon: icon(`${file}.icon.png`) }),
