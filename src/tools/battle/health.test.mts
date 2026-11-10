@@ -256,6 +256,38 @@ test('a jump read again off the same frame does not stand', () => {
   expect(steady.health).toEqual({ own: 0.8, opponent: 0.9 });
 });
 
+test('a jump of theirs to our HP, read where ours goes unread, is our bar and never stands', () => {
+  // As read at 759.844s of the kept run `2026-11-04-debuff-switch-6`: our Kyogre's bar at 36%, carried by the camera
+  // to where Metagross's starts with Metagross's off the screen, twice in a row.
+  expect(
+    steadied([
+      [0.36, 0.85],
+      [null, 0.36],
+      [null, 0.36],
+      [0.36, 0.84],
+    ]),
+  ).toEqual([
+    [0.36, 0.85],
+    [0.36, 0.85],
+    [0.36, 0.85],
+    [0.36, 0.84],
+  ]);
+});
+
+test.each([
+  ['jumping away from our HP', 0.85, null, 0.2],
+  ['jumping to our HP where ours is read too', 0.85, 0.36, 0.36],
+  ['at our HP within `JUMP` of theirs', 0.4, null, 0.36],
+])('a reading of theirs %s stands', (_, theirs, own, opponent) => {
+  expect(
+    steadied([
+      [0.36, theirs],
+      [own, opponent],
+      [own, opponent],
+    ]).at(-1),
+  ).toEqual([0.36, opponent]);
+});
+
 test('a bar not drawn keeps both the HP decided on and the jump awaiting a second reading', () => {
   expect(
     steadied([

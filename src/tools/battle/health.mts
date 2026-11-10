@@ -512,11 +512,23 @@ export const areas = (): Area[] => [
 export const JUMP = 0.1;
 
 /**
+ * How near the HP held for ours a reading of the opponent's bar may lie, as a fraction of the bar, to be taken for our
+ * bar where theirs starts. As the camera swings through a charged move it can carry ours there with theirs off the
+ * screen, which `readHealth` cannot tell from theirs: at 759.844s of the kept run `2026-11-04-debuff-switch-6` it read
+ * our Kyogre's 36% as Metagross's twice in a row, where theirs had read 84–85%. Held through the minigame, that had
+ * Metagross's next reading, 7 seconds later, taken for a newcomer. Fed only the pictures of the 27 GO Battle League runs
+ * kept with video in a state `run.mts` reads bars in, setting such readings aside spares 9 rises in the opponent's HP
+ * that `run.mts` takes for a newcomer, each after a reading of ours, and delays 7 others by 32ms–1.9s.
+ */
+const SWEPT = 0.02;
+
+/**
  * Each side's HP as decided on from the bars read frame by frame: a reading within `JUMP` of the HP held replaces it at
  * once, and one further out only once the next frame's reading of that bar agrees with it. A misread flickering out
  * between steady readings so never moves what a shield or the opponent's energy is decided on, at the cost of a real
  * hit as large as one waiting a frame to count. A bar not drawn keeps both what is held and what awaits a second
- * reading.
+ * reading. A reading of the opponent's bar further out than `JUMP`, within `SWEPT` of the HP held for ours, off a frame
+ * where ours goes unread, is our bar: it is neither held nor left awaiting a second.
  */
 export class Steady {
   #held: Health = { own: null, opponent: null };
@@ -541,6 +553,17 @@ export class Steady {
 
       this.#from[side] = frame;
       const near = (hp: number | null) => hp !== null && Math.abs(read - hp) <= JUMP;
+      const swept =
+        side === 'opponent' &&
+        bars.own === null &&
+        this.#held.opponent !== null &&
+        !near(this.#held.opponent) &&
+        this.#held.own !== null &&
+        Math.abs(read - this.#held.own) <= SWEPT;
+
+      if (swept) {
+        continue;
+      }
 
       if (this.#held[side] === null || near(this.#held[side]) || near(this.#pending[side])) {
         this.#held[side] = read;
