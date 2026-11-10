@@ -152,7 +152,8 @@ async function tilesOf(...names: string[]): Promise<Partial<Record<Category | 'o
 
 /**
  * Bulbasaur's tab down to its foot, which is every category but G-MAX and MEGA; and the two it does not have, which a
- * species with them draws among the rest — Venusaur one MEGA, Charizard an X and a Y.
+ * species with them draws among the rest — Venusaur one MEGA, Charizard an X and a Y. Beedrill's own icon is as flat as
+ * a silhouette, its translucent wings the backdrop seen through grey, and is an icon by its yellow and black.
  */
 test("a form's tiles read as the icon where registered and the silhouette where not", async () => {
   expect(await tilesOf('bulbasaur-0', 'bulbasaur-1', 'bulbasaur-2')).toStrictEqual({
@@ -174,6 +175,18 @@ test("a form's tiles read as the icon where registered and the silhouette where 
   });
 
   expect(await tilesOf('charizard-2')).toMatchObject({ own: 'icon', megaX: 'silhouette', megaY: 'silhouette' });
+
+  expect(await tilesOf('beedrill-1')).toStrictEqual({
+    own: 'icon',
+    shiny: 'silhouette',
+    perfect: 'silhouette',
+    lucky: 'silhouette',
+    xxl: 'silhouette',
+    xxs: 'silhouette',
+    mega: 'silhouette',
+    shadow: 'silhouette',
+    purified: 'silhouette',
+  });
 });
 
 /**

@@ -170,24 +170,35 @@ const FILLED = 0.015;
 /**
  * How much of what stands out has to be one colour for it to be a silhouette. A silhouette is the icon's shape filled
  * with the backdrop darkened, so everything inside it is within a few steps of everything else, its anti-aliased edge
- * aside; an icon is drawn in its own colours, shaded and outlined. Over the 166 tiles of the CAUGHT tabs under
- * `fixtures/pokedex/`, no icon came out flatter than 0.37 (Galarian Meowth's own) and no silhouette less flat than 0.70
- * (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes are a dark slate rather than the
- * backdrop darkened, and as flat: Unown's run 0.76 against 0.09 for a letter registered, its eye white on black.
+ * aside; an icon is drawn in its own colours, shaded and outlined. Over the tiles of the CAUGHT tabs under
+ * `fixtures/pokedex/`, no icon came out flatter than 0.36 (Galarian Meowth's own) but Beedrill's, which `OTHER` tells,
+ * and no silhouette less flat than 0.75 (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes
+ * are a dark slate rather than the backdrop darkened, and nearly as flat: Unown's 0.62 at the least, against 0.13 at
+ * the most for a letter registered, its eye white on black.
  */
 const FLAT = 0.55;
 
 /**
+ * How much of what stands out may be another colour for it still to be a silhouette: more than a few steps from its one
+ * colour and from every blend of that with the backdrop, which is all its anti-aliased edge is. An icon can be as flat
+ * as a silhouette where much of it is translucent, the backdrop seen through grey: Beedrill's own is 0.61, its wings,
+ * but 0.31 of it is its yellow and black. Under `fixtures/pokedex/` no silhouette came to more than 0.12 (Charizard's
+ * MEGA Y), Unown's thin dark ones in the form row among them, and no icon to less than 0.26 (Galarian Meowth's tile in
+ * the form row).
+ */
+const OTHER = 0.18;
+
+/**
  * What the tile at `box` holds. Its backdrop is the median of the strip along its top, which is clear of the icon and
  * of the small glyph in a category tile's corner; a pixel stands out where it is far from that, and the ones that do
- * are a silhouette where most of them are within a few steps of their own median colour.
+ * are a silhouette where most of them are within a few steps of their own median colour and next to none are another.
  */
 export function lookOf(image: Image, box: Box): Look {
   return flatness(image, box).look;
 }
 
-/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour. */
-export function flatness(image: Image, box: Box): { filled: number; flat: number; look: Look } {
+/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
+export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
   const step = Math.max(1, Math.round(box.width / 80));
   const strip: [number, number, number][] = [];
 
@@ -201,9 +212,10 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
   let asked = 0;
 
   // Between the glyph in a category tile's top corner and the label along its foot, both dark, either of which would
-  // pass for a dark patch of an icon.
+  // pass for a dark patch of an icon; and short of the right edge, which the fourth column's tiles run under PGSharp's
+  // panel at, its slate plainly another colour beside a thin silhouette.
   for (let y = box.top + box.height * 0.25; y < box.top + box.height * 0.82; y += step) {
-    for (let x = box.left + box.width * 0.1; x < box.left + box.width * 0.9; x += step) {
+    for (let x = box.left + box.width * 0.1; x < box.left + box.width * 0.85; x += step) {
       const p = rgb(image, x, y);
       asked++;
 
@@ -216,13 +228,24 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
   const filled = standing.length / asked;
 
   if (filled < FILLED) {
-    return { filled, flat: 0, look: 'empty' };
+    return { filled, flat: 0, other: 0, look: 'empty' };
   }
 
   const middle = [0, 1, 2].map((c) => median(standing.map((p) => p[c] ?? 0)));
   const flat = standing.filter((p) => apart(p, middle) <= 30).length / standing.length;
+  const other = standing.filter((p) => apart(p, blendNearest(p, middle, backdrop)) > 60).length / standing.length;
 
-  return { filled, flat, look: flat >= FLAT ? 'silhouette' : 'icon' };
+  return { filled, flat, other, look: flat >= FLAT && other < OTHER ? 'silhouette' : 'icon' };
+}
+
+/** The blend of colours `a` and `b` nearest `p`: the point on the line between the two that is closest to it. */
+function blendNearest(p: readonly number[], a: readonly number[], b: readonly number[]): number[] {
+  const towards = a.map((v, c) => (b[c] ?? 0) - v);
+  const length = towards.reduce((sum, v) => sum + v * v, 0);
+  const along = towards.reduce((sum, v, c) => sum + v * ((p[c] ?? 0) - (a[c] ?? 0)), 0) / (length || 1);
+  const t = Math.min(1, Math.max(0, along));
+
+  return a.map((v, c) => v + t * (towards[c] ?? 0));
 }
 
 const brightness = ([r = 0, g = 0, b = 0]: readonly number[]) => luminance(r, g, b);
