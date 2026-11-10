@@ -538,6 +538,13 @@ export interface Genders {
 /** The entry's title line, `0052 MEOWTH`, by `TITLE`: the line `dexOn` reads, and the top of the form row. */
 export const titleOf = (lines: readonly Line[]) => findLine(lines, TITLE);
 
+/**
+ * Whether a screen is an entry, however far down it is scrolled: its title at the top, the CAUGHT tab's header lower
+ * down, and its `SEE ALL` at its foot, where the other two have scrolled away.
+ */
+export const isEntry = (lines: readonly Line[]) =>
+  titleOf(lines) !== undefined || headerOf(lines) !== undefined || seeAllOf(lines) !== undefined;
+
 /** The line under the row of gender and type icons that only it carries, `ALERT OFF` or `ALERT ON`. */
 export const alertOf = (lines: readonly Line[]) => findLine(lines, /^alert\b/);
 

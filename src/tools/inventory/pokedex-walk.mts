@@ -14,7 +14,7 @@
  * showing — so its tile is all that says anything about it, and what it says is that it is not caught.
  */
 
-import { type Device } from '../../core/adb.mts';
+import { KEY, type Device } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
 import { readLines } from './detail.mts';
 import { type Form, type GameData } from '../../core/game-master.mts';
@@ -35,6 +35,7 @@ import {
   framed,
   gendersOn,
   iconIn,
+  isEntry,
   labelsOf,
   listLines,
   lookOf,
@@ -55,7 +56,7 @@ import {
 } from './pokedex.mts';
 import { SCROLL_DRAG_MS, settled } from './scroll.mts';
 import { SCROLL_STRIP } from './stitch.mts';
-import { isMainMenu, toFront } from './storage.mts';
+import { dialogOpen, isMainMenu, toFront } from './storage.mts';
 import { GENERATIONS, SUB_REGIONS } from '../../pokemon/generations.ts';
 
 /** One of an entry's forms: which it is, whether it is caught, and each category its CAUGHT tab draws a tile for. */
@@ -130,6 +131,12 @@ export const TABS: readonly { label: string; counts: (entry: Entry) => boolean }
   { label: 'MEGA', counts: (e: Entry) => has('mega')(e) || has('megaX')(e) || has('megaY')(e) },
   ...(['shadow', 'purified', 'perfect'] as const).map((key) => ({ label: CATEGORIES[key], counts: has(key) })),
 ];
+
+/**
+ * Whether a screen is the Pokédex's grid, by the four-digit numbers under its tiles, which the plain read gets exactly
+ * and four or more of which nothing else in the game shows: an entry carries one, in its title.
+ */
+const isGrid = (lines: readonly Line[]) => lines.filter((l) => /^\d{4}$/.test(l.text.trim())).length >= 4;
 
 /** Whether any form of an entry has `key` registered, which is what fills the species' tile in that tab. */
 function has(key: Category) {
@@ -224,7 +231,9 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     await (fronted ??= toFront(device, config, say));
 
     // Four taps from an entry, the furthest in a walk leaves it: closed to its grid, the grid to the map, the menu
-    // opened and the Pokédex opened from it.
+    // opened and the Pokédex opened from it. Each tap is made only on a screen known to be what it is for, as
+    // `toStorage` makes its own: the main menu's Poké Ball is where a walking avatar can carry a stop, and where a
+    // dialog keeps its buttons.
     for (let attempt = 0; attempt < 6; attempt++) {
       const image = await settled(device);
 
@@ -232,12 +241,34 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         return;
       }
 
-      if (isMainMenu(await readLines(image))) {
+      const lines = await readLines(image);
+
+      if (isMainMenu(lines)) {
         await tap(at(image, config.taps.pokedexButton), config.waits.search);
         continue;
       }
 
+      // An entry or the grid, each closed by the button at its foot: the entry to the grid, the grid to the map. Asked
+      // before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
+      if (isEntry(await pokedexLines(image)) || isGrid(lines)) {
+        await tap(at(image, config.taps.closeDetail), config.waits.menu);
+        continue;
+      }
+
+      if (dialogOpen(lines, image)) {
+        say('  a dialog was open; closing it with Back');
+        await device.key(KEY.BACK);
+        await sleep(config.waits.tap);
+        continue;
+      }
+
       await tap(at(image, config.taps.mainMenu), config.waits.menu);
+
+      // Thrown rather than tried again, for `toStorage`'s reason: a tap that opened something else leaves a screen
+      // nothing here knows the controls of, and every further tap there is a guess.
+      if (!isMainMenu(await readLines(await device.screenshot()))) {
+        throw new Error('the main menu did not open; open the Pokédex by hand and run again');
+      }
     }
 
     throw new Error('could not find the Pokédex; open its list of regions by hand and run again');
