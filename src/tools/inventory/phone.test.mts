@@ -620,11 +620,22 @@ const LISTS = [
 const ENTRIES = ['bulbasaur', 'ivysaur', 'venusaur'].map((species) => [0, 1, 2].map((at) => `${species}-${at}`));
 
 /**
+ * The tiles of an entry the game selects at a tap, and the screenshot it shows then: Ekans's SHINY, which it draws as a
+ * silhouette though the shiny is registered, and back from there the form's own. Each tile is its left, top, right and
+ * bottom as fractions of the screen; a tap anywhere else on an entry selects nothing, as a tile not registered does.
+ */
+const SELECTS: Readonly<Record<string, readonly (readonly [number, number, number, number, string])[]>> = {
+  'ekans-0': [[0.28, 0.73, 0.49, 0.87, 'ekans-shiny-0']],
+  'ekans-shiny-0': [[0.03, 0.73, 0.27, 0.87, 'ekans-0']],
+};
+
+/**
  * The game as far as `pnpm inventory dex --from 1 --to 3` drives it, over the captures under `fixtures/pokedex/`: the
  * map, the main menu, a tab's list of regions, Kanto's grid and the first three entries. A tap is placed by which of
- * those is showing and by where it lands, of no more than the screen's controls do; a swipe moves along the entries,
- * one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag scrolls a list or
- * an entry. Any pop-ups given are over the map at the start, each put off by a tap on its LATER and by nothing else.
+ * those is showing and by where it lands, of no more than the screen's controls and `SELECTS` do; a swipe moves along
+ * the entries, one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag
+ * scrolls a list or an entry. Any pop-ups given are over the map at the start, each put off by a tap on its LATER and
+ * by nothing else.
  *
  * The tab strip is the one thing modelled rather than recorded. The tab selected sits in the middle of it but at
  * either end, as the captures draw it — POKÉMON at a fifth of the width with SHINY in the middle, ★ 100% in the middle
@@ -639,6 +650,12 @@ class Pokedex {
   #frame = 0;
   readonly #entries: readonly (readonly string[])[];
   readonly #popups: Popup[];
+
+  /** The screenshot a tap on the entry put in place of its own, until a tap puts that back. */
+  #over: string | null = null;
+
+  /** Each `#over` a swipe or a drag left showing, the entry read on with it. */
+  readonly unrestored: string[] = [];
 
   /**
    * `entries` are the entries a swipe steps along, each its screenshots from its top down, and `popups` those over the
@@ -663,7 +680,7 @@ class Pokedex {
       case 'list':
         return `pokedex/${LISTS[this.tab]?.[this.#list]}.png`;
       case 'entry':
-        return `pokedex/${this.#entries[this.#entry]?.[this.#frame]}.png`;
+        return `pokedex/${this.#over ?? this.#entries[this.#entry]?.[this.#frame]}.png`;
     }
   }
 
@@ -717,7 +734,15 @@ class Pokedex {
     } else if (this.screen === 'menu') {
       this.screen = Math.abs(x - 0.25) < 0.1 && Math.abs(y - 0.6) < 0.05 ? 'list' : 'map';
     } else if (this.screen === 'entry' && foot) {
+      this.#leave();
       this.screen = 'grid';
+    } else if (this.screen === 'entry') {
+      const own = this.#entries[this.#entry]?.[this.#frame];
+      const tile = SELECTS[this.#over ?? own ?? '']?.find(([l, t, r, b]) => x >= l && x <= r && y >= t && y <= b);
+
+      if (tile) {
+        this.#over = tile[4] === own ? null : tile[4];
+      }
     } else if (this.screen === 'grid') {
       // The first row of Kanto's tiles, whose numbers are where a tap opens one; one past the third opens nothing, as
       // a species not seen does.
@@ -742,7 +767,19 @@ class Pokedex {
     }
   }
 
+  /** Leaves what a tap put in place of the entry's own, noting it, since nothing tapped it back. */
+  #leave() {
+    if (this.#over !== null) {
+      this.unrestored.push(this.#over);
+      this.#over = null;
+    }
+  }
+
   #swipe(way: ReturnType<typeof direction>) {
+    if (this.screen === 'entry') {
+      this.#leave();
+    }
+
     if (this.screen === 'entry' && (way === 'left' || way === 'right')) {
       const next = this.#entry + (way === 'left' ? 1 : -1);
 
@@ -1037,4 +1074,40 @@ describe('dex', () => {
       expect(linesIn(cwd)).toStrictEqual(record);
     },
   );
+
+  /**
+   * Ekans's entry, whose SHINY tile the game draws as a silhouette though the shiny is registered (#1047). A tap
+   * selects it, so the line has the shiny, and the entry is put back to the form's own before its tab is read further.
+   */
+  test('records a shiny whose silhouetted SHINY tile the game selects at a tap', { timeout: SLOW }, async (context) => {
+    const phone = new Pokedex([['ekans-0', 'ekans-1']]);
+    const { cwd, inventory } = await harness(context, phone, ['Ekans']);
+
+    await inventory('dex', '--from', '1', '--to', '23');
+
+    expect(linesIn(cwd)).toStrictEqual([
+      {
+        dex: 23,
+        species: 'Ekans',
+        caught: true,
+        genders: { male: true, female: true },
+        forms: [
+          {
+            form: null,
+            caught: true,
+            shiny: true,
+            perfect: false,
+            lucky: true,
+            xxl: false,
+            xxs: true,
+            shadow: false,
+            purified: false,
+          },
+        ],
+        costumes: [],
+        notes: [],
+      },
+    ]);
+    expect(phone.unrestored, 'the tab was read on with the shiny selected').toStrictEqual([]);
+  });
 });

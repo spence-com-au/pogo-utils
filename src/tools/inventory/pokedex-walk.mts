@@ -38,6 +38,7 @@ import {
   labelsOf,
   laterOf,
   listLines,
+  ownBeside,
   pokedexLines,
   regionIn,
   regionsButtonOf,
@@ -514,11 +515,48 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
   /** What one form's CAUGHT tab holds, read down to its foot; `unplaced` is `CostumeReader`'s. */
   interface View {
-    tiles: Map<Category | null, { look: Look; box: Box; image: Image }>;
+    tiles: Map<Category | null, { look: Look; registered: boolean; box: Box; image: Image }>;
     costumes: Costume[];
     unplaced: boolean;
     genders: Genders | null;
   }
+
+  /**
+   * Whether a tap on `box` selects it, by the white frame the game moves to what it selects: never a form not
+   * registered, and taken to be never a category not registered either. Tapped twice before that is concluded, since
+   * the phone drops a tap now and then, and a registered one would go down as not. Answers the screenshot that shows it
+   * selected, or null.
+   */
+  const selects = async (box: Box): Promise<Image | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await tap([box.left + box.width / 2, box.top + box.height / 2]);
+      const image = await settled(device);
+
+      if (framed(image, box)) {
+        return image;
+      }
+    }
+
+    return null;
+  };
+
+  /**
+   * Whether a SHINY tile drawn as a silhouette is registered after all, which for some species it is: Ekans's is drawn
+   * like the 100% and XXL silhouettes beside it, yet a tap selects it and turns the model shiny. One that selects is
+   * put back to the form's own tile, since over the shiny's gold backdrop a tile's red stands no more than 6 above it
+   * on `ekans-shiny-0.png`, where `rowsBetween` and `formsOn` tell a tile by more than 10.
+   */
+  const shinyAfterAll = async (image: Image, box: Box, name: string) => {
+    if (!(await selects(box))) {
+      return false;
+    }
+
+    if (!(await selects(ownBeside(image, box)))) {
+      say(`  ${name}: the form's own tile would not select again after SHINY did, so what is below may misread`);
+    }
+
+    return true;
+  };
 
   /** Reads the CAUGHT tab of the form showing, from `first` down a drag at a time until `SEE ALL` is on the screen. */
   const view = async (first: Shot, dex: number, name: string): Promise<View> => {
@@ -539,7 +577,9 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       for (const { category, look, box } of caught) {
         if (!tiles.has(category)) {
-          tiles.set(category, { look, box, image });
+          const registered = look === 'icon' || (category === 'shiny' && (await shinyAfterAll(image, box, name)));
+
+          tiles.set(category, { look, registered, box, image });
         }
       }
 
@@ -559,13 +599,13 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
   /** What a form's view says of it, by the record's keys, in the order the game draws its tiles. */
   const formFrom = (form: Named, { tiles }: View): FormEntry => {
-    const entry: FormEntry = { form, caught: tiles.get(null)?.look === 'icon' };
+    const entry: FormEntry = { form, caught: tiles.get(null)?.registered === true };
 
     for (const category of Object.keys(CATEGORIES) as Category[]) {
       const tile = tiles.get(category);
 
       if (tile) {
-        entry[category] = tile.look === 'icon';
+        entry[category] = tile.registered;
       }
     }
 
@@ -656,7 +696,6 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       if (!tile.selected) {
         // A tile under the close button or off the foot is brought up by a drag first, and found again by how far the
         // title moved, which is how far everything under it did.
-        const x = tile.box.left + tile.box.width / 2;
         let y = tile.box.top + tile.box.height / 2;
 
         if (y > shot.image.height * 0.85) {
@@ -670,20 +709,15 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         }
 
         // A form the game will not select is one not registered, whatever its tile looked like: the tap leaves the
-        // form that was showing selected, and its tab would be read as this one's. Tapped twice before that is
-        // concluded, since the phone drops a tap now and then, and a registered form would go down as not.
-        let selected = false;
-
-        for (let attempt = 0; attempt < 2 && !selected; attempt++) {
-          await tap([x, y]);
-          shot = await shoot(device);
-          selected = framed(shot.image, { ...tile.box, top: y - tile.box.height / 2 });
-        }
+        // form that was showing selected, and its tab would be read as this one's.
+        const selected = await selects({ ...tile.box, top: y - tile.box.height / 2 });
 
         if (!selected) {
           silhouettes.push({ index, tile });
           continue;
         }
+
+        shot = { image: selected, lines: await pokedexLines(selected) };
       }
 
       scrolled = true;
