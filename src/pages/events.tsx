@@ -996,136 +996,139 @@ export default function EventsPage({ query: fragment }: { query: string }) {
         </p>
       </header>
 
-      <section class="controls">
-        <div class="viewtoggle" role="group" aria-label="View">
-          {(
-            [
-              ['cards', 'Cards'],
-              ['calendar', 'Calendar'],
-              ['tracks', 'Tracks'],
-            ] as const
-          ).map(([name, label]) => (
-            <button
-              key={name}
-              type="button"
-              class={view === name ? 'active' : undefined}
-              aria-pressed={view === name}
-              onClick={() => setView(name)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <input
-          type="search"
-          placeholder="Search events…"
-          autocomplete="off"
-          value={search}
-          onInput={(event) => setSearch(event.currentTarget.value)}
-        />
-        <button type="button" onClick={() => void load(true)}>
-          Refresh
-        </button>
-        {/*
-         * `aria-expanded` carries the state and the title says which way a click goes, so the label stays neutral in
-         * both. The chevron points the way a click moves the panel — down to open it, up to close it — and is swapped
-         * in the markup rather than turned by a CSS transform so it still points the right way without the stylesheet.
-         * Its size is set in attributes for the same reason.
-         */}
-        <div class="disclose-row">
-          <button
-            type="button"
-            class="disclose"
-            aria-controls="filters"
-            aria-expanded={filtersOpen}
-            aria-label="Filters"
-            title={`${filtersOpen ? 'Hide' : 'Show'} filters`}
-            onClick={() => setFiltersOpen(!filtersOpen)}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d={filtersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
-            </svg>
-          </button>
-        </div>
-      </section>
-
-      {/* Hidden until the handle above discloses it: everything in here narrows or widens what the views draw. */}
-      <section class="filters" id="filters" aria-label="Filters" hidden={!filtersOpen}>
-        {/*
-         * What a chip click applies to, immediately above the chips it governs. The label is a real element and the
-         * group takes `aria-labelledby` rather than repeating it in an `aria-label`, so the two cannot drift.
-         */}
-        <div class="scope">
-          <span id="scopeLabel">Type filters apply to</span>
-          <div class="viewtoggle" role="group" aria-labelledby="scopeLabel">
+      {/* Pinned as one, so the chevron opens the filters wherever the reader has scrolled to. */}
+      <div class="toolbar">
+        <section class="controls">
+          <div class="viewtoggle" role="group" aria-label="View">
             {(
               [
-                ['global', 'All views'],
-                ['view', 'This view'],
+                ['cards', 'Cards'],
+                ['calendar', 'Calendar'],
+                ['tracks', 'Tracks'],
               ] as const
-            ).map(([scope, label]) => (
+            ).map(([name, label]) => (
               <button
-                key={scope}
+                key={name}
                 type="button"
-                class={prefs.filterScope === scope ? 'active' : undefined}
-                aria-pressed={prefs.filterScope === scope}
-                onClick={() => setScope(scope)}
+                class={view === name ? 'active' : undefined}
+                aria-pressed={view === name}
+                onClick={() => setView(name)}
               >
                 {label}
               </button>
             ))}
           </div>
-        </div>
 
-        {/*
-         * A `group` rather than a labelled `section`, being nested inside one: two regions one wrapping the other is a
-         * landmark a reader has to step past to reach the chips.
-         *
-         * The type chips are painted from the hidden set in force rather than their own appearance, which matters
-         * because under a per-view scope that set changes with the view — a row showing the last view's would be a
-         * stale legend.
-         *
-         * The reveals are the same chip, and buttons for the same reason: `aria-pressed` is what carries on or off to a
-         * reader who cannot see the dimming. Last in the row and so last in the tab order, the type chips being the
-         * legend for all three views where these only widen a window.
-         */}
-        <div class="type-filters" role="group" aria-label="Filter events">
-          {types.map(([eventType, label]) => (
+          <input
+            type="search"
+            placeholder="Search events…"
+            autocomplete="off"
+            value={search}
+            onInput={(event) => setSearch(event.currentTarget.value)}
+          />
+          <button type="button" onClick={() => void load(true)}>
+            Refresh
+          </button>
+          {/*
+           * `aria-expanded` carries the state and the title says which way a click goes, so the label stays neutral in
+           * both. The chevron points the way a click moves the panel — down to open it, up to close it — and is swapped
+           * in the markup rather than turned by a CSS transform so it still points the right way without the
+           * stylesheet. Its size is set in attributes for the same reason.
+           */}
+          <div class="disclose-row">
             <button
-              key={eventType}
               type="button"
-              class={`chip${hidden.has(eventType) ? ' off' : ''}${typeClass(eventType)}`}
-              aria-pressed={!hidden.has(eventType)}
-              onClick={() => toggleType(eventType)}
+              class="disclose"
+              aria-controls="filters"
+              aria-expanded={filtersOpen}
+              aria-label="Filters"
+              title={`${filtersOpen ? 'Hide' : 'Show'} filters`}
+              onClick={() => setFiltersOpen(!filtersOpen)}
             >
-              {label}
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={filtersOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
+              </svg>
             </button>
-          ))}
-          {REVEALS.map(({ name, label, cardsOnly }) => (
-            <button
-              key={name}
-              type="button"
-              class={reveals[name] ? 'chip' : 'chip off'}
-              aria-pressed={reveals[name]}
-              hidden={cardsOnly && view !== 'cards'}
-              onClick={() => setReveals((was) => ({ ...was, [name]: !was[name] }))}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
+
+        {/* Hidden until the handle above discloses it: everything in here narrows or widens what the views draw. */}
+        <section class="filters" id="filters" aria-label="Filters" hidden={!filtersOpen}>
+          {/*
+           * What a chip click applies to, immediately above the chips it governs. The label is a real element and the
+           * group takes `aria-labelledby` rather than repeating it in an `aria-label`, so the two cannot drift.
+           */}
+          <div class="scope">
+            <span id="scopeLabel">Type filters apply to</span>
+            <div class="viewtoggle" role="group" aria-labelledby="scopeLabel">
+              {(
+                [
+                  ['global', 'All views'],
+                  ['view', 'This view'],
+                ] as const
+              ).map(([scope, label]) => (
+                <button
+                  key={scope}
+                  type="button"
+                  class={prefs.filterScope === scope ? 'active' : undefined}
+                  aria-pressed={prefs.filterScope === scope}
+                  onClick={() => setScope(scope)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/*
+           * A `group` rather than a labelled `section`, being nested inside one: two regions one wrapping the other is
+           * a landmark a reader has to step past to reach the chips.
+           *
+           * The type chips are painted from the hidden set in force rather than their own appearance, which matters
+           * because under a per-view scope that set changes with the view — a row showing the last view's would be a
+           * stale legend.
+           *
+           * The reveals are the same chip, and buttons for the same reason: `aria-pressed` is what carries on or off to
+           * a reader who cannot see the dimming. Last in the row and so last in the tab order, the type chips being the
+           * legend for all three views where these only widen a window.
+           */}
+          <div class="type-filters" role="group" aria-label="Filter events">
+            {types.map(([eventType, label]) => (
+              <button
+                key={eventType}
+                type="button"
+                class={`chip${hidden.has(eventType) ? ' off' : ''}${typeClass(eventType)}`}
+                aria-pressed={!hidden.has(eventType)}
+                onClick={() => toggleType(eventType)}
+              >
+                {label}
+              </button>
+            ))}
+            {REVEALS.map(({ name, label, cardsOnly }) => (
+              <button
+                key={name}
+                type="button"
+                class={reveals[name] ? 'chip' : 'chip off'}
+                aria-pressed={reveals[name]}
+                hidden={cardsOnly && view !== 'cards'}
+                onClick={() => setReveals((was) => ({ ...was, [name]: !was[name] }))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
 
       <main>{failed === null && drawn.body}</main>
 
