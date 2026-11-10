@@ -24,7 +24,7 @@
  * eighteen types — what separates them is the operator, and that is in each chip's own label rather than in its colour.
  */
 
-import { GENERATIONS } from '../pokemon/generations.js';
+import { GENERATIONS, LAST_DEX } from '../pokemon/generations.js';
 
 export interface Term {
   id: string;
@@ -471,7 +471,7 @@ const BUDDY_LEVELS: readonly string[] = [
 const RANGE_TABLE = [
   { id: 'cp', prefix: 'cp', label: 'CP', max: 99999 },
   { id: 'hp', prefix: 'hp', label: 'HP', max: 500 },
-  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: Math.max(...GENERATIONS.map(({ last }) => last)) },
+  { id: 'dex', prefix: '', label: 'Dex number', min: 1, max: LAST_DEX },
   { id: 'ivattack', prefix: '', suffix: 'attack', label: 'Attack IV', max: 4 },
   { id: 'ivdefense', prefix: '', suffix: 'defense', label: 'Defence IV', max: 4 },
   { id: 'ivhp', prefix: '', suffix: 'hp', label: 'HP IV', max: 4 },

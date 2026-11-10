@@ -32,6 +32,12 @@
  *                       `--search '+burmy & cp196'` rather than a screen set up by hand
  *   pnpm inventory parse [--verbose] [--refresh] [--config FILE] FILE.png…
  *                       the same for screenshots already saved, with no phone needed
+ *   pnpm inventory dex [--out pokedex.jsonl] [--from N] [--to M] [--keep-screens DIR]
+ *                      [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
+ *                       walk the game's Pokédex entry by entry and write what each species has registered, one line
+ *                       each; `--from` and `--to` walk those numbers alone and replace only their lines of `--out`.
+ *                       Ends by checking the record against the counts each tab of the Pokédex prints, and fails
+ *                       naming each region and tab that disagrees, the lines it wrote kept
  *   A flag handed to a command whose line omits it is refused rather than ignored — see `HONOURED`.
  *   `help`, or `--help` beside any command, prints this.
  *
@@ -89,6 +95,8 @@ import {
   refusals,
   type Source,
 } from '../src/tools/inventory/report.mts';
+import { LAST_DEX } from '../src/pokemon/generations.ts';
+import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
 import { rowOf } from '../src/tools/inventory/row.mts';
 import {
   count,
@@ -150,6 +158,8 @@ const { values: options, positionals } = parseArgs({
     'scroll': { type: 'boolean', default: false },
     'keep-screens': { type: 'string' },
     'search': { type: 'string' },
+    'from': { type: 'string' },
+    'to': { type: 'string' },
     'config': { type: 'string' },
     'serial': { type: 'string' },
     'user': { type: 'string' },
@@ -176,10 +186,10 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
  * belongs: `parse --out inventory.jsonl` wrote nothing and said nothing about it. Stated once here, so the rejection
  * below and the usage block above cannot drift apart without a test noticing.
  *
- * `--config` is on all three but splits two ways: `scan` and `snap` drive the phone out of it, reading `swipes`,
- * `waits` and `scrollBand`, where `parse` reaches `overlay` alone and only through `report`. The fields are named so
- * the claim can be grepped for. `--serial` and `--user` stop at `snap` because `parse` opens no device. `--scroll` is
- * the scan's alone, a `snap` taking a scroll capture every time.
+ * `--config` is on all four but splits two ways: `scan`, `snap` and `dex` drive the phone out of it, reading `taps`,
+ * `swipes`, `waits` and `scrollBand`, where `parse` reaches `overlay` alone and only through `report`. The fields are
+ * named so the claim can be grepped for. `--serial` and `--user` are on every command but `parse`, which opens no
+ * device. `--scroll` is the scan's alone, a `snap` taking a scroll capture every time.
  */
 const HONOURED: Record<string, readonly string[]> = {
   scan: [
@@ -200,6 +210,7 @@ const HONOURED: Record<string, readonly string[]> = {
   ],
   snap: ['search', 'verbose', 'refresh', 'config', 'serial', 'user'],
   parse: ['verbose', 'refresh', 'config'],
+  dex: ['out', 'from', 'to', 'keep-screens', 'config', 'serial', 'user', 'refresh', 'verbose'],
 };
 
 /**
@@ -914,6 +925,124 @@ async function snap() {
   }
 }
 
+/**
+ * The numbers `--from` and `--to` cover, read ahead of the phone for the reason `scanRange` reads its own: a typo is
+ * refused before anything is driven or leased. Neither given is every number there is.
+ */
+function dexRange() {
+  const from = count('from', options.from, 1);
+  const to = count('to', options.to, LAST_DEX);
+
+  if (from < 1 || from > to || from > LAST_DEX) {
+    throw new Error(
+      `--from ${from} --to ${to} covers no species: --from is at least 1, no more than --to and no more than ${LAST_DEX}`,
+    );
+  }
+
+  return { from, to };
+}
+
+/**
+ * Walks the Pokédex from `from` to `to` and writes a line for each species it reaches, then checks the whole record
+ * against what the game counts. The file is rewritten as each line is read, each species read replacing its own line
+ * and every other line left as it was, so a run cut short keeps what it read and leaves the rest of the record alone;
+ * and it is not touched until the first entry has been read, so a run that cannot start leaves an earlier one where it
+ * was.
+ *
+ * `held` is the shell the touchscreen is made on, as the scan's is.
+ */
+async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
+  const out = passed.includes('out') ? options.out : 'pokedex.jsonl';
+  const device = new Device(adbCli(options.serial));
+  await device.check();
+  const data = await loadGameData(CACHE, options.refresh);
+
+  // The touchscreen for the reason the scan has one: `input swipe` drops a swipe in ten, and a dropped one reads here
+  // as the end of the Pokédex.
+  const touch = await touchscreen(held).catch((error: unknown) => {
+    console.error(
+      `${said(error)}; swiping with \`input swipe\` instead, which can drop a swipe and end the walk early`,
+    );
+
+    return null;
+  });
+
+  // In fractions of the screen, which the touchscreen takes as they are and `input swipe` wants in pixels.
+  const { width, height } = await device.screenshot();
+  const drag = async (start: Point, end: Point, ms: number) =>
+    touch
+      ? touch.swipe(start, end, ms)
+      : device.swipe([start[0] * width, start[1] * height], [end[0] * width, end[1] * height], ms);
+
+  const screens = options['keep-screens'];
+
+  if (screens) {
+    mkdirSync(screens, { recursive: true });
+  }
+
+  const { walk, tally } = pokedex({
+    device,
+    config,
+    data,
+    icon: cachedIcon(CACHE, options.refresh),
+    drag,
+    keep: (name, image) => screens && writeFileSync(join(screens, `${name}.png`), encodePng(image)),
+    say: console.error,
+  });
+
+  const earlier: Entry[] = existsSync(out)
+    ? readFileSync(out, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as Entry)
+    : [];
+  const read = new Map<number, Entry>();
+
+  // The record as far as the walk has got: each species read replaces its own line, and every other line stays as it
+  // was. A species the walk did not read is one it passed over, never reached, or stopped on, and from here those look
+  // alike; only reading it says anything new about it, and a line gone stale is the count's to name.
+  const record = () => [...earlier.filter((e) => !read.has(e.dex)), ...read.values()].sort((a, b) => a.dex - b.dex);
+
+  for await (const entry of walk(from, to)) {
+    read.set(entry.dex, entry);
+    writeFileSync(
+      out,
+      record()
+        .map((e) => `${JSON.stringify(e)}\n`)
+        .join(''),
+    );
+
+    const registered = TABS.slice(1)
+      .filter((tab) => tab.counts(entry))
+      .map((tab) => tab.label.toLowerCase());
+    const forms = entry.forms.length > 1 ? `, ${entry.forms.length} forms` : '';
+    const costumes = entry.costumes.length > 0 ? `, ${entry.costumes.length} costumes` : '';
+    console.error(
+      `#${entry.dex} ${entry.species} ${entry.caught ? 'caught' : 'seen'}${forms}${costumes}` +
+        `${registered.length > 0 ? ` — ${registered.join(', ')}` : ''}${entry.notes.length > 0 ? ` (${entry.notes.join('; ')})` : ''}`,
+    );
+  }
+
+  console.error(`Wrote ${read.size} species to ${out}; checking them against the Pokédex's own counts`);
+
+  const { mismatches, unread } = await tally(record());
+
+  for (const { tab, regions } of unread) {
+    console.error(`  ${tab}: no count read for ${regions.join(', ')}, so the record there was not checked`);
+  }
+
+  for (const { tab, region, game, record: written } of mismatches) {
+    console.error(`  ${tab} in ${region}: the game counts ${game}, the record ${written}`);
+  }
+
+  if (mismatches.length > 0) {
+    throw new Error(
+      `the record disagrees with the game in ${mismatches.length} place${mismatches.length === 1 ? '' : 's'}; ` +
+        `every line read is kept in ${out}, and a region outside --from and --to that disagrees is one to walk again`,
+    );
+  }
+}
+
 // Last, so that everything above is initialised before anything runs.
 if (command === 'scan') {
   const range = scanRange();
@@ -924,6 +1053,15 @@ if (command === 'scan') {
 
   try {
     await scan(held, range);
+  } finally {
+    held.close();
+  }
+} else if (command === 'dex') {
+  const range = dexRange();
+  const held = adbHeld(options.serial);
+
+  try {
+    await dex(held, range);
   } finally {
     held.close();
   }

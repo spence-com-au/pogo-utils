@@ -30,6 +30,9 @@ export const GENERATIONS: readonly {
   { number: 9, first: 906, last: 1025, region: 'Paldea', starters: [906, 909, 912] },
 ];
 
+/** The last number in the national dex, which is where the last generation ends. */
+export const LAST_DEX = Math.max(...GENERATIONS.map(({ last }) => last));
+
 /**
  * A region a generation shares with the one it is named for: Hisui, whose seven species close generation 8 after
  * Galar's. A species in one of these spans is from that region rather than its generation's.

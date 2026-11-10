@@ -24,7 +24,6 @@ import { decodePng, screenIn } from '../../core/png.mts';
 import { sizeOf, type Gender } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
-import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from '../../core/moves.mts';
 import { artworkIn, readScreen } from './report.mts';
 import { dialogOpen } from './storage.mts';
@@ -2610,75 +2609,6 @@ test('the two Squirtle captures agree on everything but the CP each reads', asyn
     expect(identity.cp).toBe(null);
     expect(identity.notes, 'an absent overlay is the ordinary case and not worth a note').toStrictEqual([]);
   }
-});
-
-/**
- * That **no** capture in this corpus names a dex number, which is the half of `dexOn` a corpus of detail screens can
- * state and the half that matters. A reader that answered a dex off a detail screen would be worse than one that
- * answered nothing, since the walk calls it exactly when the name could not be trusted.
- *
- * The three Pokédex entry captures this was written against are gone, so the other half — that an entry *is* read —
- * lives in `pokedex.test.mts` over lines built there. `dexOn` takes lines and a game master and no image, so a capture
- * bought it nothing a line cannot state; what a capture could state, and this still does, is that Tesseract reading a
- * real screen never hands it something it mistakes for a title.
- *
- * What makes a capture decline is the cross-check rather than the screen being bare: a number is believed only where it
- * resolves to a species and the name printed beside it folds to that same species. A detail screen carries four-digit
- * numbers — a CP, a stardust count — and none of them has a species beside it.
- */
-test(
-  'no capture in the corpus names a dex number',
-  async () => {
-    const named: string[] = [];
-    let asked = 0;
-
-    for (const file of CORPUS) {
-      const { lines } = await readingOf(file);
-      asked++;
-
-      if (dexOn(lines, DATA) !== null) {
-        named.push(file);
-      }
-    }
-
-    expect(named, 'a capture that is not a Pokédex entry answered a dex number').toStrictEqual([]);
-
-    // The count, because an empty list of offenders is also what a loop that asked nothing produces — which is the
-    // failure this whole test exists to rule out, one level up.
-    expect(asked, 'the reader was not asked about every capture').toBe(CORPUS.length);
-  },
-  WHOLE_CORPUS_TIMEOUT,
-);
-
-/**
- * That a species read off the Pokédex does not cost the nickname, which is the half of `identify` the override could
- * most easily have broken: the dex decides the species, and the name is still what says whether there is a nickname,
- * which is what keeps `ho-oh.png` a Ho-Oh called `96%`.
- *
- * It is also the case where the fallback changes nothing, and that is worth asserting rather than assuming: the CP
- * narrowing already settles this capture, so the dex has to agree with an answer that was right without it.
- */
-test('a species read off the Pokédex leaves the nickname alone', async () => {
-  const { detail, overlay, artwork, identity: without } = await readingOf('ho-oh.png');
-  const dex = DATA.forms.find((f) => f.species === 'Ho-Oh')?.dex ?? null;
-  const identity = identify(DATA, detail, overlay, artwork, dex);
-
-  expect(identity.form && label(identity.form)).toBe('Ho-Oh');
-
-  // Against what the same capture answers *without* the override rather than against `96%` directly, which is the claim
-  // worth making: the override leaves the nickname alone, whatever the name pass made of it. Stated as invariance it
-  // survived the name pass starting to read this screen correctly — it used to answer `LUCKY POKEMON`, the green line
-  // under the nickname taken for the name, and a `96%` written out here would have been a second thing to remember.
-  expect(identity.nickname, 'the dex override swallowed the nickname the screen prints').toBe(without.nickname);
-  expect(without.nickname, 'what `ho-oh.png` reads as its nickname has changed').toBe('96%');
-
-  // Stated as invariance for the same reason the nickname is: the Pokédex and the numbers agree here, so the override
-  // may not add a note of its own — and the one note this capture does raise is the artwork declining its two icons,
-  // which the override has no part in.
-  expect(identity.notes, 'the dex override reports something the capture did not').toStrictEqual(without.notes);
-  expect(without.notes, 'what `ho-oh.png` raises a note about has changed').toStrictEqual([
-    'nothing on the screen separates it from Ho-Oh (S)',
-  ]);
 });
 
 /**

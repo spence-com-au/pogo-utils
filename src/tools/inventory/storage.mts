@@ -108,7 +108,7 @@ function isStorage(lines: readonly Line[]): boolean {
  * word too — a quest reading `Catch 500 Pokémon` sits above the trainer's avatar — and the button beneath that label
  * is, on the map, a patch of ground PGSharp's tap-to-walk takes as somewhere to walk to.
  */
-const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
+export const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
 
 /**
  * Whether storage's suggestions panel is showing, by a heading only it has as a line of its own: `Recent`,
@@ -119,6 +119,66 @@ const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== 
 const isSuggestions = (lines: readonly Line[]) => findLine(lines, /^(recent|see more|recommended)$/) !== undefined;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Launched where it is not already in front, which is the phone's answer to give rather than the user's: a game
+ * running and a game showing are different states, and only the second is one a walk can start from. A game in the
+ * background still needs the launch to bring it forward — skipping it there taps the launcher instead, three times
+ * over, and reports that storage cannot be found. The wait goes with the launch, since thirty seconds is what a cold
+ * start costs and a game already drawn is past it; measured, a resume takes the focus back in 676ms.
+ *
+ * It belongs to the walks rather than to each caller because it is their own precondition, and a caller is free to
+ * forget it: every path that drives storage or the Pokédex gets it from here whether its author thought of the
+ * backgrounded phone or not.
+ *
+ * In front means the right copy in front, since a phone with a work profile holds two installs of one package. The
+ * user is `config.user` where one was given, and otherwise the one the game in front runs as; only with neither is
+ * the phone asked which users have it installed, by `onlyInstall`, a second `adb` call made only by a run that is
+ * launching anyway. A game in front for another user than the one named is launched for the named one, which brings
+ * that copy forward instead.
+ */
+export async function toFront(
+  device: Device,
+  config: Pick<Config, 'package' | 'user' | 'waits'>,
+  say: (message: string) => void,
+) {
+  const front = await device.focused();
+  const user = config.user ?? (front?.package === config.package ? front.user : await onlyInstall(device, config));
+
+  if (front?.package === config.package && front.user === user) {
+    say('Pokémon GO is already in front');
+  } else {
+    say(user === 0 ? 'Launching Pokémon GO' : `Launching Pokémon GO for Android user ${user}`);
+    await device.launch(config.package, user);
+    await sleep(config.waits.launch);
+  }
+}
+
+/**
+ * The Android user to launch the game for when nothing says which: the one it is installed for, where that is one.
+ *
+ * Where it is more than one, the phone has a copy in each profile — a work profile's and the personal profile's,
+ * signed in to different trainers — and picking either is a guess that drives an account nobody asked for: launching
+ * user 0's brings up the personal profile's trainer where the game is played from the work profile (#594). Refused,
+ * then, rather than guessed, and the game in front answers it from then on: that is the copy being played, which is
+ * why it is asked before this is.
+ */
+async function onlyInstall(device: Device, config: Pick<Config, 'package'>) {
+  const users = await device.installs(config.package);
+
+  if (users.length === 1) {
+    return users[0] as number;
+  }
+
+  if (users.length === 0) {
+    throw new Error(`${config.package} is not installed on the phone`);
+  }
+
+  throw new Error(
+    `Pokémon GO is installed for Android users ${users.join(' and ')}, a copy in each profile: open the one this ` +
+      'account plays so that it is in front, or name its user with --user, and run again',
+  );
+}
 
 /**
  * Getting about storage on the phone: to the grid, a search typed into it, and where the first tile of what it left is.
@@ -298,65 +358,12 @@ export function storage(
   };
 
   /**
-   * Launched where it is not already in front, which is the phone's answer to give rather than the user's: a game
-   * running and a game showing are different states, and only the second is one `toStorage` can start from. A game in
-   * the background still needs the launch to bring it forward — skipping it there taps the launcher instead, three
-   * times over, and reports that storage cannot be found. The wait goes with the launch, since thirty seconds is what a
-   * cold start costs and a game already drawn is past it; measured, a resume takes the focus back in 676ms.
-   *
-   * It belongs to `toStorage` rather than to each caller because it is `toStorage`'s own precondition, and a caller is
-   * free to forget it: every path that drives storage gets it from here whether its author thought of the backgrounded
-   * phone or not. Asked once per run rather than before every search, which is the one `adb` call `scan` spent when it
-   * owned this rather than one for each flag.
-   *
-   * In front means the right copy in front, since a phone with a work profile holds two installs of one package. The
-   * user is `config.user` where one was given, and otherwise the one the game in front runs as; only with neither is
-   * the phone asked which users have it installed, by `onlyInstall`, a second `adb` call made only by a run that is
-   * launching anyway. A game in front for another user than the one named is launched for the named one, which brings
-   * that copy forward instead.
+   * Gets to the storage grid from wherever the game is: the map, a detail screen, or the grid already. Brought to the
+   * front once per run rather than before every search, which is the one `adb` call `scan` spent when it owned that
+   * rather than one for each flag.
    */
-  const foreground = async () => {
-    const front = await device.focused();
-    const user = config.user ?? (front?.package === config.package ? front.user : await onlyInstall());
-
-    if (front?.package === config.package && front.user === user) {
-      say('Pokémon GO is already in front');
-    } else {
-      say(user === 0 ? 'Launching Pokémon GO' : `Launching Pokémon GO for Android user ${user}`);
-      await device.launch(config.package, user);
-      await sleep(config.waits.launch);
-    }
-  };
-
-  /**
-   * The Android user to launch the game for when nothing says which: the one it is installed for, where that is one.
-   *
-   * Where it is more than one, the phone has a copy in each profile — a work profile's and the personal profile's,
-   * signed in to different trainers — and picking either is a guess that drives an account nobody asked for: launching
-   * user 0's brings up the personal profile's trainer where the game is played from the work profile (#594). Refused,
-   * then, rather than guessed, and the game in front answers it from then on: that is the copy being played, which is
-   * why it is asked before this is.
-   */
-  const onlyInstall = async () => {
-    const users = await device.installs(config.package);
-
-    if (users.length === 1) {
-      return users[0] as number;
-    }
-
-    if (users.length === 0) {
-      throw new Error(`${config.package} is not installed on the phone`);
-    }
-
-    throw new Error(
-      `Pokémon GO is installed for Android users ${users.join(' and ')}, a copy in each profile: open the one this ` +
-        'account plays so that it is in front, or name its user with --user, and run again',
-    );
-  };
-
-  /** Gets to the storage grid from wherever the game is: the map, a detail screen, or the grid already. */
   const toStorage = async () => {
-    await (fronted ??= foreground());
+    await (fronted ??= toFront(device, config, say));
 
     for (let attempt = 0; attempt < 3; attempt++) {
       const image = await device.screenshot();
