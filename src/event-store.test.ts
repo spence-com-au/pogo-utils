@@ -291,7 +291,11 @@ test('a type a link unhid is counted while the Events page is open, and a chip k
   expect(ids(store)).toEqual([]);
 });
 
-test('the Events page search narrows the list while it is open, and closing the page lifts it', async () => {
+/**
+ * Following a notice lands on the Events page searching for that event's name and acknowledges it there. The search
+ * narrows what the page shows rather than what is new, so the rest of the list stays.
+ */
+test('the Events page search leaves the list whole, so following one notice clears only that one', async () => {
   const { store, source } = storeOver([feedEvent('a')]);
 
   await store.load();
@@ -299,10 +303,10 @@ test('the Events page search narrows the list while it is open, and closing the 
   await store.load();
 
   store.publish({ reveals: NOTHING_REVEALED, search: 'Event c', now: new Date() });
-  expect(ids(store)).toEqual(['c']);
-
-  store.publish(null);
   expect(ids(store)).toEqual(['b', 'c']);
+
+  store.acknowledge([{ eventID: 'c' }]);
+  expect(ids(store)).toEqual(['b']);
 });
 
 /**

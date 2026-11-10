@@ -299,8 +299,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   const isNew = (ev: ParsedEvent) => isNewIn(prefs, ev);
 
   /**
-   * The events the reader is being told are new, which is also what the top bar lists: unacknowledged, and among
-   * those the ones the cards view admits.
+   * The events the reader is being told are new, which is also what the top bar lists while nothing is searched for:
+   * unacknowledged, and among those the ones the cards view admits.
    */
   const newlyVisible = () => newlyVisibleIn(events, prefs, filter);
 
@@ -372,9 +372,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   }, []);
 
   /**
-   * Hand the cards view's filters to the store while the page is open, so the top bar counts under the same ones, and
-   * take them back as it closes. A type `applyPending` unhid goes with them, so every other tab counts under what is
-   * stored.
+   * Hand the cards view's filters to the store while the page is open, so the top bar counts under the same ones bar
+   * the search, and take them back as it closes. A type `applyPending` unhid goes with them, so every other tab counts
+   * under what is stored.
    */
   useEffect(() => {
     store.publish(filter);
