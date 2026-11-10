@@ -19,7 +19,7 @@ import { fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
-import { fielded, formsOf } from './strategy.mts';
+import { fielded, formsOf, isMegaMove } from './strategy.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
 const SEARCH: Point = [0.556, 0.536];
@@ -194,8 +194,8 @@ export async function readPanel(
 
   // The mega moves a pool holds, a Mega's its own and an ordinary form's none, for the row below its charged moves; or
   // every one there is where there is no pool, the species unread.
-  const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
-  const megaMovesOf = (among: readonly Move[]) => (among.length > 0 ? among : data.moves).filter(isMega);
+  const megaMovesOf = (among: readonly Move[]) =>
+    (among.length > 0 ? among : data.moves).filter((move) => isMegaMove(data, move.name));
   const movesAmong = (among: readonly Move[]) => readMoves(rows, data, among, panel, megaMovesOf(among));
 
   // The one species whose forms of these types hold every move read, or null. A Mega only where its mega move was
@@ -221,8 +221,10 @@ export async function readPanel(
   let named = told?.species ?? species ?? speciesOf(moves);
 
   // Matched among every move there is: read again among the moves of the species they name, which affords slack the
-  // whole list cannot, for a row the first pass lost.
-  if (species === null && named !== null && (moves.fast === null || moves.charged.length < 2)) {
+  // whole list cannot, for a row the first pass lost. A Mega's mega move is neither of its two charged moves.
+  const taught = moves.charged.filter((move) => !isMegaMove(data, move));
+
+  if (species === null && named !== null && (moves.fast === null || taught.length < 2)) {
     moves = await movesAmong(of(named));
     named = speciesOf(moves);
   }

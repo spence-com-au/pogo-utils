@@ -547,6 +547,10 @@ test('judges a card read with one charged move by every one its species can hold
   expect(counterOf(DATA, kyogre, 0, { species: 'Tyranitar' }, new Set(), { species: 'Salamence' })?.slot).toBe(1);
   expect(activeOf(DATA, [...cards(['Latias']), one('Mamoswine', ['Avalanche'])], new Set(), ['Stone Edge'])).toBe(1);
 
+  // A Mega's mega move is neither of its two charged moves, so Mega Mewtwo Y read with Psystrike and Future Sight+ may
+  // hold Focus Blast.
+  expect(activeOf(DATA, [one('Mega Mewtwo Y', ['Psystrike', 'Future Sight+'])], new Set(), ['Focus Blast'])).toBe(0);
+
   // With no species to add the rest it can hold, a nickname read with one move cannot be checked, and stands.
   const nickname = { species: null, cp: null, moves: { fast: null, charged: ['Avalanche'] } };
 

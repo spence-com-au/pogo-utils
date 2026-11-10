@@ -65,6 +65,9 @@ export function fielded(data: GameData): { forms: readonly Form[]; species: read
   return made;
 }
 
+/** Whether `move` is a Mega's mega move, which it holds beside its two charged moves rather than as one of them. */
+export const isMegaMove = (data: GameData, move: string) => data.megas.some((form) => form.megaMove === move);
+
 /**
  * Every charged move `form` holds, where those `seen` say: once it has thrown `MOVES_HELD` besides a Mega's mega move,
  * they are all it has but that mega move, which a Mega always holds. Undefined until then, `seen` saying nothing of
@@ -179,17 +182,18 @@ export function chargedOf(form: Form, moveset?: Moveset): string[] {
 
 /**
  * A card's two charged moves, where the panel the selection screen shows for it held read both, and a Mega's mega move
- * beside them where that was read too. One read alone is no surer than its species: a Pokémon whose second move is
- * locked has one, but so does a panel whose other row OCR missed.
+ * beside them where that was read too, which is neither of the two. One read alone is no surer than its species: a
+ * Pokémon whose second move is locked has one, but so does a panel whose other row OCR missed.
  */
-const ownMoves = ({ moves }: Card) => (moves && moves.charged.length >= 2 ? moves.charged : undefined);
+const ownMoves = (data: GameData, { moves }: Card) =>
+  moves && moves.charged.filter((move) => !isMegaMove(data, move)).length >= MOVES_HELD ? moves.charged : undefined;
 
 /**
  * Every charged move a party card can hold, by name: its own two, where read, and otherwise every one any form of its
  * species can hold, with any one read among them.
  */
 function chargedMoves(data: GameData, card: Card): Set<string> {
-  const own = ownMoves(card);
+  const own = ownMoves(data, card);
 
   if (own) {
     return new Set(own);
@@ -207,7 +211,7 @@ function chargedMoves(data: GameData, card: Card): Set<string> {
  * 130 power for Return would tie every species with a shadow form, few of ours being purified.
  */
 const judgedBy = (data: GameData, card: Card): string[] =>
-  [...(ownMoves(card) ?? chargedMoves(data, card))].filter(
+  [...(ownMoves(data, card) ?? chargedMoves(data, card))].filter(
     (move) => !SHADOW_AND_PURIFIED.has(move) || card.moves?.charged.includes(move),
   );
 
@@ -215,7 +219,7 @@ const judgedBy = (data: GameData, card: Card): string[] =>
  * Whether too little was read of a card to judge it by: no species, and not both its charged moves, which alone would
  * leave it judged by the one move read where a species would add the rest it can hold.
  */
-const unread = (card: Card) => card.species === null && !ownMoves(card);
+const unread = (data: GameData, card: Card) => card.species === null && !ownMoves(data, card);
 
 /**
  * Which slot of the party is out: `sent`, the slot last sent in, or before any faint the lead, a battle opening with
@@ -238,7 +242,7 @@ export function activeOf(
     return (
       card !== undefined &&
       !fainted.has(slot) &&
-      (unread(card) || read.every((move) => chargedMoves(data, card).has(move)))
+      (unread(data, card) || read.every((move) => chargedMoves(data, card).has(move)))
     );
   };
 
@@ -305,7 +309,7 @@ export function nextOut(
 function hardestHit(data: GameData, card: Card, opponent: Shown): { hardest: number; move: string | undefined } {
   const own = typesOf(data, { species: card.species });
   const types = typesOf(data, opponent);
-  const moves = unread(card) ? [] : judgedBy(data, card);
+  const moves = unread(data, card) ? [] : judgedBy(data, card);
   let best = { hardest: 0, move: undefined as string | undefined };
 
   for (const move of moves) {
