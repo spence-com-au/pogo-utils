@@ -853,13 +853,13 @@ export async function run(
 
       battle.matchup = facing;
 
-      // Only the fight's own frames count our fast moves: the shield prompt, a charged move under way and a switch pause
-      // them. In a kept run, our energy was counted from 52 to 91 through Garchomp's Sand Tomb and the `Get Ready!` of
-      // ours after it. The opponent's hits on our bar are counted through a charged move under way too, bar our
-      // minigame: ours sent in shows no button until it has flown in, and in a kept run Tyranitar's fast move landed on
-      // Dragonite 0.2s before its button was drawn. A frame with our bar not found does neither, the drop across it
-      // still the fight's. A frame that did find it counts the HP decided on, a misread's drop and the rise back from it
-      // being no hits.
+      // Only the fight's own frames count our fast moves, and the opponent's for the most it can hold: the shield
+      // prompt, a charged move under way and a switch pause them. In a kept run, our energy was counted from 52 to 91
+      // through Garchomp's Sand Tomb and the `Get Ready!` of ours after it. The opponent's hits on our bar are counted
+      // through a charged move under way too, bar our minigame: ours sent in shows no button until it has flown in, and
+      // in a kept run Tyranitar's fast move landed on Dragonite 0.2s before its button was drawn. A frame with our bar
+      // not found does neither, the drop across it still the fight's. A frame that did find it counts the HP decided
+      // on, a misread's drop and the rise back from it being no hits.
       const bar = bars && bars.own !== null ? health.own : null;
       const theirBar = bars && bars.opponent !== null ? health.opponent : null;
       const fighting = (state === 'battle' || state === 'charged') && !battle.player.minigame;
@@ -873,7 +873,10 @@ export async function run(
       if (!fighting) {
         battle.hits.pause();
         battle.ourEnergy.pause();
+        battle.energy.stood();
       } else {
+        battle.energy.fought(clock.now(), facing);
+
         // Our fast moves gain energy only for the one whose card's moves are ours, the one out.
         if (slot !== undefined && ours) {
           battle.ourEnergy.read(slot, clock.now());
@@ -886,9 +889,15 @@ export async function run(
         }
       }
 
-      // What the opponent can afford: the energy counted, and a fast move's more for a hit the count missed.
+      // What the opponent can afford: the energy counted, raised to the most the fight's time since its last throw
+      // could have given it, where the count has missed hits too small for our bar to show, and a fast move's more for
+      // a hit missed by both. Live, Melmetal was counted at 27 against our Mega Mewtwo Y, whose bar its Thunder Shock
+      // took about 1.4% of, and Dynamic Punch, seen 19s before at 45, was ruled out at the prompt it was thrown at.
+      // `wouldShield`'s cycle keeps the count as it is, more energy there keeping the shield more often.
       const estimate = battle.energy.estimate(facing);
-      const affordable = estimate ? estimate.energy + estimate.gain : undefined;
+      const most = battle.energy.most(facing);
+      const raised = estimate && { ...estimate, energy: Math.max(estimate.energy, most ?? 0) };
+      const affordable = raised ? raised.energy + raised.gain : undefined;
 
       // Whether the opponent's hardest charged move would faint us: hardest of those it can afford, where its energy is
       // counted. A league whose cap went unread takes every shield, as anything else unknown does. Taken also by
@@ -1094,7 +1103,7 @@ export async function run(
                 shields: battle.theirShields,
                 left: battle.left.opponent,
                 steps: { ours: battle.hits.step, theirs: battle.energy.step },
-                estimate,
+                estimate: raised,
                 seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
                 fast: ours?.fast,
               },
@@ -1383,6 +1392,7 @@ export async function run(
 
     battle.player.next(state, clock.now());
     battle.energy.pause();
+    battle.energy.stood();
     battle.hits.pause();
     battle.ourEnergy.pause();
 
