@@ -19,6 +19,12 @@ import { type Point } from './layout.mts';
 
 export type Colour = readonly [r: number, g: number, b: number];
 
+/** A swipe through a blob of bubbles, and the share of the type's colour its pixels hold on average. */
+export interface Bubble {
+  swipe: readonly [Point, Point];
+  share: number;
+}
+
 /**
  * The width the finder works at: half a stream frame's, a quarter of the pixels, which took a frame from 55–72ms to
  * a quarter of that and found the same blobs. The sizes below are in pixels at it.
@@ -183,12 +189,13 @@ const white = ([r, g, b]: Colour) =>
   Math.min(r, g, b) >= WHITE.least && Math.max(r, g, b) - Math.min(r, g, b) <= WHITE.spread;
 
 /**
- * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, the biggest blob first of
- * those as saturated as `FADED` asks, then the biggest of the rest: along each blob's length, through its middle, and a
- * little past either end. Their ends can lie past `REACH`, so that a bubble at an edge keeps its size and middle for
- * whatever is told from them, and `reachable` brings each onto it before it is swiped.
+ * The swipes through the bubbles of `colour` on a minigame frame, as fractions of the screen, each with its blob's
+ * share, the biggest blob first of those as saturated as `FADED` asks, then the biggest of the rest: along each blob's
+ * length, through its middle, and a little past either end. Their ends can lie past `REACH`, so that a bubble at an
+ * edge keeps its size and middle for whatever is told from them, and `reachable` brings each onto it before it is
+ * swiped.
  */
-export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
+export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
   const { width, height } = image;
   const pixel = (i: number): Colour => [image.data[i * 4] ?? 0, image.data[i * 4 + 1] ?? 0, image.data[i * 4 + 2] ?? 0];
@@ -200,7 +207,7 @@ export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
     mask[i] = washed(pixel(i), colour) ? 1 : 0;
   }
 
-  const swipes: { area: number; share: number; swipe: [Point, Point] }[] = [];
+  const swipes: (Bubble & { area: number })[] = [];
   const seen = new Uint8Array(width * height);
 
   for (let start = top * width; start < bottom * width; start++) {
@@ -253,9 +260,11 @@ export function bubbleSwipes(frame: Image, colour: Colour): [Point, Point][] {
   }
 
   const vivid = Math.max(...swipes.map(({ share }) => share));
-  const unfaded = ({ share }: { share: number }) => Number(share >= FADED * vivid);
+  const unfaded = ({ share }: Bubble) => Number(share >= FADED * vivid);
 
-  return swipes.sort((a, b) => unfaded(b) - unfaded(a) || b.area - a.area).map(({ swipe }) => swipe);
+  return swipes
+    .sort((a, b) => unfaded(b) - unfaded(a) || b.area - a.area)
+    .map(({ swipe, share }) => ({ swipe, share }));
 }
 
 /** A swipe along a blob's longest axis, through its middle and `OVERRUN` past each end. */

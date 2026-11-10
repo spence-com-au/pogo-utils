@@ -14,7 +14,7 @@
 
 import { around, BOTTOM, place, type Area, type Point, type Size } from './layout.mts';
 import { FINGER } from './menus.mts';
-import { reachable } from './minigame.mts';
+import { reachable, type Bubble } from './minigame.mts';
 import { type State } from './recognise.mts';
 
 export type Action =
@@ -99,14 +99,14 @@ export interface Choices {
   bench?: Point;
 
   /**
-   * The swipes through the minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first whose swipe as
+   * The minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first of those `GONE` keeps whose swipe as
    * aimed is `clear` swiped. None found, or none clear, waits through the minigame's lead-in, there being nothing to
    * pop yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
    * otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have been gone
    * `OVER_MS`, or once `back` says, are waited through too, being the move playing out. Undefined, where the bubbles'
    * colour is not known, sweeps rows throughout.
    */
-  bubbles?: readonly (readonly [Point, Point])[];
+  bubbles?: readonly Bubble[];
 
   /**
    * Whether a swipe can be made, PGSharp's overlay not under both its ends, judged on each bubble's swipe as `ahead`
@@ -184,6 +184,18 @@ const OVER_MS = 500;
  * the button through `Get Ready!` itself. Every stretch the move came after ran 2.5s at the least.
  */
 const BUBBLES_MS = 2_000;
+
+/**
+ * How much of the most saturated share found over a minigame's bubbles, unbroken by `OVER_MS`, a blob has to hold to be
+ * swiped. Paler, it is no bubble still to pop, though with nothing more saturated beside it on its frame `bubbleSwipes`
+ * puts it first: at night, Palkia's wing held 0.33 to 0.46 of Dragon's and Water's share and a bubble popped paled to
+ * 0.4 before it went, where the bubbles of each minigame reached 1.05 to 1.08. A frame of only such blobs is waited
+ * through, the bubbles still found as `OVER_MS` counts them. Over five kept minigames, 70 of 590 frames with a find
+ * were, each the wing or Palkia's body, a bubble popped, Avalanche's ice chunks or the move playing out. No tighter: a
+ * sunny Pixel 4 XL's Ice bubbles still to pop held as little as 0.73 against Avalanche's 1.05, and the finder tells no
+ * share above 1.15, so whatever is found beside the bubbles cannot put the bar above 0.58.
+ */
+const GONE = 0.5;
 
 /** How long one swipe takes, in milliseconds: short, so a fast move fires about six times a second. */
 const SWIPE_MS = 80;
@@ -332,9 +344,9 @@ export class Player {
    * kept run, `bubbleSwipes` found Avalanche's bubbles from 114.14s to 119.35s, never losing them for more than 0.3s,
    * and rows were swept on from there through `Kyogre used Avalanche!` until 121.7s. Found before then, they may be no
    * minigame's: live, after an Outrage tapped went unthrown, Kyurem having fainted to our fast move, the shards of its
-   * faint were found as Outrage's bubbles.
+   * faint were found as Outrage's bubbles. With it, the most saturated share found over it, for `GONE` to judge by.
    */
-  #found: { from: number; to: number } | undefined;
+  #found: { from: number; to: number; vivid: number } | undefined;
 
   /**
    * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or what the minigame hides back after them,
@@ -448,24 +460,30 @@ export class Player {
 
       // A frame read again, the loop having come round before the next, is the same look rather than a second one. Told
       // by what is found on it rather than by the list, which the caller can make afresh for each turn.
-      if (bubbles && JSON.stringify(bubbles) !== JSON.stringify(this.#look?.bubbles)) {
+      const seen = bubbles?.map((bubble) => bubble.swipe);
+
+      if (seen && JSON.stringify(seen) !== JSON.stringify(this.#look?.bubbles)) {
         this.#before = this.#look;
-        this.#look = { at: now, bubbles };
+        this.#look = { at: now, bubbles: seen };
       }
 
       const look = this.#look;
-      const aimed =
-        this.#minigame && !this.#over && look
-          ? (bubbles ?? []).map((bubble) => ahead(bubble, look, this.#before, now, SWIPE_MS, this.#screen))
-          : [];
+      const found = this.#minigame && !this.#over ? (bubbles ?? []) : [];
+      const stretch = this.#found && now - this.#found.to < OVER_MS ? this.#found : undefined;
+      const vivid = Math.max(stretch?.vivid ?? 0, ...found.map(({ share }) => share));
+      const aimed = look
+        ? found
+            .filter(({ share }) => share >= GONE * vivid)
+            .map((bubble) => ahead(bubble.swipe, look, this.#before, now, SWIPE_MS, this.#screen))
+        : [];
       const through = aimed.find(clear);
 
-      if (through) {
-        if (this.#playing) {
-          this.#found =
-            this.#found && now - this.#found.to < OVER_MS ? { ...this.#found, to: now } : { from: now, to: now };
-        }
+      // A frame of blobs all too pale still has the bubbles found, so that waiting through it does not end them.
+      if (this.#playing && (through || (found.length > 0 && aimed.length === 0))) {
+        this.#found = { from: stretch?.from ?? now, to: now, vivid };
+      }
 
+      if (through) {
         return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
       }
 

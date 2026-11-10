@@ -1115,10 +1115,10 @@ test.each([
 ])('tells a throw %s once it plays, and swipes its minigame', async (_, tapped, after, before) => {
   const { phone, clock, strokes } = scripted(moltresFly(tapped, after), 'fight');
   const report = recorder();
-  const [chain] = bubbleSwipes(
+  const chain = bubbleSwipes(
     fixture('playing-minigame-pixel8-fly'),
     typeColour(fixture('types/POKEMON_TYPE_FLYING')),
-  );
+  )[0]?.swipe;
 
   await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
@@ -1135,10 +1135,10 @@ test.each([
 test('swipes a held-back minigame from its Get Ready!', async () => {
   const { phone, clock, strokes, visits } = scripted(moltresFly('prompt', 'ready'), 'fight');
   const report = recorder();
-  const [chain] = bubbleSwipes(
+  const chain = bubbleSwipes(
     fixture('playing-minigame-pixel8-fly'),
     typeColour(fixture('types/POKEMON_TYPE_FLYING')),
-  );
+  )[0]?.swipe;
 
   await play(phone, { mode: ULTRA, count: 1 }, clock, report);
 
