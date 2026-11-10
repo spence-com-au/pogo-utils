@@ -456,6 +456,12 @@ export interface Cycle {
    */
   hit?: number;
 
+  /**
+   * What one of them would take of our bar as the damage model has it, and which fast move that is, `Energy.modelled`:
+   * absent where nothing models it.
+   */
+  modelled?: { fast: string; share: number };
+
   /** The opponent's energy as counted, and what each fast move gains: `Energy.estimate`'s, null where uncounted. */
   estimate: { energy: number; gain: number } | null;
 }
@@ -481,8 +487,8 @@ export interface Cycle {
  * - Any charged move the opponent is allowed for, `verdict.worst`, would take at least 1/`HARD` of what is left.
  * - What the hit, or any charged move the opponent is allowed for, would leave is no more than its fast moves take
  *   before it can throw the hit's move again, once for each shield we hold: with that little left, ours would faint
- *   before the next shield could be taken. The fast moves are counted off `cycle`, and with either unknown the shield is
- *   taken.
+ *   before the next shield could be taken. The fast moves are counted off `cycle`, and with the energy uncounted, or no
+ *   step measured or modelled, the shield is taken.
  *
  * The last two are PvPoke's `wouldShield` (pvpoke/pvpoke@d98f521, `src/js/battle/actions/ActionLogic.js` lines
  * 1164–1280), its battle AI's model of whether a player shields: what its baiting asks of the opponent (lines 421 and
@@ -496,7 +502,19 @@ export interface Cycle {
  * `energy` being what the opponent has left once it has paid for the hit, as PvPoke's battle has it when it asks
  * (`Battle.js` line 1058, before 1088): the hit's move again, counted from nothing unless a whole cost more is left
  * over, and one more for margin. Where PvPoke calculates what each takes, `cycle.step` is what one was measured to take
- * of our bar; and where it knows the move thrown, the hit is the hardest the count affords. Otherwise unlike PvPoke's:
+ * of our bar; and where it knows the move thrown, the hit is the hardest the count affords.
+ *
+ * Before one has been measured, `cycle.modelled` stands in: the fast move the count goes by, at its hardest on any
+ * pairing of builds the model has. Measured, a step is often a long time coming: none is until a hit lands cleanly
+ * after a switch, and one under the bar's `WANDER` may never be. In a GO Battle League battle of 2026-11-10, Mega
+ * Mewtwo Y at 98% took a shield against Melmetal's Dynamic Punch, which it resists, with none of Melmetal's Thunder
+ * Shocks measured on it: one takes ~1.4% of its bar, and 23s later none had been. The hardest the model gives rather
+ * than the smallest, which the count stands in with: there a small step counts more hits and errs towards more energy,
+ * but here it shortens the cycle and errs towards keeping the shield, where the hardest errs towards taking it, as the
+ * hardest charged move does. And the fast move the count goes by rather than the hardest of any it could hold, the
+ * cycle being one move's hits at that move's gain: another's hit at this one's gain is no move's cycle at all.
+ *
+ * Otherwise unlike PvPoke's:
  *
  * - Its `+ 1` HP of margin a shield, under a point of our bar, is left out.
  * - It asks the 1/1.4 rule only where the fast move does more than 1.5 HP a turn (line 1221), which is left out: it can
@@ -538,7 +556,8 @@ export function wouldShield(
     return { shield: true, why: `${verdict.why}; ${which}at least 1/${HARD} of what is left` };
   }
 
-  const { step, estimate } = cycle;
+  const { modelled, estimate } = cycle;
+  const step = cycle.step ?? modelled?.share;
   const cost = -(data.combat[hardest]?.energy ?? 0);
 
   if (step === undefined) {
@@ -553,9 +572,10 @@ export function wouldShield(
   const fast = Math.ceil((cost - Math.max(kept - cost, 0)) / estimate.gain) + 1;
   const cycles = fast * step * shields;
   const times = shields > 1 ? `${shields} × the` : 'the';
+  const how = cycle.step === undefined ? `, ${modelled?.fast} modelled at ~${percent(step)} a hit` : '';
   const than = (left: number) =>
     `${left <= cycles ? 'no more' : 'more'} than ${times} ~${percent(fast * step)} of ${fast} fast ` +
-    `move${fast === 1 ? '' : 's'} before their next charged move`;
+    `move${fast === 1 ? '' : 's'} before their next charged move${how}`;
 
   // Asked of every move allowed for as well as the hit, as PvPoke asks it (line 1226), the cycle being the hit's either
   // way: a harder move the count does not yet afford may be the next.

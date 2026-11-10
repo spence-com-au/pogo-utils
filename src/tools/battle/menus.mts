@@ -110,8 +110,8 @@ function green(image: Image, [x, y]: Point, shade = 1): boolean {
  * from 4/6/6 to 92/73/57 on `menu-intro` and `menu-intro-spark`, 255/255/255 on `menu-unknown-battle-league`, and
  * 142/199/173 and 228/238/234 on `menu-unknown-map`.
  *
- * The party's card is drawn darker once the card read has searched storage and come back, and stays so until the screen
- * is left, its button with it: 218–219/221–223/210–214 and a button of 76/176/126 to 92/183/126 on a Pixel 8 Pro's
+ * A Pixel 8 Pro has drawn the whole game darker until the game, or failing that the phone, was restarted (#974), which
+ * nothing a run does brings on: the card at 218–219/221–223/210–214 and its button at 76/176/126 to 92/183/126 on its
  * screenshot and frame, `menu-pixel8-party-dimmed` and `-frame`. So the card is held to a light grey rather than white,
  * and says how much darker its button is drawn.
  */

@@ -18,6 +18,7 @@ import {
   banner,
   blank,
   countdown,
+  darkened,
   fleeButton,
   opponentShields,
   ownShields,
@@ -174,6 +175,17 @@ function starred(side: number) {
 test('is blank with PGSharp’s star over the black, and not with more drawn on it', () => {
   expect(blank(starred(32))).toBe(true);
   expect(blank(starred(64))).toBe(false);
+});
+
+// The Pixel 8 Pro's party screen with the whole game drawn darker, and no other still, however dark or fading.
+test.each(pngs)('%s is darkened only where the game is drawn darker than the status bar', (name) => {
+  const shade = darkened(decodePng(readFileSync(FIXTURES + name)));
+
+  expect(shade !== undefined).toBe(name.startsWith('menu-pixel8-party-dimmed'));
+});
+
+test('measures the darkening against the status bar’s white', () => {
+  expect(darkened(decodePng(readFileSync(`${FIXTURES}menu-pixel8-party-dimmed.png`)))).toBeCloseTo(224 / 255, 2);
 });
 
 test('follows a charged move coming ready and being thrown through the decoder', async () => {

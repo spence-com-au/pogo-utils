@@ -3220,6 +3220,33 @@ test.each([
 });
 
 /**
+ * The prompt at 86% with one shield spent as above, but straight after the fight starts, before any of Magmar's fast
+ * moves has been measured on Charizard: the model's stands in, and the shield is kept as against one measured.
+ */
+test('keeps the shield on a fast move modelled where none has been measured', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      ...charizardHit(fixture('shield-charizard-high'), true),
+      fight: {
+        frame: painted(charizard(), [111, 81, 118], OUR_SECOND_SHIELD),
+        swipes: { count: 10, to: 'prompt' },
+      },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
+
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move, Ember modelled at ~2% a hit',
+  ]);
+});
+
+/**
  * The prompt at 9% as above, but with Magmar's fast move measured taking 8 points of Charizard rather than 2: the next
  * faints Charizard whether or not it shields Fire Blast, so the shield is kept for the next Pokémon, as a low Galarian
  * Corsola's was not in the Baltimore 2027 Regional grand final, which shielded Discharge and fainted to the Volt Switch
@@ -3581,8 +3608,40 @@ test('stops, keeping its last frames, where nothing is recognised', async () => 
   const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
 
   expect(lost).toBeInstanceOf(Lost);
+  expect((lost as Lost).message).toBe(
+    'nothing recognised for 20s; stopped rather than tap at a screen it does not know',
+  );
   expect((lost as Lost).frames.length).toBeGreaterThan(0);
   expect(clock.now()).toBeGreaterThan(LOST_MS);
+  expect(taps).toEqual([]);
+});
+
+/**
+ * `image` drawn at `shade` of itself below Android's status bar, which ends 25 rows of a Pixel 8 Pro's 802 down: the
+ * whole game as that phone has drawn it until the game was restarted, 224 for 255 (#974).
+ */
+function darker(image: Image, shade: number): Image {
+  const data = image.data.slice();
+
+  for (let i = Math.round((25 / 360) * image.width) * image.width * 4; i < data.length; i++) {
+    data[i] = i % 4 === 3 ? (data[i] ?? 0) : Math.round((data[i] ?? 0) * shade);
+  }
+
+  return { ...image, data };
+}
+
+// The map so drawn has its Poké Ball too dark to be known by, and no word OCR knows: a run started there stops, and says
+// why, where it said only that it did not know the screen.
+test('stops on the map drawn darker, saying the game is', async () => {
+  const { phone, clock, taps } = scripted({ map: { frame: darker(fixture('menu-pixel8-map'), 224 / 255) } }, 'map');
+
+  const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
+
+  expect(lost).toBeInstanceOf(Lost);
+  expect((lost as Lost).message).toBe(
+    "nothing recognised for 20s: the game is drawn 12% darker than Android's status bar over it, which its colours " +
+      'are not read through; restart the game, or failing that the phone',
+  );
   expect(taps).toEqual([]);
 });
 

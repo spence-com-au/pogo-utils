@@ -279,6 +279,42 @@ export function blank(image: Image): boolean {
 }
 
 /**
+ * The game drawn darker than it should be, all of it, under a status bar Android still draws white: twice now a Pixel 8
+ * Pro has drawn every colour of the game at 0.88 of itself, the map's Poké Ball 224/50/61 above and 224 all three below
+ * for 255/57/69 and 255, until the game, or failing that the phone, was restarted (#974). Nothing the readers hold to
+ * full brightness is found through it. Below the status bar, its screenshot and frame of the party screen,
+ * `menu-pixel8-party-dimmed` and `-frame`, are white at 224 and 234 at most, where every other still is white at 255
+ * somewhere but the black and `menu-result-fading`, fading to it, at 200. The bar's clock and icons are thin, so the bar,
+ * `bar` widths down, is looked at whole; the game below it as `blank` looks.
+ */
+const DARKENED = { bar: 0.06, white: 250, least: 210, most: 240 } as const;
+
+/** The darkest channel of the whitest pixel from row `from` to `to`, every `step`th pixel each way. */
+function whitest(image: Image, from: number, to: number, step: number): number {
+  let most = 0;
+
+  for (let y = from; y < to; y += step) {
+    for (let x = 0; x < image.width; x += step) {
+      most = Math.max(most, Math.min(...rgb(image, x, y)));
+    }
+  }
+
+  return most;
+}
+
+/**
+ * How white the game's whitest is drawn under a status bar drawn white over it, as a fraction of the bar's white, where
+ * it is drawn darker than white but not dark; `undefined` where the game is drawn white, or dark, or the bar has no
+ * white to measure it by.
+ */
+export function darkened(image: Image): number | undefined {
+  const bar = whitest(image, 0, Math.round(down(DARKENED.bar, TOP, image) * image.height), 1);
+  const game = whitest(image, Math.round(down(BLANK.top, TOP, image) * image.height), image.height, BLANK.step);
+
+  return bar >= DARKENED.white && game >= DARKENED.least && game < DARKENED.most ? game / bar : undefined;
+}
+
+/**
  * The charged-move buttons, as the circles their rims trace: one move's centred at 179.5,676 of 360×760, and two moves'
  * either side of it at the same height, all with a radius of 34. A button with a move ready wears a white rim, and one
  * without wears none: 32 points around the circle were white at 88–100% of them for a ready button, at none for an

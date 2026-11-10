@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type GameData } from '../../core/game-master.mts';
-import { NO_STAGES, type Verdict, wouldShield } from './damage.mts';
+import { NO_STAGES, type Verdict, wouldFaint, wouldShield } from './damage.mts';
 import {
   Energy,
   holding,
@@ -481,6 +481,71 @@ test('a hit measured is one measured against the Pokémon out, at no stages', ()
   expect(energy.measured(MATCHUP, none)).toBeCloseTo(COUNTER);
   expect(energy.measured(azumarill, none), 'another opponent, not yet read').toBe(undefined);
   expect(energy.measured(MATCHUP, lowered), 'our defense since lowered').toBe(undefined);
+});
+
+/**
+ * The model's hit is the fast move the count goes by, at its hardest, measured or not: PvPoke's Counter where it ranks
+ * Medicham, at 4.5% of Registeel, and 6.8% with our defense at −2. Nothing to model it on leaves it undefined.
+ */
+test('a hit modelled is the fast move counted by, at its hardest, at the stages that move it', () => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: 1500,
+    movesets: new Map([['Medicham', { fast: 'Counter', fastMoves: ['Psycho Cut', 'Counter'], chargedMoves: [] }]]),
+  };
+  const energy = new Energy(DATA, meta);
+  const lowered = { own: { attack: 0, defense: -2 }, their: NO_STAGES };
+  const uncapped: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: null }, cap: null };
+
+  expect(energy.modelled(MATCHUP)).toEqual({ fast: 'Counter', share: COUNTER });
+  expect(energy.modelled(MATCHUP, lowered)?.share).toBeCloseTo(9 / 132);
+  expect(energy.modelled({ ...MATCHUP, opponent: { species: null, cp: 1497 } }), 'unnamed').toBe(undefined);
+  expect(energy.modelled(uncapped), 'their CP unread, with no cap to take it as').toBe(undefined);
+});
+
+/**
+ * The GO Battle League battle of 2026-11-10 at 141.7s: Melmetal, CP 4045, threw at our Mewtwo at 98% five seconds
+ * after it was sent in, with 27 counted, so Double Iron Bash, 35, the hardest it could afford beside the Dynamic Punch
+ * seen, 45. No Thunder Shock had been measured on Mewtwo, and the shield was taken. Live it was a Mega Mewtwo Y, which
+ * is built as plain Mewtwo until #1028; a plain one at CP 4724 is built much as it was, and the hit priced the same.
+ * Modelled, a Thunder Shock takes 2.1% of it: five before the next Double Iron Bash are 10%, twice that less than the
+ * 64% the hit would leave, and the shield is kept.
+ */
+test('the model keeps a shield where no fast move has been measured on the Pokémon just sent in', () => {
+  const meta: Meta = {
+    cup: 'all',
+    cap: null,
+    movesets: new Map([
+      [
+        'Melmetal',
+        { fast: 'Thunder Shock', fastMoves: ['Thunder Shock'], chargedMoves: ['Double Iron Bash', 'Dynamic Punch'] },
+      ],
+    ]),
+  };
+  const own = { species: 'Mewtwo', cp: 4724 };
+  const opponent = { species: 'Melmetal', cp: 4045 };
+  const matchup: Matchup = { own, opponent, cap: null };
+  const energy = new Energy(DATA, meta);
+
+  energy.read(0, 0.98, matchup);
+
+  const verdict = wouldFaint(DATA, own, opponent, 0.98, null, {
+    meta,
+    seen: new Set(['Dynamic Punch']),
+    affordable: 36,
+  });
+  const cycle = { step: energy.step, estimate: { energy: 27, gain: 9 } };
+
+  expect(wouldShield(DATA, verdict, 0.98, 2, cycle), 'as live').toEqual({
+    shield: true,
+    why: 'Double Iron Bash would take ~34%, with 98% left, the hardest 36 energy affords; their fast moves unmeasured',
+  });
+  expect(wouldShield(DATA, verdict, 0.98, 2, { ...cycle, modelled: energy.modelled(matchup) })).toEqual({
+    shield: false,
+    why:
+      'Double Iron Bash would take ~34%, with 98% left, the hardest 36 energy affords; leaves ~64%, more than 2 × ' +
+      'the ~10% of 5 fast moves before their next charged move, Thunder Shock modelled at ~2% a hit',
+  });
 });
 
 test('nothing is told of a fast move where our HP or a build to model it on is unknown', () => {

@@ -27,7 +27,7 @@ body[data-page='events'] {
   /**
    * The header, controls, filters, cards and footer all share one content column, so the page reads with a single left
    * edge rather than a title hanging further out than the cards it heads. `--content-w` holds that width in one place
-   * because the sticky controls bar has to reproduce it as padding rather than as a max-width.
+   * because each of them is capped at it separately.
    *
    * On the wrapper rather than on `:root`, where it was while this sheet was alone in its document: the Pokédex wants
    * the same 1100px, the search builder 880px and Integrations 640px, so on `:root` they would be one declaration
@@ -103,22 +103,30 @@ body[data-page='events'] {
     color: var(--accent);
   }
 
-  .controls {
+  /**
+   * What stays at the top of the window as the page scrolls: the controls, and under them the filters their chevron
+   * discloses. Both are pinned together because the chevron is: a pinned chevron that opened filters left behind in the
+   * page would open them at the top of it, out of sight of a reader scrolled down far enough to need it pinned.
+   * Full-bleed, because it carries the background and bottom rule across the whole viewport, and each section inside
+   * lines itself up with the column.
+   */
+
+  .toolbar {
     position: sticky;
     top: 0;
     z-index: 10;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .controls {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-
-    /**
-     * Full-bleed, because it carries the sticky background and bottom rule across the whole viewport — so it lines its
-     * contents up with the content column through padding instead of a max-width.
-     */
-    padding: 12px max(22px, calc((100% - var(--content-w)) / 2));
-    border-bottom: 1px solid var(--border);
-    background: var(--panel);
+    max-width: var(--content-w);
+    margin: 0 auto;
+    padding: 12px 22px;
   }
 
   .controls input[type='search'] {
@@ -210,7 +218,7 @@ body[data-page='events'] {
     gap: 10px;
     max-width: var(--content-w);
     margin: 0 auto;
-    padding: 12px 22px 0;
+    padding: 0 22px 12px;
   }
 
   .type-filters {
