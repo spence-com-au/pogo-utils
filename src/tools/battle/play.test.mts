@@ -578,6 +578,40 @@ test('waits through a bubble it popped found alone, but not through another foun
   expect(player.next('playing', 3700, { bubbles: [popped] })).toMatchObject({ kind: 'swipe' });
 });
 
+// The swipe's trail often hides the bubble it popped on the look after, which is then found again paler, its share
+// risen from nothing: Close Combat's, on the frame of 275.655s of a kept run, held 0.67 against the 1.08 swiped there,
+// the look before having found only a bubble elsewhere. Found again, it is still that bubble popping.
+test('waits through a bubble it popped found again after a look that lost it', () => {
+  const player = new Player(SIZE);
+  const swiped: Bubble = {
+    swipe: [
+      [0.44, 0.71],
+      [0.58, 0.71],
+    ],
+    share: 1.08,
+  };
+  const elsewhere: Bubble = {
+    swipe: [
+      [0.2, 0.4],
+      [0.36, 0.4],
+    ],
+    share: 1.01,
+  };
+  const popped: Bubble = {
+    swipe: [
+      [0.4, 0.68],
+      [0.53, 0.68],
+    ],
+    share: 0.67,
+  };
+
+  play(['charged', 'charged'], player);
+
+  expect(player.next('playing', 3000, { minigame: true, bubbles: [swiped] })).toMatchObject({ kind: 'swipe' });
+  expect(player.next('playing', 3170, { bubbles: [elsewhere] })).toMatchObject({ kind: 'swipe' });
+  expect(player.next('playing', 3335, { bubbles: [popped] })).toEqual({ kind: 'wait' });
+});
+
 // Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
 // unswiped until the run took the throw to be playing, 2.5s of its bubbles lost; a prompt still ends it.
 test('keeps the minigame a tap began through the HUD hidden as it begins, but not through a prompt', () => {

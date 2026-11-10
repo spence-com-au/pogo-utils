@@ -208,12 +208,19 @@ test.each([
   expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
 });
 
-test('a bar whose left end splits off from the rest of its fill goes unread', () => {
+test.each([
   // The opponent's red at 22%, split by 2 pixels just short of `fillOf`'s red, the 4 before them read as the whole bar
   // at 4%: too short to take the fill's colour from clear of the blur, which runs on past them.
-  const health = read('other-pixel8-mewtwo-left-end');
+  ['other-pixel8-mewtwo-left-end', 0.52],
 
-  expect(within(health.own, 0.52), `ours read ${health.own}`).toBe(true);
+  // The opponent's red at 16%, split by 2 pixels too pink for `fillOf`'s red, the 2 before them read as the whole bar
+  // at 2%: past them the encoder's noise breaks the fill's colour into runs too short to show it again, but the rest of
+  // the fill is found as a strip of its own.
+  ['playing-latios-left-end-noisy', 0.63],
+])('%s: a bar whose left end splits off from the rest of its fill goes unread, ours %f', (name, own) => {
+  const health = read(name);
+
+  expect(within(health.own, own), `ours read ${health.own}`).toBe(true);
   expect(health.opponent).toBeNull();
 });
 
