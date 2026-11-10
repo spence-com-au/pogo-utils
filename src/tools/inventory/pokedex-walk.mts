@@ -835,32 +835,38 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       await toTab(label);
       const found = new Map<string, number>();
 
-      // The counts in sight, answering whether they added a region not yet read.
-      const take = async () => {
-        const before = found.size;
+      let shown = await settled(device);
 
-        for (const { region, count } of countsOn(await listLines(await settled(device)))) {
+      const take = async (image: Image) => {
+        for (const { region, count } of countsOn(await listLines(image))) {
           found.set(region, count);
         }
+      };
 
-        return found.size > before;
+      // A drag along the list, answering whether it moved: where it did not, that end of the list is in sight. Told by
+      // the list itself rather than by what reads on it, since a drag can bring in only regions already read.
+      const moved = async (up: boolean) => {
+        await drag(up ? [0.5, 0.38] : [0.5, 0.7], up ? [0.5, 0.7] : [0.5, 0.38], SCROLL_DRAG_MS);
+        await sleep(config.waits.scroll);
+        const after = await settled(device);
+        const did = difference(shown, after, 0.1, 0.8) > MOVED;
+
+        shown = after;
+
+        return did;
       };
 
       // Up to the list's top first, it being wherever the walk left it — scrolled to Kalos after `--from 650` — until
-      // its first region is in sight or a drag brings in nothing new; then down until a drag again brings in nothing
-      // new, its foot, which the POKÉMON tab's eleven reach in three.
-      for (let frame = 0; (await take()) && !found.has(LISTED[0] ?? '') && frame < 4; frame++) {
-        await drag([0.5, 0.38], [0.5, 0.7], SCROLL_DRAG_MS);
-        await sleep(config.waits.scroll);
+      // its first region is in sight or the list stops; then down, reading each screenshot, until it stops at its foot,
+      // which the POKÉMON tab's eleven reach in three.
+      await take(shown);
+
+      for (let frame = 0; !found.has(LISTED[0] ?? '') && frame < 4 && (await moved(true)); frame++) {
+        await take(shown);
       }
 
-      for (let frame = 0; frame < 4; frame++) {
-        await drag([0.5, 0.7], [0.5, 0.38], SCROLL_DRAG_MS);
-        await sleep(config.waits.scroll);
-
-        if (!(await take())) {
-          break;
-        }
+      for (let frame = 0; frame < 6 && (await moved(false)); frame++) {
+        await take(shown);
       }
 
       // What the tab should have shown: every region on POKÉMON's, and on the others each the record counts anything
