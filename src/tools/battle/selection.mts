@@ -19,7 +19,7 @@ import { fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
-import { formsOf } from './strategy.mts';
+import { fielded, formsOf } from './strategy.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
 const SEARCH: Point = [0.556, 0.536];
@@ -184,7 +184,7 @@ export async function readPanel(
   const types = new Set(
     head.flatMap((line) => line.text.split(/[\s/]+/).flatMap((word) => closest(word, data.types, (t) => t) ?? [])),
   );
-  const typed = data.forms.filter((form) => same(form.types, types));
+  const typed = fielded(data).forms.filter((form) => same(form.types, types));
 
   // The moves' rows, their names in title case: the captions under a move with a stat change, `DEFENSE DROP`, are
   // capitals throughout.
@@ -192,14 +192,13 @@ export async function readPanel(
   const pool = (forms: readonly Form[]) => [...new Set(forms.flatMap((form) => form.moves))];
   const of = (name: string) => pool(typed.filter((form) => form.species === name));
 
-  // The one species whose forms of these types hold every move read, or null. Among the Megas where a mega move was
-  // read, which no other form holds, and otherwise among the rest alone, rather than every Charizard's panel growing
-  // ambiguous with Mega Charizard Y's.
+  // The one species whose forms of these types hold every move read, or null. A Mega only where its mega move was
+  // read, which no other form holds: otherwise every Charizard's panel would be as much Mega Charizard Y's.
   const speciesOf = ({ fast, charged }: Moves) => {
     const known = [fast, ...charged].filter((move) => move !== null);
-    const megas = data.megas.filter((form) => form.megaMove !== undefined && known.includes(form.megaMove));
     const fits = new Set(
-      (megas.length > 0 ? megas.filter((form) => same(form.types, types)) : typed)
+      typed
+        .filter((form) => !data.megas.includes(form) || (form.megaMove !== undefined && known.includes(form.megaMove)))
         .filter((form) => known.every((move) => form.moves.some((m) => m.name === move)))
         .map((form) => form.species),
     );
