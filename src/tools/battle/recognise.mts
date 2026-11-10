@@ -485,8 +485,11 @@ export function pokemonLeft(image: Image): { own: number | null; opponent: numbe
  * the button is not is as white at the rim as at the disc, and a night sky is as dark at the disc as at the rim. Over
  * the 176,337 frames from 6s before each of 235 throws of ours to 12s after it, in 18 kept runs, the rim read darker
  * at 5 or fewer of its 24 points on 63,676 frames, at 17 or more on 111,579 and between on 1,082.
+ *
+ * Or told as it fades back in, before its disc is white: its edge is 0.055 widths out, so a circle `beyond` it is what
+ * is behind the button, and each point of the disc is washed from that towards white by the same share all round.
  */
-const FLEE = { x: 0.079, y: 0.333, disc: 0.035, rim: [0.042, 0.045, 0.048, 0.051], points: 24 } as const;
+const FLEE = { x: 0.079, y: 0.333, disc: 0.035, rim: [0.042, 0.045, 0.048, 0.051], beyond: 0.065, points: 24 } as const;
 
 /**
  * How much of the disc's circle must be white, and of the rim's darker than `RIMMED` of the disc beside it. Anywhere
@@ -497,18 +500,33 @@ const DISC_WHITE = 0.75;
 const RIM_SHARE = 0.75;
 const RIMMED = 0.8;
 
-/** Whether the button to flee the battle is drawn. */
+/**
+ * How evenly and how far the disc must be washed towards white to be the button fading in: the share at every point but
+ * the `outliers` either way at least `least` and within `spread` of each other, and lifted by `lift` or more over what
+ * is beyond, which over white cloud is too near white for its share to say anything. The button fades in over about
+ * 0.165s, a sixth of the way to white a frame. Of the 245 times it came back in the frames above, this read it on 169
+ * before its disc was white, by a median 0.165s, and of the 54,217 frames read as `playing` with it down and none of it
+ * fading within 0.4s, it read none: the most evenly washed reached 0.039, a glow over the button at night. The evenness
+ * keeps out Outrage's bubbles, which fly over it washing it from none of the way to all: a disc only brighter than what
+ * is beyond took one for the button 1.1s before the minigame was over.
+ */
+const FADING = { least: 0.06, spread: 0.1, lift: 6, outliers: 2 } as const;
+
+/** Whether the button to flee the battle is drawn, from the first frame it fades back in. */
 export function fleeButton(image: Image): boolean {
   const at = (radius: number, angle: number) =>
     rgb(image, (FLEE.x + radius * Math.cos(angle)) * image.width, (FLEE.y + radius * Math.sin(angle)) * image.width);
 
   let whites = 0;
   let rimmed = 0;
+  const shares: number[] = [];
+  const lifts: number[] = [];
 
   for (let k = 0; k < FLEE.points; k++) {
     const angle = (2 * Math.PI * k) / FLEE.points;
     const disc = at(FLEE.disc, angle);
     const lit = luminance(...disc);
+    const beyond = luminance(...at(FLEE.beyond, angle));
 
     if (lit > 200 && chroma(...disc) < 40) {
       whites++;
@@ -517,9 +535,18 @@ export function fleeButton(image: Image): boolean {
     if (Math.min(...FLEE.rim.map((radius) => luminance(...at(radius, angle)))) < RIMMED * lit) {
       rimmed++;
     }
+
+    shares.push((lit - beyond) / Math.max(255 - beyond, 1));
+    lifts.push(lit - beyond);
   }
 
-  return whites / FLEE.points >= DISC_WHITE && rimmed / FLEE.points >= RIM_SHARE;
+  shares.sort((a, b) => a - b);
+  lifts.sort((a, b) => a - b);
+  const least = shares[FADING.outliers] ?? 0;
+  const most = shares[shares.length - 1 - FADING.outliers] ?? 0;
+  const fading = least >= FADING.least && most - least <= FADING.spread && (lifts[FADING.outliers] ?? 0) >= FADING.lift;
+
+  return (whites / FLEE.points >= DISC_WHITE && rimmed / FLEE.points >= RIM_SHARE) || fading;
 }
 
 export function recognise(image: Image): State {
@@ -576,6 +603,6 @@ export function areas(screen: Size): Area[] {
     },
     { name: "each side's shields", boxes: at([...OWN_SHIELDS, ...OPPONENT_SHIELDS], TOP) },
     { name: "each side's Poké Balls", boxes: at([...BALLS.own, ...BALLS.opponent].map(ball), TOP) },
-    { name: 'the button to flee the battle', boxes: [around([FLEE.x, FLEE.y], Math.max(...FLEE.rim), TOP, screen)] },
+    { name: 'the button to flee the battle', boxes: [around([FLEE.x, FLEE.y], FLEE.beyond, TOP, screen)] },
   ];
 }

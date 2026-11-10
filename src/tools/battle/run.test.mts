@@ -1022,19 +1022,21 @@ test('aims the minigame’s swipes at its bubbles', async () => {
 
 /**
  * Avalanche played out in kept runs, too soon after the last of its bubbles for their gap to end them: under `98% used
- * Avalanche!`, our bar back and the button to flee not yet, the white lines of the field found as its bubbles 0.3s on;
- * and in another, the button back and our bar not yet, the white of Kyogre's body found as them.
+ * Avalanche!`, our bar back, the white lines of the field found as its bubbles 0.3s on, with the button to flee, fading
+ * in there, painted out with the night sky beside it; in another, the button back and our bar not yet, the white of
+ * Kyogre's body found as them; and in that run again, the button fading in, its disc not yet white.
  */
 test.each([
-  ['our bar', 'playing-banner-avalanche'],
-  ['the button to flee', 'playing-flee-avalanche'],
+  ['our bar', () => painted(fixture('playing-banner-avalanche'), [3, 39, 122], [0.01, 0.26, 0.15, 0.41])],
+  ['the button to flee', () => fixture('playing-flee-avalanche')],
+  ['the button to flee fading in', () => fixture('playing-flee-fading-avalanche')],
 ])('touches nothing once %s is back after the minigame, whatever is found as its bubbles', async (_, played) => {
   const { phone, clock, strokes } = scripted(
     {
       ...battleAndBack(),
       fight: { frame: fixture('charged-avalanche'), tap: { at: [0.499, 0.889], to: 'minigame' } },
       minigame: { frame: fixture('playing-minigame-mamoswine'), lasts: { ms: 6000, to: 'played' } },
-      played: { frame: fixture(played), lasts: { ms: 1500, to: 'won' } },
+      played: { frame: played(), lasts: { ms: 1500, to: 'won' } },
     },
     'fight',
   );
