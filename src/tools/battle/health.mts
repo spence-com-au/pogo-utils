@@ -440,36 +440,45 @@ export interface Health {
 const before = (strip: Strip, other: Strip | undefined) =>
   !other || (strip.rejoined === other.rejoined ? strip.left < other.left : other.rejoined);
 
+/** Whether one strip lies wholly above the other: never one bar's fill, which is too thin to hold both. */
+const apart = (a: Strip, b: Strip) => a.top + a.rights.length <= b.top || b.top + b.rights.length <= a.top;
+
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
  * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`
  * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one taken is the bar by
  * `before`, unless it lies `outside` the bar.
+ *
+ * Two on rows apart are two bars, or a bar and artwork, and neither is read. As the camera swings through a charged
+ * move it carries our bar to where the opponent's starts, and the two lie there in either order: at 225.630s of the
+ * kept run `2026-11-01-master` our Kyogre's bar lay 37 rows above Sylveon's, and a picture later 4 below it. Of the
+ * 546,449 pictures of the 27 GO Battle League runs kept with video, taking the one further left, or the one found
+ * whole, read ours as theirs on 108.
  */
 export function readHealth(image: Image): Health {
   const unit = image.width / 360;
   const health: Health = { own: null, opponent: null };
-  const taken: Partial<Record<keyof Health, Strip>> = {};
   const found = strips(image);
   const all = found.filter(({ rights }) => rights.length >= THICK.least * unit && rights.length <= THICK.most * unit);
+  const fraction = (strip: Strip) => (rightOf(strip) - strip.left) / (FULL * image.width);
 
-  for (const strip of all) {
-    const left = strip.left / image.width;
-    const fraction = (rightOf(strip) - strip.left) / (FULL * image.width);
-    const side = (['own', 'opponent'] as const).find((s) => left >= STARTS[s][0] && left <= STARTS[s][1]);
+  for (const side of ['own', 'opponent'] as const) {
+    const [least, most] = STARTS[side];
+    const bars = all.filter(
+      (strip) =>
+        strip.left >= least * image.width &&
+        strip.left <= most * image.width &&
+        fraction(strip) <= 1.03 &&
+        framed(image, strip) &&
+        !outside(image, strip, strip.rejoined ? found : all, side),
+    );
+    const bar = bars.reduce<Strip | undefined>((taken, strip) => (before(strip, taken) ? strip : taken), undefined);
 
-    if (
-      side &&
-      fraction <= 1.03 &&
-      before(strip, taken[side]) &&
-      framed(image, strip) &&
-      !outside(image, strip, strip.rejoined ? found : all, side)
-    ) {
+    if (bar && !bars.some((other) => apart(bar, other))) {
       health[side] =
-        covered(image, strip) || cut(image, strip, all) || (strip.fill !== 'red' && fraction < LIT)
+        covered(image, bar) || cut(image, bar, all) || (bar.fill !== 'red' && fraction(bar) < LIT)
           ? null
-          : Math.min(1, fraction);
-      taken[side] = strip;
+          : Math.min(1, fraction(bar));
     }
   }
 
@@ -503,11 +512,23 @@ export const areas = (): Area[] => [
 export const JUMP = 0.1;
 
 /**
+ * How near the HP held for ours a reading of the opponent's bar may lie, as a fraction of the bar, to be taken for our
+ * bar where theirs starts. As the camera swings through a charged move it can carry ours there with theirs off the
+ * screen, which `readHealth` cannot tell from theirs: at 759.844s of the kept run `2026-11-04-debuff-switch-6` it read
+ * our Kyogre's 36% as Metagross's twice in a row, where theirs had read 84–85%. Held through the minigame, that had
+ * Metagross's next reading, 7 seconds later, taken for a newcomer. Fed only the pictures of the 27 GO Battle League runs
+ * kept with video in a state `run.mts` reads bars in, setting such readings aside spares 9 rises in the opponent's HP
+ * that `run.mts` takes for a newcomer, each after a reading of ours, and delays 7 others by 32ms–1.9s.
+ */
+const SWEPT = 0.02;
+
+/**
  * Each side's HP as decided on from the bars read frame by frame: a reading within `JUMP` of the HP held replaces it at
  * once, and one further out only once the next frame's reading of that bar agrees with it. A misread flickering out
  * between steady readings so never moves what a shield or the opponent's energy is decided on, at the cost of a real
  * hit as large as one waiting a frame to count. A bar not drawn keeps both what is held and what awaits a second
- * reading.
+ * reading. A reading of the opponent's bar further out than `JUMP`, within `SWEPT` of the HP held for ours, off a frame
+ * where ours goes unread, is our bar: it is neither held nor left awaiting a second.
  */
 export class Steady {
   #held: Health = { own: null, opponent: null };
@@ -532,6 +553,17 @@ export class Steady {
 
       this.#from[side] = frame;
       const near = (hp: number | null) => hp !== null && Math.abs(read - hp) <= JUMP;
+      const swept =
+        side === 'opponent' &&
+        bars.own === null &&
+        this.#held.opponent !== null &&
+        !near(this.#held.opponent) &&
+        this.#held.own !== null &&
+        Math.abs(read - this.#held.own) <= SWEPT;
+
+      if (swept) {
+        continue;
+      }
 
       if (this.#held[side] === null || near(this.#held[side]) || near(this.#pending[side])) {
         this.#held[side] = read;

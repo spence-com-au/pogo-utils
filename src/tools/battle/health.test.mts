@@ -124,16 +124,22 @@ test.each([
   expect(read(name)[side]).toBeNull();
 });
 
-test('a bar just above another is read rather than taken for artwork', () => {
-  // As our Avalanche starts, Sylveon's bar at 22% above our Kyogre's at 53%, both where the opponent's bar starts.
-  const health = read('other-two-bars');
+test.each([
+  // As our Avalanche starts, Sylveon's bar at 22% just above our Kyogre's at 53%: taken for artwork, it would leave
+  // ours read as theirs.
+  'other-two-bars',
 
-  expect(within(health.opponent, 0.22), `theirs read ${health.opponent}`).toBe(true);
+  // Our Zamazenta's bar at 46%, swept to where the opponent's starts, below and left of Rillaboom's at 89%, which read
+  // as theirs at 46%.
+  'playing-zamazenta-swept',
+])('%s: two bars where the opponent’s starts leave theirs unread', (name) => {
+  expect(read(name).opponent).toBeNull();
 });
 
-test('a bar as short as the map between letters, just above another, is read rather than taken for artwork', () => {
+test('a bar as short as the map between letters, just above another, is a bar rather than artwork', () => {
   // Sylveon's bar emptied to 6%, its own emptied part copied over the rest of its fill: the outline runs along all of
-  // where the fill has gone, which letters break above a strip of the map.
+  // where the fill has gone, which letters break above a strip of the map. Taken for that map, it would leave our
+  // Kyogre's bar below read as theirs.
   const image = decodePng(readFileSync(new URL('fixtures/other-two-bars.png', import.meta.url)));
 
   for (let y = 396; y < 402; y++) {
@@ -144,9 +150,7 @@ test('a bar as short as the map between letters, just above another, is read rat
     }
   }
 
-  const health = readHealth(image);
-
-  expect(within(health.opponent, 0.06), `theirs read ${health.opponent}`).toBe(true);
+  expect(readHealth(image).opponent).toBeNull();
 });
 
 test('a bar whose right end is hidden goes unread rather than read short', () => {
@@ -250,6 +254,38 @@ test('a jump read again off the same frame does not stand', () => {
   steady.read(misread, { own: 0.3, opponent: 0.9 });
 
   expect(steady.health).toEqual({ own: 0.8, opponent: 0.9 });
+});
+
+test('a jump of theirs to our HP, read where ours goes unread, is our bar and never stands', () => {
+  // As read at 759.844s of the kept run `2026-11-04-debuff-switch-6`: our Kyogre's bar at 36%, carried by the camera
+  // to where Metagross's starts with Metagross's off the screen, twice in a row.
+  expect(
+    steadied([
+      [0.36, 0.85],
+      [null, 0.36],
+      [null, 0.36],
+      [0.36, 0.84],
+    ]),
+  ).toEqual([
+    [0.36, 0.85],
+    [0.36, 0.85],
+    [0.36, 0.85],
+    [0.36, 0.84],
+  ]);
+});
+
+test.each([
+  ['jumping away from our HP', 0.85, null, 0.2],
+  ['jumping to our HP where ours is read too', 0.85, 0.36, 0.36],
+  ['at our HP within `JUMP` of theirs', 0.4, null, 0.36],
+])('a reading of theirs %s stands', (_, theirs, own, opponent) => {
+  expect(
+    steadied([
+      [0.36, theirs],
+      [own, opponent],
+      [own, opponent],
+    ]).at(-1),
+  ).toEqual([0.36, opponent]);
 });
 
 test('a bar not drawn keeps both the HP decided on and the jump awaiting a second reading', () => {

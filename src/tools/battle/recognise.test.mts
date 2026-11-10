@@ -104,6 +104,7 @@ const fleeing = [
   'playing-ready-cloud',
   'playing-ready-zamazenta',
   'playing-slate-night',
+  'playing-zamazenta-swept',
 ].map((name) => `${name}.png`);
 
 test.each(pngs)('%s shows the button to flee only where it is drawn clear', (name) => {
