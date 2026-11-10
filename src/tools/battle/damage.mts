@@ -14,7 +14,7 @@
 
 import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../../core/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, formsOf, MOVES_HELD, STAB, stage, type Pick, type Shown } from './strategy.mts';
+import { chargedOf, effectiveness, formsOf, heldOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's
@@ -343,8 +343,8 @@ export interface WouldFaintOptions {
  * move of theirs — counts as fainting, a shield being the safe side to err on, and is what `why` names.
  *
  * `seen` is the charged moves this opponent has been seen to use, which outweighs what its players run. Both of them
- * seen, they are all it has, whatever its form. One seen narrows nothing: it is allowed for however few run it, and
- * the other could be any allowed it, the hardest among them.
+ * seen, they are all it has, whatever its form, with a Mega's mega move beside them: `heldOf`. One seen narrows
+ * nothing: it is allowed for however few run it, and the other could be any allowed it, the hardest among them.
  *
  * Of those, only the ones costing no more than `affordable` where it is given, the energy the opponent is counted as
  * having, unless that leaves none, which says the count is short rather than that nothing was thrown.
@@ -385,7 +385,7 @@ export function wouldFaint(
   let narrowed = false;
 
   for (const attacker of theirs) {
-    const names = seen.size >= MOVES_HELD ? [...seen] : [...new Set([...seen, ...chargedOf(attacker.form, moveset)])];
+    const names = heldOf(attacker.form, seen) ?? [...new Set([...seen, ...chargedOf(attacker.form, moveset)])];
     const allowed = names.flatMap((name) => (data.combat[name] ? [{ name, move: data.combat[name] }] : []));
     const payable = allowed.filter(({ move }) => affordable === undefined || -move.energy <= affordable);
     const counted = affordable !== undefined && payable.length > 0;

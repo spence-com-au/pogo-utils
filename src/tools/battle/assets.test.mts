@@ -36,6 +36,13 @@ test('the silhouettes are for every form icon of the vended game master, by its 
   ).toStrictEqual([...formIcons(DATA)]);
 });
 
+// A party card of a Mega is drawn as the Mega, so the card is read against its artwork and named for it: Mega Mewtwo Y
+// read as `?` against Mewtwo's alone, in a GO Battle League run's `party: Zacian, ?, Palkia`.
+test("a Mega's card is read against its own artwork, by the name the HUD gives it", () => {
+  expect(DECODED.get('pm150.fMEGA_Y.icon.png')?.species).toBe('Mega Mewtwo Y');
+  expect(DECODED.get('pm382.fPRIMAL.icon.png')?.species).toBe('Primal Kyogre');
+});
+
 test('a silhouette packed for another grid is refused rather than laid over the wrong cells', () => {
   expect(() => decodeSilhouettes({ 'pm1.icon.png': ['Bulbasaur', btoa('short')] })).toThrow(
     'pm1.icon.png packs into 5 bytes, not 288',

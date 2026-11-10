@@ -23,8 +23,8 @@ import { BUTTON_XS } from './recognise.mts';
 /** What a move sharing a type with the Pokémon using it multiplies its damage by. */
 export const STAB = 1.2;
 
-/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. */
-export const MOVES_HELD = 2;
+/** How many charged moves a Pokémon holds at most: its own and one unlocked with a second. A Mega has a third. */
+const MOVES_HELD = 2;
 
 /**
  * The charged moves only a shadow (Frustration) or a purified (Return) Pokémon holds, which every species with a shadow
@@ -41,12 +41,47 @@ export interface Shown {
   types?: Typing | null;
 }
 
+/** `fielded`'s answer for each `GameData`, which is asked every frame. */
+const FIELDED = new WeakMap<GameData, { forms: readonly Form[]; species: readonly string[] }>();
+
+/**
+ * Every form a trainer battle can field, and every name the HUD can give one: the game master's forms, and its Megas
+ * and Primals beside them as species of their own, as the HUD names them, `Mega Mewtwo Y`.
+ */
+export function fielded(data: GameData): { forms: readonly Form[]; species: readonly string[] } {
+  const known = FIELDED.get(data);
+
+  if (known) {
+    return known;
+  }
+
+  const made = {
+    forms: [...data.forms, ...data.megas],
+    species: [...data.species, ...data.megas.map((mega) => mega.species)],
+  };
+
+  FIELDED.set(data, made);
+
+  return made;
+}
+
+/**
+ * Every charged move `form` holds, where those `seen` say: once it has thrown `MOVES_HELD` besides a Mega's mega move,
+ * they are all it has but that mega move, which a Mega always holds. Undefined until then, `seen` saying nothing of
+ * what else it holds.
+ */
+export function heldOf(form: Form, seen: ReadonlySet<string>): string[] | undefined {
+  const taught = [...seen].filter((move) => move !== form.megaMove);
+
+  return taught.length < MOVES_HELD ? undefined : [...taught, ...(form.megaMove === undefined ? [] : [form.megaMove])];
+}
+
 /**
  * Every form `shown` could be: those of its species with the types shown, or every one of its species where the types
  * were not read or no form has them, as a misread or a species read wrong leaves them.
  */
 export function formsOf(data: GameData, { species, types }: Shown): Form[] {
-  const forms = data.forms.filter((form) => form.species === species);
+  const forms = fielded(data).forms.filter((form) => form.species === species);
   const shown = forms.filter(
     (form) => types && form.types.length === types.length && form.types.every((type) => types.includes(type)),
   );
@@ -159,7 +194,7 @@ function chargedMoves(data: GameData, card: Card): Set<string> {
     return new Set(own);
   }
 
-  const forms = data.forms.filter((form) => form.species === card.species);
+  const forms = formsOf(data, { species: card.species });
   const pool = forms.flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
 
   return new Set([...pool, ...(card.moves?.charged ?? [])]);
@@ -510,22 +545,25 @@ export function stripperOf(
 }
 
 /**
- * The charged moves the opponent may hold, as `resisterOf` fears them: both the banner has named, once it has named
- * two; otherwise any it has named and those of its forms' pools that its players run, by PvPoke's moveset for its
- * species. Never every move its forms can hold, as `chargedOf` falls back on, a switch for a move nobody runs costing
- * the switch timer for nothing; so nothing at all where the banner has named nothing and PvPoke does not rank it, as in
- * Training.
+ * The charged moves the opponent may hold, as `resisterOf` fears them: all `heldOf` says it holds, once the banner has
+ * named both of a form's; otherwise any it has named and those of its forms' pools that its players run, by PvPoke's
+ * moveset for its species. Never every move its forms can hold, as `chargedOf` falls back on, a switch for a move
+ * nobody runs costing the switch timer for nothing; so nothing at all where the banner has named nothing and PvPoke
+ * does not rank it, as in Training.
  */
 function heldBy(data: GameData, opponent: Shown, seen: ReadonlySet<string>, meta?: Meta | null): string[] {
-  if (seen.size >= MOVES_HELD) {
-    return [...seen];
-  }
-
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
-  const pool = formsOf(data, opponent).flatMap((form) => form.moves.filter((move) => !move.fast));
-  const run = moveset ? pool.map(({ name }) => name).filter((name) => moveset.chargedMoves.includes(name)) : [];
 
-  return [...new Set([...seen, ...run])];
+  return [
+    ...new Set([
+      ...seen,
+      ...formsOf(data, opponent).flatMap((form) => {
+        const pool = form.moves.filter((move) => !move.fast).map(({ name }) => name);
+
+        return heldOf(form, seen) ?? (moveset ? pool.filter((name) => moveset.chargedMoves.includes(name)) : []);
+      }),
+    ]),
+  ];
 }
 
 /** A switch of our lead ahead of a charged move it fears, which is `move`, costing `cost` energy. */

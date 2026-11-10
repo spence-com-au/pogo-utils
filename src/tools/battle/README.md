@@ -88,7 +88,8 @@ for text and done every few seconds.
   apart, which the name alone can't.
 - **[`read.mts`](read.mts)** reads text with Tesseract:
   - **The HUD:** both names along the top and the CP beside each. Our name is the species unless the Pokémon has a
-    nickname.
+    nickname. A name as long as a Mega's runs into its CP in one line, which is left out of what the name is matched
+    against, and a read as near two species, `Mega Mewtwo` without its Y, names neither.
   - **The buttons:** the charged move printed under each one, matched to the moves our species can hold.
   - **The banner:** the line a charged move puts up as it lands, `Tyranitar used Crunch!`. This is the only direct view
     of the opponent's moves.
@@ -287,7 +288,10 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 
 - **The game master,** from [`../../core/node/download.mts`](../../core/node/download.mts): every form's types, stats
   and move pool, and every move's trainer-battle power, energy, duration in turns, and stat changes. It is downloaded
-  and cached for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json).
+  and cached for a week; tests read the vended [`../../../data/game-master.json`](../../../data/game-master.json). Megas
+  and Primals are species of their own, named as the HUD names them, `Mega Mewtwo Y`, with their own stats and types,
+  and the mega move a Mega holds as a third charged move, `Future Sight+`: `fielded` in [`strategy.mts`](strategy.mts)
+  puts them beside the game master's forms.
 - **[`meta.mts`](meta.mts)** reads [PvPoke](https://pvpoke.com)'s rankings for the league being played in GO Battle
   League. It matches `--league` to PvPoke's cup by title before the run, then the title of the league card the run taps,
   which can be a different cup: `--league master` taps Master League: Mega Edition while it is on. A cup PvPoke doesn't
@@ -549,7 +553,7 @@ What goes into "the hardest move the opponent could be throwing":
   - In Training, every charged move its species can learn, except Frustration and Return.
   - In GO Battle League, only the moves PvPoke finds its players run: those used at least a fifth as often as the most
     used one.
-  - Once the banner has shown both of its moves, only those two.
+  - Once the banner has shown both of its moves, only those two, and a Mega's mega move.
 - **What it can afford.** Only moves costing no more than its counted energy, plus one fast move's worth for a hit the
   count missed ([below](#the-opponents-energy)).
 - **Stat stages.** Their attack and our defense, as the charged moves thrown so far have moved them: ours as each of our

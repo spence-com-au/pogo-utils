@@ -41,7 +41,7 @@ import {
 } from './damage.mts';
 import { JUMP } from './health.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, formsOf, lowersDefense, MOVES_HELD, type Shown } from './strategy.mts';
+import { chargedOf, formsOf, heldOf, lowersDefense, type Shown } from './strategy.mts';
 
 /** As much energy as a Pokémon can hold. */
 export const FULL = 100;
@@ -256,15 +256,13 @@ const keyOf = ({ own, opponent }: Matchup) =>
 const costOf = (data: GameData, move: string) => -(data.combat[move]?.energy ?? 0);
 
 /**
- * What the cheapest charged move `opponent` is allowed for costs: of the two `seen`, once both have been, and otherwise
- * of any seen and those `chargedOf` allows its forms. Infinity where none is known to cost anything.
+ * What the cheapest charged move `opponent` is allowed for costs: of those `heldOf` says it holds, once both of a form's
+ * have been seen, and otherwise of any seen and those `chargedOf` allows its forms. Infinity where none is known to cost
+ * anything.
  */
 function cheapestOf(data: GameData, opponent: Side, seen: ReadonlySet<string>, meta?: Meta | null): number {
   const moveset = opponent.species === null ? undefined : meta?.movesets.get(opponent.species);
-  const names =
-    seen.size >= MOVES_HELD
-      ? [...seen]
-      : [...seen, ...formsOf(data, opponent).flatMap((form) => chargedOf(form, moveset))];
+  const names = [...seen, ...formsOf(data, opponent).flatMap((form) => heldOf(form, seen) ?? chargedOf(form, moveset))];
 
   return Math.min(...names.map((name) => costOf(data, name)).filter((cost) => cost > 0));
 }

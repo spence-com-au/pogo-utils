@@ -8,8 +8,9 @@
  *
  * PvPoke names a species and a move by an id of its own, `marowak_alolan` and `MUD_SLAP`. A species is matched to the
  * game master's by its dex number out of PvPoke's game master, since 31 of the names differ — `Greattusk` for Great
- * Tusk, `Nidoran Female` for Nidoran♀ — and a move by its name folded, with a variant's `(Bug)` dropped: `Lock On` is
- * the game's `Lock-On`, and every `Hidden Power (…)` the one Hidden Power the screen prints.
+ * Tusk, `Nidoran Female` for Nidoran♀ — a Mega by its stats as well, and a move by its name folded, with a variant's
+ * `(Bug)` dropped: `Lock On` is the game's `Lock-On`, and every `Hidden Power (…)` the one Hidden Power the screen
+ * prints.
  */
 
 import { said } from '../../errors.ts';
@@ -72,7 +73,12 @@ interface RankedMove {
 /** As much of PvPoke's game master as matches its ids to the game's. */
 export interface PvPokeData {
   formats: readonly Format[];
-  pokemon: readonly { speciesId: string; dex: number }[];
+  pokemon: readonly {
+    speciesId: string;
+    dex: number;
+    tags?: readonly string[];
+    baseStats?: { atk: number; def: number; hp: number };
+  }[];
   moves: readonly { moveId: string; name: string }[];
 }
 
@@ -142,7 +148,23 @@ export function movesetsOf(data: GameData, rankings: readonly Ranking[], pvpoke:
     }
   }
 
-  const dexOf = new Map(pvpoke.pokemon.map((p) => [p.speciesId, p.dex]));
+  // A Mega is a species of its own, `mewtwo_mega_y` beside `mewtwo`, told from the rest of its dex by its stats: each of
+  // the 63 PvPoke tags `mega`, the Primals among them, has the stats of one of the game master's.
+  const nameOf = new Map(
+    pvpoke.pokemon.map(({ speciesId, dex, tags, baseStats }) => {
+      const mega = tags?.includes('mega')
+        ? data.megas.find(
+            (form) =>
+              form.dex === dex &&
+              form.attack === baseStats?.atk &&
+              form.defense === baseStats?.def &&
+              form.stamina === baseStats?.hp,
+          )
+        : undefined;
+
+      return [speciesId, mega?.species ?? species.get(dex)];
+    }),
+  );
   const ours = new Map(Object.keys(data.combat).map((name) => [fold(name), name]));
   const names = new Map(
     pvpoke.moves.flatMap((move) => {
@@ -164,8 +186,7 @@ export function movesetsOf(data: GameData, rankings: readonly Ranking[], pvpoke:
   const movesets = new Map<string, Moveset>();
 
   for (const ranking of rankings) {
-    const dex = dexOf.get(ranking.speciesId);
-    const name = dex === undefined ? undefined : species.get(dex);
+    const name = nameOf.get(ranking.speciesId);
     const recommended = names.get(ranking.moveset[0] ?? '');
 
     if (name === undefined || recommended === undefined) {

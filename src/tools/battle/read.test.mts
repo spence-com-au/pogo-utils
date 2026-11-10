@@ -60,6 +60,28 @@ test.each([
   expect([sighting.own, sighting.moves]).toEqual(['Xerneas', moves]);
 });
 
+// Both sides' Mega Mewtwo Y, its name run into its CP in one line, `Mega Mewtwo ¥ CP 7267` and `CP 7267 Mega Mewtwo ¥`,
+// the Y read as `¥`. Its moves are left out: its third button, Future Sight+, is drawn where no button is looked for.
+test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
+  const { own, ownCp, opponent, opponentCp } = await read('battle-pixel8-mega-mewtwo-y');
+
+  expect({ own, ownCp, opponent, opponentCp }).toEqual({
+    own: 'Mega Mewtwo Y',
+    ownCp: 7267,
+    opponent: 'Mega Mewtwo Y',
+    opponentCp: 7267,
+  });
+});
+
+test('a name as near two species as another, Mega Mewtwo with its Y missing, names neither', async () => {
+  const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8-mega-mewtwo-y.png', import.meta.url)));
+  const line = (text: string, left: number): Line => ({ text, left, top: 0, width: 100, height: 20 });
+  const lines = [line('Mega Mewtwo CP 7267', 0), line('CP 7267 Mega Mewtwo', 450)];
+  const sighting = await readBattle(image, DATA, () => Promise.resolve(lines));
+
+  expect([sighting.own, sighting.opponent, sighting.ownCp, sighting.opponentCp]).toEqual([null, null, 7267, 7267]);
+});
+
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
   expect(await read('playing-minigame-kyogre-great')).toEqual({
     ...unseen(),

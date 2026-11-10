@@ -76,6 +76,33 @@ test('every form of a species is built, none where the read cannot be one', () =
   ).toEqual(['Galarian']);
 });
 
+/**
+ * Both sides' Mega Mewtwo Y in a GO Battle League run on a Pixel 8 Pro showed CP 7267, a level 50 hundo of the Mega's
+ * own stats. Built as Mewtwo, it was a level 51 hundo at an attack of 266.
+ */
+test('a Mega is built from its own stats, and apart from its base form', () => {
+  const [mega, ...more] = buildsOf(DATA, { species: 'Mega Mewtwo Y', cp: 7267 }, null);
+
+  expect(more).toEqual([]);
+  expect(mega?.build).toMatchObject({ iv: { attack: 15, defense: 15, stamina: 15 }, level: 50, hp: 204 });
+  expect(mega?.build.attack).toBeCloseTo(359.65, 2);
+  expect(mega?.build.defense).toBeCloseTo(199.99, 2);
+  expect(buildsOf(DATA, { species: 'Mewtwo', cp: 7267 }, null).map(({ form }) => form.species)).toEqual(['Mewtwo']);
+});
+
+/**
+ * A Mega always holds its mega move beside its other two, so two seen are all it has but that. Against Dragonite, Mega
+ * Mewtwo Y's Future Sight+ is the hardest of the three, and its Ice Beam, which it does not hold, is left out.
+ */
+test("a Mega's mega move is allowed for beside the two of its others seen", () => {
+  const dragonite = { species: 'Dragonite', cp: 4000 };
+  const mega = { species: 'Mega Mewtwo Y', cp: 7267 };
+  const seen = new Set(['Psystrike', 'Shadow Ball']);
+
+  expect(wouldFaint(DATA, dragonite, mega, 1, null, { seen }).hardest).toBe('Future Sight+');
+  expect(wouldFaint(DATA, dragonite, { species: 'Mewtwo', cp: 4000 }, 1, null, { seen }).hardest).toBe('Psystrike');
+});
+
 test('Magmar’s Fire Blast takes 71 of a CP 2495 Charizard’s 149 HP', () => {
   const [charizard] = buildsOf(DATA, CHARIZARD, ULTRA);
   const [magmar] = buildsOf(DATA, MAGMAR, ULTRA);
