@@ -12,7 +12,7 @@ import { closest, distance, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, scale, type Image } from '../../core/png.mts';
 import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
-import { BUTTON_XS } from './recognise.mts';
+import { BANNER_ANCHOR, BANNERS, BUTTON_XS } from './recognise.mts';
 import { type Typing } from './strategy.mts';
 
 export interface Sighting {
@@ -176,34 +176,6 @@ export async function readBattle(
   return sighting;
 }
 
-/**
- * The banner a charged move puts up once it is thrown, `Quaquaval used Aqua Jet!`, in a pill across the sky. Read as one
- * line, a band below its anchor cropped and scaled up three times, in either of the two places it has been drawn: the
- * first band read that names the opponent is the one it is in.
- *
- * - 0.04 to 0.125 widths below the anchor, 0.21 to 0.25 of a Pixel 4 XL's height, where GO Battle League drew it on
- *   2026-11-06: `ee Ursaluna.used Fire Punch! jam`, `|| Gardevoir used Dazzling Gleam! Ras`. The band below held only
- *   sky there, and read nothing all set.
- * - 0.232 to 0.317 widths below it, 0.30 to 0.34 of the height, where it was drawn before: of six banners in the GO
- *   Battle League screenshots off a Pixel 4 XL, four read whole — `a Swampert used Hydro Cannon! at`, `ae Quaquaval
- *   used Aqua Jet! .` — and Golem's Stone Edge as `Golem usedlistras`, which names no move; on a Pixel 8 Pro at night,
- *   `Groudon used Solar Beam!` whole once fully drawn.
- *
- * One band spanning both read neither, OCR taking it for a single line: `; Ursaluna E ——/`. OCR of the whole frame read
- * one of the six.
- */
-const BANNERS = [
-  { top: 0.04, bottom: 0.125 },
-  { top: 0.2322, bottom: 0.3167 },
-] as const;
-
-/**
- * Where the banner is pinned, as `layout.mts` measures anchors: its line centred at 0.323 of a Pixel 4 XL's height and
- * at 0.316 of a Pixel 8 Pro's, the middle of the bands a line read finds `used` in, two banners on one and three on the
- * other. The two shapes differ little, so the anchor is good to about 0.1 either way; what it has to get right is the
- * band, which pinned to the top missed the Pixel 8 Pro's lettering, rows 250 to 261 of 802, from row 258 down.
- */
-const BANNER_ANCHOR = 0.19;
 const USED = /^(.*?)\s*used\s*([^!]*)/i;
 
 /**

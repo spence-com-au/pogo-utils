@@ -15,6 +15,7 @@ import { createReadStream, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  banner,
   blank,
   countdown,
   fleeButton,
@@ -114,6 +115,42 @@ const fleeing = [
 
 test.each(pngs)('%s shows the button to flee only where it is drawn clear', (name) => {
   expect(fleeButton(decodePng(readFileSync(FIXTURES + name)))).toBe(fleeing.includes(name));
+});
+
+/**
+ * A line of text where a charged move's banner is drawn: the banners, in either place, under cloud and a night sky and
+ * on both phones, one fading in over Avalanche's bubbles left drawn after its minigame, and `Get Ready!`; the line a
+ * move striking puts over a bar, `NOT VERY EFFECTIVE`, and `Go, Garchomp!` or `Go, Zamazenta!` as one is sent in. Not
+ * the minigame's rating, twice as tall, nor its bubbles.
+ */
+const lines = [
+  'battle-pixel8-moltres-body',
+  'battle-pixel8-moltres-wing',
+  'battle-sliver-trail',
+  'charged-pixel8-xerneas-foliage-high',
+  'playing-banner-avalanche-bubbles',
+  'playing-banner-avalanche',
+  'playing-banner-gardevoir',
+  'playing-banner-pixel8-charizard',
+  'playing-banner-pixel8-greninja',
+  'playing-banner-pixel8-groudon',
+  'playing-banner-quaquaval',
+  'playing-banner-swampert',
+  'playing-banner-ursaluna',
+  'playing-banner',
+  'playing-dragonite-bench-card',
+  'playing-kabutops-below-bench-card',
+  'playing-latios-left-end-noisy',
+  'playing-ready-cloud',
+  'playing-ready-pixel8-palkia',
+  'playing-ready-zamazenta',
+  'playing-shield-blocked',
+  'playing-shield-going-up',
+  'playing-slate-night',
+].map((name) => `${name}.png`);
+
+test.each(stills)('%s shows a line where the banner is drawn only where one is', (name) => {
+  expect(banner(decodePng(readFileSync(FIXTURES + name)))).toBe(lines.includes(name));
 });
 
 // The black between a battle's end and its result, and no other still, however dark.

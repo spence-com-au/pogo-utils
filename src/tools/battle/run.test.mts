@@ -1024,12 +1024,14 @@ test('aims the minigame’s swipes at its bubbles', async () => {
  * Avalanche played out in kept runs, too soon after the last of its bubbles for their gap to end them: under `98% used
  * Avalanche!`, our bar back, the white lines of the field found as its bubbles 0.3s on, with the button to flee, fading
  * in there, painted out with the night sky beside it; in another, the button back and our bar not yet, the white of
- * Kyogre's body found as them; and in that run again, the button fading in, its disc not yet white.
+ * Kyogre's body found as them; and in that run again, the button fading in, its disc not yet white. And in a third,
+ * `98% used Avalanche!` up before either, its bubbles left drawn as the move played out.
  */
 test.each([
   ['our bar', () => painted(fixture('playing-banner-avalanche'), [3, 39, 122], [0.01, 0.26, 0.15, 0.41])],
   ['the button to flee', () => fixture('playing-flee-avalanche')],
   ['the button to flee fading in', () => fixture('playing-flee-fading-avalanche')],
+  ['the banner', () => fixture('playing-banner-avalanche-bubbles')],
 ])('touches nothing once %s is back after the minigame, whatever is found as its bubbles', async (_, played) => {
   const { phone, clock, strokes } = scripted(
     {

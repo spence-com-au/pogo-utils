@@ -374,22 +374,39 @@ const NAMES = [
 const EDGE = { by: 25, grey: 40, half: 0.09 } as const;
 const NAMED = 5;
 
+/**
+ * The edges along row `y` from `left` to `right` across, in pixels: neighbours a 360th of the width apart differing by
+ * more than `by` in luminance, the lighter of them under `grey` in chroma.
+ */
+function edgesAlong(
+  image: Image,
+  y: number,
+  [left, right]: readonly [number, number],
+  { by, grey }: { by: number; grey: number },
+): number {
+  const unit = image.width / 360;
+  let found = 0;
+
+  for (let px = left; px < right; px += unit) {
+    const [a, b] = [rgb(image, px, y), rgb(image, px + unit, y)];
+    const [lighter, darker] = luminance(...a) > luminance(...b) ? [a, b] : [b, a];
+
+    if (luminance(...lighter) - luminance(...darker) > by && chroma(...lighter) < grey) {
+      found++;
+    }
+  }
+
+  return found;
+}
+
 /** The edges per row between rows `top` and `bottom` widths above the foot, across `x` ± `EDGE.half`. */
 function edges(image: Image, x: number, [top, bottom]: readonly [number, number]): number {
-  const unit = image.width / 360;
   const [from, to] = rows(image, top, bottom, BOTTOM);
-  const [left, right] = [x - EDGE.half, x + EDGE.half].map((at) => Math.round(at * image.width)) as [number, number];
+  const across = [x - EDGE.half, x + EDGE.half].map((at) => Math.round(at * image.width)) as [number, number];
   let found = 0;
 
   for (let y = from; y <= to; y++) {
-    for (let px = left; px < right; px += unit) {
-      const [a, b] = [rgb(image, px, y), rgb(image, px + unit, y)];
-      const [lighter, darker] = luminance(...a) > luminance(...b) ? [a, b] : [b, a];
-
-      if (luminance(...lighter) - luminance(...darker) > EDGE.by && chroma(...lighter) < EDGE.grey) {
-        found++;
-      }
-    }
+    found += edgesAlong(image, y, across, EDGE);
   }
 
   return found / (to - from + 1);
@@ -549,6 +566,114 @@ export function fleeButton(image: Image): boolean {
   return (whites / FLEE.points >= DISC_WHITE && rimmed / FLEE.points >= RIM_SHARE) || fading;
 }
 
+/**
+ * Where the banner a charged move puts up is pinned, as `layout.mts` measures anchors: its line centred at 0.323 of a
+ * Pixel 4 XL's height and at 0.316 of a Pixel 8 Pro's, the middle of the bands a line read finds `used` in, two banners
+ * on one and three on the other. The two shapes differ little, so the anchor is good to about 0.1 either way; what it
+ * has to get right is the band, which pinned to the top missed the Pixel 8 Pro's lettering, rows 250 to 261 of 802, from
+ * row 258 down.
+ */
+export const BANNER_ANCHOR = 0.19;
+
+/**
+ * The banner a charged move puts up once it is thrown, `Quaquaval used Aqua Jet!`, in a pill across the sky, in either
+ * of the two places it has been drawn. `read.mts` reads it as one line, a band below its anchor cropped and scaled up
+ * three times, the first band read that names the opponent being the one it is in.
+ *
+ * - 0.04 to 0.125 widths below the anchor, 0.21 to 0.25 of a Pixel 4 XL's height, where GO Battle League drew it on
+ *   2026-11-06: `ee Ursaluna.used Fire Punch! jam`, `|| Gardevoir used Dazzling Gleam! Ras`. The band below held only
+ *   sky there, and read nothing all set.
+ * - 0.232 to 0.317 widths below it, 0.30 to 0.34 of the height, where it was drawn before: of six banners in the GO
+ *   Battle League screenshots off a Pixel 4 XL, four read whole — `a Swampert used Hydro Cannon! at`, `ae Quaquaval
+ *   used Aqua Jet! .` — and Golem's Stone Edge as `Golem usedlistras`, which names no move; on a Pixel 8 Pro at night,
+ *   `Groudon used Solar Beam!` whole once fully drawn.
+ *
+ * One band spanning both read neither, OCR taking it for a single line: `; Ursaluna E ——/`. OCR of the whole frame read
+ * one of the six.
+ */
+export const BANNERS = [
+  { top: 0.04, bottom: 0.125 },
+  { top: 0.2322, bottom: 0.3167 },
+] as const;
+
+/**
+ * A line of the banner's letters: a run of rows of `least` edges or more, `short` to `tall` widths high and averaging
+ * `mean` or more, with `margin` widths of rows either side of it, the pill around the letters, averaging no more than
+ * `quiet` of that.
+ *
+ * Over the 255 throws of ours in 20 kept runs, from `threw` until the button to flee or our bar was back, the banner
+ * was read on its first frames fading in, 0.025 to 0.036 widths high and averaging 35 to 71, and drawn whole on the
+ * committed frames it is 0.036 to 0.047 high and averages 78 to 110. Before it, the minigame's rating, `EXCELLENT!`, ran
+ * 0.089 widths high and more, and Avalanche's clouds at the banner's height averaged no more than 28.
+ */
+const LINE = { least: 12, mean: 35, short: 0.025, tall: 0.06, margin: 0.02, quiet: 0.15 } as const;
+
+/**
+ * The banner a charged move puts up as it plays out, `Zamazenta used Close Combat!`: one line of white letters on a
+ * translucent pill across the sky, looked for across both of `BANNERS` and `LINE.margin` beyond them, the quiet rows a
+ * line needs either side. Told by its letters' edges, as the moves' names are, counted along each row: lower in
+ * luminance and higher in chroma than theirs, the letters on a night sky taking its blue through the pill as the stream
+ * encodes them, 60 to 95 in chroma.
+ */
+const BANNER = {
+  top: BANNERS[0].top - LINE.margin,
+  bottom: BANNERS[1].bottom + LINE.margin,
+  left: 0.15,
+  right: 0.85,
+  by: 15,
+  grey: 120,
+} as const;
+
+/**
+ * Whether a line of text is drawn where a charged move's banner is. Asked only after the minigame's bubbles have run,
+ * where it is the banner: `Get Ready!` is drawn the same way before them, and the line over a bar a move puts up as it
+ * strikes, `NOT VERY EFFECTIVE`, and `Go, Garchomp!` as one is sent in, are each a line too.
+ */
+export function banner(image: Image): boolean {
+  const [from, to] = rows(image, BANNER.top, BANNER.bottom, BANNER_ANCHOR);
+  const across = [BANNER.left, BANNER.right].map((at) => Math.round(at * image.width)) as [number, number];
+  const counts: number[] = [];
+
+  for (let y = from; y <= to; y++) {
+    counts.push(edgesAlong(image, y, across, BANNER));
+  }
+
+  const margin = Math.round(LINE.margin * image.width);
+  const average = (start: number, end: number) =>
+    counts.slice(start, end).reduce((sum, count) => sum + count, 0) / Math.max(end - start, 1);
+
+  for (let top = 0; top < counts.length; top++) {
+    if ((counts[top] ?? 0) < LINE.least) {
+      continue;
+    }
+
+    let end = top;
+
+    while ((counts[end] ?? 0) >= LINE.least) {
+      end++;
+    }
+
+    const high = (end - top) / image.width;
+    const line = average(top, end);
+
+    if (
+      top >= margin &&
+      end + margin <= counts.length &&
+      high >= LINE.short &&
+      high <= LINE.tall &&
+      line >= LINE.mean &&
+      average(top - margin, top) <= LINE.quiet * line &&
+      average(end, end + margin) <= LINE.quiet * line
+    ) {
+      return true;
+    }
+
+    top = end;
+  }
+
+  return false;
+}
+
 export function recognise(image: Image): State {
   if (
     SWITCH_PANEL.every((box) => near(mean(image, box, BOTTOM), SLATE, 12)) &&
@@ -604,5 +729,9 @@ export function areas(screen: Size): Area[] {
     { name: "each side's shields", boxes: at([...OWN_SHIELDS, ...OPPONENT_SHIELDS], TOP) },
     { name: "each side's Poké Balls", boxes: at([...BALLS.own, ...BALLS.opponent].map(ball), TOP) },
     { name: 'the button to flee the battle', boxes: [around([FLEE.x, FLEE.y], FLEE.beyond, TOP, screen)] },
+    {
+      name: "a charged move's banner",
+      boxes: at([[BANNER.left, BANNER.top, BANNER.right, BANNER.bottom]], BANNER_ANCHOR),
+    },
   ];
 }
