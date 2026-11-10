@@ -552,34 +552,79 @@ test('the grid is known by its REGIONS button on any tab, and nothing else is', 
   }
 });
 
+/** What a tab's region list counts over the screenshots named, region by region. */
+async function counted(...names: string[]) {
+  const all = new Map<string, number>();
+
+  for (const image of names.map(capture)) {
+    for (const { region, count } of countsOn(await listLines(image), image)) {
+      all.set(region, count);
+    }
+  }
+
+  return Object.fromEntries(all);
+}
+
 /**
  * The counts a tab's region list prints. The POKÉMON tab's over the three screenshots its list takes to scroll, each
- * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`.
+ * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`; and
+ * G-MAX's four, Unova's name under PGSharp's star button.
  */
 test("each tab's region list counts its regions", async () => {
-  const counted = async (...names: string[]) => {
-    const all = new Map<string, number>();
-
-    for (const name of names) {
-      for (const { region, count } of countsOn(await listLines(capture(name)))) {
-        all.set(region, count);
-      }
-    }
-
-    return Object.fromEntries(all);
-  };
-
-  expect(await counted('tab-pokemon-0', 'tab-pokemon-1', 'tab-pokemon-2')).toMatchObject({
+  expect(await counted('tab-pokemon-0', 'tab-pokemon-1', 'tab-pokemon-2')).toStrictEqual({
     Kanto: 148,
     Johto: 98,
     Hoenn: 134,
     Sinnoh: 97,
     Unova: 114,
+    Kalos: 52,
     Alola: 55,
+    Galar: 50,
     Hisui: 3,
     Paldea: 44,
     Unidentified: 2,
   });
 
-  expect(await counted('tab-shiny-0')).toMatchObject({ Kanto: 80, Johto: 51, Hoenn: 78, Sinnoh: 33, Unova: 51 });
+  expect(await counted('tab-shiny-0')).toStrictEqual({ Kanto: 80, Johto: 51, Hoenn: 78, Sinnoh: 33, Unova: 51 });
+  expect(await counted('tab-gmax-0')).toStrictEqual({ Kanto: 2, Unova: 0, Unidentified: 0, Galar: 0 });
+});
+
+/**
+ * The foot of five more tabs' lists, every card in sight counted: the last fades towards the tabs, and PGSharp's star
+ * button hides Galar's `G`.
+ */
+test("a list's foot counts every card in sight", async () => {
+  expect(await counted('tab-lucky-2')).toStrictEqual({ Alola: 1, Galar: 2, Hisui: 0, Paldea: 2, Unidentified: 1 });
+  expect(await counted('tab-xxl-2')).toStrictEqual({ Alola: 2, Galar: 5, Hisui: 0, Paldea: 5, Unidentified: 0 });
+  expect(await counted('tab-xxs-2')).toStrictEqual({ Alola: 4, Galar: 5, Hisui: 0, Paldea: 9, Unidentified: 0 });
+  expect(await counted('tab-shadow-2')).toStrictEqual({ Alola: 0, Galar: 0, Hisui: 0, Paldea: 0, Unidentified: 0 });
+  expect(await counted('tab-perfect-2')).toStrictEqual({ Alola: 3, Galar: 1, Hisui: 0, Paldea: 3, Unidentified: 0 });
+});
+
+/**
+ * A POKÉMON count is taken only where the card's bar is as full, so one that has lost its first digits is left out
+ * rather than taken short. The lines are what `tab-pokemon-0.png` read as with a treatment that left in part of the
+ * medal under each count: Johto's `98` as `78`, and the first digits of Hoenn's and Sinnoh's split off into lines of
+ * their own, leaving the `7` that #1042's walk reported.
+ */
+test("a POKÉMON count is taken only where the card's bar is as full", () => {
+  const tesseract: Line[] = [
+    { text: 'JOHTO', left: 96, top: 916, width: 240, height: 54 },
+    { text: '78 / 100', left: 112, top: 1056, width: 194, height: 90 },
+    { text: 'HOENN', left: 102, top: 1372, width: 252, height: 54 },
+    { text: '=D', left: 96, top: 1458, width: 322, height: 30 },
+    { text: '13', left: 100, top: 1512, width: 58, height: 64 },
+    { text: '34 / 135', left: 136, top: 1512, width: 200, height: 92 },
+    { text: '8)', left: 104, top: 1580, width: 94, height: 94 },
+    { text: 'SINNOH', left: 98, top: 1828, width: 274, height: 54 },
+    { text: '===D>', left: 96, top: 1912, width: 294, height: 32 },
+    { text: '9', left: 98, top: 1968, width: 28, height: 40 },
+    { text: '7/ 107', left: 126, top: 1968, width: 180, height: 86 },
+    { text: '8)', left: 104, top: 2036, width: 92, height: 92 },
+    { text: 'UNOVA', left: 100, top: 2284, width: 260, height: 54 },
+    { text: 'a=»', left: 96, top: 2368, width: 238, height: 30 },
+    { text: '114 / 156', left: 100, top: 2424, width: 238, height: 84 },
+  ];
+
+  expect(countsOn(tesseract, capture('tab-pokemon-0'))).toStrictEqual([{ region: 'Unova', count: 114 }]);
 });

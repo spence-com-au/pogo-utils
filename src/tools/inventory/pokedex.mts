@@ -1024,45 +1024,164 @@ export const SIZES: ReadonlyMap<string, number> = Array.from({ length: LAST_DEX 
 );
 
 /**
+ * Where a region list's names and counts lie across the screen, as fractions of its width: they start 0.068 in, and
+ * `UNIDENTIFIED`, the longest, ends at 0.41. Left of them is the backdrop beside the cards and right of them the cards'
+ * artwork, and with both in, Tesseract read no count at all off `tab-shadow-2.png`.
+ */
+const LIST_TEXT = { left: 0.04, right: 0.45 };
+
+/**
+ * How much darker than its row, by `brightness`, a pixel of a region list is drawn black; one less dark is drawn a grey
+ * between. Greys rather than black and white, since no one cut read every count on the captures: cut at 20 below the
+ * row, Sinnoh's on `tab-pokemon-0.png` did not read, and at 32 Hoenn's `Caught: 11` on `tab-perfect-0.png` read as 14.
+ */
+const LIST_INK = 60;
+
+/**
+ * How much darker than its row a pixel of a region list has to be to belong to a patch of ink, which `LIST_TALLEST`
+ * measures. Lighter than the text, so that the medal under a POKÉMON card's count, a faint gold ring, holds together as
+ * one patch: at 36 it broke into arcs short enough to pass for text, which took the first digit of the count above.
+ * Not so light that the count joins the medal, though: at 8 Sinnoh's `9` was drawn out with it. At 14 and 20 every card
+ * on the captures read under both Tesseract 5.3 and 5.5, and at 24 one did not.
+ */
+const LIST_DARK = 14;
+
+/**
+ * The tallest a patch of a region list's ink can be and still be text, as a fraction of the screen's width: a name's
+ * capitals are 0.037. What is taller — the medal under a POKÉMON card's count, a padlock, PGSharp's star, the foot of
+ * the artwork — is drawn out, since beside it Tesseract 5.5 read Johto's `98 / 100` on `tab-pokemon-0.png` as nothing.
+ */
+const LIST_TALLEST = 0.05;
+
+/**
  * A region list's text, which neither of `pokedexLines`' passes reads: each card prints its region and count in the
  * tab's own colour on a near-white card — teal on the POKÉMON tab's, orange on SHINY's — and the backdrop between the
- * cards is as dark as that text on some tabs. So the ink taken is what is darker than the card, and only on the rows
- * that cross one, which is told by the light down the card's left margin; and on the left half alone, where the names
- * and counts are and the cards' artwork is not.
+ * cards is as dark as that text on some tabs. Each pixel is measured against its own row, which is the card's where the
+ * row crosses one and the backdrop's where it does not, since no one level is the card's: the list's last card fades
+ * towards the tabs, to 198 against 210 above it on `tab-xxs-2.png`. A row is as light as three quarters of it, the rest
+ * being text or the foot of the artwork.
  */
 export async function listLines(image: Image): Promise<Line[]> {
-  const width = Math.floor(image.width / 4);
+  const from = Math.round(image.width * LIST_TEXT.left);
+  const width = Math.floor((image.width * LIST_TEXT.right - from) / 2);
   const height = Math.floor(image.height / 2);
-  const data = new Uint8Array(width * height * 4).fill(255);
-  const bright = (x: number, y: number) => brightness(rgb(image, x, y));
+  const grey = new Uint8Array(width * height);
+  const dark = new Uint8Array(width * height);
 
   for (let y = 0; y < height; y++) {
-    let light = 0;
-    let asked = 0;
+    const row = Array.from({ length: width }, (_, x) => brightness(rgb(image, from + x * 2, y * 2)));
+    const paper = [...row].sort((a, b) => a - b)[Math.floor(width * 0.75)] ?? 0;
 
-    for (let x = image.width * 0.05; x < image.width * 0.4; x += 8) {
-      asked++;
-      light += Number(bright(x, y * 2) > 200);
-    }
+    row.forEach((bright, x) => {
+      grey[y * width + x] = Math.round(Math.min(255, Math.max(0, 255 - ((paper - bright) * 255) / LIST_INK)));
+      dark[y * width + x] = Number(paper - bright > LIST_DARK);
+    });
+  }
 
-    if (light < asked * 0.4) {
-      continue;
-    }
-
-    for (let x = 0; x < width; x++) {
-      if (bright(x * 2, y * 2) < 185) {
-        data.set([0, 0, 0, 255], (y * width + x) * 4);
+  for (const patch of patchesOf(dark, width)) {
+    if (patch.height > (image.width * LIST_TALLEST) / 2) {
+      for (const at of patch.at) {
+        grey[at] = 255;
       }
     }
   }
 
+  const data = new Uint8Array(width * height * 4);
+  grey.forEach((value, at) => data.set([value, value, value, 255], at * 4));
+
   return (await ocr({ width, height, data })).map((l) => ({
     ...l,
-    left: l.left * 2,
+    left: from + l.left * 2,
     top: l.top * 2,
     width: l.width * 2,
     height: l.height * 2,
   }));
+}
+
+/** Each patch of a `width`-wide mask's set pixels, touching at a side or a corner: where they are, and its rows. */
+function patchesOf(set: Uint8Array, width: number): { at: number[]; height: number }[] {
+  const seen = new Uint8Array(set.length);
+  const patches: { at: number[]; height: number }[] = [];
+
+  for (let start = 0; start < set.length; start++) {
+    if (!set[start] || seen[start]) {
+      continue;
+    }
+
+    const at: number[] = [];
+    const stack = [start];
+    let [top, bottom] = [Infinity, -Infinity];
+    seen[start] = 1;
+
+    for (let i = stack.pop(); i !== undefined; i = stack.pop()) {
+      const [x, y] = [i % width, Math.floor(i / width)];
+      at.push(i);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const next = (y + dy) * width + x + dx;
+
+          if (x + dx >= 0 && x + dx < width && next >= 0 && next < set.length && set[next] && !seen[next]) {
+            seen[next] = 1;
+            stack.push(next);
+          }
+        }
+      }
+    }
+
+    patches.push({ at, height: bottom - top + 1 });
+  }
+
+  return patches;
+}
+
+/**
+ * Where the bar under a POKÉMON card's name starts across the screen, as a fraction of its width, less a little: the
+ * card left of it is what the bar's fill and track are told from.
+ */
+const BAR_FROM = 0.055;
+
+/**
+ * How far a POKÉMON card's count, as a share of its region, can be from how full its bar is drawn and still be taken.
+ * Every card on the captures is within 0.004 of its bar, and a count that has lost its first digit is far from it:
+ * Sinnoh's `7 / 107` is 0.07 against a bar 0.91 full.
+ */
+const BAR_SLACK = 0.02;
+
+/**
+ * How full the bar under a POKÉMON card's name is drawn, from 0 to 1: of the bar's length, the share its dark fill
+ * takes, the rest of its track being lighter than the card. Measured along whichever row below the name has the
+ * longest bar, the count's box sometimes reaching up over it, and null where none is a fifth of the screen long.
+ */
+function barFill(image: Image, name: Line): number | null {
+  let best = { fill: 0, track: 0 };
+
+  for (let y = name.top + name.height; y < name.top + name.height * 3; y++) {
+    const from = Math.round(image.width * BAR_FROM);
+    const paper = brightness(rgb(image, from, y));
+    let [fill, track, gap] = [0, 0, 0];
+
+    // Along the row until the card shows through again, past the anti-aliasing between the fill and the track.
+    for (let x = from; x < image.width / 2 && gap < 6; x++) {
+      const bright = brightness(rgb(image, x, y));
+
+      if (bright < paper - 40) {
+        [fill, gap] = [fill + 1, 0];
+      } else if (bright > paper + 8) {
+        [track, gap] = [track + 1, 0];
+      } else if (fill + track > 0) {
+        gap++;
+      }
+    }
+
+    if (fill + track > best.fill + best.track) {
+      best = { fill, track };
+    }
+  }
+
+  return best.fill + best.track > image.width * 0.15 ? best.fill / (best.fill + best.track) : null;
 }
 
 /**
@@ -1071,8 +1190,13 @@ export async function listLines(image: Image): Promise<Line[]> {
  * check on the first: a count is taken only where it is the region's own size, so `97 {107` under Sinnoh is 97 and a
  * line of the artwork read as numbers is nothing. A card whose count did not read is left out rather than read as
  * nought, so a count can be missing but never wrong.
+ *
+ * So on the POKÉMON tab the count is also checked against the bar the card draws under the name, as full as the count
+ * is of the region, `Complete!` standing in for it where the count is the whole region. That catches a count that has
+ * lost its first digits, which the size cannot: the medal under each card's count can take them, and Sinnoh's
+ * `97 / 107` has read as `7/ 107`.
  */
-export function countsOn(lines: readonly Line[]): Counted[] {
+export function countsOn(lines: readonly Line[], image: Image): Counted[] {
   const counted: Counted[] = [];
   const regions = [...SIZES.keys()];
 
@@ -1099,7 +1223,12 @@ export function countsOn(lines: readonly Line[]): Counted[] {
       }
 
       if (held !== undefined && of !== undefined && of === SIZES.get(region) && held <= of) {
-        counted.push({ region, count: held });
+        const bar = held === of ? 1 : barFill(image, line);
+
+        if (bar !== null && Math.abs(bar - held / of) <= BAR_SLACK) {
+          counted.push({ region, count: held });
+        }
+
         break;
       }
     }

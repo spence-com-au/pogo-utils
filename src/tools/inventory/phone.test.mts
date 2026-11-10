@@ -26,7 +26,7 @@ import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
-import { decodePng, encodePng, screenIn } from '../../core/png.mts';
+import { decodePng, encodePng, screenIn, type Image } from '../../core/png.mts';
 import { LAST_DEX } from '../../pokemon/generations.ts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
@@ -48,6 +48,9 @@ const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', i
 const SLOW = 240_000;
 
 const recording = (name: string) => new Uint8Array(readFileSync(new URL(name, FIXTURES)));
+
+/** What a captured region list counts. */
+const countsIn = async (image: Image) => countsOn(await listLines(image), image);
 
 /** The storage grid before a search, and after one. */
 const GRID = 'storage/grid.png';
@@ -890,11 +893,7 @@ const linesIn = (cwd: string) =>
 async function agreeing(): Promise<Entry[]> {
   const printed = await Promise.all(
     LISTS.map(async (frames) =>
-      (
-        await Promise.all(
-          frames.map(async (frame) => countsOn(await listLines(decodePng(recording(`pokedex/${frame}.png`))))),
-        )
-      ).flat(),
+      (await Promise.all(frames.map(async (frame) => countsIn(decodePng(recording(`pokedex/${frame}.png`)))))).flat(),
     ),
   );
   const keys = Object.keys(CATEGORIES) as Category[];
@@ -956,7 +955,7 @@ describe('dex', () => {
       // And every region whose card did not read on the POKÉMON tab's captures is said rather than passed as agreeing:
       // the tab lists all of them, so each it did not read is one the record was not checked against.
       const shown = await Promise.all(
-        (LISTS[0] ?? []).map(async (frame) => countsOn(await listLines(decodePng(recording(`pokedex/${frame}.png`))))),
+        (LISTS[0] ?? []).map(async (frame) => countsIn(decodePng(recording(`pokedex/${frame}.png`)))),
       );
       const read = new Set(shown.flat().map((c) => c.region));
       const said = /^ {2}POKÉMON: no count read for (.*), so the record there was not checked$/m.exec(stderr)?.[1];

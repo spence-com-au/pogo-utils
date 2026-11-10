@@ -230,7 +230,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     for (let attempt = 0; attempt < 6; attempt++) {
       const image = await settled(device);
 
-      if (countsOn(await listLines(image)).length > 0) {
+      if (countsOn(await listLines(image), image).length > 0) {
         return;
       }
 
@@ -349,7 +349,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       // Towards it along the list, which is wherever the last walk or tally left it: up where every region in sight
       // comes after it, and down otherwise. Dragged in the middle, where a drag the phone took as a tap would open a
       // region rather than press anything else.
-      const shown = countsOn(lines).map((c) => LISTED.indexOf(c.region));
+      const shown = countsOn(lines, image).map((c) => LISTED.indexOf(c.region));
       const up = shown.length > 0 && shown.every((i) => i > LISTED.indexOf(region));
       await drag(up ? [0.5, 0.38] : [0.5, 0.7], up ? [0.5, 0.7] : [0.5, 0.38], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
@@ -866,7 +866,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       let shown = await settled(device);
 
       const take = async (image: Image) => {
-        for (const { region, count } of countsOn(await listLines(image))) {
+        for (const { region, count } of countsOn(await listLines(image), image)) {
           found.set(region, count);
         }
       };
