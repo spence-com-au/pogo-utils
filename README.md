@@ -599,12 +599,14 @@ It opens the Pokédex from the main menu on the POKÉMON tab, opens the first en
 which is also why a species never seen has no line: a swipe passes over it. On each entry it selects every form in turn
 and reads its CAUGHT tab down to its foot: a tile drawn as the game's icon is a category registered, one drawn as a
 silhouette is one that is not, and a category the game draws no tile for is no key at all — Alolan Meowth has only
-`shiny`. A form the game will not select, its tile a silhouette, is one not caught. `genders` holds each gender the
-species has, `true` where the entry draws it solid and `false` where dashed, and nothing for a species with none. Forms
-and costumes are named as the game master names them, a form off its label where it carries one and otherwise off its
-icon, and a costume off its icon: the game draws its own icons on these tiles, so the right one matches almost exactly.
-One that no icon plainly matches is written as `{"unidentified": N}`, its place among the tiles, with a note saying so,
-rather than as whichever came nearest; `--keep-screens DIR` saves every screenshot read so it can be looked at.
+`shiny`. A SHINY tile drawn as a silhouette is tapped too, since the game draws some species' that way though the shiny
+is registered — Ekans's — and is registered where the game selects it. A form the game will not select, its tile a
+silhouette, is one not caught. `genders` holds each gender the species has, `true` where the entry draws it solid and
+`false` where dashed, and nothing for a species with none. Forms and costumes are named as the game master names them, a
+form off its label where it carries one and otherwise off its icon, and a costume off its icon: the game draws its own
+icons on these tiles, so the right one matches almost exactly. One that no icon plainly matches is written as
+`{"unidentified": N}`, its place among the tiles, with a note saying so, rather than as whichever came nearest;
+`--keep-screens DIR` saves every screenshot read so it can be looked at.
 
 `--from N` and `--to M` walk only those numbers and replace only their lines of the file, leaving the rest of the record
 as it was. A walk ends by holding the whole record to the counts each tab of the Pokédex prints for each region,

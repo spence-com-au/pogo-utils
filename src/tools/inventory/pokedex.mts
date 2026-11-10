@@ -360,6 +360,9 @@ export function caughtOn(image: Image, lines: readonly Line[]): Caught[] {
   return found;
 }
 
+/** The form's own tile, which the game draws first in the row it draws SHINY second in, the one at `shiny`. */
+export const ownBeside = (image: Image, shiny: Box): Box => tileAt(image, COLUMNS[0], shiny.top);
+
 /** The heading over an entry's costumes. */
 export const costumeHeadingOf = (lines: readonly Line[]) => findLine(lines, /^costumes?$/);
 
@@ -521,11 +524,20 @@ export function formsOn(image: Image, from: number, to: number): FormTile[] {
   return tiles;
 }
 
-/** Whether a form tile wears the white frame of the form showing, down the middle of its left edge. */
-export const framed = (image: Image, box: Box) =>
-  Array.from({ length: 8 }, (_, i) => rgb(image, box.left + 2, box.top + box.height * (0.3 + i * 0.05))).every(
-    (p) => Math.min(...p) >= 215,
+/**
+ * Whether a tile wears the white frame of what is showing, a form or a category of the CAUGHT tab, down the middle of
+ * its left edge. Looked for a few pixels either side of the edge, since a CAUGHT tile is placed by its column rather
+ * than found: the frame round SHINY on `ekans-shiny-0.png` runs from 4 pixels outside its box to 1 inside.
+ */
+export const framed = (image: Image, box: Box) => {
+  const reach = Math.round(image.width * 0.004);
+
+  return Array.from({ length: reach * 2 + 1 }, (_, i) => box.left - reach + i).some((x) =>
+    Array.from({ length: 8 }, (_, i) => rgb(image, x, box.top + box.height * (0.3 + i * 0.05))).every(
+      (p) => Math.min(...p) >= 215,
+    ),
   );
+};
 
 /**
  * What each form tile's label says, or null for one with none. Each is read on its own and at full size: two labels

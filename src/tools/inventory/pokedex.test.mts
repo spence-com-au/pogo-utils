@@ -25,10 +25,12 @@ import {
   dexOn,
   formLabelled,
   formsOn,
+  framed,
   gendersOn,
   iconIn,
   labelsOf,
   listLines,
+  ownBeside,
   pokedexLines,
   regionsButtonOf,
   silhouettesNamed,
@@ -189,6 +191,28 @@ test("a form's tiles read as the icon where registered and the silhouette where 
     shadow: 'silhouette',
     purified: 'silhouette',
   });
+});
+
+/**
+ * Which of the CAUGHT tab's tiles is showing, by the white frame round it: the form's own as Ekans's entry opens, and
+ * SHINY once tapped, which the game selects though it draws the tile as a silhouette (#1047). The form's own is found
+ * beside SHINY, which is how the walk puts the entry back.
+ */
+test('the CAUGHT tile showing wears the frame, a silhouetted SHINY the game selects among them', async () => {
+  const showing = async (name: string) => {
+    const { image, lines: found } = await read(name);
+    const caught = caughtOn(image, found);
+    const shiny = caught.find((c) => c.category === 'shiny') ?? expect.unreachable(`${name} draws a SHINY tile`);
+
+    return {
+      shiny: shiny.look,
+      framed: caught.filter(({ box }) => framed(image, box)).map((c) => c.category),
+      own: framed(image, ownBeside(image, shiny.box)),
+    };
+  };
+
+  expect(await showing('ekans-0')).toStrictEqual({ shiny: 'silhouette', framed: [null], own: true });
+  expect(await showing('ekans-shiny-0')).toStrictEqual({ shiny: 'silhouette', framed: ['shiny'], own: false });
 });
 
 /**
