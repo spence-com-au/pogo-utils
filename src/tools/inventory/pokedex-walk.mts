@@ -43,6 +43,7 @@ import {
   pokedexLines,
   ranked,
   regionIn,
+  regionsButtonOf,
   seeAllOf,
   titleOf,
   UNIDENTIFIED,
@@ -132,12 +133,6 @@ export const TABS: readonly { label: string; counts: (entry: Entry) => boolean }
   ...(['shadow', 'purified', 'perfect'] as const).map((key) => ({ label: CATEGORIES[key], counts: has(key) })),
 ];
 
-/**
- * Whether a screen is the Pokédex's grid, by the four-digit numbers under its tiles, which the plain read gets exactly
- * and four or more of which nothing else in the game shows: an entry carries one, in its title.
- */
-const isGrid = (lines: readonly Line[]) => lines.filter((l) => /^\d{4}$/.test(l.text.trim())).length >= 4;
-
 /** Whether any form of an entry has `key` registered, which is what fills the species' tile in that tab. */
 function has(key: Category) {
   return (entry: Entry) => entry.forms.some((form) => form[key] === true);
@@ -223,17 +218,15 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     ]);
 
   /**
-   * Gets to the list of regions from wherever the game is: the map, the main menu, an entry or its grid. The close
-   * button of an entry and of the grid sits where the main menu's Poké Ball does, so one tap there backs out of either
-   * and opens the menu from the map.
+   * Gets to the list of regions from wherever the game is: the map, the main menu, an entry or its grid. An entry
+   * closes to its grid, and the grid's own button opens the list.
    */
   const toList = async () => {
     await (fronted ??= toFront(device, config, say));
 
-    // Four taps from an entry, the furthest in a walk leaves it: closed to its grid, the grid to the map, the menu
-    // opened and the Pokédex opened from it. Each tap is made only on a screen known to be what it is for, as
-    // `toStorage` makes its own: the main menu's Poké Ball is where a walking avatar can carry a stop, and where a
-    // dialog keeps its buttons.
+    // Two taps from an entry, the furthest in a walk leaves it, and three more from the map: the menu opened and the
+    // Pokédex opened from it. Each tap is made only on a screen known to be what it is for, as `toStorage` makes its
+    // own: the main menu's Poké Ball is where a walking avatar can carry a stop, and where a dialog keeps its buttons.
     for (let attempt = 0; attempt < 6; attempt++) {
       const image = await settled(device);
 
@@ -248,9 +241,16 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         continue;
       }
 
-      // An entry or the grid, each closed by the button at its foot: the entry to the grid, the grid to the map. Asked
-      // before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
-      if (isEntry(await pokedexLines(image)) || isGrid(lines)) {
+      const shown = await pokedexLines(image);
+      const regions = regionsButtonOf(shown);
+
+      if (regions) {
+        await tap(centre(regions), config.waits.search);
+        continue;
+      }
+
+      // Asked before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
+      if (isEntry(shown)) {
         await tap(at(image, config.taps.closeDetail), config.waits.menu);
         continue;
       }

@@ -699,6 +699,9 @@ class Pokedex {
 
       if (foot) {
         this.screen = 'map';
+      } else if (x > 0.8 && y > 0.9) {
+        // The REGIONS button in the corner, back to the list as it was left.
+        this.screen = 'list';
       } else if (y > 0.3 && y < 0.36 && tile < this.#entries.length) {
         [this.screen, this.#entry, this.#frame] = ['entry', tile, 0];
       }

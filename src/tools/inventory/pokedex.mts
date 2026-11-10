@@ -370,6 +370,12 @@ export const costumeHeadingOf = (lines: readonly Line[]) => findLine(lines, /^co
 export const seeAllOf = (lines: readonly Line[]) => findLine(lines, /^see ?all/);
 
 /**
+ * The label under the grid's button back to the list of regions, which is how the grid is known: dark on a white pill
+ * on every tab, where the tiles' numbers are the tab's colour on its colour and do not read on all of them.
+ */
+export const regionsButtonOf = (lines: readonly Line[]) => findLine(lines, /^regions$/);
+
+/**
  * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
  * the gap between the first column and the second at the same height: the backdrop shows through both, and only the
  * tile lays its white over it. Measured on `bulbasaur-2.png`, the tile's red runs 20 to 30 above the gap's.

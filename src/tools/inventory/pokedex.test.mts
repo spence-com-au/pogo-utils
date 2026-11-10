@@ -30,6 +30,7 @@ import {
   labelsOf,
   listLines,
   pokedexLines,
+  regionsButtonOf,
   titleOf,
   type Candidate,
   type Category,
@@ -360,6 +361,20 @@ test("Pikachu's costumes are named among its own", async () => {
     'Anniversary 2026',
     undefined,
   ]);
+});
+
+/**
+ * The grid by its button back to the list, whichever tab it is of: on ★ 100%'s the tiles' numbers are pink on pink and
+ * not one of them reads, where the button's label is dark on white on every tab. Nothing else carries the label.
+ */
+test('the grid is known by its REGIONS button on any tab, and nothing else is', async () => {
+  for (const grid of ['kanto', 'paldea-perfect']) {
+    expect(regionsButtonOf((await read(grid)).lines), grid).toBeDefined();
+  }
+
+  for (const other of ['map', 'menu', 'tab-pokemon-0', 'bulbasaur-0', 'bulbasaur-2']) {
+    expect(regionsButtonOf((await read(other)).lines), other).toBeUndefined();
+  }
 });
 
 /**
