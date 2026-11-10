@@ -88,17 +88,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "mall-exploration-east-ortigas-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM East Ortigas, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-10-23T00:00:00.000",
-    "end": "2026-11-08T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "mall-exploration-changi-2026",
     "name": "Pokémon 30th Anniversary Mall Exploration — Changi Airport, Singapore",
     "eventType": "regional-event",
@@ -118,17 +107,6 @@
     "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
     "start": "2026-11-07T00:00:00.000",
     "end": "2027-01-31T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "pokemon-run-30-singapore-2026",
-    "name": "Pokémon RUN 30 — The Kallang, Singapore",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/pokemon-run-30-2026",
-    "image": "https://lh3.googleusercontent.com/c7e36ASB48bmKd_kOL4e61NU9Y3EPaXd0xmQJldeDAa9zn-W9CSwx6Taf_ENgLcx8K7RE3yP62zaLqwkUSACC6GUcEua_kus5gsm_xoljQ",
-    "start": "2026-11-07T00:00:00.000",
-    "end": "2026-11-08T23:59:59.000",
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
