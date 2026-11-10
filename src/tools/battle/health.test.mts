@@ -185,7 +185,7 @@ test.each([
 
 test.each([
   // The rings drawn where the fight's swipe touched, over our Kyogre's bar at 63%, read 24% to where a ring crosses it,
-  // the fill showing again beyond; and over the start of our Tyranitar's at 60%, read 4%, too short to sample.
+  // and over the start of our Tyranitar's at 60%, read 4%: the fill showing again beyond each.
   ['battle-tap-ring', 0.51],
   ['battle-tap-ring-start', 0.7],
 ])('%s: a bar split by a ring drawn across it goes unread, theirs %f', (name, opponent) => {
@@ -193,6 +193,21 @@ test.each([
 
   expect(health.own).toBeNull();
   expect(within(health.opponent, opponent), `theirs read ${health.opponent}`).toBe(true);
+});
+
+test('a bar whose left end splits off from the rest of its fill goes unread', () => {
+  // The opponent's red at 22%, split by 2 pixels just short of `fillOf`'s red, the 4 before them read as the whole bar
+  // at 4%: too short to take the fill's colour from clear of the blur, which runs on past them.
+  const health = read('other-pixel8-mewtwo-left-end');
+
+  expect(within(health.own, 0.52), `ours read ${health.own}`).toBe(true);
+  expect(health.opponent).toBeNull();
+});
+
+test('a sliver of red with the orange trail of a hit beside it is read', () => {
+  // The opponent's bar at 3% as it faints, 2 pixels of red on its middle row and the trail blurred into the one beside
+  // them: taken into the fill's colour, it has the trail pass for the fill showing again.
+  expect(within(read('battle-sliver-trail').opponent, 0.03)).toBe(true);
 });
 
 /** A frame of its own, which is all `Steady` asks of one: its bars are handed over with it. */
