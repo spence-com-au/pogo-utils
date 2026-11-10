@@ -395,30 +395,41 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
   /** Swipes back to the entry before, answering it and its number, or null where the swipe went nowhere: the start. */
   const previous = async (shot: Shot, dex: number): Promise<[Shot, number] | null> => {
-    const [to, from] = config.swipes.next;
-    await drag(from, to, 300);
-    await sleep(config.waits.swipe);
-    const after = await shoot(device);
-    const now = dexOn(after.lines, data);
+    // Twice, as `next` swipes, since a swipe the phone dropped and the start of the Pokédex leave the same screen.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const [to, from] = config.swipes.next;
+      await drag(from, to, 300);
+      await sleep(config.waits.swipe);
+      const after = await shoot(device);
+      const now = dexOn(after.lines, data);
 
-    return now !== null && now !== dex ? [after, now] : null;
-  };
-
-  /** Back to the top of the entry for `dex`: to the next entry and back, or to the one before and back at the end. */
-  const reopen = async (shot: Shot, dex: number): Promise<Shot> => {
-    const moved = await next(shot, dex);
-
-    if (moved) {
-      await previous(moved[0], moved[1]);
-    } else {
-      const back = await previous(shot, dex);
-
-      if (back) {
-        await next(back[0], back[1]);
+      if (now !== null && now !== dex) {
+        return [after, now];
       }
     }
 
-    return shoot(device);
+    return null;
+  };
+
+  /**
+   * Back to the top of the entry for `dex`: to the next entry and back, or to the one before and back at the end.
+   * Checked by its number rather than trusted, since a swipe either way that lands one entry off would leave the walk
+   * reading the next species as a form of this one and then skipping it; one that lands off is stepped back towards
+   * `dex`, and one that cannot be is refused.
+   */
+  const reopen = async (shot: Shot, dex: number): Promise<Shot> => {
+    const moved = await next(shot, dex);
+    let landed = moved ? await previous(...moved) : await previous(shot, dex).then((back) => back && next(...back));
+
+    for (let step = 0; landed && landed[1] !== dex && step < 2; step++) {
+      landed = landed[1] < dex ? await next(...landed) : await previous(...landed);
+    }
+
+    if (!landed || landed[1] !== dex) {
+      throw new Error(`could not get back to the top of #${dex}'s entry to select its next form`);
+    }
+
+    return landed[0];
   };
 
   /**
