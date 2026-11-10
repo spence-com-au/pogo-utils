@@ -376,6 +376,14 @@ export const seeAllOf = (lines: readonly Line[]) => findLine(lines, /^see ?all/)
 export const regionsButtonOf = (lines: readonly Line[]) => findLine(lines, /^regions$/);
 
 /**
+ * The button a pop-up the game puts over the map is put off with: `LATER` under `A mysterious Pokémon has appeared!`
+ * (`popup-encounter.png`) and `MAYBE LATER` under the Weekly Challenge (`popup-challenge.png`). `dialogOpen` takes
+ * neither for a dialog, and what Back does to either has not been seen, where this is the button a trainer taps. Off
+ * `pokedexLines`, which reads it on both under both engines, where `readLines` reads no `LATER` at all off the first.
+ */
+export const laterOf = (lines: readonly Line[]) => findLine(lines, /^(maybe ?)?later$/);
+
+/**
  * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
  * the gap between the first column and the second at the same height: the backdrop shows through both, and only the
  * tile lays its white over it. Measured on `bulbasaur-2.png`, the tile's red runs 20 to 30 above the gap's.

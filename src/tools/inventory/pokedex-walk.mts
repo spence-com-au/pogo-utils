@@ -36,6 +36,7 @@ import {
   iconIn,
   isEntry,
   labelsOf,
+  laterOf,
   listLines,
   lookOf,
   namedFrom,
@@ -252,6 +253,15 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       // Asked before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
       if (isEntry(shown)) {
         await tap(at(image, config.taps.closeDetail), config.waits.menu);
+        continue;
+      }
+
+      // Before the main menu's tap, which a pop-up over the map takes and does nothing with (#1046).
+      const later = laterOf(shown);
+
+      if (later) {
+        say('  a pop-up was over the map; putting it off with its LATER');
+        await tap(centre(later), config.waits.menu);
         continue;
       }
 
