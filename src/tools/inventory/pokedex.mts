@@ -13,7 +13,7 @@
  */
 
 import { closest, distance, type Form, type GameData } from '../../core/game-master.mts';
-import { centre, findLine, fold, ocr, type Line } from '../../core/ocr.mts';
+import { centre, findLine, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, luminance, median, rgb, threshold, type Image } from '../../core/png.mts';
 import { GENERATIONS, regionOf } from '../../pokemon/generations.ts';
 
@@ -522,9 +522,8 @@ export async function labelsOf(image: Image, tiles: readonly FormTile[]): Promis
       }
 
       const strip = crop(image, box.left - box.width * 0.1, top, box.width * 1.2, height);
-      const [line] = await ocr(threshold(strip, (r, g, b) => Math.min(r, g, b) >= 220));
 
-      return line?.text ?? null;
+      return ocrLine(threshold(strip, (r, g, b) => Math.min(r, g, b) >= 220));
     }),
   );
 }
