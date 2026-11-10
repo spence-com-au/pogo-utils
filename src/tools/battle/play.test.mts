@@ -177,6 +177,35 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 });
 
 /**
+ * A throw begins as its button goes dark, having waited with it lit for the fast move under way, and its minigame's first
+ * bubble can come more than 3s after: Palkia's Aqua Tail at night on a Pixel 8 Pro 2.64s after, its button dark 0.3s
+ * after it lit, and Kyogre's Avalanche by day on a Pixel 4 XL 3.4s after. A row swept before the bubble holds up the
+ * first swipe at it. Lit past `FIGHT_MS` after its tap, the button reads as the fight back, ending the minigame until
+ * the run reads the throw's `Get Ready!`.
+ */
+test.each([
+  ['at once', 300],
+  ['after waiting for the fast move under way', 1900],
+])('waits for the first bubble of a throw begun %s', (_, lit) => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const held = Math.round(lit / 33);
+  const dark = held * 33;
+
+  play(Array<State>(held).fill('charged'), player);
+
+  const before = Array.from({ length: 90 }, (_, i) =>
+    player.next('playing', dark + i * 33, { minigame: i === 45, bubbles: [] }),
+  );
+
+  expect(before.every((action) => action.kind === 'wait')).toBe(true);
+  expect(player.next('playing', dark + 3000, { bubbles: live(chain) })).toMatchObject({ from: chain[0] });
+});
+
+/**
  * Palkia's Aqua Tail against Candela, at night on a Pixel 8 Pro: the bubble found on the frame of 213.228s, alone, flew
  * on from 0.49 across on the frame of 213.129s towards the bottom left, and the frame of 213.397s, as the swipe aimed off
  * it lands, has it centred at 0.22 across and 0.80 down, 37 pixels wide at the finder's 180. Swiped where it was seen,
@@ -620,7 +649,7 @@ test('sweeps rows where bubbles were found only before the throw was taken to be
     ]),
   });
 
-  const late = player.next('playing', 3000, { bubbles: [] });
+  const late = player.next('playing', 4000, { bubbles: [] });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });
@@ -637,7 +666,7 @@ test('sweeps rows through a minigame whose bubbles are never found, though the l
   play(['other', 'battle', 'charged', 'charged'], player, 2000);
 
   // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
-  const late = player.next('playing', 5000, { bubbles: [] });
+  const late = player.next('playing', 6000, { bubbles: [] });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });
@@ -655,7 +684,7 @@ test('sweeps rows through a minigame where nothing as saturated as a bubble is e
   expect(pale).not.toEqual([]);
   expect(player.next('playing', 1000, { minigame: true, bubbles: pale })).toEqual({ kind: 'wait' });
 
-  const late = player.next('playing', 3000, { bubbles: pale });
+  const late = player.next('playing', 4000, { bubbles: pale });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });

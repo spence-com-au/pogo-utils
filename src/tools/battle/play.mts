@@ -161,11 +161,13 @@ const MINIGAME: readonly (readonly [Point, Point])[] = [0.4, 0.52, 0.64, 0.76, 0
 });
 
 /**
- * How long after a charged move's tap its minigame's bubbles are waited for, in milliseconds, before rows are swept
- * instead. In a recorded Crunch the first bubbles came 2.1s after the throw began, behind `Get Ready!`; a minigame
- * whose bubbles are not found after that is swept as before rather than not swiped at all.
+ * How long after a charged move's throw begins, its button going dark, its minigame's bubbles are waited for, in
+ * milliseconds, before rows are swept instead. Over 210 throws of 23 kept runs the first bubble came 1.2s to 3.4s after,
+ * behind `Get Ready!`, past 2.5s after 18: Palkia's Aqua Tail at night on a Pixel 8 Pro 2.64s after, and Kyogre's
+ * Avalanche by day on a Pixel 4 XL 3.4s after. Counted from the tap instead, the throw's wait for the fast move under way
+ * would count too. A minigame whose bubbles are not found after that is swept as before rather than not swiped at all.
  */
-const LEAD_IN_MS = 2_500;
+const LEAD_IN_MS = 3_500;
 
 /**
  * How long the minigame's bubbles go unfound before they are over, in milliseconds, once found for `BUBBLES_MS`:
@@ -377,8 +379,14 @@ export class Player {
   #state: State | undefined;
   #streak = 0;
   #minigame = false;
-  #tapped: { state: State; at: number } | undefined;
   #swipes = 0;
+
+  /**
+   * The last tap, and after a charged move's the last frame since that showed a button lit, which the throw's lead-in
+   * counts from: the throw waits for the fast move under way with its button lit, up to five 500ms turns, and begins as
+   * it goes dark.
+   */
+  #tapped: { state: State; at: number; lit?: number } | undefined;
 
   /** Whether the caller has taken the throw to be playing since the minigame began, as `minigame` says. */
   #playing = false;
@@ -473,12 +481,16 @@ export class Player {
       }
     }
 
+    if (state === 'charged' && this.#tapped?.lit !== undefined) {
+      this.#tapped.lit = now;
+    }
+
     // A charged move thrown is the minigame next, inside frames that read as `playing` throughout, and over once the
     // throw itself plays and hides the HUD or the fight is back; as is a frame the caller says is a minigame, though no
-    // tap here began it. The HUD hidden within `LEAD_IN_MS` of the tap is the throw beginning: live, Avalanche's wave of
-    // ice hid it for two frames a second after the tap, and its minigame, ended there, went unswiped for 2.5s. A prompt
-    // ends it whenever, the opponent's throw having come first.
-    const begun = this.#tapped?.state === 'charged' && now - this.#tapped.at < LEAD_IN_MS;
+    // tap here began it. The HUD hidden within `LEAD_IN_MS` of the button going dark is the throw beginning: live,
+    // Avalanche's wave of ice hid it for two frames a second after the tap, and its minigame, ended there, went unswiped
+    // for 2.5s. A prompt ends it whenever, the opponent's throw having come first.
+    const begun = this.#tapped?.lit !== undefined && now - this.#tapped.lit < LEAD_IN_MS;
     this.#fighting = state === 'battle' || state === 'charged' ? (this.#fighting ?? now) : undefined;
     const resumed = this.#fighting !== undefined && now - this.#fighting >= FIGHT_MS;
 
@@ -555,7 +567,7 @@ export class Player {
       this.#over ||=
         this.#found !== undefined && this.#found.to - this.#found.from >= BUBBLES_MS && now - this.#found.to >= OVER_MS;
 
-      if (this.#minigame && bubbles && (this.#found || (this.#tapped && now - this.#tapped.at < LEAD_IN_MS))) {
+      if (this.#minigame && bubbles && (this.#found || begun)) {
         return { kind: 'wait' };
       }
 
@@ -586,7 +598,7 @@ export class Player {
     }
 
     this.forget();
-    this.#tapped = { state, at: now };
+    this.#tapped = { state, at: now, lit: now };
     this.#minigame = true;
     this.#fighting = undefined;
 
