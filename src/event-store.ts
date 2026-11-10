@@ -5,8 +5,8 @@
  * Shared because two things now read the same answer. The New mark on a card and the notification in the top bar are
  * one fact — an event this browser has not recorded seeing — and the seen record under `pogo-utils:events:seen` is the
  * only record of it. With one `Prefs` object between them, clearing either is clearing both, and the count in the top
- * bar is `newlyVisible` over the same events and filters as the cards view's own header rather than a second reckoning
- * of it.
+ * bar is `newlyVisible` over the same events and filters as the cards view's own header, all but its search, rather
+ * than a second reckoning of it.
  *
  * Worked out once when the document loads, from the same two files the Events page reads. Nothing here is on a timer:
  * the Events page keeps its own ten-minute refetch, and that refetch lands here too.
@@ -269,9 +269,13 @@ export class EventStore extends Store {
     this.emit();
   }
 
-  /** The events every tab reports as new, which is the same list the Events page marks. */
+  /**
+   * The events every tab reports as new: the list the Events page marks, under every filter but its search. A search
+   * narrows what the page shows rather than what is new, and following a notice lands on the page searching for that
+   * event's name, so honouring it would drop every other notice for as long as the page stays open.
+   */
   newlyVisible() {
-    return newlyVisible(this.events, this.prefs, this.filter);
+    return newlyVisible(this.events, this.prefs, { ...this.filter, search: '' });
   }
 
   /**
