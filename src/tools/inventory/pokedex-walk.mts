@@ -813,5 +813,10 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
  * told apart from another when two screenshots both show it.
  */
 function sameCosts(a: readonly number[], b: readonly number[]) {
-  return a.length === b.length && a.slice(0, 3).every((cost, i) => Math.abs(cost - (b[i] ?? 0)) <= cost * 0.03);
+  // Never alike with nothing to compare: with no icon to match against, every costume's costs are empty.
+  return (
+    a.length > 0 &&
+    a.length === b.length &&
+    a.slice(0, 3).every((cost, i) => Math.abs(cost - (b[i] ?? 0)) <= cost * 0.03)
+  );
 }
