@@ -13,13 +13,13 @@
  * full-size screenshots: the header, search field and grid pinned to the top, CANCEL to the foot.
  */
 
-import { closest, type Form, type GameData } from '../../core/game-master.mts';
+import { closest, type Form, type GameData, type Move } from '../../core/game-master.mts';
 import { readMoves, type Moves } from '../../core/moves.mts';
 import { fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
-import { formsOf } from './strategy.mts';
+import { fielded, formsOf } from './strategy.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
 const SEARCH: Point = [0.556, 0.536];
@@ -184,7 +184,7 @@ export async function readPanel(
   const types = new Set(
     head.flatMap((line) => line.text.split(/[\s/]+/).flatMap((word) => closest(word, data.types, (t) => t) ?? [])),
   );
-  const typed = data.forms.filter((form) => same(form.types, types));
+  const typed = fielded(data).forms.filter((form) => same(form.types, types));
 
   // The moves' rows, their names in title case: the captions under a move with a stat change, `DEFENSE DROP`, are
   // capitals throughout.
@@ -192,11 +192,19 @@ export async function readPanel(
   const pool = (forms: readonly Form[]) => [...new Set(forms.flatMap((form) => form.moves))];
   const of = (name: string) => pool(typed.filter((form) => form.species === name));
 
-  // The one species whose forms of these types hold every move read, or null.
+  // The mega moves a pool holds, a Mega's its own and an ordinary form's none, for the row below its charged moves; or
+  // every one there is where there is no pool, the species unread.
+  const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
+  const megaMovesOf = (among: readonly Move[]) => (among.length > 0 ? among : data.moves).filter(isMega);
+  const movesAmong = (among: readonly Move[]) => readMoves(rows, data, among, panel, megaMovesOf(among));
+
+  // The one species whose forms of these types hold every move read, or null. A Mega only where its mega move was
+  // read, which no other form holds: otherwise every Charizard's panel would be as much Mega Charizard Y's.
   const speciesOf = ({ fast, charged }: Moves) => {
     const known = [fast, ...charged].filter((move) => move !== null);
     const fits = new Set(
       typed
+        .filter((form) => !data.megas.includes(form) || (form.megaMove !== undefined && known.includes(form.megaMove)))
         .filter((form) => known.every((move) => form.moves.some((m) => m.name === move)))
         .map((form) => form.species),
     );
@@ -204,13 +212,18 @@ export async function readPanel(
     return known.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
-  let moves = await readMoves(rows, data, pool(formsOf(data, { species })), panel);
-  let named = species ?? speciesOf(moves);
+  // A Mega shares its dex number with its base form, so the search that proved `species` proves only the dex, and a
+  // Mega's card read as its base form is told by the mega move its panel lists, which names the Mega.
+  const own = formsOf(data, { species });
+  const megas = data.megas.filter((form) => own.some((o) => o.dex === form.dex));
+  let moves = await movesAmong(pool([...own, ...megas]));
+  const told = megas.find((form) => form.megaMove !== undefined && moves.charged.includes(form.megaMove));
+  let named = told?.species ?? species ?? speciesOf(moves);
 
   // Matched among every move there is: read again among the moves of the species they name, which affords slack the
   // whole list cannot, for a row the first pass lost.
   if (species === null && named !== null && (moves.fast === null || moves.charged.length < 2)) {
-    moves = await readMoves(rows, data, of(named), panel);
+    moves = await movesAmong(of(named));
     named = speciesOf(moves);
   }
 

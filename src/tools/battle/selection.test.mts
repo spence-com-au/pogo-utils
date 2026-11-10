@@ -181,6 +181,69 @@ test('reads the moves of a proven panel whose types went unread', async () => {
   expect(await readPanel(held, DATA, null, read)).toBeUndefined();
 });
 
+/**
+ * Metagross's panel read as the Mega Mewtwo Y's #1037 comes from, no capture of one at the screencap's size being on
+ * hand: Psychic alone, its three moves' rows reading `fast`, `first` and `second`, and a fourth row reading `fourth`
+ * under the third, where a Mega's panel lists its mega move.
+ */
+const megaMewtwoY = (fourth: string, [fast, first, second] = ['Psycho Cut', 'Focus Blast', 'Psystrike']) =>
+  misreading((lines) => {
+    const above = lines.find((line) => line.text.includes('Meteor Mash'));
+    const last = lines.find((line) => line.text.includes('Earthquake'));
+
+    if (!above || !last) {
+      throw new Error("Metagross's charged moves went unread");
+    }
+
+    const moves = lines.map((line) => ({
+      ...line,
+      text: line.text
+        .replace('Steel', '')
+        .replace('Shadow Claw', fast)
+        .replace('Meteor Mash', first)
+        .replace('Earthquake', second),
+    }));
+
+    return [...moves, { ...last, top: 2 * last.top - above.top, text: fourth }];
+  });
+
+// Read among the mega moves alone, the row losing its plus is Future Sight+ rather than Armored Mewtwo's Future Sight,
+// and the Mega holding it is named where the silhouette went unread, or read its base form, whose dex number the Mega
+// shares.
+test.each([
+  ['Future Sight+ 130+26', 'Mega Mewtwo Y'],
+  ['Future Sight+ 130+26', 'Mewtwo'],
+  ['Future Sight 130 26', 'Mewtwo'],
+  ['Future Sight+ 130+26', null],
+  ['Future Sight 130 26', null],
+])("reads a Mega's mega move off a fourth row reading %s, the card read as %s", async (fourth, species) => {
+  expect(await readPanel(fixture('menu-pixel8-held-metagross'), DATA, species, megaMewtwoY(fourth))).toEqual({
+    species: 'Mega Mewtwo Y',
+    fast: 'Psycho Cut',
+    charged: ['Focus Blast', 'Psystrike', 'Future Sight+'],
+  });
+});
+
+// The fast move's row and Focus Blast's garbled past matching among every move, and the silhouette unread: Psystrike
+// and Future Sight+ name the Mega, and the rows the first pass lost are read again among the Mega's own moves.
+test("reads a Mega's lost rows again among its own moves once its mega move names it", async () => {
+  const read = megaMewtwoY('Future Sight+ 130+26', ['oO Psycho Cu', 'oO Focus Blas', 'Psystrike']);
+
+  expect(await readPanel(fixture('menu-pixel8-held-metagross'), DATA, null, read)).toEqual({
+    species: 'Mega Mewtwo Y',
+    fast: 'Psycho Cut',
+    charged: ['Focus Blast', 'Psystrike', 'Future Sight+'],
+  });
+});
+
+test('reads no ordinary move off a fourth row as a third charged move', async () => {
+  expect(await readPanel(fixture('menu-pixel8-held-metagross'), DATA, null, megaMewtwoY('Shadow Ball 100'))).toEqual({
+    species: 'Mewtwo',
+    fast: 'Psycho Cut',
+    charged: ['Focus Blast', 'Psystrike'],
+  });
+});
+
 // Palkia's silhouette read as Mamoswine, and the search by Mamoswine's dex number not seen to take: the grid unsearched
 // shows Palkia's pink cell at the top of storage all the same, which proves nothing of Mamoswine, so the panel names
 // it.
