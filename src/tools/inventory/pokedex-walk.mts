@@ -796,7 +796,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    */
   const tally = async (entries: readonly Entry[]) => {
     const mismatches: Mismatch[] = [];
-    const unread: string[] = [];
+    const unread: { tab: string; regions: string[] }[] = [];
 
     await toList();
 
@@ -804,26 +804,44 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       await toTab(label);
       const found = new Map<string, number>();
 
-      // Down the list until a screenshot shows no region the ones before it had not: its foot, which the POKÉMON tab's
-      // eleven reach in three.
-      for (let frame = 0; frame < 4; frame++) {
-        const image = await settled(device);
+      // The counts in sight, answering whether they added a region not yet read.
+      const take = async () => {
         const before = found.size;
 
-        for (const { region, count } of countsOn(await listLines(image))) {
+        for (const { region, count } of countsOn(await listLines(await settled(device)))) {
           found.set(region, count);
         }
 
-        if (frame > 0 && found.size === before) {
-          break;
-        }
+        return found.size > before;
+      };
 
-        await drag([0.5, 0.7], [0.5, 0.38], SCROLL_DRAG_MS);
+      // Up to the list's top first, it being wherever the walk left it — scrolled to Kalos after `--from 650` — until
+      // its first region is in sight or a drag brings in nothing new; then down until a drag again brings in nothing
+      // new, its foot, which the POKÉMON tab's eleven reach in three.
+      for (let frame = 0; (await take()) && !found.has(LISTED[0] ?? '') && frame < 4; frame++) {
+        await drag([0.5, 0.38], [0.5, 0.7], SCROLL_DRAG_MS);
         await sleep(config.waits.scroll);
       }
 
-      if (found.size === 0) {
-        unread.push(label);
+      for (let frame = 0; frame < 4; frame++) {
+        await drag([0.5, 0.7], [0.5, 0.38], SCROLL_DRAG_MS);
+        await sleep(config.waits.scroll);
+
+        if (!(await take())) {
+          break;
+        }
+      }
+
+      // What the tab should have shown: every region on POKÉMON's, and on the others each the record counts anything
+      // of, which the game lists too. One that did not read is said, never taken for agreeing.
+      const expected =
+        label === TABS[0]?.label
+          ? LISTED
+          : LISTED.filter((region) => entries.some((e) => regionIn(e.dex) === region && counts(e)));
+      const missing = expected.filter((region) => !found.has(region));
+
+      if (missing.length > 0) {
+        unread.push({ tab: label, regions: missing });
       }
 
       for (const [region, game] of found) {

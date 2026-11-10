@@ -20,7 +20,7 @@
  */
 
 import { KEY } from '../../core/adb.mts';
-import { CATEGORIES, countsOn, LAST, listLines, regionIn, type Category } from './pokedex.mts';
+import { CATEGORIES, countsOn, LAST, listLines, regionIn, SIZES, type Category } from './pokedex.mts';
 import { TABS, type Entry } from './pokedex-walk.mts';
 import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
@@ -882,6 +882,16 @@ describe('dex', () => {
       // wrote are kept for all that.
       expect(code).toBe(1);
       expect(stderr).toContain('POKÉMON in Kanto: the game counts 148, the record 3');
+
+      // And every region whose card did not read on the POKÉMON tab's captures is said rather than passed as agreeing:
+      // the tab lists all of them, so each it did not read is one the record was not checked against.
+      const shown = await Promise.all(
+        (LISTS[0] ?? []).map(async (frame) => countsOn(await listLines(decodePng(recording(`pokedex/${frame}.png`))))),
+      );
+      const read = new Set(shown.flat().map((c) => c.region));
+      const said = /^ {2}POKÉMON: no count read for (.*), so the record there was not checked$/m.exec(stderr)?.[1];
+
+      expect((said?.split(', ') ?? []).sort()).toStrictEqual([...SIZES.keys()].filter((r) => !read.has(r)).sort());
       expect(stderr).toMatch(
         /the record disagrees with the game in \d+ places; every line read is kept in pokedex\.jsonl/,
       );

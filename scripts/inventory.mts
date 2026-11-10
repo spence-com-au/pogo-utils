@@ -1027,8 +1027,8 @@ async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
 
   const { mismatches, unread } = await tally(record());
 
-  for (const tab of unread) {
-    console.error(`  the ${tab} tab's regions did not read, so nothing on it was checked`);
+  for (const { tab, regions } of unread) {
+    console.error(`  ${tab}: no count read for ${regions.join(', ')}, so the record there was not checked`);
   }
 
   for (const { tab, region, game, record: written } of mismatches) {
