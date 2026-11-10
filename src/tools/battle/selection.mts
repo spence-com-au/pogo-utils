@@ -13,7 +13,7 @@
  * full-size screenshots: the header, search field and grid pinned to the top, CANCEL to the foot.
  */
 
-import { closest, type Form, type GameData } from '../../core/game-master.mts';
+import { closest, type Form, type GameData, type Move } from '../../core/game-master.mts';
 import { readMoves, type Moves } from '../../core/moves.mts';
 import { fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, rgb, type Image } from '../../core/png.mts';
@@ -192,6 +192,12 @@ export async function readPanel(
   const pool = (forms: readonly Form[]) => [...new Set(forms.flatMap((form) => form.moves))];
   const of = (name: string) => pool(typed.filter((form) => form.species === name));
 
+  // The mega moves a pool holds, a Mega's its own and an ordinary form's none, for the row below its charged moves; or
+  // every one there is where there is no pool, the species unread.
+  const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
+  const megaMovesOf = (among: readonly Move[]) => (among.length > 0 ? among : data.moves).filter(isMega);
+  const movesAmong = (among: readonly Move[]) => readMoves(rows, data, among, panel, megaMovesOf(among));
+
   // The one species whose forms of these types hold every move read, or null. A Mega only where its mega move was
   // read, which no other form holds: otherwise every Charizard's panel would be as much Mega Charizard Y's.
   const speciesOf = ({ fast, charged }: Moves) => {
@@ -210,14 +216,14 @@ export async function readPanel(
   // Mega's card read as its base form is told by the mega move its panel lists, which names the Mega.
   const own = formsOf(data, { species });
   const megas = data.megas.filter((form) => own.some((o) => o.dex === form.dex));
-  let moves = await readMoves(rows, data, pool([...own, ...megas]), panel);
+  let moves = await movesAmong(pool([...own, ...megas]));
   const told = megas.find((form) => form.megaMove !== undefined && moves.charged.includes(form.megaMove));
   let named = told?.species ?? species ?? speciesOf(moves);
 
   // Matched among every move there is: read again among the moves of the species they name, which affords slack the
   // whole list cannot, for a row the first pass lost.
   if (species === null && named !== null && (moves.fast === null || moves.charged.length < 2)) {
-    moves = await readMoves(rows, data, of(named), panel);
+    moves = await movesAmong(of(named));
     named = speciesOf(moves);
   }
 

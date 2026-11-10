@@ -43,23 +43,30 @@ export async function parseMoves(
  * A move is the fast one or a charged one by the game master's say rather than by the row it sits in. The rows are
  * where OCR is unreliable — one lost, split or read twice moves every row below it — where a move's kind is a fact.
  *
- * Two charged moves at most, and a Mega's mega move a third beside them.
+ * Two charged moves at most, and a third where a row below them names one of `megas`: a Mega's panel lists its mega
+ * move there. Matched among those alone, since among every move `Future Sight+` is one edit from the Future Sight
+ * Armored Mewtwo holds. None by default, the detail screen's reading stopping at two.
  */
 export async function readMoves(
   rows: readonly Line[],
   data: GameData,
   pool: readonly Move[],
   image: Image,
+  megas: readonly Move[] = [],
 ): Promise<Moves> {
   const found: Move[] = [];
   let mega: Move | null = null;
 
   for (const row of rows) {
-    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece. A
-    // Mega lists its mega move below those, matched as the row reads among the mega moves alone: among every move,
-    // `Future Sight+` is one edit from the Future Sight Armored Mewtwo holds.
+    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece, but
+    // for a mega move, matched as the row reads.
     if (found.some((m) => m.fast) && found.filter((m) => !m.fast).length >= 2) {
-      mega ??= moveIn(row.text, megaMovesIn(data, pool), MOVE_SLACK);
+      mega = moveIn(row.text, megas, MOVE_SLACK);
+
+      if (mega !== null || megas.length === 0) {
+        break;
+      }
+
       continue;
     }
 
@@ -78,16 +85,6 @@ export async function readMoves(
     fast: found.find((m) => m.fast)?.name ?? null,
     charged: [...found.filter((m) => !m.fast).slice(0, 2), ...(mega ? [mega] : [])].map((m) => m.name),
   };
-}
-
-/**
- * The mega moves `pool` holds, which a Mega's holds its own and an ordinary form's none, so that a row below an
- * ordinary Pokémon's moves is never read as one. Every mega move there is where there is no pool, a species unread.
- */
-function megaMovesIn(data: GameData, pool: readonly Move[]): Move[] {
-  const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
-
-  return (pool.length > 0 ? pool : data.moves).filter(isMega);
 }
 
 /** The lines that can be a move: under the tabs, above the catch details, and carrying letters rather than a power. */
