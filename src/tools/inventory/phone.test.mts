@@ -878,6 +878,25 @@ describe.concurrent('dex', () => {
     },
   );
 
+  /**
+   * A range past the last species the phone has seen, which on this one is anything from #4: no tile from there opens
+   * an entry, so the walk lands on the last one before it that does, Venusaur. That is outside the range, and a line
+   * for it would stand beside the one a record already keeps for it.
+   */
+  test(
+    'writes nothing for a range past the last species seen, rather than that species again',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex();
+      const { cwd, inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { stderr } = await inventory('dex', '--from', '4', '--to', '10');
+
+      expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
+      expect(stderr).toContain('Wrote 0 species to pokedex.jsonl');
+      expect(existsSync(join(cwd, 'pokedex.jsonl')), 'a line was written for a species outside the range').toBe(false);
+    },
+  );
+
   test(
     "replaces only its own lines of a record, and passes the count where the record agrees with the game's",
     { timeout: SLOW },

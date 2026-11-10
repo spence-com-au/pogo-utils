@@ -331,7 +331,8 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     const after = tiles.filter((t) => t.number >= from).sort((a, b) => a.number - b.number);
     const before = tiles.filter((t) => t.number < from).sort((a, b) => b.number - a.number);
 
-    for (const { line } of [...after, ...before].slice(0, 8)) {
+    // Every tile in sight rather than the first few, since every one from `from` on can be a species not yet seen.
+    for (const { line } of [...after, ...before]) {
       await tap(centre(line), config.waits.search);
       let shot = await shoot(device);
       let dex = dexOn(shot.lines, data);
@@ -370,9 +371,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       return shot;
     }
 
-    throw new Error(
-      `no entry opened from the first tiles of ${region ?? 'the region'}; open one by hand and run again`,
-    );
+    throw new Error(`no tile in sight in ${region ?? 'the region'} opened an entry; open one by hand and run again`);
   };
 
   /** Swipes to the next entry, answering it and its number, or null where the swipe went nowhere twice: the end. */
@@ -732,6 +731,14 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     await toTab(TABS[0]?.label ?? 'POKÉMON');
     let shot = await open(from);
     let dex = dexOn(shot.lines, data);
+
+    // Short of `from` where nothing from it on has been seen: `open` swipes on from the last species seen before it and
+    // stops there. That species is outside the walk, and a line for it would stand beside the one the record keeps.
+    if (dex !== null && dex < from) {
+      say(`Nothing from #${from} on has been seen, the last species seen before it being #${dex}`);
+
+      return;
+    }
 
     while (dex !== null && dex <= to) {
       const { entry, at: last } = await read(shot, dex);
