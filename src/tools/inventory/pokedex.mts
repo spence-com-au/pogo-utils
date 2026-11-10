@@ -189,16 +189,21 @@ const FLAT = 0.55;
 const OTHER = 0.18;
 
 /**
- * What the tile at `box` holds. Its backdrop is the median of the strip along its top, which is clear of the icon and
- * of the small glyph in a category tile's corner; a pixel stands out where it is far from that, and the ones that do
- * are a silhouette where most of them are within a few steps of their own median colour and next to none are another.
+ * What the tile at `box` holds. A pixel stands out where it is far from the tile's backdrop, and the ones that do are a
+ * silhouette where most of them are within a few steps of their own median colour and next to none are another.
  */
 export function lookOf(image: Image, box: Box): Look {
   return flatness(image, box).look;
 }
 
-/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
-export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
+/** How far a pixel has to be from its tile's backdrop to stand out from it, summed over the channels. */
+const STANDS_OUT = 45;
+
+/**
+ * The colour of a tile's backdrop: the median of the strip along its top, which is clear of the icon and of the small
+ * glyph in a category tile's corner.
+ */
+function backdropOf(image: Image, box: Box): number[] {
   const step = Math.max(1, Math.round(box.width / 80));
   const strip: [number, number, number][] = [];
 
@@ -207,7 +212,13 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
     strip.push(rgb(image, x, box.top + box.height * 0.07));
   }
 
-  const backdrop = [0, 1, 2].map((c) => median(strip.map((p) => p[c] ?? 0)));
+  return [0, 1, 2].map((c) => median(strip.map((p) => p[c] ?? 0)));
+}
+
+/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
+export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
+  const step = Math.max(1, Math.round(box.width / 80));
+  const backdrop = backdropOf(image, box);
   const standing: [number, number, number][] = [];
   let asked = 0;
 
@@ -219,7 +230,7 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
       const p = rgb(image, x, y);
       asked++;
 
-      if (apart(p, backdrop) > 45) {
+      if (apart(p, backdrop) > STANDS_OUT) {
         standing.push(p);
       }
     }
@@ -387,22 +398,28 @@ export const regionsButtonOf = (lines: readonly Line[]) => findLine(lines, /^reg
 export const laterOf = (lines: readonly Line[]) => findLine(lines, /^(maybe ?)?later$/);
 
 /**
- * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
- * the gap between the first column and the second at the same height: the backdrop shows through both, and only the
- * tile lays its white over it. Measured on `bulbasaur-2.png`, the tile's red runs 20 to 30 above the gap's.
- *
- * Down a strip near the tile's left edge rather than its middle, which is where the icon is: a silhouette is darker
- * than the backdrop, and would end a row halfway down.
+ * Whether a tile lays its white over the backdrop at `x`, `y`, by being paler there than the gap between the first
+ * column and the second at the same height: the backdrop shows through both. Measured on `bulbasaur-2.png`, the tile's
+ * red runs 20 to 30 above the gap's.
  */
+const tiled = (image: Image, x: number, y: number) =>
+  rgb(image, x, y)[0] - rgb(image, image.width * ((COLUMNS[0] + COLUMNS[1]) / 2), y)[0] > 10;
+
+/**
+ * How far in from a tile's left edge it is looked for: clear of the icon in its middle, since a silhouette is darker
+ * than the backdrop and would end a tile halfway down.
+ */
+const MARGIN = 0.02;
+
+/** The rows of tiles down the first column between `from` and `to`, as their tops. */
 export function rowsBetween(image: Image, from: number, to: number): number[] {
-  const inside = image.width * (COLUMNS[0] - TILE.width / 2 + 0.02);
-  const gap = image.width * ((COLUMNS[0] + COLUMNS[1]) / 2);
+  const inside = image.width * (COLUMNS[0] - TILE.width / 2 + MARGIN);
   const tall = image.width * TILE.height;
   const tops: number[] = [];
   let run: number | null = null;
 
   for (let y = Math.max(0, from); y < Math.min(image.height, to); y += 2) {
-    const tile = rgb(image, inside, y)[0] - rgb(image, gap, y)[0] > 10;
+    const tile = tiled(image, inside, y);
 
     if (tile && run === null) {
       run = y;
@@ -438,13 +455,202 @@ export function costumesOn(image: Image, lines: readonly Line[], below: boolean)
     for (const column of COLUMNS) {
       const box = tileAt(image, column, top);
 
-      if (clear(image, box) && lookOf(image, box) !== 'empty') {
+      if (clear(image, box) && tileDrawn(image, box) && lookOf(image, box) !== 'empty') {
         boxes.push(box);
       }
     }
   }
 
   return boxes;
+}
+
+/**
+ * Whether a tile is drawn in `box`'s slot, by its left margin being pale down most of its height, rather than the
+ * backdrop showing through an empty one. What the slot holds would not do: on `pikachu-5.png` and `pikachu-6.png` a
+ * white pill at the screen's right edge, which scrolls with the entry, crosses the empty slot after the last costume,
+ * and `lookOf` takes its outline for an icon. A tile's margin is pale over 0.97 of its height or more on the captures,
+ * and an empty slot's over 0.18 at most, under the pill.
+ */
+function tileDrawn(image: Image, box: Box): boolean {
+  const x = box.left + image.width * MARGIN;
+  let pale = 0;
+  let asked = 0;
+
+  for (let y = box.top; y < box.top + box.height; y += 2) {
+    asked++;
+
+    if (tiled(image, x, y)) {
+      pale++;
+    }
+  }
+
+  return pale > asked / 2;
+}
+
+/**
+ * How much two tiles' icons differ, 0 for one icon and towards 1 for two unalike: the share of the pixels standing out
+ * from either tile's backdrop that do not stand out from both alike. Each against its own backdrop, because the tiles
+ * are translucent over one that stays put as they scroll, so two tiles of one icon a drag apart differ wherever the
+ * icon is not; and the best of a few pixels either way down, since `rowsBetween` finds a row's top two at a time.
+ */
+function iconsApart(a: Image, boxA: Box, b: Image, boxB: Box): number {
+  const [backA, backB] = [backdropOf(a, boxA), backdropOf(b, boxB)];
+  const [frameA, frameB] = [caughtFrame(a, boxA), caughtFrame(b, boxB)];
+  const step = Math.max(1, Math.round(frameA.size / 64));
+  const reach = Math.round(a.width * 0.003);
+  let least = 1;
+
+  for (let dy = -reach; dy <= reach; dy += 2) {
+    let either = 0;
+    let unlike = 0;
+
+    for (let v = 0; v < frameA.size; v += step) {
+      for (let u = 0; u < frameA.size; u += step) {
+        const p = rgb(a, frameA.left + u, frameA.top + v);
+        const q = rgb(b, frameB.left + u, frameB.top + v + dy);
+        const [inP, inQ] = [apart(p, backA) > STANDS_OUT, apart(q, backB) > STANDS_OUT];
+
+        if (inP || inQ) {
+          either++;
+
+          // Wider than a pixel's standing out, since an icon's edges are drawn part translucent too: at 60, the shift
+          // the drag made from `pikachu-2.png` to `pikachu-3.png` came to 0.23, against 0.34 for the next.
+          if (!inP || !inQ || apart(p, q) > 120) {
+            unlike++;
+          }
+        }
+      }
+    }
+
+    least = Math.min(least, either === 0 ? 1 : unlike / either);
+  }
+
+  return least;
+}
+
+/**
+ * How unalike two screenshots' costumes may be under a shift for it to be the one the drag between them made, by
+ * `iconsApart` over every pair of tiles it lines up. Measured over the drags from `pikachu-2.png` to `pikachu-6.png`,
+ * the shift the drag made came to 0.16 at most and every other to 0.31 at least.
+ */
+const SAME_ICONS = 0.25;
+
+/** Costumes on one screenshot, with what places a top on it below the `Costume` heading. */
+interface Placed {
+  image: Image;
+  boxes: Box[];
+  offset: number;
+}
+
+/**
+ * How far the costumes moved up from `before` to `after`, in pixels, or null where it cannot be told: of the shifts
+ * that put a tile of one on a tile of the other in the same column, the one under which the tiles hold the same icons.
+ * Only up, as a drag down the entry moves them, or by nothing where the phone dropped the drag.
+ */
+function shiftBetween(before: Placed, after: { image: Image; boxes: Box[] }): number | null {
+  const near = after.image.width * 0.004;
+  const shifts: number[] = [];
+
+  for (const a of before.boxes) {
+    for (const b of after.boxes) {
+      const shift = a.top - b.top;
+
+      if (a.left === b.left && shift > -near && !shifts.some((s) => Math.abs(s - shift) <= near)) {
+        shifts.push(shift);
+      }
+    }
+  }
+
+  let best: { shift: number | null; unlike: number } = { shift: null, unlike: SAME_ICONS };
+
+  for (const shift of shifts) {
+    const pairs = after.boxes.flatMap((b) => {
+      const a = before.boxes.find((t) => t.left === b.left && Math.abs(t.top - b.top - shift) <= near);
+
+      return a ? [iconsApart(before.image, a, after.image, b)] : [];
+    });
+    const unlike = pairs.reduce((sum, p) => sum + p, 0) / pairs.length;
+
+    if (unlike < best.unlike) {
+      best = { shift, unlike };
+    }
+  }
+
+  return best.shift;
+}
+
+/** A costume read off an entry: its place in the game's order of them, and its name where its icon settled one. */
+export interface Costume {
+  slot: number;
+  name: string | null | undefined;
+}
+
+/**
+ * The costumes of one form's CAUGHT tab, read a screenshot at a time down it, each once however many show it. One is
+ * told from another by its place among them, never by its looks: a costume no icon names comes out a few percent
+ * nearer or further from each icon on one screenshot than on the next, so that two alike pass for one and one for two.
+ *
+ * The place is taken below the `Costume` heading where that is on the screen, and otherwise from the last screenshot
+ * placed, by how far the tiles moved since. A screenshot whose costumes cannot be lined up with the last one's leaves
+ * them unread, and says so in `unplaced`, rather than counting any of them twice.
+ */
+export class CostumeReader {
+  readonly #candidates: readonly Candidate[];
+  readonly #held = new Map<number, Costume>();
+  #below = false;
+  #last: Placed | null = null;
+  unplaced = false;
+
+  /** `candidates` are the icons a costume is named among. */
+  constructor(candidates: readonly Candidate[]) {
+    this.#candidates = candidates;
+  }
+
+  /** Reads the costumes `image` shows, `caught` being the tiles above them that `caughtOn` found on it. */
+  read(image: Image, lines: readonly Line[], caught: readonly Caught[]) {
+    const heading = costumeHeadingOf(lines);
+    const overlaps = (a: Box, b: Box) =>
+      Math.abs(a.top - b.top) < a.height / 2 && Math.abs(a.left - b.left) < a.width / 2;
+    const boxes = costumesOn(image, lines, this.#below).filter((box) => !caught.some((c) => overlaps(c.box, box)));
+
+    this.#below ||= heading !== undefined;
+
+    if (boxes.length === 0) {
+      return;
+    }
+
+    const shift = heading || !this.#last ? null : shiftBetween(this.#last, { image, boxes });
+    const offset = heading
+      ? -(heading.top + heading.height + image.width * HEADING_TO_TILES)
+      : this.#last && shift !== null
+        ? this.#last.offset + shift
+        : null;
+
+    if (offset === null) {
+      this.unplaced = true;
+
+      return;
+    }
+
+    for (const box of boxes) {
+      const row = Math.round((box.top + offset) / (image.width * TILE.row));
+      const slot = row * COLUMNS.length + columnOf(box.left + box.width / 2, image.width);
+
+      // Named once, by the first screenshot to name it: one that did not is ranked again on the next that shows it.
+      if (this.#held.get(slot)?.name === undefined) {
+        const ranking = ranked(image, box, caughtFrame(image, box), lookOf(image, box), this.#candidates);
+
+        this.#held.set(slot, { slot, name: namedFrom(ranking) });
+      }
+    }
+
+    this.#last = { image, boxes, offset };
+  }
+
+  /** Every costume read, in the game's order. */
+  get costumes(): Costume[] {
+    return [...this.#held.values()].sort((a, b) => a.slot - b.slot);
+  }
 }
 
 /** A tile of the form row: where it is, what it holds, and whether its white frame says it is the form showing. */
