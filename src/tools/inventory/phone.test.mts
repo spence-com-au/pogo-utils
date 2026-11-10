@@ -937,6 +937,24 @@ describe('dex', () => {
   );
 
   /**
+   * A first tile that opens an entry whose title does not read, Bulbasaur's foot standing in for it. The entry is closed
+   * before the next tile is tapped, which opens Ivysaur's, so the walk stops where the swipe back lands on the entry
+   * that would not read rather than on finding no tile that opened one.
+   */
+  test(
+    'closes an entry that opened with its title unread before tapping the next tile',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex([['bulbasaur-2'], ...ENTRIES.slice(1)]);
+      const { inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { code, stderr } = await inventory('dex', '--from', '1', '--to', '3');
+
+      expect(code).toBe(1);
+      expect(stderr).toContain('the entry before #2 would not read; walk on from it with --from');
+    },
+  );
+
+  /**
    * A record agreeing with the game but for the first three, walked from 1 to 10 on a phone whose swipe from the third
    * goes nowhere: each species read replaces its line, and the lines the walk never reached, 4 to 10 among them, stay
    * as they were, since a walk ending there is what a swipe the phone dropped looks like too.

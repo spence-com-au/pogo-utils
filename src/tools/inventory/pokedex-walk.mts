@@ -385,7 +385,18 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       let shot = await shoot(device);
       let dex = dexOn(shot.lines, data);
 
+      // An entry that opened with its title unread is read again, as a step reads one, and closed where it still will
+      // not, so the next tile is tapped on the grid rather than over the entry.
+      for (let again = 0; dex === null && isEntry(shot.lines) && again < 2; again++) {
+        shot = await shoot(device);
+        dex = dexOn(shot.lines, data);
+      }
+
       if (dex === null) {
+        if (isEntry(shot.lines)) {
+          await tap(at(shot.image, config.taps.closeDetail), config.waits.menu);
+        }
+
         continue;
       }
 
