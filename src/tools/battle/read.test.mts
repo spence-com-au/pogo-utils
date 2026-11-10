@@ -73,13 +73,17 @@ test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
   });
 });
 
-test('a name as near two species as another, Mega Mewtwo with its Y missing, names neither', async () => {
+// Nidoran♀ and Nidoran♂ are one name folded, and no read tells them apart, so the first of them stands, as it did before
+// a tie named neither.
+test.each([
+  ['Mega Mewtwo CP 7267', 'CP 7267 Mega Mewtwo', null, null, 'as near Mega Mewtwo X as Y names neither'],
+  ['Nidoran CP 512', 'CP 7267 Mega Mewtwo ¥', 'Nidoran♀', 'Mega Mewtwo Y', 'a pair one name folded names the first'],
+])('%j and %j read as %j and %j: %s', async (own, opponent, ownName, opponentName) => {
   const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8-mega-mewtwo-y.png', import.meta.url)));
   const line = (text: string, left: number): Line => ({ text, left, top: 0, width: 100, height: 20 });
-  const lines = [line('Mega Mewtwo CP 7267', 0), line('CP 7267 Mega Mewtwo', 450)];
-  const sighting = await readBattle(image, DATA, () => Promise.resolve(lines));
+  const sighting = await readBattle(image, DATA, () => Promise.resolve([line(own, 0), line(opponent, 450)]));
 
-  expect([sighting.own, sighting.opponent, sighting.ownCp, sighting.opponentCp]).toEqual([null, null, 7267, 7267]);
+  expect([sighting.own, sighting.opponent]).toEqual([ownName, opponentName]);
 });
 
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {

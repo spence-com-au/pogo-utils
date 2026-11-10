@@ -80,15 +80,22 @@ const CP = /c\s*p\s*(\d{2,4})\b/gi;
  * The species a line of the names' band names, nearest it as `closest` has it: its CP no part of it, since a name as
  * long as `Mega Mewtwo Y` runs into its CP in one line, and `¥` a Y, which is how OCR read that name's Y in 26 of 99
  * reads off a GO Battle League run on a Pixel 8 Pro. Null where another species is as near, as Mega Mewtwo X is to a
- * `Mega Mewtwo` read with its Y missing: taken, the first of the two would be logged as a switch to it and back.
+ * `Mega Mewtwo` read with its Y missing: taken, the first of the two would be logged as a switch to it and back. Not
+ * where the two are one name once folded, as Nidoran♀ and Nidoran♂ are, which no read can tell apart: the first of
+ * them stands, as `closest` has it.
  */
 function speciesNamed(text: string, data: GameData): string | null {
   const name = text.replaceAll(CP, ' ').replaceAll('¥', 'Y');
   const { species } = fielded(data);
   const found = closest(name, species, (s) => s);
-  const near = found === null ? 0 : distance(name, found);
 
-  return species.some((s) => s !== found && distance(name, s) === near) ? null : found;
+  if (found === null) {
+    return null;
+  }
+
+  const near = distance(name, found);
+
+  return species.some((s) => distance(name, s) === near && distance(s, found) > 0) ? null : found;
 }
 
 /**
