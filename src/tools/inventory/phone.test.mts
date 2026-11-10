@@ -639,7 +639,7 @@ class Pokedex {
       case 'menu':
         return 'pokedex/menu.png';
       case 'grid':
-        return 'pokedex/kanto.png';
+        return this.tab === 1 ? 'pokedex/hoenn-shiny.png' : 'pokedex/kanto.png';
       case 'list':
         return `pokedex/${LISTS[this.tab]?.[this.#list]}.png`;
       case 'entry':
@@ -909,12 +909,16 @@ describe('dex', () => {
    * A range past the last species the phone has seen, which on this one is anything from #4: no tile from there opens
    * an entry, so the walk lands on the last one before it that does, Venusaur. That is outside the range, and a line
    * for it would stand beside the one a record already keeps for it.
+   *
+   * Begun on the SHINY tab's grid, where the POKÉMON tab in the strip reads as the main menu's label does: the grid is
+   * left by its REGIONS button rather than tapped as if it were the menu.
    */
   test(
     'writes nothing for a range past the last species seen, rather than that species again',
     { timeout: SLOW },
     async (context) => {
       const phone = new Pokedex();
+      [phone.screen, phone.tab] = ['grid', 1];
       const { cwd, inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
       const { stderr } = await inventory('dex', '--from', '4', '--to', '10');
 
