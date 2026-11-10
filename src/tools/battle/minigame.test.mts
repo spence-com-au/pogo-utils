@@ -39,7 +39,7 @@ test.each([
   ['playing-minigame-pixel8-dark', 'DARK', [0.11, 0.59, 0.44, 0.81]],
   ['playing-minigame-dedenne', 'FAIRY', [0.42, 0.55, 0.58, 0.66]],
 ] as const)('%s: the first swipe crosses the %s bubbles', (name, type, box) => {
-  const [first] = bubbleSwipes(png(name), colour(type));
+  const first = bubbleSwipes(png(name), colour(type))[0]?.swipe;
 
   expect(first).toBeDefined();
   expect(first && crosses(first, box)).toBe(true);
@@ -53,7 +53,7 @@ test.each([
   ['playing-minigame-tyranitar', 'DARK', 0.35],
   ['playing-minigame-swampert', 'WATER', 0.6],
 ] as const)('%s: a chain is swiped along its length', (name, type, length) => {
-  const [first] = bubbleSwipes(png(name), colour(type));
+  const first = bubbleSwipes(png(name), colour(type))[0]?.swipe;
   const across = first ? Math.abs(first[1][0] - first[0][0]) : 0;
 
   expect(across).toBeGreaterThan(length);
@@ -64,7 +64,7 @@ test.each([
  * blob on it, and three still to pop around it: at the bottom left, and at the right going up.
  */
 test('a bubble popped is swiped after those still to pop', () => {
-  const [first] = bubbleSwipes(png('playing-minigame-palkia-popped'), colour('WATER'));
+  const first = bubbleSwipes(png('playing-minigame-palkia-popped'), colour('WATER'))[0]?.swipe;
   const live = [
     [0, 0.79, 0.26, 0.91],
     [0.62, 0.37, 0.85, 0.48],
@@ -83,7 +83,7 @@ test('a Pokémon the colour of its bubbles is not taken for them', () => {
   const swipes = bubbleSwipes(png('playing-minigame-kyogre-excellent'), colour('WATER'));
 
   // Kyogre's body, the same blue, fills the bottom left of the frame below y 0.6.
-  expect(swipes.every(([from, to]) => !crosses([from, to], [0, 0.65, 0.5, 1]))).toBe(true);
+  expect(swipes.every(({ swipe }) => !crosses(swipe, [0, 0.65, 0.5, 1]))).toBe(true);
 });
 
 /** Mewtwo's lavender holds Psychic's share of pink in green and blue, though not in red. */
@@ -98,5 +98,5 @@ test('a Pokémon only partly the colour of its bubbles is not taken for them onc
 test('a bubble at an edge keeps its length', () => {
   const swipes = bubbleSwipes(png('playing-minigame-palkia-before'), colour('WATER'));
 
-  expect(swipes.some(([from, to]) => Math.max(from[0], to[0]) > 0.95)).toBe(true);
+  expect(swipes.some(({ swipe: [from, to] }) => Math.max(from[0], to[0]) > 0.95)).toBe(true);
 });
