@@ -350,12 +350,23 @@ function covered(image: Image, strip: Strip): boolean {
  * or out shows the outline through it, and is missed. Of the 5,342 bars read on the committed frames and those kept
  * from 16 runs, 5 go unread for it, each with something drawn across it: a move's beam over a full bar the strip read
  * at 50%, `BLOCKED!`, `NOT VERY EFFECTIVE...` and PGSharp's star.
+ *
+ * Whatever the outline, the fill showing again 2 or 3 pixels past the strip's end is the strip's own, split from it by
+ * pixels outside `fillOf`'s colours. At 543.899s of the kept run `2026-11-06-midgame-resister-4`, 2 pixels of the
+ * opponent's red at 16% were too pink for it, and the 2 before them read as the bar at 2%, the encoder's blocky noise
+ * along the rest keeping `covered` from seeing the fill go on. Of the 566,974 pictures of the 28 runs kept with video,
+ * this leaves 181 readings unread. 88 lay 4–76 points short of the nearer reading of that side within half a second
+ * either side, among them our bar at 99% read 26% on 9 pictures in a row; 92 lay within 3 points of it, where in the 6
+ * looked at the bar's end was split by noise or an effect, or had a hit's orange trail just past it, red at its near
+ * end, as at a real 4% at 304.753s of `2026-11-08-minigame-over-2`; and 1 lay above it. Fed only the pictures in a
+ * state `run.mts` reads bars in, `Steady` decides differently in 4 spans, holding in each what both settle on after,
+ * and takes one fewer rise in the opponent's HP for a newcomer.
  */
 function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
   const unit = image.width / 360;
   const right = rightOf(strip);
   const past = outline(image, strip).filter(({ x }) => x > right + 2 * unit);
-  const again = all.some(
+  const again = all.filter(
     (other) =>
       other.fill === strip.fill &&
       other.left >= right + 2 * unit &&
@@ -364,7 +375,10 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
       other.top + other.rights.length <= strip.top + strip.rights.length + unit,
   );
 
-  return past[0]?.found === false && (past.every(({ found }) => !found) || again);
+  return (
+    again.some((other) => other.left <= right + 3 * unit) ||
+    (past[0]?.found === false && (past.every(({ found }) => !found) || again.length > 0))
+  );
 }
 
 /**
