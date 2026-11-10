@@ -25,8 +25,7 @@ import {
   caughtFrame,
   caughtOn,
   CATEGORIES,
-  costumeHeadingOf,
-  costumesOn,
+  CostumeReader,
   countsOn,
   dexOn,
   formLabelled,
@@ -37,10 +36,7 @@ import {
   isEntry,
   labelsOf,
   listLines,
-  lookOf,
-  namedFrom,
   pokedexLines,
-  ranked,
   regionIn,
   regionsButtonOf,
   seeAllOf,
@@ -50,6 +46,7 @@ import {
   type Box,
   type Candidate,
   type Category,
+  type Costume,
   type FormTile,
   type Genders,
   type Look,
@@ -504,19 +501,18 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    */
   type Placed = FormTile & { label: string | null; image: Image; at: Box };
 
-  /** What one form's CAUGHT tab holds, read down to its foot. */
+  /** What one form's CAUGHT tab holds, read down to its foot; `unplaced` is `CostumeReader`'s. */
   interface View {
     tiles: Map<Category | null, { look: Look; box: Box; image: Image }>;
-    costumes: { name: Named | undefined; costs: number[]; box: Box; image: Image }[];
+    costumes: Costume[];
+    unplaced: boolean;
     genders: Genders | null;
   }
 
   /** Reads the CAUGHT tab of the form showing, from `first` down a drag at a time until `SEE ALL` is on the screen. */
   const view = async (first: Shot, dex: number, name: string): Promise<View> => {
     const tiles: View['tiles'] = new Map();
-    const costumes: View['costumes'] = [];
-    const wardrobe = await costumesOf(dex);
-    let below = false;
+    const costumes = new CostumeReader(await costumesOf(dex));
     let genders: Genders | null = null;
     let shot = first;
 
@@ -536,31 +532,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         }
       }
 
-      const overlaps = (a: Box, b: Box) =>
-        Math.abs(a.top - b.top) < a.height / 2 && Math.abs(a.left - b.left) < a.width / 2;
-
-      for (const box of costumesOn(image, lines, below)) {
-        if (caught.some((c) => overlaps(c.box, box))) {
-          continue;
-        }
-
-        const look = lookOf(image, box);
-        const ranking = ranked(image, box, caughtFrame(image, box), look, wardrobe);
-        const costs = ranking.map((r) => r.cost);
-        const byIcon = namedFrom(ranking);
-
-        // The same costume seen in two screenshots: by its name where it has one, and by being as far from every icon
-        // as one already read where it has none.
-        const again = costumes.some((c) =>
-          byIcon !== undefined ? c.name === byIcon : c.name === undefined && sameCosts(c.costs, costs),
-        );
-
-        if (!again) {
-          costumes.push({ name: byIcon, costs, box, image });
-        }
-      }
-
-      below ||= costumeHeadingOf(lines) !== undefined;
+      costumes.read(image, lines, caught);
 
       if (seeAllOf(lines)) {
         break;
@@ -571,7 +543,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       shot = await shoot(device);
     }
 
-    return { tiles, costumes, genders };
+    return { tiles, costumes: costumes.costumes, unplaced: costumes.unplaced, genders };
   };
 
   /** What a form's view says of it, by the record's keys, in the order the game draws its tiles. */
@@ -738,7 +710,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       ...unregistered.forms.map(({ index, form }) => ({
         index,
         form,
-        seen: { tiles: new Map(), costumes: [], genders: null },
+        seen: { tiles: new Map(), costumes: [], unplaced: false, genders: null },
       })),
     );
 
@@ -761,21 +733,38 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     views: { form: Named; seen: View }[];
   }): Entry => {
     const forms = views.map(({ form, seen }) => formFrom(form, seen));
-    const costumes: Named[] = [];
-    const unnamed: number[][] = [];
+    const held: Costume[] = [];
 
+    // One costume where two forms' tabs draw one in the same place and no name says they differ, a name settling it
+    // where only one of them did. Whether the game draws a species' costumes under each of its forms alike is unchecked:
+    // where it draws each form's own, two forms with a costume each that no icon names go down as one.
     for (const { seen } of views) {
       for (const costume of seen.costumes) {
-        if (costume.name !== undefined) {
-          if (!costumes.includes(costume.name)) {
-            costumes.push(costume.name);
-          }
-        } else if (!unnamed.some((costs) => sameCosts(costs, costume.costs))) {
-          unnamed.push(costume.costs);
-          costumes.push({ unidentified: costumes.length + 1 });
-          notes.push(`costume ${costumes.length} is none of ${species}'s icons closely enough to name`);
+        const same = held.find(
+          (h) =>
+            h.slot === costume.slot && (h.name === undefined || costume.name === undefined || h.name === costume.name),
+        );
+
+        if (!same) {
+          held.push({ ...costume });
+        } else if (same.name === undefined) {
+          same.name = costume.name;
         }
       }
+    }
+
+    const costumes = held.map(({ name }, i): Named => {
+      if (name !== undefined) {
+        return name;
+      }
+
+      notes.push(`costume ${i + 1} is none of ${species}'s icons closely enough to name`);
+
+      return { unidentified: i + 1 };
+    });
+
+    if (views.some(({ seen }) => seen.unplaced)) {
+      notes.push(`some of ${species}'s costumes could not be lined up with those above them, so are not counted`);
     }
 
     const genders = views.find(({ seen }) => seen.genders !== null)?.seen.genders ?? {};
@@ -895,17 +884,4 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
   };
 
   return { walk, tally };
-}
-
-/**
- * Whether two tiles are as far from each of the nearest icons as each other, which is how one costume no icon names is
- * told apart from another when two screenshots both show it.
- */
-function sameCosts(a: readonly number[], b: readonly number[]) {
-  // Never alike with nothing to compare: with no icon to match against, every costume's costs are empty.
-  return (
-    a.length > 0 &&
-    a.length === b.length &&
-    a.slice(0, 3).every((cost, i) => Math.abs(cost - (b[i] ?? 0)) <= cost * 0.03)
-  );
 }
