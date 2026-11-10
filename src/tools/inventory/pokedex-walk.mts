@@ -235,23 +235,24 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       }
 
       const lines = await readLines(image);
-
-      if (isMainMenu(lines)) {
-        await tap(at(image, config.taps.pokedexButton), config.waits.search);
-        continue;
-      }
-
       const shown = await pokedexLines(image);
       const regions = regionsButtonOf(shown);
 
+      // The grid and an entry are asked before the main menu is, which is known by its `POKÉMON` label: so is the
+      // tab of that name in the grid's strip, wherever it is not the tab selected and its label is dark on light.
       if (regions) {
         await tap(centre(regions), config.waits.search);
         continue;
       }
 
-      // Asked before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
+      // And before a dialog is, since the Pokédex's backdrop darkens towards its foot as a dialog's scrim does.
       if (isEntry(shown)) {
         await tap(at(image, config.taps.closeDetail), config.waits.menu);
+        continue;
+      }
+
+      if (isMainMenu(lines)) {
+        await tap(at(image, config.taps.pokedexButton), config.waits.search);
         continue;
       }
 
