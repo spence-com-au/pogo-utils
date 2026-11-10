@@ -26,7 +26,7 @@ import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
-import { decodePng, encodePng, screenIn } from '../../core/png.mts';
+import { decodePng, encodePng, screenIn, type Image } from '../../core/png.mts';
 import { LAST_DEX } from '../../pokemon/generations.ts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
@@ -48,6 +48,9 @@ const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', i
 const SLOW = 240_000;
 
 const recording = (name: string) => new Uint8Array(readFileSync(new URL(name, FIXTURES)));
+
+/** What a captured region list counts. */
+const countsIn = async (image: Image) => countsOn(await listLines(image), image);
 
 /** The storage grid before a search, and after one. */
 const GRID = 'storage/grid.png';
@@ -593,7 +596,19 @@ describe.concurrent('scan', () => {
 });
 
 /** Where the Pokédex is, as far as `dex` drives it. */
-type Screen = 'map' | 'menu' | 'list' | 'grid' | 'entry';
+type Screen = 'popup' | 'map' | 'menu' | 'list' | 'grid' | 'entry';
+
+/** A pop-up the game puts over the map: its capture, and how far down the screen the middle of its LATER is. */
+interface Popup {
+  capture: string;
+  later: number;
+}
+
+/** The Weekly Challenge's pop-up and a research encounter's, as the game raised them one after the other (#1046). */
+const POPUPS: readonly Popup[] = [
+  { capture: 'popup-challenge', later: 0.78 },
+  { capture: 'popup-encounter', later: 0.71 },
+];
 
 /**
  * Each tab's region list as the phone draws it, a screenshot a drag down it: the POKÉMON tab's whole, the rest the
@@ -608,11 +623,22 @@ const LISTS = [
 const ENTRIES = ['bulbasaur', 'ivysaur', 'venusaur'].map((species) => [0, 1, 2].map((at) => `${species}-${at}`));
 
 /**
+ * The tiles of an entry the game selects at a tap, and the screenshot it shows then: Ekans's SHINY, which it draws as a
+ * silhouette though the shiny is registered, and back from there the form's own. Each tile is its left, top, right and
+ * bottom as fractions of the screen; a tap anywhere else on an entry selects nothing, as a tile not registered does.
+ */
+const SELECTS: Readonly<Record<string, readonly (readonly [number, number, number, number, string])[]>> = {
+  'ekans-0': [[0.28, 0.73, 0.49, 0.87, 'ekans-shiny-0']],
+  'ekans-shiny-0': [[0.03, 0.73, 0.27, 0.87, 'ekans-0']],
+};
+
+/**
  * The game as far as `pnpm inventory dex --from 1 --to 3` drives it, over the captures under `fixtures/pokedex/`: the
  * map, the main menu, a tab's list of regions, Kanto's grid and the first three entries. A tap is placed by which of
- * those is showing and by where it lands, of no more than the screen's controls do; a swipe moves along the entries,
- * one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag scrolls a list or
- * an entry.
+ * those is showing and by where it lands, of no more than the screen's controls and `SELECTS` do; a swipe moves along
+ * the entries, one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag
+ * scrolls a list or an entry. Any pop-ups given are over the map at the start, each put off by a tap on its LATER and
+ * by nothing else.
  *
  * The tab strip is the one thing modelled rather than recorded. The tab selected sits in the middle of it but at
  * either end, as the captures draw it — POKÉMON at a fifth of the width with SHINY in the middle, ★ 100% in the middle
@@ -620,20 +646,34 @@ const ENTRIES = ['bulbasaur', 'ivysaur', 'venusaur'].map((species) => [0, 1, 2].
  */
 class Pokedex {
   readonly calls: string[] = [];
-  screen: Screen = 'map';
+  screen: Screen;
   tab = 0;
   #list = 0;
   #entry = 0;
   #frame = 0;
   readonly #entries: readonly (readonly string[])[];
+  readonly #popups: Popup[];
 
-  /** `entries` are the entries a swipe steps along, each its screenshots from its top down. */
-  constructor(entries: readonly (readonly string[])[] = ENTRIES) {
+  /** The screenshot a tap on the entry put in place of its own, until a tap puts that back. */
+  #over: string | null = null;
+
+  /** Each `#over` a swipe or a drag left showing, the entry read on with it. */
+  readonly unrestored: string[] = [];
+
+  /**
+   * `entries` are the entries a swipe steps along, each its screenshots from its top down, and `popups` those over the
+   * map, the first on top.
+   */
+  constructor(entries: readonly (readonly string[])[] = ENTRIES, popups: readonly Popup[] = []) {
     this.#entries = entries;
+    this.#popups = [...popups];
+    this.screen = popups.length > 0 ? 'popup' : 'map';
   }
 
   #shown(): string {
     switch (this.screen) {
+      case 'popup':
+        return `pokedex/${this.#popups[0]?.capture}.png`;
       case 'map':
         return 'pokedex/map.png';
       case 'menu':
@@ -643,7 +683,7 @@ class Pokedex {
       case 'list':
         return `pokedex/${LISTS[this.tab]?.[this.#list]}.png`;
       case 'entry':
-        return `pokedex/${this.#entries[this.#entry]?.[this.#frame]}.png`;
+        return `pokedex/${this.#over ?? this.#entries[this.#entry]?.[this.#frame]}.png`;
     }
   }
 
@@ -686,12 +726,26 @@ class Pokedex {
   #tap(x: number, y: number) {
     const foot = y > 0.88 && Math.abs(x - 0.5) < 0.08;
 
-    if (this.screen === 'map') {
+    if (this.screen === 'popup') {
+      // On the LATER and clear of the button above it, CHOOSE GROUP or START ENCOUNTER, some 0.06 higher.
+      if (Math.abs(x - 0.5) < 0.15 && Math.abs(y - (this.#popups[0]?.later ?? 0)) < 0.02) {
+        this.#popups.shift();
+        this.screen = this.#popups.length > 0 ? 'popup' : 'map';
+      }
+    } else if (this.screen === 'map') {
       this.screen = foot ? 'menu' : 'map';
     } else if (this.screen === 'menu') {
       this.screen = Math.abs(x - 0.25) < 0.1 && Math.abs(y - 0.6) < 0.05 ? 'list' : 'map';
     } else if (this.screen === 'entry' && foot) {
+      this.#leave();
       this.screen = 'grid';
+    } else if (this.screen === 'entry') {
+      const own = this.#entries[this.#entry]?.[this.#frame];
+      const tile = SELECTS[this.#over ?? own ?? '']?.find(([l, t, r, b]) => x >= l && x <= r && y >= t && y <= b);
+
+      if (tile) {
+        this.#over = tile[4] === own ? null : tile[4];
+      }
     } else if (this.screen === 'grid') {
       // The first row of Kanto's tiles, whose numbers are where a tap opens one; one past the third opens nothing, as
       // a species not seen does.
@@ -716,7 +770,19 @@ class Pokedex {
     }
   }
 
+  /** Leaves what a tap put in place of the entry's own, noting it, since nothing tapped it back. */
+  #leave() {
+    if (this.#over !== null) {
+      this.unrestored.push(this.#over);
+      this.#over = null;
+    }
+  }
+
   #swipe(way: ReturnType<typeof direction>) {
+    if (this.screen === 'entry') {
+      this.#leave();
+    }
+
     if (this.screen === 'entry' && (way === 'left' || way === 'right')) {
       const next = this.#entry + (way === 'left' ? 1 : -1);
 
@@ -827,11 +893,7 @@ const linesIn = (cwd: string) =>
 async function agreeing(): Promise<Entry[]> {
   const printed = await Promise.all(
     LISTS.map(async (frames) =>
-      (
-        await Promise.all(
-          frames.map(async (frame) => countsOn(await listLines(decodePng(recording(`pokedex/${frame}.png`))))),
-        )
-      ).flat(),
+      (await Promise.all(frames.map(async (frame) => countsIn(decodePng(recording(`pokedex/${frame}.png`)))))).flat(),
     ),
   );
   const keys = Object.keys(CATEGORIES) as Category[];
@@ -893,7 +955,7 @@ describe('dex', () => {
       // And every region whose card did not read on the POKÉMON tab's captures is said rather than passed as agreeing:
       // the tab lists all of them, so each it did not read is one the record was not checked against.
       const shown = await Promise.all(
-        (LISTS[0] ?? []).map(async (frame) => countsOn(await listLines(decodePng(recording(`pokedex/${frame}.png`))))),
+        (LISTS[0] ?? []).map(async (frame) => countsIn(decodePng(recording(`pokedex/${frame}.png`)))),
       );
       const read = new Set(shown.flat().map((c) => c.region));
       const said = /^ {2}POKÉMON: no count read for (.*), so the record there was not checked$/m.exec(stderr)?.[1];
@@ -925,6 +987,25 @@ describe('dex', () => {
       expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
       expect(stderr).toContain('Wrote 0 species to pokedex.jsonl');
       expect(existsSync(join(cwd, 'pokedex.jsonl')), 'a line was written for a species outside the range').toBe(false);
+    },
+  );
+
+  /**
+   * Two pop-ups over the map, each of which takes the main menu's tap and does nothing with it (#1046). Each is put off
+   * with its LATER, which is the only tap the phone answers on one, and the walk goes on from the map beneath them over
+   * the same range as the test above, which gets as far as the grid and no further.
+   */
+  test(
+    'puts off the pop-ups over the map with their LATER and walks on from it',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex(ENTRIES, POPUPS);
+      const { inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { stderr } = await inventory('dex', '--from', '4', '--to', '10');
+
+      expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
+      expect(stderr.match(/a pop-up was over the map; putting it off with its LATER/g)).toHaveLength(POPUPS.length);
+      expect(phone.calls).not.toContain(`shell input keyevent ${KEY.BACK}`);
     },
   );
 
@@ -996,4 +1077,40 @@ describe('dex', () => {
       expect(linesIn(cwd)).toStrictEqual(record);
     },
   );
+
+  /**
+   * Ekans's entry, whose SHINY tile the game draws as a silhouette though the shiny is registered (#1047). A tap
+   * selects it, so the line has the shiny, and the entry is put back to the form's own before its tab is read further.
+   */
+  test('records a shiny whose silhouetted SHINY tile the game selects at a tap', { timeout: SLOW }, async (context) => {
+    const phone = new Pokedex([['ekans-0', 'ekans-1']]);
+    const { cwd, inventory } = await harness(context, phone, ['Ekans']);
+
+    await inventory('dex', '--from', '1', '--to', '23');
+
+    expect(linesIn(cwd)).toStrictEqual([
+      {
+        dex: 23,
+        species: 'Ekans',
+        caught: true,
+        genders: { male: true, female: true },
+        forms: [
+          {
+            form: null,
+            caught: true,
+            shiny: true,
+            perfect: false,
+            lucky: true,
+            xxl: false,
+            xxs: true,
+            shadow: false,
+            purified: false,
+          },
+        ],
+        costumes: [],
+        notes: [],
+      },
+    ]);
+    expect(phone.unrestored, 'the tab was read on with the shiny selected').toStrictEqual([]);
+  });
 });

@@ -20,19 +20,22 @@ import {
   alertOf,
   caughtFrame,
   caughtOn,
+  CostumeReader,
   costumesOn,
   countsOn,
   dexOn,
+  formBand,
   formLabelled,
   formsOn,
+  framed,
   gendersOn,
   iconIn,
   labelsOf,
   listLines,
+  ownBeside,
   pokedexLines,
   regionsButtonOf,
   silhouettesNamed,
-  titleOf,
   type Candidate,
   type Category,
   type Look,
@@ -192,6 +195,51 @@ test("a form's tiles read as the icon where registered and the silhouette where 
 });
 
 /**
+ * Which of the CAUGHT tab's tiles is showing, by the white frame round it: the form's own as Ekans's entry opens, and
+ * SHINY once tapped, which the game selects though it draws the tile as a silhouette (#1047). The form's own is found
+ * beside SHINY, which is how the walk puts the entry back.
+ */
+test('the CAUGHT tile showing wears the frame, a silhouetted SHINY the game selects among them', async () => {
+  const showing = async (name: string) => {
+    const { image, lines: found } = await read(name);
+    const caught = caughtOn(image, found);
+    const shiny = caught.find((c) => c.category === 'shiny') ?? expect.unreachable(`${name} draws a SHINY tile`);
+
+    return {
+      shiny: shiny.look,
+      framed: caught.filter(({ box }) => framed(image, box)).map((c) => c.category),
+      own: framed(image, ownBeside(image, shiny.box)),
+    };
+  };
+
+  expect(await showing('ekans-0')).toStrictEqual({ shiny: 'silhouette', framed: [null], own: true });
+  expect(await showing('ekans-shiny-0')).toStrictEqual({ shiny: 'silhouette', framed: ['shiny'], own: false });
+});
+
+/**
+ * A band of the backdrop's light across part of a tile, which the game sweeps down the Pokédex and the tiles are
+ * translucent over. On `unown-band-1`, Unown's own tile and SHINY are registered letters, black with a white eye, under
+ * a light band along their tops. `unown-band-0` is its entry at the top, the four forms with a white eye registered and
+ * the rest silhouettes, the five from the sixteenth on crossed by bands through their middles.
+ *
+ * The form row's second row is not there to read: PGSharp's star button over the screen's left margin, which `formsOn`
+ * takes the backdrop's colour from, hides it (#1059).
+ */
+test('a band of light across a tile leaves what it holds as it is', async () => {
+  expect(await tilesOf('unown-band-1')).toStrictEqual({
+    own: 'icon',
+    shiny: 'icon',
+    perfect: 'silhouette',
+    lucky: 'silhouette',
+  });
+
+  const forms = (await formRow('unown-band-0')).tiles.map((t) => t.look);
+
+  expect(forms.flatMap((look, i) => (look === 'icon' ? [i + 1] : []))).toStrictEqual([8, 9, 11, 14]);
+  expect(forms).toHaveLength(23);
+});
+
+/**
  * Each way the game draws genders: both registered, one of two not — Ivysaur's ♀ dashed — both seen and neither caught,
  * one gender alone either way round, and Unown's ring, which is no gender at all.
  */
@@ -210,18 +258,13 @@ test('the genders an entry draws, solid where registered and dashed where not', 
   expect(await genders('unown-3')).toStrictEqual({});
 });
 
-/** The form row's tiles between the title and the row of icons, as the walk bounds it. */
-async function formRow(name: string) {
+/** The form row's tiles between the title and the row of icons, as the walk bounds it, with the `ALERT` label unread. */
+async function formRow(name: string, { alert = true } = {}) {
   const { image, lines: found } = await read(name);
-  const title = titleOf(found);
-  const alert = alertOf(found);
-  const tiles = formsOn(
-    image,
-    title ? title.top + title.height : 0,
-    alert ? alert.top - image.width * 0.12 : image.height * 0.89,
-  );
+  const band = formBand(image, alert ? found : found.filter((l) => l !== alertOf(found)));
+  const tiles = formsOn(image, band.from, band.to);
 
-  return { tiles, labels: await labelsOf(image, tiles) };
+  return { tiles, ended: band.ended, labels: await labelsOf(image, tiles) };
 }
 
 /**
@@ -266,6 +309,20 @@ test("every whole row of Unown's forms is found on the entry as it opens", async
 /** An entry with one form draws no form row, its band being the backdrop and nothing pale across it. */
 test('an entry with one form has no form row', async () => {
   expect((await formRow('bulbasaur-0')).tiles).toStrictEqual([]);
+});
+
+/**
+ * The `SEEN` counter ends the form row where the `ALERT` label is not read, as the label would have. Past the row of
+ * icons are the counters and the CAUGHT tab, pale tiles all: Bulbasaur's band run on to the foot of the screen found
+ * five of them, and Meowth's a fourth form.
+ */
+test('an entry whose ALERT is not read ends its form row at the same place', async () => {
+  const bulbasaur = await formRow('bulbasaur-0', { alert: false });
+  const meowth = await formRow('meowth-0', { alert: false });
+
+  expect(bulbasaur.tiles).toStrictEqual([]);
+  expect(bulbasaur.ended, 'a row that ends is not looked for past the foot of the screen').toBe(true);
+  expect(meowth.tiles.map((t) => t.box)).toStrictEqual((await formRow('meowth-0')).tiles.map((t) => t.box));
 });
 
 /** The form a CAUGHT tab is showing, off its own tile, named among the species' forms. */
@@ -440,6 +497,48 @@ test("Pikachu's costumes are named among its own", async () => {
 });
 
 /**
+ * The slots a `CostumeReader` places costumes in off `names`, read in turn as a drag at a time down an entry, and
+ * whether any went unplaced. With no icons to name them by, since naming is what costs the time and is `ranked`'s,
+ * whose own tests are above.
+ */
+async function placed(...names: readonly string[]) {
+  const reader = new CostumeReader([]);
+
+  for (const name of names) {
+    const { image, lines: found } = await read(name);
+
+    reader.read(image, found, caughtOn(image, found));
+  }
+
+  return { slots: reader.costumes.map(({ slot }) => slot), unplaced: reader.unplaced };
+}
+
+/** The slots from `from` up to but not including `to`. */
+const slots = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => from + i);
+
+/**
+ * Pikachu's 31 costumes, eight rows of four but the last, read off the five screenshots a walk takes of them: each once
+ * however many show it, in the game's order. The first row is read off `pikachu-2`, being under PGSharp's star button
+ * on `pikachu-3` (#1005); the last is shown twice, `pikachu-6` a short drag on from `pikachu-5` that the end of the
+ * entry stopped; and the pill that crosses the empty slot after it on both is no costume.
+ */
+test("each of an entry's costumes is read once, by its place among them", async () => {
+  expect(await placed('pikachu-2', 'pikachu-3', 'pikachu-4', 'pikachu-5', 'pikachu-6')).toStrictEqual({
+    slots: slots(0, 31),
+    unplaced: false,
+  });
+});
+
+/**
+ * A drag the phone dropped, which shows the same costumes again where they were, and one that went too far to line up,
+ * which leaves what it shows unread and says so rather than counting any of it twice.
+ */
+test('a dropped drag reads nothing twice, and one too far to line up reads nothing', async () => {
+  expect(await placed('pikachu-3', 'pikachu-4', 'pikachu-4')).toStrictEqual({ slots: slots(4, 24), unplaced: false });
+  expect(await placed('pikachu-2', 'pikachu-5')).toStrictEqual({ slots: slots(0, 8), unplaced: true });
+});
+
+/**
  * The grid by its button back to the list, whichever tab it is of: on ★ 100%'s the tiles' numbers are pink on pink and
  * not one of them reads, where the button's label is dark on white on every tab. Nothing else carries the label.
  */
@@ -453,34 +552,79 @@ test('the grid is known by its REGIONS button on any tab, and nothing else is', 
   }
 });
 
+/** What a tab's region list counts over the screenshots named, region by region. */
+async function counted(...names: string[]) {
+  const all = new Map<string, number>();
+
+  for (const image of names.map(capture)) {
+    for (const { region, count } of countsOn(await listLines(image), image)) {
+      all.set(region, count);
+    }
+  }
+
+  return Object.fromEntries(all);
+}
+
 /**
  * The counts a tab's region list prints. The POKÉMON tab's over the three screenshots its list takes to scroll, each
- * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`.
+ * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`; and
+ * G-MAX's four, Unova's name under PGSharp's star button.
  */
 test("each tab's region list counts its regions", async () => {
-  const counted = async (...names: string[]) => {
-    const all = new Map<string, number>();
-
-    for (const name of names) {
-      for (const { region, count } of countsOn(await listLines(capture(name)))) {
-        all.set(region, count);
-      }
-    }
-
-    return Object.fromEntries(all);
-  };
-
-  expect(await counted('tab-pokemon-0', 'tab-pokemon-1', 'tab-pokemon-2')).toMatchObject({
+  expect(await counted('tab-pokemon-0', 'tab-pokemon-1', 'tab-pokemon-2')).toStrictEqual({
     Kanto: 148,
     Johto: 98,
     Hoenn: 134,
     Sinnoh: 97,
     Unova: 114,
+    Kalos: 52,
     Alola: 55,
+    Galar: 50,
     Hisui: 3,
     Paldea: 44,
     Unidentified: 2,
   });
 
-  expect(await counted('tab-shiny-0')).toMatchObject({ Kanto: 80, Johto: 51, Hoenn: 78, Sinnoh: 33, Unova: 51 });
+  expect(await counted('tab-shiny-0')).toStrictEqual({ Kanto: 80, Johto: 51, Hoenn: 78, Sinnoh: 33, Unova: 51 });
+  expect(await counted('tab-gmax-0')).toStrictEqual({ Kanto: 2, Unova: 0, Unidentified: 0, Galar: 0 });
+});
+
+/**
+ * The foot of five more tabs' lists, every card in sight counted: the last fades towards the tabs, and PGSharp's star
+ * button hides Galar's `G`.
+ */
+test("a list's foot counts every card in sight", async () => {
+  expect(await counted('tab-lucky-2')).toStrictEqual({ Alola: 1, Galar: 2, Hisui: 0, Paldea: 2, Unidentified: 1 });
+  expect(await counted('tab-xxl-2')).toStrictEqual({ Alola: 2, Galar: 5, Hisui: 0, Paldea: 5, Unidentified: 0 });
+  expect(await counted('tab-xxs-2')).toStrictEqual({ Alola: 4, Galar: 5, Hisui: 0, Paldea: 9, Unidentified: 0 });
+  expect(await counted('tab-shadow-2')).toStrictEqual({ Alola: 0, Galar: 0, Hisui: 0, Paldea: 0, Unidentified: 0 });
+  expect(await counted('tab-perfect-2')).toStrictEqual({ Alola: 3, Galar: 1, Hisui: 0, Paldea: 3, Unidentified: 0 });
+});
+
+/**
+ * A POKÉMON count is taken only where the card's bar is as full, so one that has lost its first digits is left out
+ * rather than taken short. The lines are what `tab-pokemon-0.png` read as with a treatment that left in part of the
+ * medal under each count: Johto's `98` as `78`, and the first digits of Hoenn's and Sinnoh's split off into lines of
+ * their own, leaving the `7` that #1042's walk reported.
+ */
+test("a POKÉMON count is taken only where the card's bar is as full", () => {
+  const tesseract: Line[] = [
+    { text: 'JOHTO', left: 96, top: 916, width: 240, height: 54 },
+    { text: '78 / 100', left: 112, top: 1056, width: 194, height: 90 },
+    { text: 'HOENN', left: 102, top: 1372, width: 252, height: 54 },
+    { text: '=D', left: 96, top: 1458, width: 322, height: 30 },
+    { text: '13', left: 100, top: 1512, width: 58, height: 64 },
+    { text: '34 / 135', left: 136, top: 1512, width: 200, height: 92 },
+    { text: '8)', left: 104, top: 1580, width: 94, height: 94 },
+    { text: 'SINNOH', left: 98, top: 1828, width: 274, height: 54 },
+    { text: '===D>', left: 96, top: 1912, width: 294, height: 32 },
+    { text: '9', left: 98, top: 1968, width: 28, height: 40 },
+    { text: '7/ 107', left: 126, top: 1968, width: 180, height: 86 },
+    { text: '8)', left: 104, top: 2036, width: 92, height: 92 },
+    { text: 'UNOVA', left: 100, top: 2284, width: 260, height: 54 },
+    { text: 'a=»', left: 96, top: 2368, width: 238, height: 30 },
+    { text: '114 / 156', left: 100, top: 2424, width: 238, height: 84 },
+  ];
+
+  expect(countsOn(tesseract, capture('tab-pokemon-0'))).toStrictEqual([{ region: 'Unova', count: 114 }]);
 });

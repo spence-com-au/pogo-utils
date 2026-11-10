@@ -42,19 +42,32 @@ export async function parseMoves(
  *
  * A move is the fast one or a charged one by the game master's say rather than by the row it sits in. The rows are
  * where OCR is unreliable — one lost, split or read twice moves every row below it — where a move's kind is a fact.
+ *
+ * Two charged moves at most, and a third where a row below them names one of `megas`: a Mega's panel lists its mega
+ * move there. Matched among those alone, since among every move `Future Sight+` is one edit from the Future Sight
+ * Armored Mewtwo holds. None by default, the detail screen's reading stopping at two.
  */
 export async function readMoves(
   rows: readonly Line[],
   data: GameData,
   pool: readonly Move[],
   image: Image,
+  megas: readonly Move[] = [],
 ): Promise<Moves> {
   const found: Move[] = [];
+  let mega: Move | null = null;
 
   for (const row of rows) {
-    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece.
+    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece, but
+    // for a mega move, matched as the row reads.
     if (found.some((m) => m.fast) && found.filter((m) => !m.fast).length >= 2) {
-      break;
+      mega = moveIn(row.text, megas, MOVE_SLACK);
+
+      if (mega !== null || megas.length === 0) {
+        break;
+      }
+
+      continue;
     }
 
     const move =
@@ -70,10 +83,7 @@ export async function readMoves(
 
   return {
     fast: found.find((m) => m.fast)?.name ?? null,
-    charged: found
-      .filter((m) => !m.fast)
-      .slice(0, 2)
-      .map((m) => m.name),
+    charged: [...found.filter((m) => !m.fast).slice(0, 2), ...(mega ? [mega] : [])].map((m) => m.name),
   };
 }
 

@@ -172,8 +172,8 @@ const FILLED = 0.015;
  * with the backdrop darkened, so everything inside it is within a few steps of everything else, its anti-aliased edge
  * aside; an icon is drawn in its own colours, shaded and outlined. Over the tiles of the CAUGHT tabs under
  * `fixtures/pokedex/`, no icon came out flatter than 0.36 (Galarian Meowth's own) but Beedrill's, which `OTHER` tells,
- * and no silhouette less flat than 0.75 (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes
- * are a dark slate rather than the backdrop darkened, and nearly as flat: Unown's 0.62 at the least, against 0.13 at
+ * and no silhouette less flat than 0.79 (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes
+ * are a dark slate rather than the backdrop darkened, and nearly as flat: Unown's 0.63 at the least, against 0.15 at
  * the most for a letter registered, its eye white on black.
  */
 const FLAT = 0.55;
@@ -182,23 +182,28 @@ const FLAT = 0.55;
  * How much of what stands out may be another colour for it still to be a silhouette: more than a few steps from its one
  * colour and from every blend of that with the backdrop, which is all its anti-aliased edge is. An icon can be as flat
  * as a silhouette where much of it is translucent, the backdrop seen through grey: Beedrill's own is 0.61, its wings,
- * but 0.31 of it is its yellow and black. Under `fixtures/pokedex/` no silhouette came to more than 0.12 (Charizard's
- * MEGA Y), Unown's thin dark ones in the form row among them, and no icon to less than 0.26 (Galarian Meowth's tile in
- * the form row).
+ * but 0.31 of it is its yellow and black. Under `fixtures/pokedex/` no silhouette came to more than 0.13 (Charizard's
+ * MEGA Y), Unown's thin dark ones in the form row among them, and no icon to less than 0.23 (Alolan Meowth's own).
  */
 const OTHER = 0.18;
 
 /**
- * What the tile at `box` holds. Its backdrop is the median of the strip along its top, which is clear of the icon and
- * of the small glyph in a category tile's corner; a pixel stands out where it is far from that, and the ones that do
- * are a silhouette where most of them are within a few steps of their own median colour and next to none are another.
+ * What the tile at `box` holds. Its backdrop is taken row by row, by `backdropAt`; a pixel stands out where it is far
+ * from its row's, and the ones that do are a silhouette where most of them are within a few steps of their own median
+ * colour and next to none are another.
  */
 export function lookOf(image: Image, box: Box): Look {
   return flatness(image, box).look;
 }
 
-/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
-export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
+/** How far a pixel has to be from its tile's backdrop to stand out from it, summed over the channels. */
+const STANDS_OUT = 45;
+
+/**
+ * The colour of a tile's backdrop: the median of the strip along its top, which is clear of the icon and of the small
+ * glyph in a category tile's corner.
+ */
+function backdropOf(image: Image, box: Box): number[] {
   const step = Math.max(1, Math.round(box.width / 80));
   const strip: [number, number, number][] = [];
 
@@ -207,20 +212,28 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
     strip.push(rgb(image, x, box.top + box.height * 0.07));
   }
 
-  const backdrop = [0, 1, 2].map((c) => median(strip.map((p) => p[c] ?? 0)));
-  const standing: [number, number, number][] = [];
+  return [0, 1, 2].map((c) => median(strip.map((p) => p[c] ?? 0)));
+}
+
+/** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
+export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
+  const step = Math.max(1, Math.round(box.width / 80));
+  const top = backdropOf(image, box);
+  const standing: { seen: [number, number, number]; behind: number[] }[] = [];
   let asked = 0;
 
   // Between the glyph in a category tile's top corner and the label along its foot, both dark, either of which would
   // pass for a dark patch of an icon; and short of the right edge, which the fourth column's tiles run under PGSharp's
   // panel at, its slate plainly another colour beside a thin silhouette.
   for (let y = box.top + box.height * 0.25; y < box.top + box.height * 0.82; y += step) {
+    const behind = backdropAt(image, box, y, top);
+
     for (let x = box.left + box.width * 0.1; x < box.left + box.width * 0.85; x += step) {
-      const p = rgb(image, x, y);
+      const seen = rgb(image, x, y);
       asked++;
 
-      if (apart(p, backdrop) > 45) {
-        standing.push(p);
+      if (apart(seen, behind) > STANDS_OUT) {
+        standing.push({ seen, behind });
       }
     }
   }
@@ -231,11 +244,55 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
     return { filled, flat: 0, other: 0, look: 'empty' };
   }
 
-  const middle = [0, 1, 2].map((c) => median(standing.map((p) => p[c] ?? 0)));
-  const flat = standing.filter((p) => apart(p, middle) <= 30).length / standing.length;
-  const other = standing.filter((p) => apart(p, blendNearest(p, middle, backdrop)) > 60).length / standing.length;
+  const middle = [0, 1, 2].map((c) => median(standing.map(({ seen }) => seen[c] ?? 0)));
+  const flat = standing.filter(({ seen }) => apart(seen, middle) <= 30).length / standing.length;
+  const other =
+    standing.filter(({ seen, behind }) => apart(seen, blendNearest(seen, middle, behind)) > 60).length /
+    standing.length;
 
   return { filled, flat, other, look: flat >= FLAT && other < OTHER ? 'silhouette' : 'icon' };
+}
+
+/**
+ * How far a tile's margin may be from the backdrop along its top for `backdropAt` to take it as its row's. The game
+ * sweeps bands of light down the Pokédex, and its tiles are translucent, so a tile's colour can step from one row to
+ * the next by more than `STANDS_OUT`: by 55 between the strip along the top of Unown's own tile on
+ * `unown-band-1.png` and the rows under it, and by 57 across the band through its sixteenth form on `unown-band-0.png`.
+ * At 60, four of the five forms that band crosses still came out icons. A third of the game's icons drawn onto a tile,
+ * as themselves and as silhouettes, under a band of 25 a channel along the tile's top, needed more than 90: there 67 of
+ * the 446 silhouettes came out icons, at 120 none did, and nothing read differently from 120 to 200.
+ */
+const BANDED = 120;
+
+/** A tile's margins either side, as fractions of its width: inside the white frame round the form showing. */
+const MARGINS = [
+  [0.04, 0.09],
+  [0.91, 0.96],
+] as const;
+
+/**
+ * The backdrop behind the row at `y` of the tile at `box`: whichever of its margins is nearer `top`, the backdrop along
+ * its top, where that is near enough to be the same backdrop under another band, and `top` itself where neither is —
+ * a row an icon runs into both margins of, or a fourth-column tile's beside PGSharp's panel and a silhouette.
+ *
+ * Held against `top` alone, a band across part of a tile made the rest of it stand out, and that is both ways wrong: a
+ * registered icon came out a silhouette, the tile's own colour all one, as Unown's own tile and SHINY did on
+ * `unown-band-1.png`; and a silhouette came out an icon, the tile beside it plainly another colour, as five of Unown's
+ * forms did on `unown-band-0.png`.
+ */
+function backdropAt(image: Image, box: Box, y: number, top: readonly number[]): number[] {
+  const margins = MARGINS.map(([from, to]) => {
+    const seen: [number, number, number][] = [];
+
+    for (let x = box.left + box.width * from; x < box.left + box.width * to; x++) {
+      seen.push(rgb(image, x, y));
+    }
+
+    return [0, 1, 2].map((c) => median(seen.map((p) => p[c] ?? 0)));
+  });
+  const nearest = margins.reduce((best, margin) => (apart(margin, top) < apart(best, top) ? margin : best));
+
+  return apart(nearest, top) <= BANDED ? nearest : [...top];
 }
 
 /** The blend of colours `a` and `b` nearest `p`: the point on the line between the two that is closest to it. */
@@ -360,6 +417,9 @@ export function caughtOn(image: Image, lines: readonly Line[]): Caught[] {
   return found;
 }
 
+/** The form's own tile, which the game draws first in the row it draws SHINY second in, the one at `shiny`. */
+export const ownBeside = (image: Image, shiny: Box): Box => tileAt(image, COLUMNS[0], shiny.top);
+
 /** The heading over an entry's costumes. */
 export const costumeHeadingOf = (lines: readonly Line[]) => findLine(lines, /^costumes?$/);
 
@@ -376,22 +436,36 @@ export const seeAllOf = (lines: readonly Line[]) => findLine(lines, /^see ?all/)
 export const regionsButtonOf = (lines: readonly Line[]) => findLine(lines, /^regions$/);
 
 /**
- * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
- * the gap between the first column and the second at the same height: the backdrop shows through both, and only the
- * tile lays its white over it. Measured on `bulbasaur-2.png`, the tile's red runs 20 to 30 above the gap's.
- *
- * Down a strip near the tile's left edge rather than its middle, which is where the icon is: a silhouette is darker
- * than the backdrop, and would end a row halfway down.
+ * The button a pop-up the game puts over the map is put off with: `LATER` under `A mysterious Pokémon has appeared!`
+ * (`popup-encounter.png`) and `MAYBE LATER` under the Weekly Challenge (`popup-challenge.png`). `dialogOpen` takes
+ * neither for a dialog, and what Back does to either has not been seen, where this is the button a trainer taps. Off
+ * `pokedexLines`, which reads it on both under both engines, where `readLines` reads no `LATER` at all off the first.
  */
+export const laterOf = (lines: readonly Line[]) => findLine(lines, /^(maybe ?)?later$/);
+
+/**
+ * Whether a tile lays its white over the backdrop at `x`, `y`, by being paler there than the gap between the first
+ * column and the second at the same height: the backdrop shows through both. Measured on `bulbasaur-2.png`, the tile's
+ * red runs 20 to 30 above the gap's.
+ */
+const tiled = (image: Image, x: number, y: number) =>
+  rgb(image, x, y)[0] - rgb(image, image.width * ((COLUMNS[0] + COLUMNS[1]) / 2), y)[0] > 10;
+
+/**
+ * How far in from a tile's left edge it is looked for: clear of the icon in its middle, since a silhouette is darker
+ * than the backdrop and would end a tile halfway down.
+ */
+const MARGIN = 0.02;
+
+/** The rows of tiles down the first column between `from` and `to`, as their tops. */
 export function rowsBetween(image: Image, from: number, to: number): number[] {
-  const inside = image.width * (COLUMNS[0] - TILE.width / 2 + 0.02);
-  const gap = image.width * ((COLUMNS[0] + COLUMNS[1]) / 2);
+  const inside = image.width * (COLUMNS[0] - TILE.width / 2 + MARGIN);
   const tall = image.width * TILE.height;
   const tops: number[] = [];
   let run: number | null = null;
 
   for (let y = Math.max(0, from); y < Math.min(image.height, to); y += 2) {
-    const tile = rgb(image, inside, y)[0] - rgb(image, gap, y)[0] > 10;
+    const tile = tiled(image, inside, y);
 
     if (tile && run === null) {
       run = y;
@@ -427,13 +501,202 @@ export function costumesOn(image: Image, lines: readonly Line[], below: boolean)
     for (const column of COLUMNS) {
       const box = tileAt(image, column, top);
 
-      if (clear(image, box) && lookOf(image, box) !== 'empty') {
+      if (clear(image, box) && tileDrawn(image, box) && lookOf(image, box) !== 'empty') {
         boxes.push(box);
       }
     }
   }
 
   return boxes;
+}
+
+/**
+ * Whether a tile is drawn in `box`'s slot, by its left margin being pale down most of its height, rather than the
+ * backdrop showing through an empty one. What the slot holds would not do: on `pikachu-5.png` and `pikachu-6.png` a
+ * white pill at the screen's right edge, which scrolls with the entry, crosses the empty slot after the last costume,
+ * and `lookOf` takes its outline for an icon. A tile's margin is pale over 0.97 of its height or more on the captures,
+ * and an empty slot's over 0.18 at most, under the pill.
+ */
+function tileDrawn(image: Image, box: Box): boolean {
+  const x = box.left + image.width * MARGIN;
+  let pale = 0;
+  let asked = 0;
+
+  for (let y = box.top; y < box.top + box.height; y += 2) {
+    asked++;
+
+    if (tiled(image, x, y)) {
+      pale++;
+    }
+  }
+
+  return pale > asked / 2;
+}
+
+/**
+ * How much two tiles' icons differ, 0 for one icon and towards 1 for two unalike: the share of the pixels standing out
+ * from either tile's backdrop that do not stand out from both alike. Each against its own backdrop, because the tiles
+ * are translucent over one that stays put as they scroll, so two tiles of one icon a drag apart differ wherever the
+ * icon is not; and the best of a few pixels either way down, since `rowsBetween` finds a row's top two at a time.
+ */
+function iconsApart(a: Image, boxA: Box, b: Image, boxB: Box): number {
+  const [backA, backB] = [backdropOf(a, boxA), backdropOf(b, boxB)];
+  const [frameA, frameB] = [caughtFrame(a, boxA), caughtFrame(b, boxB)];
+  const step = Math.max(1, Math.round(frameA.size / 64));
+  const reach = Math.round(a.width * 0.003);
+  let least = 1;
+
+  for (let dy = -reach; dy <= reach; dy += 2) {
+    let either = 0;
+    let unlike = 0;
+
+    for (let v = 0; v < frameA.size; v += step) {
+      for (let u = 0; u < frameA.size; u += step) {
+        const p = rgb(a, frameA.left + u, frameA.top + v);
+        const q = rgb(b, frameB.left + u, frameB.top + v + dy);
+        const [inP, inQ] = [apart(p, backA) > STANDS_OUT, apart(q, backB) > STANDS_OUT];
+
+        if (inP || inQ) {
+          either++;
+
+          // Wider than a pixel's standing out, since an icon's edges are drawn part translucent too: at 60, the shift
+          // the drag made from `pikachu-2.png` to `pikachu-3.png` came to 0.23, against 0.34 for the next.
+          if (!inP || !inQ || apart(p, q) > 120) {
+            unlike++;
+          }
+        }
+      }
+    }
+
+    least = Math.min(least, either === 0 ? 1 : unlike / either);
+  }
+
+  return least;
+}
+
+/**
+ * How unalike two screenshots' costumes may be under a shift for it to be the one the drag between them made, by
+ * `iconsApart` over every pair of tiles it lines up. Measured over the drags from `pikachu-2.png` to `pikachu-6.png`,
+ * the shift the drag made came to 0.16 at most and every other to 0.31 at least.
+ */
+const SAME_ICONS = 0.25;
+
+/** Costumes on one screenshot, with what places a top on it below the `Costume` heading. */
+interface Placed {
+  image: Image;
+  boxes: Box[];
+  offset: number;
+}
+
+/**
+ * How far the costumes moved up from `before` to `after`, in pixels, or null where it cannot be told: of the shifts
+ * that put a tile of one on a tile of the other in the same column, the one under which the tiles hold the same icons.
+ * Only up, as a drag down the entry moves them, or by nothing where the phone dropped the drag.
+ */
+function shiftBetween(before: Placed, after: { image: Image; boxes: Box[] }): number | null {
+  const near = after.image.width * 0.004;
+  const shifts: number[] = [];
+
+  for (const a of before.boxes) {
+    for (const b of after.boxes) {
+      const shift = a.top - b.top;
+
+      if (a.left === b.left && shift > -near && !shifts.some((s) => Math.abs(s - shift) <= near)) {
+        shifts.push(shift);
+      }
+    }
+  }
+
+  let best: { shift: number | null; unlike: number } = { shift: null, unlike: SAME_ICONS };
+
+  for (const shift of shifts) {
+    const pairs = after.boxes.flatMap((b) => {
+      const a = before.boxes.find((t) => t.left === b.left && Math.abs(t.top - b.top - shift) <= near);
+
+      return a ? [iconsApart(before.image, a, after.image, b)] : [];
+    });
+    const unlike = pairs.reduce((sum, p) => sum + p, 0) / pairs.length;
+
+    if (unlike < best.unlike) {
+      best = { shift, unlike };
+    }
+  }
+
+  return best.shift;
+}
+
+/** A costume read off an entry: its place in the game's order of them, and its name where its icon settled one. */
+export interface Costume {
+  slot: number;
+  name: string | null | undefined;
+}
+
+/**
+ * The costumes of one form's CAUGHT tab, read a screenshot at a time down it, each once however many show it. One is
+ * told from another by its place among them, never by its looks: a costume no icon names comes out a few percent
+ * nearer or further from each icon on one screenshot than on the next, so that two alike pass for one and one for two.
+ *
+ * The place is taken below the `Costume` heading where that is on the screen, and otherwise from the last screenshot
+ * placed, by how far the tiles moved since. A screenshot whose costumes cannot be lined up with the last one's leaves
+ * them unread, and says so in `unplaced`, rather than counting any of them twice.
+ */
+export class CostumeReader {
+  readonly #candidates: readonly Candidate[];
+  readonly #held = new Map<number, Costume>();
+  #below = false;
+  #last: Placed | null = null;
+  unplaced = false;
+
+  /** `candidates` are the icons a costume is named among. */
+  constructor(candidates: readonly Candidate[]) {
+    this.#candidates = candidates;
+  }
+
+  /** Reads the costumes `image` shows, `caught` being the tiles above them that `caughtOn` found on it. */
+  read(image: Image, lines: readonly Line[], caught: readonly Caught[]) {
+    const heading = costumeHeadingOf(lines);
+    const overlaps = (a: Box, b: Box) =>
+      Math.abs(a.top - b.top) < a.height / 2 && Math.abs(a.left - b.left) < a.width / 2;
+    const boxes = costumesOn(image, lines, this.#below).filter((box) => !caught.some((c) => overlaps(c.box, box)));
+
+    this.#below ||= heading !== undefined;
+
+    if (boxes.length === 0) {
+      return;
+    }
+
+    const shift = heading || !this.#last ? null : shiftBetween(this.#last, { image, boxes });
+    const offset = heading
+      ? -(heading.top + heading.height + image.width * HEADING_TO_TILES)
+      : this.#last && shift !== null
+        ? this.#last.offset + shift
+        : null;
+
+    if (offset === null) {
+      this.unplaced = true;
+
+      return;
+    }
+
+    for (const box of boxes) {
+      const row = Math.round((box.top + offset) / (image.width * TILE.row));
+      const slot = row * COLUMNS.length + columnOf(box.left + box.width / 2, image.width);
+
+      // Named once, by the first screenshot to name it: one that did not is ranked again on the next that shows it.
+      if (this.#held.get(slot)?.name === undefined) {
+        const ranking = ranked(image, box, caughtFrame(image, box), lookOf(image, box), this.#candidates);
+
+        this.#held.set(slot, { slot, name: namedFrom(ranking) });
+      }
+    }
+
+    this.#last = { image, boxes, offset };
+  }
+
+  /** Every costume read, in the game's order. */
+  get costumes(): Costume[] {
+    return [...this.#held.values()].sort((a, b) => a.slot - b.slot);
+  }
 }
 
 /** A tile of the form row: where it is, what it holds, and whether its white frame says it is the form showing. */
@@ -521,11 +784,20 @@ export function formsOn(image: Image, from: number, to: number): FormTile[] {
   return tiles;
 }
 
-/** Whether a form tile wears the white frame of the form showing, down the middle of its left edge. */
-export const framed = (image: Image, box: Box) =>
-  Array.from({ length: 8 }, (_, i) => rgb(image, box.left + 2, box.top + box.height * (0.3 + i * 0.05))).every(
-    (p) => Math.min(...p) >= 215,
+/**
+ * Whether a tile wears the white frame of what is showing, a form or a category of the CAUGHT tab, down the middle of
+ * its left edge. Looked for a few pixels either side of the edge, since a CAUGHT tile is placed by its column rather
+ * than found: the frame round SHINY on `ekans-shiny-0.png` runs from 4 pixels outside its box to 1 inside.
+ */
+export const framed = (image: Image, box: Box) => {
+  const reach = Math.round(image.width * 0.004);
+
+  return Array.from({ length: reach * 2 + 1 }, (_, i) => box.left - reach + i).some((x) =>
+    Array.from({ length: 8 }, (_, i) => rgb(image, x, box.top + box.height * (0.3 + i * 0.05))).every(
+      (p) => Math.min(...p) >= 215,
+    ),
   );
+};
 
 /**
  * What each form tile's label says, or null for one with none. Each is read on its own and at full size: two labels
@@ -575,6 +847,35 @@ export const isEntry = (lines: readonly Line[]) =>
 
 /** The line under the row of gender and type icons that only it carries, `ALERT OFF` or `ALERT ON`. */
 export const alertOf = (lines: readonly Line[]) => findLine(lines, /^alert\b/);
+
+/** The label over the `SEEN` counter, which every entry draws under its row of icons. */
+const seenOf = (lines: readonly Line[]) => findLine(lines, /^seen$/);
+
+/**
+ * How far above the `SEEN` label the `ALERT` label is, the foot of the row of icons between them: 94 to 98 pixels of
+ * the 1440 on `bulbasaur-0.png`, `meowth-0.png` and the rest.
+ */
+const SEEN_TO_ALERT = 0.066;
+
+/**
+ * Where an entry's form row can be on a screenshot: from the foot of its title to above its row of gender and type
+ * icons, and whether that row is on the screen to end it, which Unown's forms run past the foot of.
+ *
+ * The row of icons is found by the `ALERT` label at its foot or, where that is not read, by the `SEEN` counter's below
+ * it. Without either the band runs on into the counters and the CAUGHT tab, pale tiles all, which `formsOn` takes for
+ * forms: a full walk that went by `ALERT` alone gave Ditto, Smeargle, Kecleon, Zorua and Zoroark seven apiece.
+ */
+export function formBand(image: Image, lines: readonly Line[]): { from: number; to: number; ended: boolean } {
+  const title = titleOf(lines);
+  const seen = seenOf(lines);
+  const foot = alertOf(lines)?.top ?? (seen && seen.top - image.width * SEEN_TO_ALERT);
+
+  return {
+    from: title ? title.top + title.height : image.height * 0.42,
+    to: foot === undefined ? image.height * 0.89 : foot - image.width * 0.12,
+    ended: foot !== undefined,
+  };
+}
 
 /** How far above the `ALERT` label the middle of the row of icons is. */
 const ALERT_TO_ICONS = 0.067;
@@ -723,45 +1024,164 @@ export const SIZES: ReadonlyMap<string, number> = Array.from({ length: LAST_DEX 
 );
 
 /**
+ * Where a region list's names and counts lie across the screen, as fractions of its width: they start 0.068 in, and
+ * `UNIDENTIFIED`, the longest, ends at 0.41. Left of them is the backdrop beside the cards and right of them the cards'
+ * artwork, and with both in, Tesseract read no count at all off `tab-shadow-2.png`.
+ */
+const LIST_TEXT = { left: 0.04, right: 0.45 };
+
+/**
+ * How much darker than its row, by `brightness`, a pixel of a region list is drawn black; one less dark is drawn a grey
+ * between. Greys rather than black and white, since no one cut read every count on the captures: cut at 20 below the
+ * row, Sinnoh's on `tab-pokemon-0.png` did not read, and at 32 Hoenn's `Caught: 11` on `tab-perfect-0.png` read as 14.
+ */
+const LIST_INK = 60;
+
+/**
+ * How much darker than its row a pixel of a region list has to be to belong to a patch of ink, which `LIST_TALLEST`
+ * measures. Lighter than the text, so that the medal under a POKÉMON card's count, a faint gold ring, holds together as
+ * one patch: at 36 it broke into arcs short enough to pass for text, which took the first digit of the count above.
+ * Not so light that the count joins the medal, though: at 8 Sinnoh's `9` was drawn out with it. At 14 and 20 every card
+ * on the captures read under both Tesseract 5.3 and 5.5, and at 24 one did not.
+ */
+const LIST_DARK = 14;
+
+/**
+ * The tallest a patch of a region list's ink can be and still be text, as a fraction of the screen's width: a name's
+ * capitals are 0.037. What is taller — the medal under a POKÉMON card's count, a padlock, PGSharp's star, the foot of
+ * the artwork — is drawn out, since beside it Tesseract 5.5 read Johto's `98 / 100` on `tab-pokemon-0.png` as nothing.
+ */
+const LIST_TALLEST = 0.05;
+
+/**
  * A region list's text, which neither of `pokedexLines`' passes reads: each card prints its region and count in the
  * tab's own colour on a near-white card — teal on the POKÉMON tab's, orange on SHINY's — and the backdrop between the
- * cards is as dark as that text on some tabs. So the ink taken is what is darker than the card, and only on the rows
- * that cross one, which is told by the light down the card's left margin; and on the left half alone, where the names
- * and counts are and the cards' artwork is not.
+ * cards is as dark as that text on some tabs. Each pixel is measured against its own row, which is the card's where the
+ * row crosses one and the backdrop's where it does not, since no one level is the card's: the list's last card fades
+ * towards the tabs, to 198 against 210 above it on `tab-xxs-2.png`. A row is as light as three quarters of it, the rest
+ * being text or the foot of the artwork.
  */
 export async function listLines(image: Image): Promise<Line[]> {
-  const width = Math.floor(image.width / 4);
+  const from = Math.round(image.width * LIST_TEXT.left);
+  const width = Math.floor((image.width * LIST_TEXT.right - from) / 2);
   const height = Math.floor(image.height / 2);
-  const data = new Uint8Array(width * height * 4).fill(255);
-  const bright = (x: number, y: number) => brightness(rgb(image, x, y));
+  const grey = new Uint8Array(width * height);
+  const dark = new Uint8Array(width * height);
 
   for (let y = 0; y < height; y++) {
-    let light = 0;
-    let asked = 0;
+    const row = Array.from({ length: width }, (_, x) => brightness(rgb(image, from + x * 2, y * 2)));
+    const paper = [...row].sort((a, b) => a - b)[Math.floor(width * 0.75)] ?? 0;
 
-    for (let x = image.width * 0.05; x < image.width * 0.4; x += 8) {
-      asked++;
-      light += Number(bright(x, y * 2) > 200);
-    }
+    row.forEach((bright, x) => {
+      grey[y * width + x] = Math.round(Math.min(255, Math.max(0, 255 - ((paper - bright) * 255) / LIST_INK)));
+      dark[y * width + x] = Number(paper - bright > LIST_DARK);
+    });
+  }
 
-    if (light < asked * 0.4) {
-      continue;
-    }
-
-    for (let x = 0; x < width; x++) {
-      if (bright(x * 2, y * 2) < 185) {
-        data.set([0, 0, 0, 255], (y * width + x) * 4);
+  for (const patch of patchesOf(dark, width)) {
+    if (patch.height > (image.width * LIST_TALLEST) / 2) {
+      for (const at of patch.at) {
+        grey[at] = 255;
       }
     }
   }
 
+  const data = new Uint8Array(width * height * 4);
+  grey.forEach((value, at) => data.set([value, value, value, 255], at * 4));
+
   return (await ocr({ width, height, data })).map((l) => ({
     ...l,
-    left: l.left * 2,
+    left: from + l.left * 2,
     top: l.top * 2,
     width: l.width * 2,
     height: l.height * 2,
   }));
+}
+
+/** Each patch of a `width`-wide mask's set pixels, touching at a side or a corner: where they are, and its rows. */
+function patchesOf(set: Uint8Array, width: number): { at: number[]; height: number }[] {
+  const seen = new Uint8Array(set.length);
+  const patches: { at: number[]; height: number }[] = [];
+
+  for (let start = 0; start < set.length; start++) {
+    if (!set[start] || seen[start]) {
+      continue;
+    }
+
+    const at: number[] = [];
+    const stack = [start];
+    let [top, bottom] = [Infinity, -Infinity];
+    seen[start] = 1;
+
+    for (let i = stack.pop(); i !== undefined; i = stack.pop()) {
+      const [x, y] = [i % width, Math.floor(i / width)];
+      at.push(i);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const next = (y + dy) * width + x + dx;
+
+          if (x + dx >= 0 && x + dx < width && next >= 0 && next < set.length && set[next] && !seen[next]) {
+            seen[next] = 1;
+            stack.push(next);
+          }
+        }
+      }
+    }
+
+    patches.push({ at, height: bottom - top + 1 });
+  }
+
+  return patches;
+}
+
+/**
+ * Where the bar under a POKÉMON card's name starts across the screen, as a fraction of its width, less a little: the
+ * card left of it is what the bar's fill and track are told from.
+ */
+const BAR_FROM = 0.055;
+
+/**
+ * How far a POKÉMON card's count, as a share of its region, can be from how full its bar is drawn and still be taken.
+ * Every card on the captures is within 0.004 of its bar, and a count that has lost its first digit is far from it:
+ * Sinnoh's `7 / 107` is 0.07 against a bar 0.91 full.
+ */
+const BAR_SLACK = 0.02;
+
+/**
+ * How full the bar under a POKÉMON card's name is drawn, from 0 to 1: of the bar's length, the share its dark fill
+ * takes, the rest of its track being lighter than the card. Measured along whichever row below the name has the
+ * longest bar, the count's box sometimes reaching up over it, and null where none is a fifth of the screen long.
+ */
+function barFill(image: Image, name: Line): number | null {
+  let best = { fill: 0, track: 0 };
+
+  for (let y = name.top + name.height; y < name.top + name.height * 3; y++) {
+    const from = Math.round(image.width * BAR_FROM);
+    const paper = brightness(rgb(image, from, y));
+    let [fill, track, gap] = [0, 0, 0];
+
+    // Along the row until the card shows through again, past the anti-aliasing between the fill and the track.
+    for (let x = from; x < image.width / 2 && gap < 6; x++) {
+      const bright = brightness(rgb(image, x, y));
+
+      if (bright < paper - 40) {
+        [fill, gap] = [fill + 1, 0];
+      } else if (bright > paper + 8) {
+        [track, gap] = [track + 1, 0];
+      } else if (fill + track > 0) {
+        gap++;
+      }
+    }
+
+    if (fill + track > best.fill + best.track) {
+      best = { fill, track };
+    }
+  }
+
+  return best.fill + best.track > image.width * 0.15 ? best.fill / (best.fill + best.track) : null;
 }
 
 /**
@@ -770,8 +1190,13 @@ export async function listLines(image: Image): Promise<Line[]> {
  * check on the first: a count is taken only where it is the region's own size, so `97 {107` under Sinnoh is 97 and a
  * line of the artwork read as numbers is nothing. A card whose count did not read is left out rather than read as
  * nought, so a count can be missing but never wrong.
+ *
+ * So on the POKÉMON tab the count is also checked against the bar the card draws under the name, as full as the count
+ * is of the region, `Complete!` standing in for it where the count is the whole region. That catches a count that has
+ * lost its first digits, which the size cannot: the medal under each card's count can take them, and Sinnoh's
+ * `97 / 107` has read as `7/ 107`.
  */
-export function countsOn(lines: readonly Line[]): Counted[] {
+export function countsOn(lines: readonly Line[], image: Image): Counted[] {
   const counted: Counted[] = [];
   const regions = [...SIZES.keys()];
 
@@ -798,7 +1223,12 @@ export function countsOn(lines: readonly Line[]): Counted[] {
       }
 
       if (held !== undefined && of !== undefined && of === SIZES.get(region) && held <= of) {
-        counted.push({ region, count: held });
+        const bar = held === of ? 1 : barFill(image, line);
+
+        if (bar !== null && Math.abs(bar - held / of) <= BAR_SLACK) {
+          counted.push({ region, count: held });
+        }
+
         break;
       }
     }

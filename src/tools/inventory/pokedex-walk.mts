@@ -25,10 +25,10 @@ import {
   caughtFrame,
   caughtOn,
   CATEGORIES,
-  costumeHeadingOf,
-  costumesOn,
+  CostumeReader,
   countsOn,
   dexOn,
+  formBand,
   formLabelled,
   formsOn,
   framed,
@@ -36,11 +36,10 @@ import {
   iconIn,
   isEntry,
   labelsOf,
+  laterOf,
   listLines,
-  lookOf,
-  namedFrom,
+  ownBeside,
   pokedexLines,
-  ranked,
   regionIn,
   regionsButtonOf,
   seeAllOf,
@@ -50,6 +49,7 @@ import {
   type Box,
   type Candidate,
   type Category,
+  type Costume,
   type FormTile,
   type Genders,
   type Look,
@@ -238,7 +238,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     for (let attempt = 0; attempt < 6; attempt++) {
       const image = await settled(device);
 
-      if (countsOn(await listLines(image)).length > 0) {
+      if (countsOn(await listLines(image), image).length > 0) {
         return;
       }
 
@@ -261,6 +261,15 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       if (isMainMenu(lines)) {
         await tap(at(image, config.taps.pokedexButton), config.waits.search);
+        continue;
+      }
+
+      // Before the main menu's tap, which a pop-up over the map takes and does nothing with (#1046).
+      const later = laterOf(shown);
+
+      if (later) {
+        say('  a pop-up was over the map; putting it off with its LATER');
+        await tap(centre(later), config.waits.menu);
         continue;
       }
 
@@ -349,7 +358,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       // Towards it along the list, which is wherever the last walk or tally left it: up where every region in sight
       // comes after it, and down otherwise. Dragged in the middle, where a drag the phone took as a tap would open a
       // region rather than press anything else.
-      const shown = countsOn(lines).map((c) => LISTED.indexOf(c.region));
+      const shown = countsOn(lines, image).map((c) => LISTED.indexOf(c.region));
       const up = shown.length > 0 && shown.every((i) => i > LISTED.indexOf(region));
       await drag(up ? [0.5, 0.38] : [0.5, 0.7], up ? [0.5, 0.7] : [0.5, 0.38], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
@@ -515,19 +524,55 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    */
   type Placed = FormTile & { label: string | null; image: Image; at: Box };
 
-  /** What one form's CAUGHT tab holds, read down to its foot. */
+  /** What one form's CAUGHT tab holds, read down to its foot; `unplaced` is `CostumeReader`'s. */
   interface View {
-    tiles: Map<Category | null, { look: Look; box: Box; image: Image }>;
-    costumes: { name: Named | undefined; costs: number[]; box: Box; image: Image }[];
+    tiles: Map<Category | null, { look: Look; registered: boolean; box: Box; image: Image }>;
+    costumes: Costume[];
+    unplaced: boolean;
     genders: Genders | null;
   }
+
+  /**
+   * Whether a tap on `box` selects it, by the white frame the game moves to what it selects: never a form not
+   * registered, and taken to be never a category not registered either. Tapped twice before that is concluded, since
+   * the phone drops a tap now and then, and a registered one would go down as not. Answers the screenshot that shows it
+   * selected, or null.
+   */
+  const selects = async (box: Box): Promise<Image | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await tap([box.left + box.width / 2, box.top + box.height / 2]);
+      const image = await settled(device);
+
+      if (framed(image, box)) {
+        return image;
+      }
+    }
+
+    return null;
+  };
+
+  /**
+   * Whether a SHINY tile drawn as a silhouette is registered after all, which for some species it is: Ekans's is drawn
+   * like the 100% and XXL silhouettes beside it, yet a tap selects it and turns the model shiny. One that selects is
+   * put back to the form's own tile, since over the shiny's gold backdrop a tile's red stands no more than 6 above it
+   * on `ekans-shiny-0.png`, where `rowsBetween` and `formsOn` tell a tile by more than 10.
+   */
+  const shinyAfterAll = async (image: Image, box: Box, name: string) => {
+    if (!(await selects(box))) {
+      return false;
+    }
+
+    if (!(await selects(ownBeside(image, box)))) {
+      say(`  ${name}: the form's own tile would not select again after SHINY did, so what is below may misread`);
+    }
+
+    return true;
+  };
 
   /** Reads the CAUGHT tab of the form showing, from `first` down a drag at a time until `SEE ALL` is on the screen. */
   const view = async (first: Shot, dex: number, name: string): Promise<View> => {
     const tiles: View['tiles'] = new Map();
-    const costumes: View['costumes'] = [];
-    const wardrobe = await costumesOf(dex);
-    let below = false;
+    const costumes = new CostumeReader(await costumesOf(dex));
     let genders: Genders | null = null;
     let shot = first;
 
@@ -543,35 +588,13 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       for (const { category, look, box } of caught) {
         if (!tiles.has(category)) {
-          tiles.set(category, { look, box, image });
+          const registered = look === 'icon' || (category === 'shiny' && (await shinyAfterAll(image, box, name)));
+
+          tiles.set(category, { look, registered, box, image });
         }
       }
 
-      const overlaps = (a: Box, b: Box) =>
-        Math.abs(a.top - b.top) < a.height / 2 && Math.abs(a.left - b.left) < a.width / 2;
-
-      for (const box of costumesOn(image, lines, below)) {
-        if (caught.some((c) => overlaps(c.box, box))) {
-          continue;
-        }
-
-        const look = lookOf(image, box);
-        const ranking = ranked(image, box, caughtFrame(image, box), look, wardrobe);
-        const costs = ranking.map((r) => r.cost);
-        const byIcon = namedFrom(ranking);
-
-        // The same costume seen in two screenshots: by its name where it has one, and by being as far from every icon
-        // as one already read where it has none.
-        const again = costumes.some((c) =>
-          byIcon !== undefined ? c.name === byIcon : c.name === undefined && sameCosts(c.costs, costs),
-        );
-
-        if (!again) {
-          costumes.push({ name: byIcon, costs, box, image });
-        }
-      }
-
-      below ||= costumeHeadingOf(lines) !== undefined;
+      costumes.read(image, lines, caught);
 
       if (seeAllOf(lines)) {
         break;
@@ -582,18 +605,18 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       shot = await shoot(device);
     }
 
-    return { tiles, costumes, genders };
+    return { tiles, costumes: costumes.costumes, unplaced: costumes.unplaced, genders };
   };
 
   /** What a form's view says of it, by the record's keys, in the order the game draws its tiles. */
   const formFrom = (form: Named, { tiles }: View): FormEntry => {
-    const entry: FormEntry = { form, caught: tiles.get(null)?.look === 'icon' };
+    const entry: FormEntry = { form, caught: tiles.get(null)?.registered === true };
 
     for (const category of Object.keys(CATEGORIES) as Category[]) {
       const tile = tiles.get(category);
 
       if (tile) {
-        entry[category] = tile.look === 'icon';
+        entry[category] = tile.registered;
       }
     }
 
@@ -614,10 +637,8 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     const notes: string[] = [];
     const tag = String(dex).padStart(4, '0');
     const title = titleOf(top.lines);
-    const alert = alertOf(top.lines);
-    const from = title ? title.top + title.height : top.image.height * 0.42;
-    const to = alert ? alert.top - top.image.width * 0.12 : top.image.height * 0.89;
-    const opened = formsOn(top.image, from, to);
+    const band = formBand(top.image, top.lines);
+    const opened = formsOn(top.image, band.from, band.to);
     const forms = formsOf(dex);
 
     // One form: its CAUGHT tab, from where the entry opened.
@@ -639,21 +660,16 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
     // Where the row of icons is not on the screen the forms run on below its foot, as Unown's 28 do: a drag brings the
     // rest up, and each is placed where it would be on the entry opened by how far the title moved.
-    if (!alert && title) {
+    if (!band.ended && title) {
       await drag([SCROLL_STRIP, 0.6], [SCROLL_STRIP, 0.4], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
       const lower = await shoot(device);
       const moved = titleOf(lower.lines);
-      const below = alertOf(lower.lines);
 
       if (moved) {
         const shift = title.top - moved.top;
         const foot = Math.max(...opened.map((t) => t.box.top + t.box.height)) - shift;
-        const more = formsOn(
-          lower.image,
-          foot + 4,
-          below ? below.top - lower.image.width * 0.12 : lower.image.height * 0.89,
-        );
+        const more = formsOn(lower.image, foot + 4, formBand(lower.image, lower.lines).to);
         const labels = await labelsOf(lower.image, more);
 
         tiles.push(
@@ -691,7 +707,6 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       if (!tile.selected) {
         // A tile under the close button or off the foot is brought up by a drag first, and found again by how far the
         // title moved, which is how far everything under it did.
-        const x = tile.box.left + tile.box.width / 2;
         let y = tile.box.top + tile.box.height / 2;
 
         if (y > shot.image.height * 0.85) {
@@ -705,20 +720,15 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         }
 
         // A form the game will not select is one not registered, whatever its tile looked like: the tap leaves the
-        // form that was showing selected, and its tab would be read as this one's. Tapped twice before that is
-        // concluded, since the phone drops a tap now and then, and a registered form would go down as not.
-        let selected = false;
-
-        for (let attempt = 0; attempt < 2 && !selected; attempt++) {
-          await tap([x, y]);
-          shot = await shoot(device);
-          selected = framed(shot.image, { ...tile.box, top: y - tile.box.height / 2 });
-        }
+        // form that was showing selected, and its tab would be read as this one's.
+        const selected = await selects({ ...tile.box, top: y - tile.box.height / 2 });
 
         if (!selected) {
           silhouettes.push({ index, tile });
           continue;
         }
+
+        shot = { image: selected, lines: await pokedexLines(selected) };
       }
 
       scrolled = true;
@@ -749,7 +759,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       ...unregistered.forms.map(({ index, form }) => ({
         index,
         form,
-        seen: { tiles: new Map(), costumes: [], genders: null },
+        seen: { tiles: new Map(), costumes: [], unplaced: false, genders: null },
       })),
     );
 
@@ -772,21 +782,38 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     views: { form: Named; seen: View }[];
   }): Entry => {
     const forms = views.map(({ form, seen }) => formFrom(form, seen));
-    const costumes: Named[] = [];
-    const unnamed: number[][] = [];
+    const held: Costume[] = [];
 
+    // One costume where two forms' tabs draw one in the same place and no name says they differ, a name settling it
+    // where only one of them did. Whether the game draws a species' costumes under each of its forms alike is unchecked:
+    // where it draws each form's own, two forms with a costume each that no icon names go down as one.
     for (const { seen } of views) {
       for (const costume of seen.costumes) {
-        if (costume.name !== undefined) {
-          if (!costumes.includes(costume.name)) {
-            costumes.push(costume.name);
-          }
-        } else if (!unnamed.some((costs) => sameCosts(costs, costume.costs))) {
-          unnamed.push(costume.costs);
-          costumes.push({ unidentified: costumes.length + 1 });
-          notes.push(`costume ${costumes.length} is none of ${species}'s icons closely enough to name`);
+        const same = held.find(
+          (h) =>
+            h.slot === costume.slot && (h.name === undefined || costume.name === undefined || h.name === costume.name),
+        );
+
+        if (!same) {
+          held.push({ ...costume });
+        } else if (same.name === undefined) {
+          same.name = costume.name;
         }
       }
+    }
+
+    const costumes = held.map(({ name }, i): Named => {
+      if (name !== undefined) {
+        return name;
+      }
+
+      notes.push(`costume ${i + 1} is none of ${species}'s icons closely enough to name`);
+
+      return { unidentified: i + 1 };
+    });
+
+    if (views.some(({ seen }) => seen.unplaced)) {
+      notes.push(`some of ${species}'s costumes could not be lined up with those above them, so are not counted`);
     }
 
     const genders = views.find(({ seen }) => seen.genders !== null)?.seen.genders ?? {};
@@ -850,7 +877,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       let shown = await settled(device);
 
       const take = async (image: Image) => {
-        for (const { region, count } of countsOn(await listLines(image))) {
+        for (const { region, count } of countsOn(await listLines(image), image)) {
           found.set(region, count);
         }
       };
@@ -906,17 +933,4 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
   };
 
   return { walk, tally };
-}
-
-/**
- * Whether two tiles are as far from each of the nearest icons as each other, which is how one costume no icon names is
- * told apart from another when two screenshots both show it.
- */
-function sameCosts(a: readonly number[], b: readonly number[]) {
-  // Never alike with nothing to compare: with no icon to match against, every costume's costs are empty.
-  return (
-    a.length > 0 &&
-    a.length === b.length &&
-    a.slice(0, 3).every((cost, i) => Math.abs(cost - (b[i] ?? 0)) <= cost * 0.03)
-  );
 }
