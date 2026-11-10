@@ -693,12 +693,18 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
           y -= titleBefore - (titleAfter ?? titleBefore);
         }
 
-        await tap([x, y]);
-        shot = await shoot(device);
-
         // A form the game will not select is one not registered, whatever its tile looked like: the tap leaves the
-        // form that was showing selected, and its tab would be read as this one's.
-        if (!framed(shot.image, { ...tile.box, top: y - tile.box.height / 2 })) {
+        // form that was showing selected, and its tab would be read as this one's. Tapped twice before that is
+        // concluded, since the phone drops a tap now and then, and a registered form would go down as not.
+        let selected = false;
+
+        for (let attempt = 0; attempt < 2 && !selected; attempt++) {
+          await tap([x, y]);
+          shot = await shoot(device);
+          selected = framed(shot.image, { ...tile.box, top: y - tile.box.height / 2 });
+        }
+
+        if (!selected) {
           silhouettes.push({ index, tile });
           continue;
         }
