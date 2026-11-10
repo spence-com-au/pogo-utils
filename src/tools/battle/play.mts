@@ -116,14 +116,15 @@ export interface Choices {
   clear?: (swipe: readonly [Point, Point]) => boolean;
 
   /**
-   * Whether what the minigame hides is back on this frame: the button to flee the battle, or our HP bar. Both show again
-   * as the move plays out after the bubbles, which from then are over however closely what is found as them follows:
-   * Outrage's smoke, Close Combat's colour on Zamazenta's red body and Crunch's up to the minigame's last frame, each
-   * less than `OVER_MS` after the last bubble. Of the 226 throws in 18 kept runs after which both came back, the button
-   * came first after 194, by a median 0.93s: 0.19s after Close Combat's last bubble, where our bar took 1.56s. Our bar
-   * came first after 32, by 0.26s at most, the button fading in over a night sky. Either stopped the swipes sooner than
-   * our bar alone after 84 throws, by a median 0.94s, and the eight looked at, the five sooner by most among them, had
-   * no bubble left. Not a bar centred on its Pokémon: one showed through Crunch's bubbles, read once as the opponent's.
+   * Whether what the minigame hides is back on this frame: the button to flee the battle, from its first frame fading
+   * in, or our HP bar. Both show again as the move plays out after the bubbles, which from then are over however
+   * closely what is found as them follows: Outrage's smoke, Close Combat's colour on Zamazenta's red body and Crunch's
+   * up to the minigame's last frame, each less than `OVER_MS` after the last bubble. Of the 226 throws in 18 kept runs
+   * after which both came back, the button came first after 205, by a median 1.06s: Close Combat's rating went 0.1s
+   * after its last bubble, on the frame the button began to fade in, and our bar came back 1.54s later. Our bar came
+   * first after 21, by two frames at most bar one by 0.18s. Read up only once its disc was white, the button left a
+   * median 0.165s of its fade to be swiped, after 47 throws. Not a bar centred on its Pokémon: one showed through
+   * Crunch's bubbles, read once as the opponent's.
    */
   back?: boolean;
 }

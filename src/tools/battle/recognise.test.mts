@@ -87,8 +87,8 @@ test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the coun
 /**
  * The button to flee the battle, wherever it is drawn clear of PGSharp's timer, which lies over the top of it on most of
  * the Pixel 4 XL's stills and over the middle of it on every Pixel 8 Pro's: through the fight, under cloud and a night
- * sky, through `Get Ready!` and the banners, and back after Avalanche's minigame with our bar not yet back. The
- * minigame's stills hide it.
+ * sky, through `Get Ready!` and the banners, and back after Avalanche's minigame, fading in under a day sky and a night
+ * one before its disc is white. The minigame's stills hide it.
  */
 const fleeing = [
   'battle-lugia-foliage-beside-split',
@@ -98,9 +98,11 @@ const fleeing = [
   'battle-tap-ring',
   'other-mewtwo-foliage-letters',
   'other-two-bars',
+  'playing-banner-avalanche',
   'playing-banner-gardevoir',
   'playing-banner-ursaluna',
   'playing-flee-avalanche',
+  'playing-flee-fading-avalanche',
   'playing-ready-cloud',
   'playing-ready-zamazenta',
   'playing-slate-night',
