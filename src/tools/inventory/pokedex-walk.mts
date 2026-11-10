@@ -25,6 +25,7 @@ import {
   caughtFrame,
   caughtOn,
   CATEGORIES,
+  costumeHeadingOf,
   costumesOn,
   countsOn,
   dexOn,
@@ -488,7 +489,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         }
       }
 
-      below ||= lines.some((l) => /^costumes?$/.test(fold(l.text)));
+      below ||= costumeHeadingOf(lines) !== undefined;
 
       if (seeAllOf(lines)) {
         break;

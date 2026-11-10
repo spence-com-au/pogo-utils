@@ -13,7 +13,7 @@
  */
 
 import { closest, distance, type Form, type GameData } from '../../core/game-master.mts';
-import { centre, fold, ocr, type Line } from '../../core/ocr.mts';
+import { centre, findLine, fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, luminance, median, rgb, threshold, type Image } from '../../core/png.mts';
 import { GENERATIONS, regionOf } from '../../pokemon/generations.ts';
 
@@ -298,7 +298,7 @@ const columnOf = (x: number, width: number) =>
   );
 
 /** The line the CAUGHT, INFO and BATTLE tabs share, by its `INFO`, which is short enough to read whole. */
-const headerOf = (lines: readonly Line[]) => lines.find((l) => /^info$/.test(fold(l.text)));
+const headerOf = (lines: readonly Line[]) => findLine(lines, /^info$/);
 
 /**
  * The tiles of the CAUGHT tab one screenshot shows whole: one per label read, the tile being up from it by `LABEL_FOOT`
@@ -338,13 +338,13 @@ export function caughtOn(image: Image, lines: readonly Line[]): Caught[] {
 }
 
 /** The heading over an entry's costumes. */
-const costumeHeadingOf = (lines: readonly Line[]) => lines.find((l) => /^costumes?$/.test(fold(l.text)));
+export const costumeHeadingOf = (lines: readonly Line[]) => findLine(lines, /^costumes?$/);
 
 /**
  * The button under everything an entry shows, `SEE ALL BULBASAUR`, which is how the foot of one is known. The words
  * are matched without the space after them, which OCR drops as often as not: `SEE ALLIVYSAUR`.
  */
-export const seeAllOf = (lines: readonly Line[]) => lines.find((l) => /^see ?all/.test(fold(l.text)));
+export const seeAllOf = (lines: readonly Line[]) => findLine(lines, /^see ?all/);
 
 /**
  * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
@@ -536,10 +536,10 @@ export interface Genders {
 }
 
 /** The entry's title line, `0052 MEOWTH`, by `TITLE`: the line `dexOn` reads, and the top of the form row. */
-export const titleOf = (lines: readonly Line[]) => lines.find((l) => TITLE.test(fold(l.text)));
+export const titleOf = (lines: readonly Line[]) => findLine(lines, TITLE);
 
 /** The line under the row of gender and type icons that only it carries, `ALERT OFF` or `ALERT ON`. */
-export const alertOf = (lines: readonly Line[]) => lines.find((l) => /^alert\b/.test(fold(l.text)));
+export const alertOf = (lines: readonly Line[]) => findLine(lines, /^alert\b/);
 
 /** How far above the `ALERT` label the middle of the row of icons is. */
 const ALERT_TO_ICONS = 0.067;
