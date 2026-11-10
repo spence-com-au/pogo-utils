@@ -92,6 +92,21 @@ test('the best button is the move worth the most per energy against this opponen
   expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Avalanche on power alone, 2 per energy to Hydro Pump’s 1.73').toBe(0.69);
 });
 
+// A Mega's three buttons, Psychic standing in for the mega move the game master does not hold.
+test('a Mega’s three buttons are weighed alike, and none is chosen while one has no move read', () => {
+  const mewtwo = typesOf(DATA, { species: 'Mewtwo' });
+  const melmetal = typesOf(DATA, { species: 'Melmetal' });
+  const three = new Map([
+    [0.214, 'Focus Blast'],
+    [0.499, 'Psychic'],
+    [0.783, 'Psystrike'],
+  ]);
+
+  expect(bestButton(DATA, three, mewtwo, melmetal)?.x, 'Focus Blast into Melmetal').toBe(0.214);
+  expect(bestButton(DATA, three, mewtwo, [])?.x, 'Psystrike on power alone').toBe(0.783);
+  expect(bestButton(DATA, new Map([...three].filter(([x]) => x !== 0.499)), mewtwo, melmetal)).toBeUndefined();
+});
+
 /** The move `bestButton` holds for, by name, with `left` and `right` under the pair of buttons. */
 const heldFor = (own: Shown, opponent: Shown, [left, right]: readonly [string, string], { lastHit = false } = {}) => {
   const moves = new Map([

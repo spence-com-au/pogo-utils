@@ -26,8 +26,8 @@ export type Action =
  * Where each prompt is answered, measured on the footage at 360×760: the Protect Shield under its prompt, and the
  * switch prompt's two cards, centred at x 0.32 and 0.67 in `switch-glaceon`. When one Pokémon is left the card is
  * centred instead and the first card's tap misses it, which costs nothing — the game sends that one in when its
- * countdown runs out. A charged move is thrown wherever its lit button was found, there being one or two of them.
- * Both prompts are pinned to the foot, so each is down as widths from it, which a `Player` places for the screen it is
+ * countdown runs out. A charged move is thrown wherever its lit button was found, there being one, two or three. Both
+ * prompts are pinned to the foot, so each is down as widths from it, which a `Player` places for the screen it is
  * given.
  */
 export const TAPS = {
@@ -75,7 +75,7 @@ export interface Choices {
 
   /**
    * The x of the button worth throwing: while another is lit and it is not, the fight goes on, the energy kept for it.
-   * Without one, of two the one that lit first is thrown, and the left where they lit together.
+   * Without one, the one that lit first is thrown, and the leftmost of those that lit together.
    */
   best?: number;
 

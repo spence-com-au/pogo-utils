@@ -6,7 +6,7 @@ import { BOTTOM, place, type Point } from './layout.mts';
 import { bubbleSwipes, typeColour, type Bubble } from './minigame.mts';
 import { swipeAround, type Panel } from './overlay.mts';
 import { ahead, BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
-import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
+import { LAYOUTS, readyButtons, recognise, type State } from './recognise.mts';
 import { streamSize } from './record-command.mts';
 import { decodeFrames } from './node/stream.mts';
 
@@ -15,9 +15,10 @@ const SIZE = streamSize({ width: 1440, height: 3040 });
 
 /** Where the charged-move buttons sit: one move's centred, two moves' either side, as `readyButtons` reports them. */
 const button = (x: number): Point => place([x, -0.2343], BOTTOM, SIZE);
-const LEFT = button(BUTTON_XS[0]);
-const CENTRE = button(BUTTON_XS[1]);
-const RIGHT = button(BUTTON_XS[2]);
+const [[centreX], [leftX, rightX]] = LAYOUTS;
+const LEFT = button(leftX);
+const CENTRE = button(centreX);
+const RIGHT = button(rightX);
 
 /**
  * The actions for a run of states, a frame every 33ms — 30 a second, as the stream sends them — with the one button of

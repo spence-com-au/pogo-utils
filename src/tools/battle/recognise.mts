@@ -324,12 +324,34 @@ export function darkened(image: Image): number | undefined {
  * white patch across the centred button's place, and read as a ready button through its whole minigame on the rim alone
  * — white at every point, but white too at every point inside it and outside it, where a ready button measured no more
  * than 16% within and 13% beyond.
+ *
+ * A Mega holds a third charged move, its mega move, and draws three buttons: the outer two further out, centred at 77
+ * and 282 of 360 at the others' height, and the mega move's between them, centred as one move's is but raised, at 674
+ * of 802 where the rest are at 717. Measured on a Pixel 8 Pro's stream alone, off Mega Mewtwo Y's in a GO Battle League
+ * run: each unlit button's dark disc, 27.5 in radius, and Psystrike's rim lit, at 34 as the rest. The raised button was
+ * never seen lit, its rim taken to be as the others'.
+ *
+ * So a button is known by its x across, which the move under it and a tap on it go by: `LAYOUTS` holds each layout's,
+ * left to right, the mega move's sharing one move's x and told from it by the layout's other two.
  */
-export const BUTTON_XS = [0.31, 0.499, 0.69] as const;
-const BUTTON = { y: -0.2343, radius: 0.094 } as const;
+export const LAYOUTS = [[0.499], [0.31, 0.69], [0.214, 0.499, 0.783]] as const;
+export const BUTTON_XS = [...new Set(LAYOUTS.flat())].sort((a, b) => a - b);
+const BUTTON = { y: -0.2343, raised: -0.3544, radius: 0.094 } as const;
 const RIM_POINTS = 32;
 const RIM_READY = 0.6;
 const AROUND_RIM = 0.3;
+
+/** Where every button is drawn, its x across and its centre down as widths from the foot, left to right. */
+const PLACES = [...BUTTON_XS.map((x) => [x, BUTTON.y] as const), [LAYOUTS[0][0], BUTTON.raised] as const].sort(
+  ([a], [b]) => a - b,
+);
+
+/** The layouts the buttons at `xs` can all belong to, fewest buttons first: every one of them where `xs` is empty. */
+export function layoutsOf(xs: Iterable<number>): (readonly number[])[] {
+  const all = [...xs];
+
+  return LAYOUTS.filter((layout) => all.every((x) => (layout as readonly number[]).includes(x)));
+}
 
 /** The fraction of a circle that is white, each point looked for a pixel or two inside the radius, the rim's width. */
 function white(image: Image, cx: number, cy: number, radius: number): number {
@@ -354,23 +376,28 @@ function white(image: Image, cx: number, cy: number, radius: number): number {
 }
 
 /**
- * Where a charged move is ready to throw, as the centre of each lit button, left to right: none, one, or both of two.
- * Only meaningful on a frame `recognise` reads as a battle.
+ * Where a charged move is ready to throw, as the centre of each lit button, left to right: none, or any of the one, two
+ * or three a layout draws. Only meaningful on a frame `recognise` reads as a battle.
  */
 export function readyButtons(image: Image): [x: number, y: number][] {
-  const y = down(BUTTON.y, BOTTOM, image);
-  const cy = y * image.height;
   const radius = BUTTON.radius * image.width;
+  const lit: [x: number, y: number][] = [];
 
-  return BUTTON_XS.filter((x) => {
-    const cx = x * image.width;
+  for (const [x, widths] of PLACES) {
+    const y = down(widths, BOTTOM, image);
+    const [cx, cy] = [x * image.width, y * image.height];
 
-    return (
+    if (
+      !lit.some(([at]) => at === x) &&
       white(image, cx, cy, radius) >= RIM_READY &&
       white(image, cx, cy, radius * 0.6) <= AROUND_RIM &&
       white(image, cx, cy, radius * 1.35) <= AROUND_RIM
-    );
-  }).map((x) => [x, y]);
+    ) {
+      lit.push([x, y]);
+    }
+  }
+
+  return lit;
 }
 
 /**
@@ -753,7 +780,7 @@ export function areas(screen: Size): Area[] {
     },
     {
       name: "the charged moves' buttons",
-      boxes: BUTTON_XS.map((x) => around([x, BUTTON.y], BUTTON.radius * 1.35, BOTTOM, screen)),
+      boxes: PLACES.map((place) => around(place, BUTTON.radius * 1.35, BOTTOM, screen)),
     },
     {
       name: "the charged moves' names",

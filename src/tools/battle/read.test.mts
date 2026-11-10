@@ -60,6 +60,26 @@ test.each([
   expect([sighting.own, sighting.moves]).toEqual(['Xerneas', moves]);
 });
 
+// Mega Mewtwo Y's three buttons against Kingambit, off a Pixel 8 Pro in a GO Battle League run: Focus Blast and
+// Psystrike under the outer two, further out than a pair's. Its mega move's label, `FUTURE SIGHT+`, is under the raised
+// one between them, and matches nothing, the game master holding no mega moves; among every move it would be Armored
+// Mewtwo's Future Sight. The HUD names it `Mega Mewtwo Y`, no species, so ours is the one an earlier frame gave.
+test('reads the labels under a Mega’s three buttons, and its mega move as none of the rest', async () => {
+  const image = decodePng(readFileSync(new URL('fixtures/charged-pixel8-mega-psystrike.png', import.meta.url)));
+  const sighting = await readBattle(image, DATA, undefined, 'Mewtwo');
+
+  expect(sighting).toEqual({
+    ...unseen(),
+    opponent: 'Kingambit',
+    ownCp: 7267,
+    opponentCp: 4086,
+    moves: new Map([
+      [0.214, 'Focus Blast'],
+      [0.783, 'Psystrike'],
+    ]),
+  });
+});
+
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
   expect(await read('playing-minigame-kyogre-great')).toEqual({
     ...unseen(),
@@ -92,6 +112,31 @@ test('a read keeps what earlier reads found, bar labels of the other layout', ()
     moves: new Map([[0.31, 'Crunch']]),
   });
   expect(merge(seen, { ...unseen(), opponent: 'Moltres' }).moves, 'a read of no labels').toEqual(seen.moves);
+});
+
+// The mega move's button is where one move's is across, so a label read there alone could be either layout's.
+test('a read under a Mega’s three keeps the labels of its other buttons, and drops those of the pair', () => {
+  const pair = { ...unseen(), moves: new Map([[0.31, 'Crunch']]) };
+  const three = { ...unseen(), moves: new Map([[0.214, 'Focus Blast']]) };
+
+  expect(merge(pair, { ...unseen(), moves: new Map([[0.783, 'Psystrike']]) }).moves).toEqual(
+    new Map([[0.783, 'Psystrike']]),
+  );
+  expect(merge(three, { ...unseen(), moves: new Map([[0.783, 'Psystrike']]) }).moves).toEqual(
+    new Map([
+      [0.214, 'Focus Blast'],
+      [0.783, 'Psystrike'],
+    ]),
+  );
+  expect(merge(three, { ...unseen(), moves: new Map([[0.499, 'Crunch']]) }).moves, 'the middle alone').toEqual(
+    new Map([
+      [0.214, 'Focus Blast'],
+      [0.499, 'Crunch'],
+    ]),
+  );
+  expect(merge(pair, { ...unseen(), moves: new Map([[0.499, 'Crunch']]) }).moves, 'the middle alone').toEqual(
+    new Map([[0.499, 'Crunch']]),
+  );
 });
 
 const banner = (name: string, sides: { own: string | null; opponent: string | null }) =>

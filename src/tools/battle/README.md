@@ -75,10 +75,11 @@ for text and done every few seconds.
   button is lit), `playing` (the HUD up but none of our charged moves' names drawn beneath their buttons: a charged move
   under way, from its tap or the opponent's throw through its banner, `Get Ready!` and minigame, or a faint and the next
   Pokémon flying in), `shield` (the Protect Shield prompt), `switch` (the prompt after a faint) or `other` (the HUD
-  hidden by a charged move, the result, a menu). It also reads which charged-move buttons are lit, each side's shields
-  from the hexagons in the HUD, each side's Pokémon left from the three Poké Balls beside them, the countdown the
-  opponent's charged move puts up at the top of the screen while its minigame plays, and the round button to flee the
-  battle under our panel, which our minigame hides from its first bubble to its last.
+  hidden by a charged move, the result, a menu). It also reads which charged-move buttons are lit — one, two or a Mega's
+  three, its mega move's raised between the others — each side's shields from the hexagons in the HUD, each side's
+  Pokémon left from the three Poké Balls beside them, the countdown the opponent's charged move puts up at the top of
+  the screen while its minigame plays, and the round button to flee the battle under our panel, which our minigame hides
+  from its first bubble to its last.
 - **[`health.mts`](health.mts)** finds each side's HP bar. The camera moves both bars around the screen, so they are
   searched for: a strip of the fill's green, yellow or red with the bar's outline around it. Where a strip starts across
   the screen says whose it is.
@@ -89,7 +90,8 @@ for text and done every few seconds.
 - **[`read.mts`](read.mts)** reads text with Tesseract:
   - **The HUD:** both names along the top and the CP beside each. Our name is the species unless the Pokémon has a
     nickname.
-  - **The buttons:** the charged move printed under each one, matched to the moves our species can hold.
+  - **The buttons:** the charged move printed under each one, matched to the moves our species can hold, and a Mega's
+    mega move's among the mega moves alone.
   - **The banner:** the line a charged move puts up as it lands, `Tyranitar used Crunch!`. This is the only direct view
     of the opponent's moves.
 
@@ -197,9 +199,9 @@ for text and done every few seconds.
   - **When it is looked for:** before the run taps anything, and again as each battle ends, before anything after it is
     tapped. An overlay over any area stops the run, naming what covers what and how to clear it:
     `PGSharp's toolbar covers the selection grid's left column: collapse it to its star or hide the overlay.` On a Pixel
-    4 XL the star is clear on the left edge with its top between 0.68 and 0.86 of the height, so lying no lower than
-    about 0.9. The timer has nowhere clear to go, just under the status bar covering our type icons, so it has to be
-    hidden for battles.
+    4 XL the star is clear on the left edge with its top between 0.68 and 0.78 of the height, so lying no lower than
+    about 0.83, where the ring a Mega's left button is read by begins. The timer has nowhere clear to go, just under the
+    status bar covering our type icons, so it has to be hidden for battles.
 
 ### The run loop
 
