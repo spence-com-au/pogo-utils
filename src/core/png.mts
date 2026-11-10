@@ -1,5 +1,6 @@
 /**
- * Just enough PNG to read what `adb exec-out screencap -p` hands back and to write a crop of it back out for Tesseract.
+ * Just enough PNG to read what `adb exec-out screencap -p` hands back and to write a crop of it back out for Tesseract,
+ * and the raw pixels `screencap` hands back without `-p`.
  * A dependency would do the same, but the whole of what is needed is an 8-bit, non-interlaced image in one of the four
  * colour types a phone produces.
  *
@@ -31,6 +32,9 @@ export interface Image {
 }
 
 const SIGNATURE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+
+/** Whether `bytes` begin as a PNG does, which is how a screenshot's PNG is told from `screencap`'s raw pixels. */
+const isPng = (bytes: Uint8Array) => bytes.length >= 8 && SIGNATURE.every((byte, i) => bytes[i] === byte);
 
 /** The CRC-32 every chunk ends with, a table of the 256 byte remainders being the usual way to it. */
 const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => {
@@ -106,7 +110,7 @@ const refuse = (why: string): Error =>
  * size with garbage rows in it, and a scan reading those would record nonsense rather than stop.
  */
 export function decodePng(bytes: Uint8Array): Image {
-  if (bytes.length < 8 || SIGNATURE.some((byte, i) => bytes[i] !== byte)) {
+  if (!isPng(bytes)) {
     throw refuse('not a PNG');
   }
 
@@ -256,6 +260,53 @@ export function decodePng(bytes: Uint8Array): Image {
   }
 
   return { width, height, data, ...carried };
+}
+
+/**
+ * Android's `PixelFormat` codes for the two layouts `screencap` writes at four bytes a pixel, red first: `RGBA_8888`,
+ * and `RGBX_8888`, whose fourth byte is padding rather than alpha.
+ */
+const RGBA_8888 = 1;
+const RGBX_8888 = 2;
+
+/**
+ * A screenshot as a transport hands it over: the PNG `screencap -p` writes, or the raw pixels `screencap` writes
+ * without it — little-endian words for the width, the height, the pixel format and, from Android 9, the colour space,
+ * then the pixels. Raw pixels are refused, as a damaged PNG is, unless they are in a layout read here and exactly as
+ * many as the header says, a stream cut off short reading otherwise as a screen with its foot missing.
+ */
+export function decodeScreencap(bytes: Uint8Array): Image {
+  if (isPng(bytes)) {
+    return decodePng(bytes);
+  }
+
+  if (bytes.length < 12) {
+    throw refuse(`a raw screenshot of ${bytes.length} bytes, too few for its header`);
+  }
+
+  const words = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = words.getUint32(0, true);
+  const height = words.getUint32(4, true);
+  const format = words.getUint32(8, true);
+  const header = bytes.length - width * height * 4;
+
+  if (format !== RGBA_8888 && format !== RGBX_8888) {
+    throw refuse(`a raw screenshot in pixel format ${format}, which is not read here`);
+  } else if (width === 0 || height === 0 || (header !== 12 && header !== 16)) {
+    throw refuse(`a raw screenshot of ${bytes.length} bytes, which is no ${width}×${height} screen behind its header`);
+  }
+
+  // Copied out rather than viewed, a Node `Buffer`'s `slice` being a view: the image holds a plain array of its own
+  // rather than one into whatever the transport read into.
+  const data = new Uint8Array(bytes.subarray(header));
+
+  if (format === RGBX_8888) {
+    for (let i = 3; i < data.length; i += 4) {
+      data[i] = 255;
+    }
+  }
+
+  return { width, height, data };
 }
 
 /**
