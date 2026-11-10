@@ -16,6 +16,11 @@
  * it, which the slack the caller allows covers. What one hit takes says too whether the next would faint us:
  * `fastFaints`.
  *
+ * The count misses hits too small for our bar to show, a pixel of its 100 being 1% and Thunder Shock taking about 1.4%
+ * of a Mega Mewtwo Y, and hits landing while the bar goes unread. So a charged move is ruled out by it only where the
+ * fight's time since the opponent's last throw could not have paid for it either: `most`, every turn of that time going
+ * on its fast move, as a player counts the opponent's energy by its fast moves' rhythm.
+ *
  * Our own fast moves' hits are measured off the opponent's bar the same way, and with the count they say whether those
  * alone finish it before it can throw, and so whether our charged moves are better kept for the next one: `spare`. And
  * the count says whether a move of ours lowering our defense is better kept until the opponent's throw has landed:
@@ -45,6 +50,9 @@ import { chargedOf, formsOf, lowersDefense, MOVES_HELD, type Shown } from './str
 
 /** As much energy as a Pokémon can hold. */
 export const FULL = 100;
+
+/** How long a turn of a trainer battle lasts, in milliseconds, a fast move taking one to five of them. */
+const TURN_MS = 500;
 
 /**
  * How close together two readings of a bar must be for the drop between them to be one hit, in milliseconds: a fast
@@ -238,6 +246,9 @@ interface Tally {
 
   /** What it had when it last threw, until the banner names the move and so what the throw cost. */
   had?: number;
+
+  /** The same for `most`, with the fight's time it has been out since it last threw, in milliseconds. */
+  most: { carried: number; had?: number; ms: number };
 }
 
 export interface Estimate {
@@ -275,6 +286,12 @@ export class Energy {
   readonly #tallies = new Map<string, Tally>();
   #stretch: Stretch | undefined;
 
+  /** When `fought` was last told of the fight, since anything it stood still for. */
+  #foughtAt: number | undefined;
+
+  /** The fight's time with the opponent out unnamed, which goes to the next one named. */
+  #unnamed = 0;
+
   constructor(data: GameData, meta?: Meta | null) {
     this.#data = data;
     this.#meta = meta;
@@ -308,6 +325,58 @@ export class Energy {
   /** Anything the fight pauses for, or our bar unread across: the next reading is measured from afresh. */
   pause(): void {
     this.#stretch?.pause();
+  }
+
+  /**
+   * The fight seen at `at` milliseconds with `matchup`'s two out: the time since it was last seen went on the
+   * opponent's fast moves, for `most`. With the opponent unnamed, it goes to the next one named, the newcomer whose
+   * coming in cleared the name.
+   */
+  fought(at: number, matchup: Matchup): void {
+    const species = matchup.opponent.species;
+    this.#unnamed += this.#foughtAt === undefined ? 0 : at - this.#foughtAt;
+    this.#foughtAt = at;
+
+    if (species !== null) {
+      this.#tallyOf(species).most.ms += this.#unnamed;
+      this.#unnamed = 0;
+    }
+  }
+
+  /** Anything the fight stands still for, a charged move or a prompt: the time across it gains the opponent nothing. */
+  stood(): void {
+    this.#foughtAt = undefined;
+  }
+
+  /**
+   * The most energy the opponent can hold: what it kept from its last throw by the same reckoning, and a fast move's
+   * gain for every one the fight's time since could have held, the time `fought` saw it out, at the fast move the count
+   * goes by. Undefined for an opponent not named, or with no fast move known.
+   *
+   * The count off our bar is short of what the opponent throws far more often than its slack covers. Of the 52 shield
+   * decisions logged in the runs kept to 2026-11-10 that priced the hit by the moves the count afforded, 40 had the
+   * move thrown named by the banner after, and 18 of those cost more than the count with its slack: Melmetal's Dynamic
+   * Punch at 45 against 36, twice in one battle and once in another, and Groudon's Solar Beam at 80 against 72 and 63.
+   * The fight's time off the same logs, taking nothing as kept over a throw, afforded 11 of the 18.
+   */
+  most(matchup: Matchup): number | undefined {
+    const species = matchup.opponent.species;
+
+    if (species === null) {
+      return undefined;
+    }
+
+    const tally = this.#tallyOf(species);
+    const fast = this.#fastOf({ species, types: matchup.opponent.types }, tally);
+    const move = fast === undefined ? undefined : this.#data.combat[fast];
+
+    if (!move || !(move.turns > 0)) {
+      return undefined;
+    }
+
+    const { carried, ms } = tally.most;
+
+    return Math.min(FULL, carried + Math.floor(ms / (move.turns * TURN_MS)) * move.energy);
   }
 
   /** What one of the opponent's fast moves takes of our bar in this stretch, measured, or undefined before any step. */
@@ -389,7 +458,8 @@ export class Energy {
   /**
    * The opponent threw a charged move, which until the banner names it with `named` is the cheapest it is allowed for —
    * of the two `seen`, once both have been — the cheapest leaving it the most energy, the safe side to err on. What it
-   * had is settled there, at no more than `FULL`, the fast moves it spent at full energy gaining it nothing.
+   * had is settled there, at no more than `FULL`, the fast moves it spent at full energy gaining it nothing, and `most`
+   * with it, its time counted afresh.
    */
   threw(matchup: Matchup, seen: ReadonlySet<string> = new Set()): void {
     const species = matchup.opponent.species;
@@ -399,11 +469,14 @@ export class Energy {
     }
 
     const had = this.estimate(matchup)?.energy ?? 0;
+    const most = this.most(matchup) ?? had;
     const tally = this.#tallyOf(species);
     const cheapest = cheapestOf(this.#data, matchup.opponent, seen, this.#meta);
+    const cost = Number.isFinite(cheapest) ? cheapest : 0;
 
     tally.had = had;
-    tally.carried = Math.max(0, had - (Number.isFinite(cheapest) ? cheapest : 0));
+    tally.carried = Math.max(0, had - cost);
+    tally.most = { carried: Math.max(0, most - cost), had: most, ms: 0 };
 
     for (const stretch of tally.stretches) {
       stretch.lost = 0;
@@ -412,9 +485,9 @@ export class Energy {
 
   /**
    * The banner named the charged move `species` threw last, which settles what the throw cost: what it had then, less
-   * the move's own cost rather than the cheapest it could have been. Had it less than the move costs, the count was
-   * short, and nothing is left. A banner for a throw not counted, or already settled, changes nothing. Whether it
-   * settled one.
+   * the move's own cost rather than the cheapest it could have been, for `most` as for the count. Had it less than the
+   * move costs, the count was short, and nothing is left. A banner for a throw not counted, or already settled, changes
+   * nothing. Whether it settled one.
    */
   named(species: string, move: string): boolean {
     const tally = this.#tallies.get(species);
@@ -426,6 +499,7 @@ export class Energy {
 
     tally.carried = Math.max(0, tally.had - cost);
     tally.had = undefined;
+    tally.most = { ...tally.most, carried: Math.max(0, (tally.most.had ?? 0) - cost), had: undefined };
 
     return true;
   }
@@ -474,7 +548,7 @@ export class Energy {
   }
 
   #tallyOf(species: string): Tally {
-    const tally = this.#tallies.get(species) ?? { stretches: [], carried: 0 };
+    const tally = this.#tallies.get(species) ?? { stretches: [], carried: 0, most: { carried: 0, ms: 0 } };
     this.#tallies.set(species, tally);
 
     return tally;
@@ -682,9 +756,6 @@ export function spare(data: GameData, standing: Standing, meta?: Meta | null): s
 
   return `fast moves finish ${species} at ${Math.round(hp.opponent * 100)}%`;
 }
-
-/** How long a turn of a trainer battle lasts, in milliseconds, a fast move taking one to five of them. */
-const TURN_MS = 500;
 
 /**
  * How soon ours could have filled its energy from `cost`, in milliseconds: what is left of `FULL` after it, at the rate

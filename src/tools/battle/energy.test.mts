@@ -331,6 +331,63 @@ test('one move seen is the cheapest where it is cheaper than those its players r
   expect(energy.estimate(MATCHUP)?.energy, '90 less Power-Up Punch’s 35, not Ice Punch’s 40').toBe(55);
 });
 
+/** The fight seen every 100ms from `from` to `to`, as `run.mts` tells `Energy` of each frame of it. */
+function fought(energy: Pick<Energy, 'fought'>, from: number, to: number, matchup = MATCHUP): void {
+  for (let at = from; at <= to; at += 100) {
+    energy.fought(at, matchup);
+  }
+}
+
+test('the most it can hold is a fast move for each the fight’s time could have held, whatever our bar shows', () => {
+  const energy = new Energy(DATA);
+  const azumarill: Matchup = { ...MATCHUP, opponent: { species: 'Azumarill', cp: 1499 } };
+
+  fought(energy, 0, 4500);
+  expect(energy.most(MATCHUP), 'four Psycho Cuts of 2 turns, the fifth not yet landed').toBe(36);
+  expect(energy.estimate(MATCHUP)?.energy, 'none of them seen on our bar').toBe(0);
+
+  energy.stood();
+  fought(energy, 10_000, 10_400);
+  expect(energy.most(MATCHUP), 'the time across a stand gaining nothing').toBe(36);
+  fought(energy, 10_500, 10_600);
+  expect(energy.most(MATCHUP)).toBe(45);
+
+  energy.stood();
+  fought(energy, 20_000, 30_000, azumarill);
+  expect(energy.most(MATCHUP), 'nor the time another is out').toBe(45);
+
+  energy.stood();
+  fought(energy, 40_000, 60_000);
+  expect(energy.most(MATCHUP), 'capped').toBe(100);
+});
+
+test('the time an opponent is out unnamed goes to the next one named', () => {
+  const energy = new Energy(DATA);
+  const unnamed: Matchup = { ...MATCHUP, opponent: { species: null, cp: 1497 } };
+
+  fought(energy, 0, 2900, unnamed);
+  expect(energy.most(unnamed)).toBe(undefined);
+
+  fought(energy, 3000, 3000);
+  expect(energy.most(MATCHUP)).toBe(27);
+});
+
+test('a throw settles the most it kept by the cheapest move it could be, and the banner by the move named', () => {
+  const energy = new Energy(DATA);
+
+  fought(energy, 0, 10_000);
+  energy.threw(MATCHUP);
+  expect(energy.most(MATCHUP), '90 less Power-Up Punch’s 35').toBe(55);
+
+  energy.named('Medicham', 'Dynamic Punch');
+  expect(energy.most(MATCHUP), '90 less Dynamic Punch’s 45').toBe(45);
+
+  energy.stood();
+  fought(energy, 20_000, 21_000);
+  expect(energy.most(MATCHUP), 'and a Psycho Cut since').toBe(54);
+  expect(energy.estimate(MATCHUP)?.energy, 'the count on its own reckoning').toBe(0);
+});
+
 test('an opponent CP unread is counted as the cap', () => {
   const unread: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: null } };
   const atCap: Matchup = { ...MATCHUP, opponent: { species: 'Medicham', cp: 1500 } };

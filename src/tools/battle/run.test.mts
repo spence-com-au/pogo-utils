@@ -2604,14 +2604,16 @@ test.each([
 
 /**
  * The same switch to Mamoswine, against Empoleon, sent in after Mamoswine fainted and so not anchored. Empoleon, run
- * with Waterfall, Hydro Cannon and Drill Peck, puts up a shield prompt `wait` ms after the switch and, with `banner`,
- * the banner naming Drill Peck, which settles its count at nothing left. Then three Waterfall, 10 energy each, take 4
- * points each off our bar, painted over Mamoswine's on `charged-avalanche` with Avalanche unlit: the third brings Hydro
- * Cannon's 40, super effective on Mamoswine, within one more. Latias resists it, and Drill Peck is neutral on it: it is
- * switched to on `hit3`, only after the banner, and only outside `TIMER_MS` of the switch to Mamoswine.
+ * with Waterfall, Hydro Cannon and Drill Peck, puts up a shield prompt `wait` ms of the fight after the switch and,
+ * with `banner`, the banner naming Drill Peck, which settles its count at nothing left. Fifty seconds of Waterfall, 10
+ * energy a 1.5s, fill it whatever our bar shows, so Drill Peck leaves it 60 by the most it can hold, and Hydro Cannon's
+ * 40, super effective on Mamoswine, is affordable at once. Latias resists it, and Drill Peck is neutral on it: it is
+ * switched to on `steady`, only after the banner, and only outside `TIMER_MS` of the switch to Mamoswine. The count
+ * alone would wait for the three Waterfall after it, 4 points each off our bar, painted over Mamoswine's on
+ * `charged-avalanche` with Avalanche unlit, the third bringing Hydro Cannon within one more.
  */
 test.each([
-  ['after a banner', true, 50_000, ['hit3']],
+  ['after a banner', true, 50_000, ['steady']],
   ['before any banner', false, 50_000, []],
   ['inside our switch timer', true, 10_000, []],
 ])('switches to a resister mid-battle %s', async (_, banner, wait, tapped) => {
@@ -3243,6 +3245,43 @@ test('keeps the shield on a fast move modelled where none has been measured', as
   expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
     'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
       'before their next charged move, Ember modelled at ~2% a hit',
+  ]);
+});
+
+/**
+ * The prompt at 86% with both shields, after 11s of the fight in which only four of Magmar's fast moves are seen on
+ * Charizard's bar, 2 points each: counted, 36 energy and one more for margin afford Fire Punch's 40 alone. The fight's
+ * time affords 11 of them at 1s each, 99, so the hit is priced as the hardest of every move, Fire Blast, and the shield
+ * taken, as the prompt above has it, where the count alone priced Fire Punch and kept it.
+ */
+test('prices the hit by every move the fight’s time affords, where the count off our bar affords fewer', async () => {
+  const fight = charizard();
+  const short = (points: number) =>
+    painted(fight, [52, 86, 97], [(116 - points) / 360, 243 / 360, 117 / 360, 248 / 360]);
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      fight: { frame: fight, lasts: { ms: 1500, to: 'hit1' } },
+      hit1: { frame: short(2), lasts: { ms: 2500, to: 'hit2' } },
+      hit2: { frame: short(4), lasts: { ms: 2500, to: 'hit3' } },
+      hit3: { frame: short(6), lasts: { ms: 2500, to: 'hit4' } },
+      hit4: { frame: short(8), lasts: { ms: 2000, to: 'prompt' } },
+      prompt: {
+        frame: fixture('shield-charizard-high'),
+        tap: { at: [0.5, 0.82], to: 'won' },
+        lasts: { ms: 3000, to: 'won' },
+      },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
+
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual(['prompt']);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    'own: took shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, no more than 2 × the ~20% of 10 ' +
+      'fast moves before their next charged move',
   ]);
 });
 
