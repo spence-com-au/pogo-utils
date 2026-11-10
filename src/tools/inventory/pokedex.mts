@@ -1090,7 +1090,9 @@ export interface Silhouette {
 
 /**
  * Which of a species' forms each of its silhouettes is, `named` being the forms its registered tiles already are: by
- * label, then by shape among the forms not yet named, then by being the forms left once every other is.
+ * label, then by shape among the forms not yet named, then by being the forms left once every other is. Elimination
+ * settles which forms the tiles are but not which tile is which, handing them out in the game master's order rather than
+ * the game's, so each form it names is noted as named that way.
  */
 export function silhouettesNamed(
   silhouettes: readonly Silhouette[],
@@ -1126,13 +1128,17 @@ export function silhouettesNamed(
   const left = forms.filter((f) => !taken.has(f.form));
 
   for (const [i, index] of unnamed.entries()) {
-    const form = left.length === unnamed.length ? (left[i]?.form ?? null) : { unidentified: index + 1 };
+    const unread = `form ${index + 1} is a silhouette that neither its label nor its shape names`;
 
-    if (typeof form === 'object' && form !== null) {
-      notes.push(`form ${index + 1} is a silhouette that neither its label nor its shape names`);
+    if (left.length === unnamed.length) {
+      const form = left[i]?.form ?? null;
+
+      notes.push(`${unread}, named ${form ?? 'the plain form'} by elimination`);
+      found.push({ index, form });
+    } else {
+      notes.push(unread);
+      found.push({ index, form: { unidentified: index + 1 } });
     }
-
-    found.push({ index, form });
   }
 
   return { forms: found, notes };
