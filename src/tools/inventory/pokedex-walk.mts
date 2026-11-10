@@ -778,11 +778,18 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       await toTab(label);
       const found = new Map<string, number>();
 
+      // Down the list until a screenshot shows no region the ones before it had not: its foot, which the POKÉMON tab's
+      // eleven reach in three.
       for (let frame = 0; frame < 4; frame++) {
         const image = await settled(device);
+        const before = found.size;
 
         for (const { region, count } of countsOn(await listLines(image))) {
           found.set(region, count);
+        }
+
+        if (frame > 0 && found.size === before) {
+          break;
         }
 
         await drag([0.5, 0.7], [0.5, 0.38], SCROLL_DRAG_MS);

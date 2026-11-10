@@ -856,7 +856,9 @@ async function agreeing(): Promise<Entry[]> {
   return [...lines.values()].sort((a, b) => a.dex - b.dex);
 }
 
-describe.concurrent('dex', () => {
+// One at a time rather than side by side: each walks three entries and every tab's list, some sixty reads by Tesseract,
+// and three together on a CI runner shared with the rest of the suite took longer than `SLOW` apiece.
+describe('dex', () => {
   test(
     'walks the first three entries, writes a line for each, and fails the count against a record of only those',
     { timeout: SLOW },
