@@ -15,7 +15,7 @@
 import { closest, distance, type Form, type GameData } from '../../core/game-master.mts';
 import { centre, findLine, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, luminance, median, rgb, threshold, type Image } from '../../core/png.mts';
-import { GENERATIONS, regionOf } from '../../pokemon/generations.ts';
+import { LAST_DEX, regionOf } from '../../pokemon/generations.ts';
 
 /**
  * A four-digit number followed by a name, which is the shape of the entry's title and of nothing else on the screen.
@@ -687,11 +687,8 @@ export const UNIDENTIFIED = { region: 'Unidentified', first: 808, last: 809 } as
 export const regionIn = (dex: number) =>
   dex >= UNIDENTIFIED.first && dex <= UNIDENTIFIED.last ? UNIDENTIFIED.region : regionOf(dex);
 
-/** The last number in the national dex, which is where the last generation ends. */
-export const LAST = Math.max(...GENERATIONS.map((g) => g.last));
-
 /** How many species the game files under each region, which is the second number the POKÉMON tab prints. */
-export const SIZES: ReadonlyMap<string, number> = Array.from({ length: LAST }, (_, i) => regionIn(i + 1)).reduce(
+export const SIZES: ReadonlyMap<string, number> = Array.from({ length: LAST_DEX }, (_, i) => regionIn(i + 1)).reduce(
   (sizes, region) => (region === null ? sizes : sizes.set(region, (sizes.get(region) ?? 0) + 1)),
   new Map<string, number>(),
 );

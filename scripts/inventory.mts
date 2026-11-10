@@ -95,7 +95,7 @@ import {
   refusals,
   type Source,
 } from '../src/tools/inventory/report.mts';
-import { LAST } from '../src/tools/inventory/pokedex.mts';
+import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
 import { rowOf } from '../src/tools/inventory/row.mts';
 import {
@@ -931,11 +931,11 @@ async function snap() {
  */
 function dexRange() {
   const from = count('from', options.from, 1);
-  const to = count('to', options.to, LAST);
+  const to = count('to', options.to, LAST_DEX);
 
-  if (from < 1 || from > to || from > LAST) {
+  if (from < 1 || from > to || from > LAST_DEX) {
     throw new Error(
-      `--from ${from} --to ${to} covers no species: --from is at least 1, no more than --to and no more than ${LAST}`,
+      `--from ${from} --to ${to} covers no species: --from is at least 1, no more than --to and no more than ${LAST_DEX}`,
     );
   }
 

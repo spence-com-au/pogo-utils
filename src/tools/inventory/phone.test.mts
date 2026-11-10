@@ -20,13 +20,14 @@
  */
 
 import { KEY } from '../../core/adb.mts';
-import { CATEGORIES, countsOn, LAST, listLines, regionIn, SIZES, type Category } from './pokedex.mts';
+import { CATEGORIES, countsOn, listLines, regionIn, SIZES, type Category } from './pokedex.mts';
 import { TABS, type Entry } from './pokedex-walk.mts';
 import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
+import { LAST_DEX } from '../../pokemon/generations.ts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -838,7 +839,9 @@ async function agreeing(): Promise<Entry[]> {
     const key = keys.find((k) => CATEGORIES[k] === label);
 
     for (const { region, count } of counted) {
-      const rest = Array.from({ length: LAST }, (_, i) => i + 1).filter((dex) => dex > 3 && regionIn(dex) === region);
+      const rest = Array.from({ length: LAST_DEX }, (_, i) => i + 1).filter(
+        (dex) => dex > 3 && regionIn(dex) === region,
+      );
       const already = [...lines.values()].filter((e) => regionIn(e.dex) === region && counts(e)).length;
 
       for (const dex of rest.slice(0, count - already)) {
