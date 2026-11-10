@@ -90,8 +90,8 @@ test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the coun
 });
 
 /**
- * The button to flee the battle, wherever it is drawn clear of PGSharp's timer, which lies over the top of it on most
- * of the Pixel 4 XL's stills and over the middle of it on the Pixel 8 Pro's but those of Mega Mewtwo Y, the overlay
+ * The button to flee the battle, wherever it is drawn clear of PGSharp's timer, which lies over the top of it on most of
+ * the Pixel 4 XL's stills and over the middle of it on the Pixel 8 Pro's but Mega Mewtwo Y's, taken with the timer
  * hidden: through the fight, under cloud and a night sky, through `Get Ready!` and the banners, and back after
  * Avalanche's minigame, fading in under a day sky and a night one before its disc is white. The minigame's stills hide
  * it.
@@ -100,6 +100,7 @@ const fleeing = [
   'battle-lugia-foliage-beside-split',
   'battle-lugia-foliage-split',
   'battle-overcast',
+  'battle-pixel8-mega-mewtwo-y',
   'battle-pixel8-mega-unlit',
   'battle-sliver-trail',
   'battle-tap-ring-start',

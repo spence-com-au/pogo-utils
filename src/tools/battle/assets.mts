@@ -14,6 +14,7 @@ import { FETCH_BATCH, ICON_BASE, typeIcon, typeIconFile } from '../../pokedex/ic
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, type Image } from '../../core/png.mts';
 import { GRID, silhouetteOfIcon, type Icon } from './party.mts';
+import { fielded } from './strategy.mts';
 
 /**
  * `url` fetched and read by `decode`, `file` being the name a cache keeps it under. Decoded inside rather than after,
@@ -43,12 +44,12 @@ export async function typeIcons(data: GameData, download: Download): Promise<Rec
 }
 
 /**
- * Every form icon the game master names, with the species it belongs to: the icons a party card is read against. An
- * icon several forms share is outlined once, for the species of the last of them, which is the same species for every
- * icon shared today.
+ * Every form icon the game master names, its Megas' among them, with the species it belongs to: the icons a party card
+ * is read against, a Mega's card being drawn as the Mega. An icon several forms share is outlined once, for the species
+ * of the last of them, which is the same species for every icon shared today.
  */
 export function formIcons(data: GameData): Map<string, string> {
-  return new Map(data.forms.flatMap((form) => (form.icon ? [[form.icon, form.species] as const] : [])));
+  return new Map(fielded(data).forms.flatMap((form) => (form.icon ? [[form.icon, form.species] as const] : [])));
 }
 
 /**

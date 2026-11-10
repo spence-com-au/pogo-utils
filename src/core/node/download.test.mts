@@ -275,6 +275,94 @@ test('a combat move is read from the first template of its name, and its buffs o
   expect(data.combat.Transform).toStrictEqual({ type: 'Normal', power: 0, energy: 0, turns: 1 });
 });
 
+/**
+ * A Mega is no form of the game master's but an override on its species' ordinary form, which the bare template and the
+ * `_NORMAL` one both carry, as a costume can, and its mega move is a `COMBAT_VM_MOVE_` template the string table names
+ * nowhere: Mega Mewtwo Y's plays Future Sight's animation, `futuresight`.
+ */
+test("a Mega is built off its ordinary form's overrides, named and holding its mega move", async () => {
+  const overrides = {
+    tempEvoOverrides: [
+      {
+        tempEvoId: 'TEMP_EVOLUTION_MEGA_X',
+        stats: { baseAttack: 399, baseDefense: 215, baseStamina: 228 },
+        typeOverride1: 'POKEMON_TYPE_PSYCHIC',
+        typeOverride2: 'POKEMON_TYPE_FIGHTING',
+      },
+      {
+        tempEvoId: 'TEMP_EVOLUTION_MEGA_Y',
+        stats: { baseAttack: 413, baseDefense: 223, baseStamina: 228 },
+        typeOverride1: 'POKEMON_TYPE_PSYCHIC',
+        specialMove: 'TEMP_EVOLUTION_MEGA_Y_V0150_POKEMON_MEWTWO',
+      },
+      {},
+    ],
+  };
+  const mewtwo = (templateId: string, form?: string) =>
+    species(templateId, {
+      pokemonId: 'MEWTWO',
+      form,
+      type: 'POKEMON_TYPE_PSYCHIC',
+      stats: { baseAttack: 300, baseDefense: 182, baseStamina: 214 },
+      cinematicMoves: ['PSYCHIC'],
+      ...overrides,
+    });
+  const data = await load(
+    [
+      PLAYER_LEVEL,
+      ...POWER_UP,
+      { templateId: 'V0108_MOVE_PSYCHIC', data: { moveSettings: { vfxName: 'psychic' } } },
+      { templateId: 'V0270_MOVE_FUTURESIGHT', data: { moveSettings: { vfxName: 'futuresight' } } },
+      {
+        templateId: 'COMBAT_VM_MOVE_TEMP_EVOLUTION_MEGA_Y_V0150_POKEMON_MEWTWO',
+        data: { combatMove: { type: 'POKEMON_TYPE_PSYCHIC', power: 130, vfxName: 'futuresight', energyDelta: -80 } },
+      },
+      mewtwo('V0150_POKEMON_MEWTWO'),
+      mewtwo('V0150_POKEMON_MEWTWO_NORMAL', 'MEWTWO_NORMAL'),
+      mewtwo('V0150_POKEMON_MEWTWO_A', 'MEWTWO_A'),
+    ],
+    {
+      strings: ['pokemon_name_0150_0002', 'Mega Mewtwo X', 'move_name_0270', 'Future Sight'],
+      listing: { tree: [{ path: 'pm150.fMEGA_Y.icon.png' }, { path: 'pm150.fMEGA_Y.s.icon.png' }] },
+    },
+  );
+
+  expect(
+    data.megas.map(({ species: name, types, attack, defense, stamina, icon, shiny, moves, megaMove }) => ({
+      species: name,
+      types,
+      stats: [attack, defense, stamina],
+      icon,
+      shiny,
+      moves: moves.map((move) => move.name),
+      megaMove,
+    })),
+  ).toStrictEqual([
+    {
+      species: 'Mega Mewtwo X',
+      types: ['Psychic', 'Fighting'],
+      stats: [399, 215, 228],
+      icon: null,
+      shiny: null,
+      moves: ['Psychic'],
+      megaMove: undefined,
+    },
+    {
+      species: 'Mega Mewtwo Y',
+      types: ['Psychic'],
+      stats: [413, 223, 228],
+      icon: 'pm150.fMEGA_Y.icon.png',
+      shiny: 'pm150.fMEGA_Y.s.icon.png',
+      moves: ['Psychic', 'Future Sight+'],
+      megaMove: 'Future Sight+',
+    },
+  ]);
+  expect(data.combat['Future Sight+']).toStrictEqual({ type: 'Psychic', power: 130, energy: -80, turns: 1 });
+  expect(data.moves).toContainEqual({ name: 'Future Sight+', fast: false });
+  expect(data.forms.map((form) => form.species)).toStrictEqual(['Mewtwo', 'Mewtwo']);
+  expect(data.species).toStrictEqual(['Mewtwo']);
+});
+
 test('a form carries its size bands, the candy its evolutions cost and whether only a shadow has it', async () => {
   const bands = {
     xxsLowerBound: 1,

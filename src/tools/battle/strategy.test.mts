@@ -92,13 +92,13 @@ test('the best button is the move worth the most per energy against this opponen
   expect(bestButton(DATA, KYOGRE, [], [])?.x, 'Avalanche on power alone, 2 per energy to Hydro Pump’s 1.73').toBe(0.69);
 });
 
-// A Mega's three buttons, Psychic standing in for the mega move the game master does not hold.
+// Mega Mewtwo Y's three buttons, its mega move Future Sight+ the middle one.
 test('a Mega’s three buttons are weighed alike, and none is chosen while one has no move read', () => {
-  const mewtwo = typesOf(DATA, { species: 'Mewtwo' });
+  const mewtwo = typesOf(DATA, { species: 'Mega Mewtwo Y' });
   const melmetal = typesOf(DATA, { species: 'Melmetal' });
   const three = new Map([
     [0.214, 'Focus Blast'],
-    [0.499, 'Psychic'],
+    [0.499, 'Future Sight+'],
     [0.783, 'Psystrike'],
   ]);
 

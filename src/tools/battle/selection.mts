@@ -19,6 +19,7 @@ import { fold, ocr, type Line } from '../../core/ocr.mts';
 import { crop, rgb, type Image } from '../../core/png.mts';
 import { around, BOTTOM, down, place, tall, TOP, type Area, type Point, type Size } from './layout.mts';
 import { FINGER, onParty, SAMPLE } from './menus.mts';
+import { formsOf } from './strategy.mts';
 
 /** The search field, tapped right of its middle, which is inside it whether or not a search has drawn `<` before it. */
 const SEARCH: Point = [0.556, 0.536];
@@ -203,7 +204,7 @@ export async function readPanel(
     return known.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
-  let moves = await readMoves(rows, data, pool(data.forms.filter((form) => form.species === species)), panel);
+  let moves = await readMoves(rows, data, pool(formsOf(data, { species })), panel);
   let named = species ?? speciesOf(moves);
 
   // Matched among every move there is: read again among the moves of the species they name, which affords slack the
@@ -262,7 +263,7 @@ export async function readCard(
 
   const opened = await hands.screenshot();
   const at = (point: Point, anchor: number) => place(point, anchor, opened);
-  const dex = data.forms.find((form) => form.species === species)?.dex;
+  const dex = formsOf(data, { species })[0]?.dex;
   const terms = [...new Set([query(dex, cp), query(undefined, cp)])];
   let lines = await read(opened);
   let cell: Point | undefined;

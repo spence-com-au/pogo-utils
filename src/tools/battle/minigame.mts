@@ -23,6 +23,13 @@ export type Colour = readonly [r: number, g: number, b: number];
 export interface Bubble {
   swipe: readonly [Point, Point];
   share: number;
+
+  /**
+   * Kept only for the white `CUT_REACH` followed past its box. A bubble popped swelling pale where a swipe just went is
+   * kept so too, the round head of the swipe's trail standing for an emblem, so the player waits through one near a
+   * swipe as it does a bubble popping.
+   */
+  cut?: true;
 }
 
 /**
@@ -84,6 +91,14 @@ const FADED = 0.85;
 /** How much white a blob's box has to hold beside it, the emblem on each bubble and its rim. */
 const EMBLEM = 0.08;
 const WHITE = { least: 225, spread: 25 } as const;
+
+/**
+ * How far past a blob's box, above and below and as a fraction of its width, the emblem it holds is followed when the
+ * box holds too little white: a bubble found only in part cuts its emblem short. A Close Combat bubble on Zamazenta's
+ * red body by day, its lower half lit orange by the fist beside it, was found as its top alone, its box holding 7.8%
+ * white and the fist below it (#1017); followed, the fist made it 63.6%.
+ */
+const CUT_REACH = 1;
 
 /** How far past a blob's ends a swipe through it runs, as a fraction of the width, so its end bubbles are crossed. */
 const OVERRUN = 0.03;
@@ -199,6 +214,7 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
   const { width, height } = image;
   const pixel = (i: number): Colour => [image.data[i * 4] ?? 0, image.data[i * 4 + 1] ?? 0, image.data[i * 4 + 2] ?? 0];
+  const whiteAt = (x: number, y: number) => x >= 0 && x < width && y >= 0 && y < height && white(pixel(y * width + x));
   const top = Math.round(FIELD.top * height);
   const bottom = Math.round(FIELD.bottom * height);
   const mask = new Uint8Array(width * height);
@@ -246,17 +262,19 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
 
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
-        whites += white(pixel(y * width + x)) ? 1 : 0;
+        whites += whiteAt(x, y) ? 1 : 0;
       }
     }
 
-    if (whites / blob.length < EMBLEM) {
+    const cut = whites / blob.length < EMBLEM;
+
+    if (cut && (whites + cutOff(whiteAt, width, [x0, x1, y0, y1], [top, bottom])) / blob.length < EMBLEM) {
       continue;
     }
 
     // Told again over the blobs kept rather than kept for every pixel of the field, which would take four times the mask.
     const share = blob.reduce((sum, i) => sum + washed(pixel(i), colour), 0) / blob.length;
-    swipes.push({ area: blob.length, share, swipe: along(xs, ys, width, height) });
+    swipes.push({ area: blob.length, share, swipe: along(xs, ys, width, height), ...(cut && { cut: true as const }) });
   }
 
   const vivid = Math.max(...swipes.map(({ share }) => share));
@@ -264,7 +282,67 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
 
   return swipes
     .sort((a, b) => unfaded(b) - unfaded(a) || b.area - a.area)
-    .map(({ swipe, share }) => ({ swipe, share }));
+    .map(({ swipe, share, cut }) => ({ swipe, share, ...(cut && { cut }) }));
+}
+
+/**
+ * The white of an emblem a blob's box cuts off, in pixels: each white shape in the box followed above and below it,
+ * within the blob's columns and `CUT_REACH` of its width past either end. A shape that runs out of that is no emblem,
+ * and of one that does not, only the pixels past the box whose four neighbours are white count, so that a rim's thin
+ * edge adds nothing.
+ */
+function cutOff(
+  at: (x: number, y: number) => boolean,
+  width: number,
+  [x0, x1, y0, y1]: readonly [number, number, number, number],
+  [top, bottom]: readonly [number, number],
+): number {
+  const reach = Math.round(CUT_REACH * (x1 - x0 + 1));
+  const [from, to] = [Math.max(top, y0 - reach), Math.min(bottom - 1, y1 + reach)];
+  const seen = new Set<number>();
+  let beyond = 0;
+
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (seen.has(y * width + x) || !at(x, y)) {
+        continue;
+      }
+
+      seen.add(y * width + x);
+      const stack: [number, number][] = [[x, y]];
+      let open = false;
+      let past = 0;
+
+      while (stack.length > 0) {
+        const [px, py] = stack.pop() ?? [0, 0];
+        const solid = at(px - 1, py) && at(px + 1, py) && at(px, py - 1) && at(px, py + 1);
+        past += (py < y0 || py > y1) && solid ? 1 : 0;
+
+        for (const [nx, ny] of [
+          [px - 1, py],
+          [px + 1, py],
+          [px, py - 1],
+          [px, py + 1],
+        ] as const) {
+          if (!at(nx, ny) || seen.has(ny * width + nx)) {
+            continue;
+          }
+
+          if (nx < x0 || nx > x1 || ny < from || ny > to) {
+            open = true;
+            continue;
+          }
+
+          seen.add(ny * width + nx);
+          stack.push([nx, ny]);
+        }
+      }
+
+      beyond += open ? 0 : past;
+    }
+  }
+
+  return beyond;
 }
 
 /** A swipe along a blob's longest axis, through its middle and `OVERRUN` past each end. */

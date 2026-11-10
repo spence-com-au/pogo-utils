@@ -613,6 +613,50 @@ test('waits through a bubble it popped found again after a look that lost it', (
   expect(player.next('playing', 3335, { bubbles: [popped] })).toEqual({ kind: 'wait' });
 });
 
+// A blob kept only for the emblem followed past its box is a bubble the finder found in part, or one popped swelling
+// where a swipe just went with the trail's head for an emblem, as saturated as a bubble. Near the swipe it is waited
+// through; elsewhere, or once the swipe is too old to be popping, it is swiped.
+test('waits through a blob found by its cut emblem near a swipe it just made, but not elsewhere', () => {
+  const player = new Player(SIZE);
+  const swiped: Bubble = {
+    swipe: [
+      [0.4, 0.6],
+      [0.6, 0.6],
+    ],
+    share: 1,
+  };
+  const near: Bubble = {
+    swipe: [
+      [0.62, 0.72],
+      [0.78, 0.72],
+    ],
+    share: 0.98,
+    cut: true,
+  };
+  const far: Bubble = {
+    swipe: [
+      [0.2, 0.9],
+      [0.3, 0.9],
+    ],
+    share: 0.98,
+    cut: true,
+  };
+
+  play(['charged', 'charged'], player);
+
+  expect(player.next('playing', 3000, { minigame: true, bubbles: [swiped] })).toMatchObject({ kind: 'swipe' });
+  expect(player.next('playing', 3150, { bubbles: [near] })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 3250, { bubbles: [near, far] })).toMatchObject({ from: far.swipe[0] });
+
+  // Uncut, the same blob is a bubble come since.
+  const whole = { swipe: near.swipe, share: near.share };
+  const again = new Player(SIZE);
+  play(['charged', 'charged'], again);
+  again.next('playing', 3000, { minigame: true, bubbles: [swiped] });
+
+  expect(again.next('playing', 3150, { bubbles: [whole] })).toMatchObject({ kind: 'swipe' });
+});
+
 // Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
 // unswiped until the run took the throw to be playing, 2.5s of its bubbles lost; a prompt still ends it.
 test('keeps the minigame a tap began through the HUD hidden as it begins, but not through a prompt', () => {

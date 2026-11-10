@@ -92,6 +92,43 @@ test('a variant is the move the screen prints, and what the game master lacks go
   ]);
 });
 
+/**
+ * PvPoke ranks Mega Mewtwo Y as `mewtwo_mega_y`, of Mewtwo's dex, and tags it `mega`: its stats, as PvPoke's game master
+ * had them on 2026-11-10, are what tell it from Mega Mewtwo X and Mewtwo.
+ */
+test('a Mega is a moveset of its own, told by its stats from the rest of its dex', () => {
+  const ranking = (speciesId: string, chargedMoves: string[]): Ranking => ({
+    speciesId,
+    moves: {
+      fastMoves: [{ moveId: 'PSYCHO_CUT', uses: 10 }],
+      chargedMoves: chargedMoves.map((moveId) => ({ moveId, uses: 10 })),
+    },
+    moveset: ['PSYCHO_CUT', ...chargedMoves],
+  });
+  const pvpoke: PvPokeData = {
+    formats: [],
+    pokemon: [
+      { speciesId: 'mewtwo', dex: 150, tags: ['legendary'], baseStats: { atk: 300, def: 182, hp: 214 } },
+      { speciesId: 'mewtwo_mega_x', dex: 150, tags: ['mega'], baseStats: { atk: 399, def: 215, hp: 228 } },
+      { speciesId: 'mewtwo_mega_y', dex: 150, tags: ['legendary', 'mega'], baseStats: { atk: 413, def: 223, hp: 228 } },
+    ],
+    moves: [
+      { moveId: 'PSYCHO_CUT', name: 'Psycho Cut' },
+      { moveId: 'PSYSTRIKE', name: 'Psystrike' },
+      { moveId: 'SHADOW_BALL', name: 'Shadow Ball' },
+      { moveId: 'FUTURE_SIGHT_PLUS', name: 'Future Sight+' },
+    ],
+  };
+  const movesets = movesetsOf(
+    DATA,
+    [ranking('mewtwo_mega_y', ['PSYSTRIKE', 'FUTURE_SIGHT_PLUS']), ranking('mewtwo', ['PSYSTRIKE', 'SHADOW_BALL'])],
+    pvpoke,
+  );
+
+  expect(movesets.get('Mega Mewtwo Y')?.chargedMoves).toStrictEqual(['Psystrike', 'Future Sight+']);
+  expect(movesets.get('Mewtwo')?.chargedMoves).toStrictEqual(['Psystrike', 'Shadow Ball']);
+});
+
 /** PvPoke's files by the name `pnpm battle` caches each under, a file not among them answering as a 404. */
 const served: Record<string, unknown> = {
   'pvpoke-gamemaster.json': PVPOKE,

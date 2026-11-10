@@ -233,10 +233,21 @@ const SWELL = 0.15;
  * a bubble popped. Nor does a share rising from one look to the next tell a bubble come since: the swipe's trail often
  * hides the bubble it popped on the look after, which is then found again, paler. Taken so, 64 of the 307 frames waited
  * through over the minigames of 328 throws would have been swiped, and the 12 looked at, at random, were each a bubble
- * popping. One was a Close Combat bubble swiped on Zamazenta's red body by day with another come up inside it, which
- * went unfound (#1017): what held 0.62 of the share swiped there was the popped one around it.
+ * popping. One was a Close Combat bubble swiped on Zamazenta's red body by day with another come up inside it, found
+ * only by the emblem its box cut short and so waited through by `CUT_NEAR` as well (#1017): what held 0.62 of the share
+ * swiped there was the popped one around it.
  */
 const POPPED = 0.8;
+
+/**
+ * How near a swipe made within `POP_MS`, in widths, a blob kept only for the emblem `bubbleSwipes` follows past its box
+ * is waited through as the bubble it went through popping, whatever its share. A bubble popped swells large and pale,
+ * and the round head of the swipe's trail on it reads as an emblem: over every kept run's minigames, 20,247 looks,
+ * keeping such blobs swiped 69 bubbles the finder had missed a look sooner and 46 bubbles popped. Waited through within
+ * `SWELL`, it was 52 and 22; within 0.2 widths, 42 and 16; 0.25, 29 and 8; 0.3, 22 and 4. A swipe through a bubble
+ * popped costs more than a look saves, being a swipe gone and a bubble for this to judge the next by.
+ */
+const CUT_NEAR = 0.3;
 
 /** How long one swipe takes, in milliseconds: short, so a fast move fires about six times a second. */
 const SWIPE_MS = 80;
@@ -542,9 +553,11 @@ export class Player {
       const vivid = Math.max(stretch?.vivid ?? 0, ...found.map(({ share }) => share));
       this.#swiped = this.#swiped.filter(({ at }) => now - at < POP_MS);
       const popping = (bubble: Bubble) =>
-        this.#swiped.some(
-          (swiped) => bubble.share < POPPED * swiped.share && away(bubble.swipe, swiped.swipe, this.#screen) <= SWELL,
-        );
+        this.#swiped.some((swiped) => {
+          const apart = away(bubble.swipe, swiped.swipe, this.#screen);
+
+          return (bubble.share < POPPED * swiped.share && apart <= SWELL) || (bubble.cut && apart <= CUT_NEAR);
+        });
       const aimed = look
         ? found
             .filter((bubble) => bubble.share >= Math.max(GONE * vivid, PALEST) && !popping(bubble))

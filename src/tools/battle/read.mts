@@ -13,7 +13,7 @@ import { centre, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, scale, type Image } from '../../core/png.mts';
 import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
 import { BANNER_ANCHOR, BANNERS, BUTTON_XS, LAYOUTS, layoutsOf } from './recognise.mts';
-import { type Typing } from './strategy.mts';
+import { fielded, formsOf, type Typing } from './strategy.mts';
 
 export interface Sighting {
   /** Our species, or null where a nickname stands in its place. */
@@ -85,6 +85,28 @@ const LABEL_REACH = 0.12;
 const CP = /c\s*p\s*(\d{2,4})\b/gi;
 
 /**
+ * The species a line of the names' band names, nearest it as `closest` has it: its CP no part of it, since a name as
+ * long as `Mega Mewtwo Y` runs into its CP in one line, and `¥` a Y, which is how OCR read that name's Y in 26 of 99
+ * reads off a GO Battle League run on a Pixel 8 Pro. Null where another species is as near, as Mega Mewtwo X is to a
+ * `Mega Mewtwo` read with its Y missing: taken, the first of the two would be logged as a switch to it and back. Not
+ * where the two are one name once folded, as Nidoran♀ and Nidoran♂ are, which no read can tell apart: the first of
+ * them stands, as `closest` has it.
+ */
+function speciesNamed(text: string, data: GameData): string | null {
+  const name = text.replaceAll(CP, ' ').replaceAll('¥', 'Y');
+  const { species } = fielded(data);
+  const found = closest(name, species, (s) => s);
+
+  if (found === null) {
+    return null;
+  }
+
+  const near = distance(name, found);
+
+  return species.some((s) => distance(name, s) === near && distance(s, found) > 0) ? null : found;
+}
+
+/**
  * How wide a label's letter is, as a fraction of the screen's width: 0.019 to 0.023 across Hydro Pump, Avalanche,
  * Shadow Sneak and Crunch on the committed frames. A label's line can run on past it, OCR taking in whatever is drawn
  * to its right — Crunch's from 0.42 to 0.89 behind a Tyranitar, its centre then nearer the right button than its own —
@@ -136,10 +158,10 @@ export async function readBattle(
   const raised = band(image, RAISED, BOTTOM, 3);
   const sighting = unseen();
 
-  // The names share their line with each side's CP, which matches no species and so drops out of the names here. Each
-  // CP is placed by where it starts in its line, a line that runs both together holding ours first.
+  // The names share their band with each side's CP, which `speciesNamed` leaves out of a name. Each CP is placed by where
+  // it starts in its line, a line that runs both together holding ours first.
   for (const line of await read(names.image)) {
-    const found = closest(line.text, data.species, (name) => name);
+    const found = speciesNamed(line.text, data);
     const side = across(line, names, image) < 0.5 ? 'own' : 'opponent';
 
     if (found) {
@@ -155,9 +177,7 @@ export async function readBattle(
   }
 
   const own = sighting.own ?? species;
-  const charged = (
-    own === null ? data.moves : data.forms.filter((form) => form.species === own).flatMap((f) => f.moves)
-  )
+  const charged = (own === null ? data.moves : formsOf(data, { species: own }).flatMap((f) => f.moves))
     .filter((move) => !move.fast && move.name in data.combat)
     .map((move) => move.name);
 
@@ -186,13 +206,14 @@ export async function readBattle(
     }
   }
 
-  // The mega move's label, read only where an outer button of three is labelled: elsewhere the band holds whatever
-  // another layout's buttons draw there, one move's own button among it. Matched among the mega moves alone, each named
-  // with a `+`: among the rest, `FUTURE SIGHT+` is one edit from the Future Sight Armored Mewtwo holds.
+  // The mega move's label, read only for a Mega of ours whose mega move is known, and only where an outer button of
+  // three is labelled: elsewhere the band holds whatever another layout's buttons draw there, one move's own button
+  // among it. Matched to that move alone: among the rest, `FUTURE SIGHT+` is one edit from the Future Sight Armored
+  // Mewtwo holds.
   const [first, middle, last] = LAYOUTS[2];
-  const mega = charged.filter((name) => name.endsWith('+'));
+  const mega = own === null ? [] : formsOf(data, { species: own }).flatMap((form) => form.megaMove ?? []);
 
-  if (sighting.moves.has(first) || sighting.moves.has(last)) {
+  if (mega.length > 0 && (sighting.moves.has(first) || sighting.moves.has(last))) {
     for (const { move } of await movesIn(raised, mega)) {
       sighting.moves.set(middle, move);
     }
@@ -235,9 +256,9 @@ export async function readBanner(
     const words = fold(who).split(' ').slice(-fold(opponent).split(' ').length).join(' ');
 
     if (closest(words, [opponent], (name) => name)) {
-      const charged = data.forms
-        .filter((form) => form.species === opponent)
-        .flatMap((form) => form.moves.filter((move) => !move.fast).map((move) => move.name));
+      const charged = formsOf(data, { species: opponent }).flatMap((form) =>
+        form.moves.filter((move) => !move.fast).map((move) => move.name),
+      );
 
       return closest(what, [...new Set(charged)], (name) => name);
     }

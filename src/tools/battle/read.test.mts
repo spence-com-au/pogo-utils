@@ -60,23 +60,47 @@ test.each([
   expect([sighting.own, sighting.moves]).toEqual(['Xerneas', moves]);
 });
 
-// Mega Mewtwo Y's three buttons against Kingambit, off a Pixel 8 Pro in a GO Battle League run: Focus Blast and
-// Psystrike under the outer two, further out than a pair's. Its mega move's label, `FUTURE SIGHT+`, is under the raised
-// one between them, and matches nothing, the game master holding no mega moves; among every move it would be Armored
-// Mewtwo's Future Sight. The HUD names it `Mega Mewtwo Y`, no species, so ours is the one an earlier frame gave.
-test('reads the labels under a Mega’s three buttons, and its mega move as none of the rest', async () => {
-  const image = decodePng(readFileSync(new URL('fixtures/charged-pixel8-mega-psystrike.png', import.meta.url)));
-  const sighting = await readBattle(image, DATA, undefined, 'Mewtwo');
+// Both sides' Mega Mewtwo Y, its name run into its CP in one line, `Mega Mewtwo ¥ CP 7267` and `CP 7267 Mega Mewtwo ¥`,
+// the Y read as `¥`.
+test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
+  const { own, ownCp, opponent, opponentCp } = await read('battle-pixel8-mega-mewtwo-y');
 
-  expect(sighting).toEqual({
-    ...unseen(),
-    opponent: 'Kingambit',
+  expect({ own, ownCp, opponent, opponentCp }).toEqual({
+    own: 'Mega Mewtwo Y',
     ownCp: 7267,
-    opponentCp: 4086,
-    moves: new Map([
-      [0.214, 'Focus Blast'],
-      [0.783, 'Psystrike'],
-    ]),
+    opponent: 'Mega Mewtwo Y',
+    opponentCp: 7267,
+  });
+});
+
+// Nidoran♀ and Nidoran♂ are one name folded, and no read tells them apart, so the first of them stands, as it did before
+// a tie named neither.
+test.each<[string, string, string | null, string | null, string]>([
+  ['Mega Mewtwo CP 7267', 'CP 7267 Mega Mewtwo', null, null, 'as near Mega Mewtwo X as Y names neither'],
+  ['Nidoran CP 512', 'CP 7267 Mega Mewtwo ¥', 'Nidoran♀', 'Mega Mewtwo Y', 'a pair one name folded names the first'],
+])('%j and %j read as %j and %j: %s', async (own, opponent, ownName, opponentName) => {
+  const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8-mega-mewtwo-y.png', import.meta.url)));
+  const line = (text: string, left: number): Line => ({ text, left, top: 0, width: 100, height: 20 });
+  const sighting = await readBattle(image, DATA, () => Promise.resolve([line(own, 0), line(opponent, 450)]));
+
+  expect([sighting.own, sighting.opponent]).toEqual([ownName, opponentName]);
+});
+
+// Mega Mewtwo Y's three buttons, off a Pixel 8 Pro in a GO Battle League run: Focus Blast and Psystrike under the outer
+// two, further out than a pair's, and its mega move under the raised one between them. Against Kingambit, Future Sight+
+// is matched to the mega move alone, where among every move of Mewtwo's it would be Armored Mewtwo's Future Sight, one
+// edit away. Against Mega Mewtwo Y, the mirror's frame above.
+test.each([
+  ['charged-pixel8-mega-psystrike', 'Kingambit', 4086],
+  ['battle-pixel8-mega-mewtwo-y', 'Mega Mewtwo Y', 7267],
+])('%s: reads the labels under a Mega’s three buttons, against %s', async (name, opponent, opponentCp) => {
+  expect(await read(name)).toEqual({
+    ...unseen(),
+    own: 'Mega Mewtwo Y',
+    opponent,
+    ownCp: 7267,
+    opponentCp,
+    moves: { 0.214: 'Focus Blast', 0.499: 'Future Sight+', 0.783: 'Psystrike' },
   });
 });
 
