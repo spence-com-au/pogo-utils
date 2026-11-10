@@ -684,7 +684,7 @@ export interface Standing {
   /** What one hit takes of the other's bar: ours of theirs, as `Hits` measures it, and theirs of ours, as `Energy` does. */
   steps: { ours: number | undefined; theirs: number | undefined };
 
-  /** The opponent's energy, as `Energy` counts it. */
+  /** The opponent's energy, as `Energy` counts it, raised to `Energy.most` where that is more. */
   estimate: Estimate | null;
 
   /** The charged moves the opponent has been seen to use. */
@@ -706,9 +706,10 @@ export interface Standing {
  * - The opponent's shields are spent: one left is what a player would draw before anything else.
  * - It has another Pokémon to come. With its last, a finish is a finish however it comes.
  * - Our hits on its bar have been measured, and `SPARE_HITS` of them at most take what it has left and the bar's wander.
- * - Its energy, as counted, affords none of its charged moves after the fast moves of its that land meanwhile and one
- *   more for a hit the count missed. Meanwhile is our hits at our fast move where it was read, and otherwise at the
- *   longest of our forms' fast moves, and never counts fewer of its fast moves than of ours, whatever the turns say.
+ * - Its energy, as counted or as the fight's time raises it, affords none of its charged moves after the fast moves of
+ *   its that land meanwhile and one more for a hit the count missed. Meanwhile is our hits at our fast move where it
+ *   was read, and otherwise at the longest of our forms' fast moves, and never counts fewer of its fast moves than of
+ *   ours, whatever the turns say.
  * - Those fast moves of its, at what one was measured to take of our bar, leave us standing: a Pokémon fainted carries
  *   no energy on.
  */

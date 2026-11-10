@@ -614,13 +614,6 @@ export async function run(
         .finally(() => (fought.readyReading = false));
     }
 
-    // The fight stands still through what reads as neither it nor a prompt, which nothing below is read off: the
-    // opponent's countdown, and the animation of a charged move after it. Untold, the most the opponent can hold would
-    // count the time across them as its fast moves at the fight's next frame.
-    if (state === 'other') {
-      battle.energy.stood();
-    }
-
     if (state !== 'other') {
       // Never more than the last count, a shield once spent staying spent: a banner over the HUD reads as one of theirs
       // held, and leaves ours unread.
@@ -900,9 +893,11 @@ export async function run(
       // could have given it, where the count has missed hits too small for our bar to show, and a fast move's more for
       // a hit missed by both. Live, Melmetal was counted at 27 against our Mega Mewtwo Y, whose bar its Thunder Shock
       // took about 1.4% of, and Dynamic Punch, seen 19s before at 45, was ruled out at the prompt it was thrown at.
+      // `wouldShield`'s cycle keeps the count as it is, more energy there keeping the shield more often.
       const estimate = battle.energy.estimate(facing);
       const most = battle.energy.most(facing);
-      const affordable = estimate ? Math.max(estimate.energy, most ?? 0) + estimate.gain : undefined;
+      const raised = estimate && { ...estimate, energy: Math.max(estimate.energy, most ?? 0) };
+      const affordable = raised ? raised.energy + raised.gain : undefined;
 
       // Whether the opponent's hardest charged move would faint us: hardest of those it can afford, where its energy is
       // counted. A league whose cap went unread takes every shield, as anything else unknown does. Taken also by
@@ -1108,7 +1103,7 @@ export async function run(
                 shields: battle.theirShields,
                 left: battle.left.opponent,
                 steps: { ours: battle.hits.step, theirs: battle.energy.step },
-                estimate,
+                estimate: raised,
                 seen: battle.theirMoves.get(battle.seen.opponent ?? ''),
                 fast: ours?.fast,
               },
@@ -1397,6 +1392,7 @@ export async function run(
 
     battle.player.next(state, clock.now());
     battle.energy.pause();
+    battle.energy.stood();
     battle.hits.pause();
     battle.ourEnergy.pause();
 

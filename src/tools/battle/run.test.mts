@@ -1337,16 +1337,18 @@ test.each([
  * unlit until it lights at 4%; and one Powder Snow taking our 58% to 55%. One hit more finishes it, before that Powder
  * Snow's 8 energy and the 24 of three more, two landing in our longest fast move's three turns and one for the count,
  * reach Icicle Spear's 40. With Mamoswine's middle Poké Ball painted red, another is to come, and Shadow Sneak is held
- * for it; with Mamoswine its last, the finish is thrown.
+ * for it; with Mamoswine its last, the finish is thrown. The fight's time, 1.6s, affords no more than the count; but
+ * with the hold kept 3s, no fast move of ours landing here, by 2s it affords 16, and the finish goes after all.
  */
+const HELD_FOR_NEXT = 'own: holding Shadow Sneak for the next: fast moves finish Mamoswine at 4%';
+const FINISHED = 'own: threw Shadow Sneak: would finish Mamoswine at 4%';
+const ANOTHER = [[0.879, 0.19, 0.905, 0.215]];
+
 test.each([
-  [
-    'with another to come',
-    [[0.879, 0.19, 0.905, 0.215]],
-    ['own: holding Shadow Sneak for the next: fast moves finish Mamoswine at 4%'],
-  ],
-  ['on its last', [], ['own: threw Shadow Sneak: would finish Mamoswine at 4%']],
-])('fast moves finishing the opponent %s hold the energy lit only for the next', async (_, next, said) => {
+  ['with another to come', ANOTHER, 1000, [HELD_FOR_NEXT]],
+  ['on its last', [], 1000, [FINISHED]],
+  ['with another to come, held as long as its energy could fill', ANOTHER, 3000, [HELD_FOR_NEXT, FINISHED]],
+])('fast moves finishing the opponent %s hold the energy lit only for the next', async (_, next, ms, said) => {
   const balls = painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL, ...next);
   const hud = painted(balls, [111, 81, 118], [0.7, 0.195, 0.78, 0.222]);
   const hit = painted(hud, [105, 91, 41], [79 / 360, 220 / 360, 82 / 360, 225 / 360]);
@@ -1361,7 +1363,7 @@ test.each([
       ...battleAndBack(),
       fight: { frame: unlit(theirs(hud, 16)), lasts: { ms: 400, to: 'closer' } },
       closer: { frame: unlit(theirs(hit, 10)), lasts: { ms: 200, to: 'charged' } },
-      charged: { frame: hit, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 3000, to: 'won' } },
+      charged: { frame: hit, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms, to: 'won' } },
       minigame: minigameNoneFainted(),
     },
     'party',
