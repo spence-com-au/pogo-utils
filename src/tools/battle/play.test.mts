@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import { decodePng } from '../../core/png.mts';
 import { BOTTOM, place, type Point } from './layout.mts';
-import { bubbleSwipes, typeColour } from './minigame.mts';
+import { bubbleSwipes, typeColour, type Bubble } from './minigame.mts';
 import { swipeAround, type Panel } from './overlay.mts';
 import { ahead, BENCH, BENCH_ANCHOR, Player, TAPS, type Action } from './play.mts';
 import { BUTTON_XS, readyButtons, recognise, type State } from './recognise.mts';
@@ -28,6 +28,9 @@ function play(states: readonly State[], player = new Player(SIZE), from = 0): Ac
 }
 
 const taps = (actions: readonly Action[]) => actions.filter((action) => action.kind === 'tap');
+
+/** Bubbles found along `chains`, each as saturated as the rest. */
+const live = (...chains: (readonly [Point, Point])[]): Bubble[] => chains.map((swipe) => ({ swipe, share: 1 }));
 
 const swipes = (actions: readonly Action[]) => actions.flatMap((action) => (action.kind === 'swipe' ? [action] : []));
 
@@ -158,7 +161,7 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 
   // Past the hold after the tap, still in the minigame.
   expect(player.next('playing', 1000, { bubbles: [] })).toEqual({ kind: 'wait' });
-  expect(player.next('playing', 1033, { bubbles: [chain] })).toEqual({
+  expect(player.next('playing', 1033, { bubbles: live(chain) })).toEqual({
     kind: 'swipe',
     from: chain[0],
     to: chain[1],
@@ -167,7 +170,7 @@ test('swipes through the bubbles found in the minigame, waiting through its lead
 
   // Found again once the throw is taken to be playing, then the move playing out once its bubbles are over, until a
   // frame hides the HUD.
-  player.next('playing', 2000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 2000, { minigame: true, bubbles: live(chain) });
   const over = Array.from({ length: 60 }, (_, i) => player.next('playing', 3000 + i * 33, { bubbles: [] }));
 
   expect(over.every((action) => action.kind === 'wait')).toBe(true);
@@ -193,12 +196,33 @@ test('runs a swipe on ahead of a bubble seen moving, to where it is as the swipe
   const action = player.next('playing', 1099, { bubbles: seen });
 
   expect(action.kind === 'swipe' && crosses([action.from, action.to], lands)).toBe(true);
-  expect(seen?.[0] && crosses(seen[0], lands)).toBe(false);
+  expect(seen?.[0] && crosses(seen[0].swipe, lands)).toBe(false);
 
   // The same frame read again, the loop come round before the next, its swipes listed afresh: still one look.
-  const again = player.next('playing', 1119, { bubbles: seen?.map(([from, to]) => [from, to] as const) });
+  const again = player.next('playing', 1119, {
+    bubbles: seen?.map(({ swipe: [from, to], share }) => ({ swipe: [from, to], share })),
+  });
 
   expect(again.kind === 'swipe' && crosses([again.from, again.to], lands)).toBe(true);
+});
+
+/**
+ * Palkia's Aqua Tail at night: on the frame of 216.271s its wing, which passes for Water's colour washed, is all that
+ * is found, between bubbles found on the frames either side, the two at the right edge going unfound on it. The wing
+ * holds less than half the share of the bubbles still to pop on the frame of 213.486s, of the same minigame.
+ */
+test('waits through Palkia’s wing found alone among the bubbles', () => {
+  const player = new Player({ width: 360, height: 802 });
+  const water = typeColour(png('types/POKEMON_TYPE_WATER'));
+  const [bubbles, wing] = ['playing-minigame-palkia-popped', 'playing-minigame-palkia-wing'].map((name) =>
+    bubbleSwipes(png(name), water),
+  );
+
+  play(['charged', 'charged'], player);
+
+  expect(player.next('playing', 1000, { minigame: true, bubbles }).kind).toBe('swipe');
+  expect(wing).not.toEqual([]);
+  expect(player.next('playing', 1062, { bubbles: wing })).toEqual({ kind: 'wait' });
 });
 
 test.each([
@@ -332,8 +356,8 @@ test.each([
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 1000, { minigame: true, bubbles: [was, standing], clear });
-  const action = player.next('playing', 1100, { bubbles: [found, standing], clear });
+  player.next('playing', 1000, { minigame: true, bubbles: live(was, standing), clear });
+  const action = player.next('playing', 1100, { bubbles: live(found, standing), clear });
 
   expect(action.kind === 'swipe' ? action.from[0] : NaN).toBeCloseTo(from);
 });
@@ -349,7 +373,7 @@ test('no minigame swipe starts or ends on an edge Android takes for its own gest
     return player.next('playing', 1000, { minigame: true, bubbles: [bubble] });
   });
 
-  expect(found.flat().some(([x, y]) => x < 0.05 || x > 0.95 || y > 0.92)).toBe(true);
+  expect(found.flatMap(({ swipe }) => swipe).some(([x, y]) => x < 0.05 || x > 0.95 || y > 0.92)).toBe(true);
   expect(
     swipes(made)
       .flatMap(({ from, to }) => [from, to])
@@ -362,13 +386,8 @@ test('no minigame swipe starts or ends on an edge Android takes for its own gest
  * `count` frames from `from` milliseconds, 33ms apart, each read as `playing` with `bubbles` found on it, and what the
  * minigame hides back where `back` says.
  */
-const frames = (
-  player: Player,
-  from: number,
-  count: number,
-  bubbles: readonly (readonly [Point, Point])[],
-  back = false,
-) => Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles, back }));
+const frames = (player: Player, from: number, count: number, bubbles: readonly Bubble[], back = false) =>
+  Array.from({ length: count }, (_, i) => player.next('playing', from + i * 33, { bubbles, back }));
 
 const waits = (actions: readonly Action[]) => actions.every((action) => action.kind === 'wait');
 
@@ -386,16 +405,16 @@ test('leaves alone what is found once the bubbles have been gone a while, the mo
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
-  frames(player, 3033, 60, [chain]);
+  player.next('playing', 3000, { minigame: true, bubbles: live(chain) });
+  frames(player, 3033, 60, live(chain));
 
   // A moment lost among them is not their end.
   expect(waits(frames(player, 5000, 9, []))).toBe(true);
-  expect(frames(player, 5300, 20, [chain]).every((action) => action.kind === 'swipe')).toBe(true);
+  expect(frames(player, 5300, 20, live(chain)).every((action) => action.kind === 'swipe')).toBe(true);
 
   frames(player, 5960, 42, []);
 
-  expect(waits(frames(player, 7346, 19, [chunk]))).toBe(true);
+  expect(waits(frames(player, 7346, 19, live(chunk)))).toBe(true);
 });
 
 // In a kept run, Close Combat's colour was found on Zamazenta's red body on and off for 1.8s after its bubbles, never
@@ -413,16 +432,16 @@ test('leaves alone what is found once what the minigame hides is back, however c
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
-  frames(player, 3033, 60, [chain]);
+  player.next('playing', 3000, { minigame: true, bubbles: live(chain) });
+  frames(player, 3033, 60, live(chain));
   frames(player, 5013, 9, []);
 
-  expect(frames(player, 5310, 6, [body]).every((action) => action.kind === 'swipe')).toBe(true);
+  expect(frames(player, 5310, 6, live(body)).every((action) => action.kind === 'swipe')).toBe(true);
 
   frames(player, 5508, 9, []);
 
-  expect(waits(frames(player, 5805, 6, [body], true))).toBe(true);
-  expect(waits(frames(player, 6003, 30, [body]))).toBe(true);
+  expect(waits(frames(player, 5805, 6, live(body), true))).toBe(true);
+  expect(waits(frames(player, 6003, 30, live(body)))).toBe(true);
 });
 
 // Live, an Outrage was taken to be playing before its minigame began, the opponent's faint having hidden our buttons,
@@ -439,13 +458,40 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [fight], back: true });
-  frames(player, 3033, 24, [fight], true);
+  player.next('playing', 3000, { minigame: true, bubbles: live(fight), back: true });
+  frames(player, 3033, 24, live(fight), true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
-  expect(frames(player, 6003, 30, [chain]).map((action) => action.kind === 'swipe' && action.from)).toEqual(
-    Array.from({ length: 30 }, () => chain[0]),
-  );
+
+  // Paler than half what was found before `Get Ready!`, the bubbles are judged by their own share.
+  expect(
+    frames(player, 6003, 30, [{ swipe: chain, share: 0.4 }]).map((action) => action.kind === 'swipe' && action.from),
+  ).toEqual(Array.from({ length: 30 }, () => chain[0]));
+});
+
+// Palkia's wing passes for Water's colour washed, and a bubble popped pales before it goes: either can be all that is
+// found on a frame among the bubbles. Waited through, it still has them found, as it did swiped, which `OVER_MS` was
+// measured with.
+test('waits through what is paler than half the bubbles found, though it keeps them found', () => {
+  const player = new Player(SIZE);
+  const chain: [Point, Point] = [
+    [0.17, 0.59],
+    [0.59, 0.51],
+  ];
+  const wing: Bubble = {
+    swipe: [
+      [0.28, 0.32],
+      [0.33, 0.4],
+    ],
+    share: 0.4,
+  };
+
+  play(['charged', 'charged'], player);
+  player.next('playing', 3000, { minigame: true, bubbles: live(chain) });
+  frames(player, 3033, 60, live(chain));
+
+  expect(waits(frames(player, 5013, 20, [wing]))).toBe(true);
+  expect(frames(player, 5673, 5, live(chain)).every((action) => action.kind === 'swipe')).toBe(true);
 });
 
 // Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
@@ -459,13 +505,13 @@ test('keeps the minigame a tap began through the HUD hidden as it begins, but no
 
   play(['charged', 'charged', 'playing', 'other', 'other', 'playing'], hidden);
 
-  expect(hidden.next('playing', 2000, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(hidden.next('playing', 2000, { bubbles: live(chain) })).toMatchObject({ from: chain[0] });
 
   const prompted = new Player(SIZE);
 
   play(['charged', 'charged', 'playing', 'shield', 'other', 'playing'], prompted);
 
-  expect(prompted.next('playing', 2000, { bubbles: [chain] })).toEqual({ kind: 'wait' });
+  expect(prompted.next('playing', 2000, { bubbles: live(chain) })).toEqual({ kind: 'wait' });
 });
 
 // Live, Close Combat played out with the HUD up throughout, and the minigame, still waited on, left 2.6s of the fight
@@ -478,11 +524,11 @@ test('ends the minigame once the fight has held for a moment, though nothing hid
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 1000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 1000, { minigame: true, bubbles: live(chain) });
   player.next('battle', 1033, { bubbles: [] });
   player.next('battle', 1066, { bubbles: [] });
 
-  expect(player.next('playing', 1100, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 1100, { bubbles: live(chain) })).toMatchObject({ from: chain[0] });
 
   const back = Array.from({ length: 11 }, (_, i) => player.next('battle', 5000 + i * 33, { bubbles: [] }));
 
@@ -504,7 +550,7 @@ test('begins a minigame that no tap here began on the frame it is told of, thoug
   player.next('playing', 12_000);
   player.next('battle', 12_033, { minigame: true, bubbles: [] });
 
-  expect(player.next('playing', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 12_066, { bubbles: live(chain) })).toMatchObject({ from: chain[0] });
 });
 
 // Live, an Outrage tapped went unthrown, Kyurem fainting to our fast move, and the shards of its faint read as bubbles.
@@ -513,12 +559,10 @@ test('sweeps rows where bubbles were found only before the throw was taken to be
 
   play(['charged', 'charged'], player);
   player.next('playing', 1500, {
-    bubbles: [
-      [
-        [0.17, 0.59],
-        [0.59, 0.51],
-      ],
-    ],
+    bubbles: live([
+      [0.17, 0.59],
+      [0.59, 0.51],
+    ]),
   });
 
   const late = player.next('playing', 3000, { bubbles: [] });
@@ -534,7 +578,7 @@ test('sweeps rows through a minigame whose bubbles are never found, though the l
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 1000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 1000, { minigame: true, bubbles: live(chain) });
   play(['other', 'battle', 'charged', 'charged'], player, 2000);
 
   // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
@@ -551,7 +595,7 @@ test('fights once told to forget a minigame that is not coming, whatever was fou
   ];
 
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: [chain] });
+  player.next('playing', 3000, { minigame: true, bubbles: live(chain) });
   expect(player.next('playing', 3033, { bubbles: [] })).toEqual({ kind: 'wait' });
 
   player.forget();
@@ -571,9 +615,9 @@ test('waits out the opponent’s move, then swipes a minigame that no tap here b
 
   play(['charged', 'charged', 'shield', 'other'], player);
 
-  expect(player.next('playing', 12_000, { bubbles: [chain] })).toEqual({ kind: 'wait' });
-  expect(player.next('playing', 12_033, { minigame: true, bubbles: [chain] })).toMatchObject({ from: chain[0] });
-  expect(player.next('playing', 12_066, { bubbles: [chain] })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 12_000, { bubbles: live(chain) })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 12_033, { minigame: true, bubbles: live(chain) })).toMatchObject({ from: chain[0] });
+  expect(player.next('playing', 12_066, { bubbles: live(chain) })).toMatchObject({ from: chain[0] });
   expect(player.minigame).toBe(true);
 
   player.next('other', 20_000);

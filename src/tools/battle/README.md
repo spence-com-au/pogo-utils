@@ -119,17 +119,19 @@ for text and done every few seconds.
 - **[`minigame.mts`](minigame.mts)** finds the charged-move minigame's bubbles. They are discs of the thrown move's type
   colour, read off the game's own icon for the type and washed towards white. Each chain of them is swiped along its
   length, the biggest first, though a blob paler than the frame's most saturated comes after the rest: a bubble popped
-  swells and pales before it goes. Where none have been found, rows are swept instead; once some have, since the run
-  took the throw to be [playing](#the-run-loop), a frame with none is left alone, the bubbles being over and the move
-  playing out with nothing to pop. Bubbles found before then may be no minigame's, a faint's shards or a Poké Ball's
-  flash after a tap that came to nothing. Whatever is found once the button to flee the battle or our HP bar, both of
-  which the minigame hides, shows again is left alone too, the move playing out: Outrage's smoke, Avalanche's chunks or
-  Close Combat's colour on Zamazenta's red body. The button is mostly the sooner, read from its first frame fading in,
-  0.1s after Close Combat's last bubble where our bar took 1.64s. `Player` swipes the minigame from a charged-move tap
-  until the throw plays, and from when the run finds a throw playing that no tap began, as where the opponent's move
-  came first. The minigame is over once a frame hides the HUD, though not within 2.5s of the tap, Avalanche's wave of
-  ice hiding it for a moment as it begins, or once the fight's own frames have held for 0.3s, a move sometimes playing
-  out with the HUD up throughout.
+  swells and pales before it goes. One with less than half the share of the most saturated found over the minigame's
+  bubbles is not swiped at all, though it still counts as found: a bubble popped alone on its frame, or Palkia's wing,
+  which passes for Water's colour washed. Where none have been found, rows are swept instead; once some have, since the
+  run took the throw to be [playing](#the-run-loop), a frame with none is left alone, the bubbles being over and the
+  move playing out with nothing to pop. Bubbles found before then may be no minigame's, a faint's shards or a Poké
+  Ball's flash after a tap that came to nothing. Whatever is found once the button to flee the battle or our HP bar,
+  both of which the minigame hides, shows again is left alone too, the move playing out: Outrage's smoke, Avalanche's
+  chunks or Close Combat's colour on Zamazenta's red body. The button is mostly the sooner, read from its first frame
+  fading in, 0.1s after Close Combat's last bubble where our bar took 1.64s. `Player` swipes the minigame from a
+  charged-move tap until the throw plays, and from when the run finds a throw playing that no tap began, as where the
+  opponent's move came first. The minigame is over once a frame hides the HUD, though not within 2.5s of the tap,
+  Avalanche's wave of ice hiding it for a moment as it begins, or once the fight's own frames have held for 0.3s, a move
+  sometimes playing out with the HUD up throughout.
 
 ### Between battles
 
