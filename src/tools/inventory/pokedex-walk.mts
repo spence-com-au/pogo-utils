@@ -19,7 +19,7 @@ import { type Config, type Point } from './config.mts';
 import { readLines } from './detail.mts';
 import { type Form, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, type Line } from '../../core/ocr.mts';
-import { type Image } from '../../core/png.mts';
+import { difference, type Image } from '../../core/png.mts';
 import {
   alertOf,
   caughtFrame,
@@ -103,6 +103,13 @@ const FRAMES = 12;
  * height in a second it went on 14 rows past, and 0.15 in a second and a half it moved the one row the finger did.
  */
 const GRID_DRAG_MS = 2000;
+
+/**
+ * How much of an entry has to change across a swipe for it to have moved, as `difference` measures it below the model.
+ * An entry left where it was still changes by as much as 0.155, the light bands of its backdrop sweeping across it;
+ * scrolled or swiped to another, half of it does.
+ */
+const MOVED = 0.3;
 
 /** One screenshot of the walk's, and its text. */
 interface Shot {
@@ -390,19 +397,36 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    * Swipes from the entry for `dex` to the next or, `back`, to the one before, answering where it landed and its number,
    * or null where the swipe went nowhere twice: the end of the Pokédex that way, a swipe the phone dropped leaving the
    * same screen, so it is made twice before it is believed.
+   *
+   * Only a screen that did not move is swiped again. One that moved and whose title did not read is the next entry read
+   * badly, and a second swipe would go past it to the one after, never reading it: so it is read again, and refused
+   * where it still will not, rather than skipped.
    */
   const step = async (dex: number, back: boolean): Promise<[Shot, number] | null> => {
     const [grab, drop] = config.swipes.next;
+    let before = await settled(device);
 
     for (let attempt = 0; attempt < 2; attempt++) {
       await (back ? drag(drop, grab, 300) : drag(grab, drop, 300));
       await sleep(config.waits.swipe);
-      const after = await shoot(device);
-      const now = dexOn(after.lines, data);
+      let after = await shoot(device);
+      let now = dexOn(after.lines, data);
+      const moved = difference(before, after.image, 0.34, 0.95) > MOVED;
+
+      for (let again = 0; now === null && moved && again < 2; again++) {
+        after = await shoot(device);
+        now = dexOn(after.lines, data);
+      }
 
       if (now !== null && now !== dex) {
         return [after, now];
       }
+
+      if (now === null && moved) {
+        throw new Error(`the entry ${back ? 'before' : 'after'} #${dex} would not read; walk on from it with --from`);
+      }
+
+      before = after.image;
     }
 
     return null;

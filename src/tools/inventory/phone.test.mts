@@ -624,6 +624,12 @@ class Pokedex {
   #list = 0;
   #entry = 0;
   #frame = 0;
+  readonly #entries: readonly (readonly string[])[];
+
+  /** `entries` are the entries a swipe steps along, each its screenshots from its top down. */
+  constructor(entries: readonly (readonly string[])[] = ENTRIES) {
+    this.#entries = entries;
+  }
 
   #shown(): string {
     switch (this.screen) {
@@ -636,7 +642,7 @@ class Pokedex {
       case 'list':
         return `pokedex/${LISTS[this.tab]?.[this.#list]}.png`;
       case 'entry':
-        return `pokedex/${ENTRIES[this.#entry]?.[this.#frame]}.png`;
+        return `pokedex/${this.#entries[this.#entry]?.[this.#frame]}.png`;
     }
   }
 
@@ -692,7 +698,7 @@ class Pokedex {
 
       if (foot) {
         this.screen = 'map';
-      } else if (y > 0.3 && y < 0.36 && tile < ENTRIES.length) {
+      } else if (y > 0.3 && y < 0.36 && tile < this.#entries.length) {
         [this.screen, this.#entry, this.#frame] = ['entry', tile, 0];
       }
     } else if (this.screen === 'list' && y > 0.8 && y < 0.9) {
@@ -710,13 +716,15 @@ class Pokedex {
     if (this.screen === 'entry' && (way === 'left' || way === 'right')) {
       const next = this.#entry + (way === 'left' ? 1 : -1);
 
-      if (next >= 0 && next < ENTRIES.length) {
+      if (next >= 0 && next < this.#entries.length) {
         [this.#entry, this.#frame] = [next, 0];
       }
     } else if (this.screen === 'entry' && way === 'up') {
-      this.#frame = Math.min(this.#frame + 1, (ENTRIES[this.#entry]?.length ?? 1) - 1);
+      this.#frame = Math.min(this.#frame + 1, (this.#entries[this.#entry]?.length ?? 1) - 1);
     } else if (this.screen === 'list' && way === 'up') {
       this.#list = Math.min(this.#list + 1, (LISTS[this.tab]?.length ?? 1) - 1);
+    } else if (this.screen === 'list' && way === 'down') {
+      this.#list = Math.max(this.#list - 1, 0);
     }
   }
 }
@@ -896,6 +904,25 @@ describe('dex', () => {
       expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
       expect(stderr).toContain('Wrote 0 species to pokedex.jsonl');
       expect(existsSync(join(cwd, 'pokedex.jsonl')), 'a line was written for a species outside the range').toBe(false);
+    },
+  );
+
+  /**
+   * A swipe from the third entry that moves the screen to one whose title does not read — the main menu, standing in for
+   * an entry Tesseract makes nothing of. A second swipe would go past it and never read it, so the walk stops there and
+   * says so, the three lines before it kept.
+   */
+  test(
+    'stops on an entry whose title will not read, rather than swiping past it',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex([...ENTRIES, ['menu']]);
+      const { cwd, inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { code, stderr } = await inventory('dex', '--from', '1', '--to', '10');
+
+      expect(code).toBe(1);
+      expect(stderr).toContain('the entry after #3 would not read; walk on from it with --from');
+      expect(linesIn(cwd).map((entry) => entry.dex)).toStrictEqual([1, 2, 3]);
     },
   );
 
