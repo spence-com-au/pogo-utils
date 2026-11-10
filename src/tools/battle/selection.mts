@@ -206,8 +206,13 @@ export async function readPanel(
     return known.length > 0 && fits.size === 1 ? ([...fits][0] ?? null) : null;
   };
 
-  let moves = await readMoves(rows, data, pool(formsOf(data, { species })), panel);
-  let named = species ?? speciesOf(moves);
+  // A Mega shares its dex number with its base form, so the search that proved `species` proves only the dex, and a
+  // Mega's card read as its base form is told by the mega move its panel lists, which names the Mega.
+  const own = formsOf(data, { species });
+  const megas = data.megas.filter((form) => own.some((o) => o.dex === form.dex));
+  let moves = await readMoves(rows, data, pool([...own, ...megas]), panel);
+  const told = megas.find((form) => form.megaMove !== undefined && moves.charged.includes(form.megaMove));
+  let named = told?.species ?? species ?? speciesOf(moves);
 
   // Matched among every move there is: read again among the moves of the species they name, which affords slack the
   // whole list cannot, for a row the first pass lost.

@@ -208,9 +208,12 @@ const megaMewtwoY = (fourth: string, [fast, first, second] = ['Psycho Cut', 'Foc
   });
 
 // Read among the mega moves alone, the row losing its plus is Future Sight+ rather than Armored Mewtwo's Future Sight,
-// and the Mega holding it is named where the silhouette went unread.
+// and the Mega holding it is named where the silhouette went unread, or read its base form, whose dex number the Mega
+// shares.
 test.each([
   ['Future Sight+ 130+26', 'Mega Mewtwo Y'],
+  ['Future Sight+ 130+26', 'Mewtwo'],
+  ['Future Sight 130 26', 'Mewtwo'],
   ['Future Sight+ 130+26', null],
   ['Future Sight 130 26', null],
 ])("reads a Mega's mega move off a fourth row reading %s, the card read as %s", async (fourth, species) => {
