@@ -14,7 +14,7 @@
 
 import { closest, distance, type Form, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, type Line } from '../../core/ocr.mts';
-import { crop, luminance, median, threshold, type Image } from '../../core/png.mts';
+import { crop, luminance, median, rgb, threshold, type Image } from '../../core/png.mts';
 import { GENERATIONS, regionOf } from '../../pokemon/generations.ts';
 
 /**
@@ -114,19 +114,6 @@ const HEADER_TO_TILES = 0.129;
 /** How far below the `Costume` heading the first row of costumes starts. */
 const HEADING_TO_TILES = 0.046;
 
-const at = (image: Image, x: number, y: number) => (Math.round(y) * image.width + Math.round(x)) * 4;
-
-/** One pixel's three channels, or black for one off the image. */
-function pixel(image: Image, x: number, y: number): [number, number, number] {
-  if (x < 0 || y < 0 || x >= image.width || y >= image.height) {
-    return [0, 0, 0];
-  }
-
-  const p = at(image, x, y);
-
-  return [image.data[p] ?? 0, image.data[p + 1] ?? 0, image.data[p + 2] ?? 0];
-}
-
 /** How far apart two colours are, summed over the channels. */
 const apart = (a: readonly number[], b: readonly number[]) =>
   Math.abs((a[0] ?? 0) - (b[0] ?? 0)) + Math.abs((a[1] ?? 0) - (b[1] ?? 0)) + Math.abs((a[2] ?? 0) - (b[2] ?? 0));
@@ -143,7 +130,7 @@ function inked(image: Image, keep: (rgb: [number, number, number]) => boolean): 
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const value = keep(pixel(image, x * 2, y * 2)) ? 0 : 255;
+      const value = keep(rgb(image, x * 2, y * 2)) ? 0 : 255;
 
       data.set([value, value, value, 255], (y * width + x) * 4);
     }
@@ -206,7 +193,7 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
 
   // Far enough in to be past the white frame round the form showing, and the tile's own rounded edge.
   for (let x = box.left + box.width * 0.4; x < box.left + box.width * 0.9; x += step) {
-    strip.push(pixel(image, x, box.top + box.height * 0.07));
+    strip.push(rgb(image, x, box.top + box.height * 0.07));
   }
 
   const backdrop = [0, 1, 2].map((c) => median(strip.map((p) => p[c] ?? 0)));
@@ -217,7 +204,7 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
   // pass for a dark patch of an icon.
   for (let y = box.top + box.height * 0.25; y < box.top + box.height * 0.82; y += step) {
     for (let x = box.left + box.width * 0.1; x < box.left + box.width * 0.9; x += step) {
-      const p = pixel(image, x, y);
+      const p = rgb(image, x, y);
       asked++;
 
       if (apart(p, backdrop) > 45) {
@@ -375,7 +362,7 @@ export function rowsBetween(image: Image, from: number, to: number): number[] {
   let run: number | null = null;
 
   for (let y = Math.max(0, from); y < Math.min(image.height, to); y += 2) {
-    const tile = pixel(image, inside, y)[0] - pixel(image, gap, y)[0] > 10;
+    const tile = rgb(image, inside, y)[0] - rgb(image, gap, y)[0] > 10;
 
     if (tile && run === null) {
       run = y;
@@ -436,7 +423,7 @@ export interface FormTile {
  */
 export function formsOn(image: Image, from: number, to: number): FormTile[] {
   const margin = image.width * 0.03;
-  const pale = (x: number, y: number) => pixel(image, x, y)[0] - pixel(image, margin, y)[0] > 10;
+  const pale = (x: number, y: number) => rgb(image, x, y)[0] - rgb(image, margin, y)[0] > 10;
   const step = 4;
   const rows: [number, number][] = [];
   let run: number | null = null;
@@ -507,7 +494,7 @@ export function formsOn(image: Image, from: number, to: number): FormTile[] {
 
 /** Whether a form tile wears the white frame of the form showing, down the middle of its left edge. */
 export const framed = (image: Image, box: Box) =>
-  Array.from({ length: 8 }, (_, i) => pixel(image, box.left + 2, box.top + box.height * (0.3 + i * 0.05))).every(
+  Array.from({ length: 8 }, (_, i) => rgb(image, box.left + 2, box.top + box.height * (0.3 + i * 0.05))).every(
     (p) => Math.min(...p) >= 215,
   );
 
@@ -526,7 +513,7 @@ export async function labelsOf(image: Image, tiles: readonly FormTile[]): Promis
 
       for (let y = top; y < top + height; y += 3) {
         for (let x = box.left; x < box.left + box.width; x += 3) {
-          white += Number(Math.min(...pixel(image, x, y)) >= 220);
+          white += Number(Math.min(...rgb(image, x, y)) >= 220);
         }
       }
 
@@ -547,6 +534,9 @@ export interface Genders {
   male?: boolean;
   female?: boolean;
 }
+
+/** The entry's title line, `0052 MEOWTH`, by `TITLE`: the line `dexOn` reads, and the top of the form row. */
+export const titleOf = (lines: readonly Line[]) => lines.find((l) => TITLE.test(fold(l.text)));
 
 /** The line under the row of gender and type icons that only it carries, `ALERT OFF` or `ALERT ON`. */
 export const alertOf = (lines: readonly Line[]) => lines.find((l) => /^alert\b/.test(fold(l.text)));
@@ -585,7 +575,7 @@ export function gendersOn(image: Image, lines: readonly Line[]): Genders {
   const middle = alert.top - image.width * ALERT_TO_ICONS;
   const reach = image.width * 0.04;
   const step = 2;
-  const backdrop = pixel(image, image.width * 0.02, middle);
+  const backdrop = rgb(image, image.width * 0.02, middle);
   const icons: Mark[][] = [];
   let last = -Infinity;
 
@@ -593,7 +583,7 @@ export function gendersOn(image: Image, lines: readonly Line[]): Genders {
     const marks: Mark[] = [];
 
     for (let y = middle - reach; y < middle + reach; y += step) {
-      const seen = pixel(image, x, y);
+      const seen = rgb(image, x, y);
 
       if (apart(seen, backdrop) >= 60) {
         marks.push({ x, y, white: Math.min(...seen) >= 200 });
@@ -646,7 +636,7 @@ function solid(image: Image, marks: readonly Mark[]): 'male' | 'female' | null {
   let red = 0;
 
   for (const { x, y } of marks) {
-    const [r, g, b] = pixel(image, x, y);
+    const [r, g, b] = rgb(image, x, y);
 
     blue += Number(b > r + 70 && Math.min(r, g, b) < 200);
     red += Number(r > g + 80);
@@ -711,7 +701,7 @@ export async function listLines(image: Image): Promise<Line[]> {
   const width = Math.floor(image.width / 4);
   const height = Math.floor(image.height / 2);
   const data = new Uint8Array(width * height * 4).fill(255);
-  const bright = (x: number, y: number) => brightness(pixel(image, x, y));
+  const bright = (x: number, y: number) => brightness(rgb(image, x, y));
 
   for (let y = 0; y < height; y++) {
     let light = 0;
@@ -841,13 +831,13 @@ export function iconIn(
   look: Look,
   candidates: readonly Candidate[],
 ): string | null | undefined {
-  const [first, second] = ranked(image, box, frame, look, candidates);
+  return namedFrom(ranked(image, box, frame, look, candidates));
+}
 
-  if (!first || (second && first.cost > second.cost * NAMED_BY)) {
-    return undefined;
-  }
-
-  return first.name;
+/** The name a ranking settles on: its first, where that is plainly nearer than its second, and undefined where not. */
+export function namedFrom([first, second]: readonly { name: string | null; cost: number }[]):
+  string | null | undefined {
+  return !first || (second && first.cost > second.cost * NAMED_BY) ? undefined : first.name;
 }
 
 /** Every candidate with how far the tile is from its icon, nearest first, which is what `iconIn` decides on. */
@@ -862,7 +852,7 @@ export function ranked(
     return [];
   }
 
-  const backdrop = pixel(image, box.left + box.width * 0.6, box.top + box.height * 0.07);
+  const backdrop = rgb(image, box.left + box.width * 0.6, box.top + box.height * 0.07);
 
   // A tile placed off its header or its label can sit a dozen pixels from where the frame says: coarsely over that,
   // then a pixel at a time round the best. Unown's N, laid at most 9 pixels off, came out 26 from its own icon where
@@ -918,7 +908,7 @@ function costOf(
     for (let u = 0; u < size; u += step) {
       const ip = (Math.floor(v * ratio) * icon.width + Math.floor(u * ratio)) * 4;
       const opaque = (icon.data[ip + 3] ?? 0) >= 250;
-      const seen = pixel(image, left + u, top + v);
+      const seen = rgb(image, left + u, top + v);
 
       if (look === 'silhouette') {
         // Shape alone: a pixel costs where the icon and the silhouette disagree about whether it is inside.

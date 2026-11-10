@@ -37,10 +37,12 @@ import {
   labelsOf,
   listLines,
   lookOf,
+  namedFrom,
   pokedexLines,
   ranked,
   regionIn,
   seeAllOf,
+  titleOf,
   LAST,
   SIZES,
   UNIDENTIFIED,
@@ -466,8 +468,9 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
         }
 
         const look = lookOf(image, box);
-        const costs = ranked(image, box, caughtFrame(image, box), look, wardrobe).map((r) => r.cost);
-        const byIcon = iconIn(image, box, caughtFrame(image, box), look, wardrobe);
+        const ranking = ranked(image, box, caughtFrame(image, box), look, wardrobe);
+        const costs = ranking.map((r) => r.cost);
+        const byIcon = namedFrom(ranking);
 
         // The same costume seen in two screenshots: by its name where it has one, and by being as far from every icon
         // as one already read where it has none.
@@ -522,7 +525,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     const species = formsOf(dex)[0]?.species ?? data.forms.find((f) => f.dex === dex)?.species ?? String(dex);
     const notes: string[] = [];
     const tag = String(dex).padStart(4, '0');
-    const title = top.lines.find((l) => /(?<!\d)\d{4}\s+[a-z]/.test(fold(l.text)));
+    const title = titleOf(top.lines);
     const alert = alertOf(top.lines);
     const from = title ? title.top + title.height : top.image.height * 0.42;
     const to = alert ? alert.top - top.image.width * 0.12 : top.image.height * 0.89;
@@ -555,7 +558,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       await drag([SCROLL_STRIP, 0.6], [SCROLL_STRIP, 0.4], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
       const lower = await shoot(device);
-      const moved = lower.lines.find((l) => /(?<!\d)\d{4}\s+[a-z]/.test(fold(l.text)));
+      const moved = titleOf(lower.lines);
       const below = alertOf(lower.lines);
 
       if (moved) {
@@ -612,7 +615,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
           await sleep(config.waits.scroll);
           scrolled = true;
           shot = await shoot(device);
-          const titleAfter = shot.lines.find((l) => /(?<!\d)\d{4}\s+[a-z]/.test(fold(l.text)))?.top;
+          const titleAfter = titleOf(shot.lines)?.top;
           y -= titleBefore - (titleAfter ?? titleBefore);
         }
 

@@ -17,6 +17,7 @@ import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useEngine, type Line } from '../../core/ocr.mts';
 import { decodePng, type Image } from '../../core/png.mts';
 import {
+  alertOf,
   caughtFrame,
   caughtOn,
   costumesOn,
@@ -29,6 +30,7 @@ import {
   labelsOf,
   listLines,
   pokedexLines,
+  titleOf,
   type Candidate,
   type Category,
   type Look,
@@ -196,8 +198,8 @@ test('the genders an entry draws, solid where registered and dashed where not', 
 /** The form row's tiles between the title and the row of icons, as the walk bounds it. */
 async function formRow(name: string) {
   const { image, lines: found } = await read(name);
-  const title = found.find((l) => /\d{4} [A-Z]/.test(l.text));
-  const alert = found.find((l) => /^ALERT/.test(l.text));
+  const title = titleOf(found);
+  const alert = alertOf(found);
   const tiles = formsOn(
     image,
     title ? title.top + title.height : 0,
