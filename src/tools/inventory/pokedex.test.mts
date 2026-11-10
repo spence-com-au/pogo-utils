@@ -31,6 +31,7 @@ import {
   listLines,
   pokedexLines,
   regionsButtonOf,
+  silhouettesNamed,
   titleOf,
   type Candidate,
   type Category,
@@ -280,6 +281,30 @@ test("a form is named by its own tile's icon", async () => {
   expect(await ownForm('meowth-alola-1', 52)).toBe('Alola');
   expect(await ownForm('meowth-galar-1', 52)).toBe('Galarian');
   expect(await ownForm('unown-3', 201)).toBe('G');
+});
+
+/** The silhouettes of a form row, named as the walk names them, `named` being the forms already registered. */
+async function silhouettes(name: string, dex: number, named: readonly (string | null)[]) {
+  const { image } = await read(name);
+  const { tiles, labels } = await formRow(name);
+  const forms = DATA.forms.filter((f) => f.dex === dex && !f.costume);
+  const found = tiles.flatMap(({ box, look }, index) =>
+    look === 'silhouette' ? [{ index, image, box, label: labels[index] ?? null }] : [],
+  );
+
+  return silhouettesNamed(found, forms, formsOf(dex), named);
+}
+
+/**
+ * Unown's 14 letters not registered on the entry as it opens, each named by its own silhouette, as the phone drew them:
+ * the letters run A to T in rows of five, and G, H, M, N, P and S, whose eyes are drawn white, are the ones registered.
+ * The last column's tiles are cut short by the panel docked at the screen's edge, which E, J and O are named past.
+ */
+test("each of Unown's silhouetted letters is named by its own shape", async () => {
+  const { forms, notes } = await silhouettes('unown-0', 201, ['G', 'H', 'M', 'N', 'P', 'S']);
+
+  expect(forms.map((f) => f.form)).toStrictEqual([...'ABCDEFIJKLOQRT']);
+  expect(notes).toStrictEqual([]);
 });
 
 /** The costumes on one screenshot, named among `candidates`, undefined where none is plainly nearest. */

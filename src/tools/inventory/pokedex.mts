@@ -838,13 +838,15 @@ export const caughtFrame = (image: Image, box: Box): Frame => {
 };
 
 /**
- * The icon's frame in a tile of the form row, which draws it at 0.862 of the 256 pixels, as wide as the tile itself and
- * starting 7 pixels of the 1440 above it: fitted to Alolan Meowth's tile on `meowth-0.png`.
+ * The icon's frame in a tile of the form row, which draws it at 0.862 of the 256 pixels, as wide as a tile and starting
+ * 7 pixels of the 1440 above it: fitted to Alolan Meowth's tile on `meowth-0.png`. As wide as a tile is drawn rather
+ * than as the tile was found, since the panel docked at the screen's right edge cuts short the tiles under it: Unown's
+ * E, J and O are found 204 pixels wide on `unown-0.png`, where every other tile is 216 or 220.
  */
 export const formFrame = (image: Image, box: Box): Frame => ({
   left: box.left,
   top: box.top - image.width * 0.005,
-  size: box.width,
+  size: image.width * 0.153,
 });
 
 /**
@@ -853,8 +855,11 @@ export const formFrame = (image: Image, box: Box): Frame => ({
  *
  * The game draws the icon itself, scaled into `frame`, so each candidate is laid where the game would draw it and
  * compared pixel for pixel over its opaque pixels, a few pixels either way for the drawing's rounding. A silhouette is
- * compared by shape instead, the candidate's opaque pixels against the tile's dark ones, since its colours are not
- * there to compare.
+ * compared by its outline instead, since its colours are not there to compare: how far each of the tile's dark pixels
+ * lies from the candidate's nearest, and each of the candidate's from the tile's nearest. Its area would not do: the
+ * game draws a silhouette a pixel or two fatter than the icon, and Unown's letters, a thin stroke round a disc about
+ * 50 pixels of the 1440 across, differ by less area than that. By area, 9 of the 14 silhouetted letters on
+ * `unown-0.png` came out nearer another letter than their own, and the other 5 too near the next to be named.
  */
 export function iconIn(
   image: Image,
@@ -891,6 +896,25 @@ export function ranked(
 
   const backdrop = rgb(image, box.left + box.width * 0.6, box.top + box.height * 0.07);
 
+  // A silhouette is the backdrop darkened, so its outline is what is darker than the backdrop: not the tile's own pale
+  // edge, and nothing outside the tile, where the panel docked at the screen's edge is as dark as any silhouette. A few
+  // pixels inside it, too, since `formsOn` finds a tile's edges 4 pixels at a time: E's, J's and O's boxes on
+  // `unown-0.png` take in the panel's first 2, which put each of them at least 8 times as far from its own icon as any
+  // other letter was from its own.
+  const dark = brightness(backdrop) - DARKER;
+  const inset = image.width * 0.003;
+  const inner = {
+    left: box.left + inset,
+    top: box.top + inset,
+    width: box.width - inset * 2,
+    height: box.height - inset * 2,
+  };
+  const tile =
+    look === 'silhouette'
+      ? shapeOf(inner, (x, y) => brightness(rgb(image, inner.left + x, inner.top + y)) < dark)
+      : null;
+  const cap = image.width * 0.007;
+
   // A tile placed off its header or its label can sit a dozen pixels from where the frame says: coarsely over that,
   // then a pixel at a time round the best. Unown's N, laid at most 9 pixels off, came out 26 from its own icon where
   // M's came out 10.
@@ -899,8 +923,17 @@ export function ranked(
 
   return candidates
     .map(({ name, icon }) => {
+      const ratio = icon.width / frame.size;
+      const drawn =
+        tile &&
+        shapeOf(
+          { left: frame.left, top: frame.top, width: frame.size, height: frame.size },
+          (x, y) => (icon.data[(Math.floor(y * ratio) * icon.width + Math.floor(x * ratio)) * 4 + 3] ?? 0) >= COVERED,
+        );
       const off = (dx: number, dy: number) =>
-        costOf(image, icon, frame.left + dx, frame.top + dy, frame.size, look, backdrop);
+        tile && drawn
+          ? outlineCost(tile, drawn, dx, dy, cap)
+          : costOf(image, icon, frame.left + dx, frame.top + dy, frame.size);
       let best = { cost: Infinity, dx: 0, dy: 0 };
 
       for (let dy = -reach; dy <= reach; dy += stride) {
@@ -927,15 +960,7 @@ export function ranked(
 }
 
 /** How far the tile is from `icon` drawn `size` wide at `left`, `top`: a mean over the icon's opaque pixels. */
-function costOf(
-  image: Image,
-  icon: Image,
-  left: number,
-  top: number,
-  size: number,
-  look: Look,
-  backdrop: readonly number[],
-): number {
+function costOf(image: Image, icon: Image, left: number, top: number, size: number): number {
   const ratio = icon.width / size;
   const step = Math.max(1, Math.round(size / 96));
   let total = 0;
@@ -947,12 +972,7 @@ function costOf(
       const opaque = (icon.data[ip + 3] ?? 0) >= 250;
       const seen = rgb(image, left + u, top + v);
 
-      if (look === 'silhouette') {
-        // Shape alone: a pixel costs where the icon and the silhouette disagree about whether it is inside.
-        const inside = apart(seen, backdrop) > 45;
-        total += Number(inside !== opaque);
-        n++;
-      } else if (opaque) {
+      if (opaque) {
         total += apart(seen, [icon.data[ip] ?? 0, icon.data[ip + 1] ?? 0, icon.data[ip + 2] ?? 0]) / 3;
         n++;
       }
@@ -960,6 +980,87 @@ function costOf(
   }
 
   return n === 0 ? Infinity : total / n;
+}
+
+/**
+ * How much darker than its backdrop, by `brightness`, a pixel has to be to be inside a silhouette: half as dark as a
+ * silhouette's middle, which is 82 to 96 darker on `unown-0.png`, so an anti-aliased edge counts where half covered.
+ */
+const DARKER = 45;
+
+/** How opaque, of 255, a pixel of an icon has to be to be inside its silhouette: half, as `DARKER` asks of the tile. */
+const COVERED = 128;
+
+/** A shape over a box of the screen: the pixels inside it, and how far every pixel of the box is from the nearest. */
+interface Shape {
+  box: Box;
+  width: number;
+  points: number[];
+  gaps: Float32Array;
+}
+
+/**
+ * The shape `inside` draws over `box`, asked of each pixel by where it lies in the box. Every pixel's gap is found in
+ * two passes, each taking the nearest of its own and its neighbours' already passed over, plus the step to them: 1
+ * straight and √2 diagonally, which is near enough the true distance over the few pixels a gap is ever counted to.
+ */
+function shapeOf(box: Box, inside: (x: number, y: number) => boolean): Shape {
+  const width = Math.round(box.width);
+  const height = Math.round(box.height);
+  const gaps = new Float32Array(width * height).fill(Infinity);
+  const points: number[] = [];
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (inside(x, y)) {
+        gaps[y * width + x] = 0;
+        points.push(y * width + x);
+      }
+    }
+  }
+
+  // Off the top or the foot is past the array's ends, and so undefined; off either side would wrap to the next row.
+  const at = (x: number, y: number) => (x < 0 || x >= width ? Infinity : (gaps[y * width + x] ?? Infinity));
+
+  for (const down of [true, false]) {
+    const by = down ? 1 : -1;
+
+    for (let y = down ? 0 : height - 1; y >= 0 && y < height; y += by) {
+      for (let x = down ? 0 : width - 1; x >= 0 && x < width; x += by) {
+        gaps[y * width + x] = Math.min(
+          at(x, y),
+          at(x - by, y) + 1,
+          at(x, y - by) + 1,
+          at(x - by, y - by) + Math.SQRT2,
+          at(x + by, y - by) + Math.SQRT2,
+        );
+      }
+    }
+  }
+
+  return { box, width, points, gaps };
+}
+
+/**
+ * How far apart a tile's shape and an icon's are with the icon moved `dx`, `dy`: over each one's pixels, the mean of
+ * how far the other's nearest lies, each at most `cap`, so a stray pixel with no counterpart costs no more than one a
+ * little off.
+ */
+function outlineCost(tile: Shape, icon: Shape, dx: number, dy: number, cap: number): number {
+  const from = (a: Shape, b: Shape, offset: { x: number; y: number }) => {
+    let total = 0;
+
+    for (const i of a.points) {
+      const x = Math.round(a.box.left + (i % a.width) + offset.x - b.box.left);
+      const y = Math.round(a.box.top + Math.floor(i / a.width) + offset.y - b.box.top);
+
+      total += x < 0 || x >= b.width ? cap : Math.min(cap, b.gaps[y * b.width + x] ?? cap);
+    }
+
+    return a.points.length === 0 ? Infinity : total / a.points.length;
+  };
+
+  return from(icon, tile, { x: dx, y: dy }) + from(tile, icon, { x: -dx, y: -dy });
 }
 
 /**
@@ -977,4 +1078,62 @@ export function formLabelled(label: string, forms: readonly Form[]): Form | null
   );
 
   return sharing.length === 1 ? (sharing[0] ?? null) : null;
+}
+
+/** A silhouette of the form row: which of the row's tiles it is, and where it was found, on which screenshot. */
+export interface Silhouette {
+  index: number;
+  image: Image;
+  box: Box;
+  label: string | null;
+}
+
+/**
+ * Which of a species' forms each of its silhouettes is, `named` being the forms its registered tiles already are: by
+ * label, then by shape among the forms not yet named, then by being the forms left once every other is.
+ */
+export function silhouettesNamed(
+  silhouettes: readonly Silhouette[],
+  forms: readonly Form[],
+  shapes: readonly Candidate[],
+  named: Iterable<string | null>,
+): { forms: { index: number; form: Named }[]; notes: string[] } {
+  const taken = new Set(named);
+  const found: { index: number; form: Named }[] = [];
+  const notes: string[] = [];
+  const unnamed: number[] = [];
+
+  for (const { index, image, box, label } of silhouettes) {
+    const byLabel = label === null ? null : formLabelled(label, forms);
+    const form = byLabel
+      ? byLabel.form
+      : iconIn(
+          image,
+          box,
+          formFrame(image, box),
+          'silhouette',
+          shapes.filter((c) => !taken.has(c.name)),
+        );
+
+    if (form === undefined) {
+      unnamed.push(index);
+    } else {
+      taken.add(form);
+      found.push({ index, form });
+    }
+  }
+
+  const left = forms.filter((f) => !taken.has(f.form));
+
+  for (const [i, index] of unnamed.entries()) {
+    const form = left.length === unnamed.length ? (left[i]?.form ?? null) : { unidentified: index + 1 };
+
+    if (typeof form === 'object' && form !== null) {
+      notes.push(`form ${index + 1} is a silhouette that neither its label nor its shape names`);
+    }
+
+    found.push({ index, form });
+  }
+
+  return { forms: found, notes };
 }
