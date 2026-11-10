@@ -75,6 +75,12 @@ export interface Form {
    * neither shadow nor purified is the one thing that can rule them out.
    */
   shadowOnly: boolean;
+
+  /**
+   * The charged move a Mega holds beside the two it was taught, which it always has: Mega Mewtwo Y's Future Sight+, the
+   * game drawing it a third button. Absent on every other form, and on the 44 Megas the game master gives none.
+   */
+  megaMove?: string;
 }
 
 export interface Move {
@@ -138,6 +144,14 @@ export interface GameData {
   moves: Move[];
   species: string[];
   types: string[];
+
+  /**
+   * Every Mega Evolution and Primal Reversion, each a form of its own and named as the game names it, `Mega Mewtwo Y`
+   * and `Primal Kyogre`: its own stats and types, its base form's moves and its `megaMove`. Apart from `forms`, which
+   * `pnpm inventory` identifies a Pokémon in storage against and has never been checked against a Mega; a trainer
+   * battle fields them, in `Master League: Mega`.
+   */
+  megas: Form[];
 
   /** Every level from 1 to `MAX_LEVEL` in half steps, against its CP multiplier. */
   cpm: [number, number][];

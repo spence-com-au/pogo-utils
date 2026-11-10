@@ -60,6 +60,32 @@ test.each([
   expect([sighting.own, sighting.moves]).toEqual(['Xerneas', moves]);
 });
 
+// Both sides' Mega Mewtwo Y, its name run into its CP in one line, `Mega Mewtwo ¥ CP 7267` and `CP 7267 Mega Mewtwo ¥`,
+// the Y read as `¥`. Its moves are left out: its third button, Future Sight+, is drawn where no button is looked for.
+test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
+  const { own, ownCp, opponent, opponentCp } = await read('battle-pixel8-mega-mewtwo-y');
+
+  expect({ own, ownCp, opponent, opponentCp }).toEqual({
+    own: 'Mega Mewtwo Y',
+    ownCp: 7267,
+    opponent: 'Mega Mewtwo Y',
+    opponentCp: 7267,
+  });
+});
+
+// Nidoran♀ and Nidoran♂ are one name folded, and no read tells them apart, so the first of them stands, as it did before
+// a tie named neither.
+test.each<[string, string, string | null, string | null, string]>([
+  ['Mega Mewtwo CP 7267', 'CP 7267 Mega Mewtwo', null, null, 'as near Mega Mewtwo X as Y names neither'],
+  ['Nidoran CP 512', 'CP 7267 Mega Mewtwo ¥', 'Nidoran♀', 'Mega Mewtwo Y', 'a pair one name folded names the first'],
+])('%j and %j read as %j and %j: %s', async (own, opponent, ownName, opponentName) => {
+  const image = decodePng(readFileSync(new URL('fixtures/battle-pixel8-mega-mewtwo-y.png', import.meta.url)));
+  const line = (text: string, left: number): Line => ({ text, left, top: 0, width: 100, height: 20 });
+  const sighting = await readBattle(image, DATA, () => Promise.resolve([line(own, 0), line(opponent, 450)]));
+
+  expect([sighting.own, sighting.opponent]).toEqual([ownName, opponentName]);
+});
+
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
   expect(await read('playing-minigame-kyogre-great')).toEqual({
     ...unseen(),

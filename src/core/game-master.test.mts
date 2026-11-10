@@ -42,16 +42,17 @@ const iv = (attack: number, defense: number, stamina: number) => ({ attack, defe
  * cast above is unchecked and this is the only thing standing behind it.
  *
  * Expect these to move when upstream releases a species, and read that as the vend being reviewed rather than as the
- * suite breaking: `pnpm vend:game-master` prints exactly these five figures as it writes the file.
+ * suite breaking: `pnpm vend:game-master` prints exactly these six figures as it writes the file.
  */
 test('the vended game master is the shape the readers are asserted against', () => {
   expect({
     forms: DATA.forms.length,
     species: DATA.species.length,
+    megas: DATA.megas.length,
     moves: DATA.moves.length,
     types: DATA.types.length,
     cpm: DATA.cpm.length,
-  }).toStrictEqual({ forms: 1473, species: 1024, moves: 329, types: 18, cpm: 101 });
+  }).toStrictEqual({ forms: 1473, species: 1024, megas: 63, moves: 348, types: 18, cpm: 101 });
 });
 
 /**

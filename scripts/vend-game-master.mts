@@ -40,6 +40,6 @@ const options = await prettier.resolveConfig(GAME_MASTER);
 writeFileSync(GAME_MASTER, await prettier.format(JSON.stringify(data), { ...options, filepath: GAME_MASTER }));
 
 console.error(
-  `${GAME_MASTER}: ${data.forms.length} forms over ${data.species.length} species, ${data.moves.length} moves, ` +
-    `${data.types.length} types, ${data.cpm.length} levels`,
+  `${GAME_MASTER}: ${data.forms.length} forms over ${data.species.length} species, ${data.megas.length} Megas, ` +
+    `${data.moves.length} moves, ${data.types.length} types, ${data.cpm.length} levels`,
 );
