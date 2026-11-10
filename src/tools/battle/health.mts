@@ -440,36 +440,45 @@ export interface Health {
 const before = (strip: Strip, other: Strip | undefined) =>
   !other || (strip.rejoined === other.rejoined ? strip.left < other.left : other.rejoined);
 
+/** Whether one strip lies wholly above the other: never one bar's fill, which is too thin to hold both. */
+const apart = (a: Strip, b: Strip) => a.top + a.rights.length <= b.top || b.top + b.rights.length <= a.top;
+
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
  * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`
  * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one taken is the bar by
  * `before`, unless it lies `outside` the bar.
+ *
+ * Two on rows apart are two bars, or a bar and artwork, and neither is read. As the camera swings through a charged
+ * move it carries our bar to where the opponent's starts, and the two lie there in either order: at 225.630s of the
+ * kept run `2026-11-01-master` our Kyogre's bar lay 37 rows above Sylveon's, and a picture later 4 below it. Of the
+ * 546,449 pictures of the 27 GO Battle League runs kept with video, taking the one further left, or the one found
+ * whole, read ours as theirs on 108.
  */
 export function readHealth(image: Image): Health {
   const unit = image.width / 360;
   const health: Health = { own: null, opponent: null };
-  const taken: Partial<Record<keyof Health, Strip>> = {};
   const found = strips(image);
   const all = found.filter(({ rights }) => rights.length >= THICK.least * unit && rights.length <= THICK.most * unit);
+  const fraction = (strip: Strip) => (rightOf(strip) - strip.left) / (FULL * image.width);
 
-  for (const strip of all) {
-    const left = strip.left / image.width;
-    const fraction = (rightOf(strip) - strip.left) / (FULL * image.width);
-    const side = (['own', 'opponent'] as const).find((s) => left >= STARTS[s][0] && left <= STARTS[s][1]);
+  for (const side of ['own', 'opponent'] as const) {
+    const [least, most] = STARTS[side];
+    const bars = all.filter(
+      (strip) =>
+        strip.left >= least * image.width &&
+        strip.left <= most * image.width &&
+        fraction(strip) <= 1.03 &&
+        framed(image, strip) &&
+        !outside(image, strip, strip.rejoined ? found : all, side),
+    );
+    const bar = bars.reduce<Strip | undefined>((taken, strip) => (before(strip, taken) ? strip : taken), undefined);
 
-    if (
-      side &&
-      fraction <= 1.03 &&
-      before(strip, taken[side]) &&
-      framed(image, strip) &&
-      !outside(image, strip, strip.rejoined ? found : all, side)
-    ) {
+    if (bar && !bars.some((other) => apart(bar, other))) {
       health[side] =
-        covered(image, strip) || cut(image, strip, all) || (strip.fill !== 'red' && fraction < LIT)
+        covered(image, bar) || cut(image, bar, all) || (bar.fill !== 'red' && fraction(bar) < LIT)
           ? null
-          : Math.min(1, fraction);
-      taken[side] = strip;
+          : Math.min(1, fraction(bar));
     }
   }
 
