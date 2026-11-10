@@ -217,6 +217,29 @@ test('the CAUGHT tile showing wears the frame, a silhouetted SHINY the game sele
 });
 
 /**
+ * A band of the backdrop's light across part of a tile, which the game sweeps down the Pokédex and the tiles are
+ * translucent over. On `unown-band-1`, Unown's own tile and SHINY are registered letters, black with a white eye, under
+ * a light band along their tops. `unown-band-0` is its entry at the top, the four forms with a white eye registered and
+ * the rest silhouettes, the five from the sixteenth on crossed by bands through their middles.
+ *
+ * The form row's second row is not there to read: PGSharp's star button over the screen's left margin, which `formsOn`
+ * takes the backdrop's colour from, hides it (#1059).
+ */
+test('a band of light across a tile leaves what it holds as it is', async () => {
+  expect(await tilesOf('unown-band-1')).toStrictEqual({
+    own: 'icon',
+    shiny: 'icon',
+    perfect: 'silhouette',
+    lucky: 'silhouette',
+  });
+
+  const forms = (await formRow('unown-band-0')).tiles.map((t) => t.look);
+
+  expect(forms.flatMap((look, i) => (look === 'icon' ? [i + 1] : []))).toStrictEqual([8, 9, 11, 14]);
+  expect(forms).toHaveLength(23);
+});
+
+/**
  * Each way the game draws genders: both registered, one of two not — Ivysaur's ♀ dashed — both seen and neither caught,
  * one gender alone either way round, and Unown's ring, which is no gender at all.
  */
