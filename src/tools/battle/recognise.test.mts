@@ -101,6 +101,7 @@ const fleeing = [
   'playing-banner-avalanche',
   'playing-banner-gardevoir',
   'playing-banner-ursaluna',
+  'playing-dragonite-bench-card',
   'playing-flee-avalanche',
   'playing-flee-fading-avalanche',
   'playing-ready-cloud',
