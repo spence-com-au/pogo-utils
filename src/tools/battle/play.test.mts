@@ -457,15 +457,17 @@ test('swipes the bubbles of a minigame taken to be playing before it began', () 
     [0.59, 0.51],
   ];
 
+  const found = [{ swipe: fight, share: 1.15 }];
+
   play(['charged', 'charged'], player);
-  player.next('playing', 3000, { minigame: true, bubbles: live(fight), back: true });
-  frames(player, 3033, 24, live(fight), true);
+  player.next('playing', 3000, { minigame: true, bubbles: found, back: true });
+  frames(player, 3033, 24, found, true);
 
   expect(waits(frames(player, 3825, 66, []))).toBe(true);
 
   // Paler than half what was found before `Get Ready!`, the bubbles are judged by their own share.
   expect(
-    frames(player, 6003, 30, [{ swipe: chain, share: 0.4 }]).map((action) => action.kind === 'swipe' && action.from),
+    frames(player, 6003, 30, [{ swipe: chain, share: 0.55 }]).map((action) => action.kind === 'swipe' && action.from),
   ).toEqual(Array.from({ length: 30 }, () => chain[0]));
 });
 
@@ -492,6 +494,59 @@ test('waits through what is paler than half the bubbles found, though it keeps t
 
   expect(waits(frames(player, 5013, 20, [wing]))).toBe(true);
   expect(frames(player, 5673, 5, live(chain)).every((action) => action.kind === 'swipe')).toBe(true);
+});
+
+/**
+ * Palkia's wing at night, alone on the frame, as it was for a quarter of a second before the first bubble of Spacial
+ * Rend and of Aqua Tail, with nothing yet found to judge it by; then Aqua Tail's bubbles.
+ */
+test('waits through Palkia’s wing found before the first bubble', () => {
+  const player = new Player({ width: 360, height: 802 });
+  const water = typeColour(png('types/POKEMON_TYPE_WATER'));
+  const [wing, bubbles] = ['playing-minigame-palkia-wing', 'playing-minigame-palkia-before'].map((name) =>
+    bubbleSwipes(png(name), water),
+  );
+
+  play(['charged', 'charged'], player);
+
+  expect(wing).not.toEqual([]);
+  expect(player.next('playing', 1000, { minigame: true, bubbles: wing })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 1100, { bubbles })).toMatchObject({ kind: 'swipe' });
+});
+
+// A bubble swiped swells and pales where it was before it goes: on a frame of Close Combat, two so popped were all that
+// was found, at 0.6 of Fighting's share. Another found there as saturated as the one swiped is a bubble come since, and
+// one paler elsewhere is no bubble swiped.
+test('waits through a bubble it popped found alone, but not through another found where it was', () => {
+  const player = new Player(SIZE);
+  const bubble: [Point, Point] = [
+    [0.4, 0.6],
+    [0.6, 0.6],
+  ];
+  const popped: Bubble = {
+    swipe: [
+      [0.38, 0.61],
+      [0.66, 0.62],
+    ],
+    share: 0.6,
+  };
+  const elsewhere: Bubble = {
+    swipe: [
+      [0.2, 0.85],
+      [0.3, 0.85],
+    ],
+    share: 0.6,
+  };
+
+  play(['charged', 'charged'], player);
+
+  expect(player.next('playing', 3000, { minigame: true, bubbles: live(bubble) })).toMatchObject({ kind: 'swipe' });
+  expect(player.next('playing', 3150, { bubbles: [popped] })).toEqual({ kind: 'wait' });
+  expect(player.next('playing', 3250, { bubbles: live(bubble) })).toMatchObject({ kind: 'swipe' });
+  expect(player.next('playing', 3350, { bubbles: [popped, elsewhere] })).toMatchObject({ from: elsewhere.swipe[0] });
+
+  // The last bubble swiped there gone, what is found there is no longer it.
+  expect(player.next('playing', 3700, { bubbles: [popped] })).toMatchObject({ kind: 'swipe' });
 });
 
 // Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
@@ -583,6 +638,24 @@ test('sweeps rows through a minigame whose bubbles are never found, though the l
 
   // Bubbles not found once the lead-in is over, it sweeps the rows rather than not swipe at all.
   const late = player.next('playing', 5000, { bubbles: [] });
+
+  expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
+});
+
+/**
+ * Looked for in Ice's colour, Giratina's Shadow Sneak shows nothing but a blob at 0.36: no bubble, and before any has
+ * been found none to wait through for, so its rows are swept once the lead-in is over.
+ */
+test('sweeps rows through a minigame where nothing as saturated as a bubble is ever found', () => {
+  const player = new Player(SIZE);
+  const pale = bubbleSwipes(png('playing-minigame-giratina'), typeColour(png('types/POKEMON_TYPE_ICE')));
+
+  play(['charged', 'charged'], player);
+
+  expect(pale).not.toEqual([]);
+  expect(player.next('playing', 1000, { minigame: true, bubbles: pale })).toEqual({ kind: 'wait' });
+
+  const late = player.next('playing', 3000, { bubbles: pale });
 
   expect(late.kind === 'swipe' && Math.abs(late.to[0] - late.from[0])).toBeGreaterThan(0.8);
 });

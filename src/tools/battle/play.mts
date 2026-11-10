@@ -99,12 +99,12 @@ export interface Choices {
   bench?: Point;
 
   /**
-   * The minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first of those `GONE` keeps whose swipe as
-   * aimed is `clear` swiped. None found, or none clear, waits through the minigame's lead-in, there being nothing to
-   * pop yet, and once this minigame's have been found since its throw was taken to be playing, there being none left;
-   * otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have been gone
-   * `OVER_MS`, or once `back` says, are waited through too, being the move playing out. Undefined, where the bubbles'
-   * colour is not known, sweeps rows throughout.
+   * The minigame's bubbles on this frame, as `bubbleSwipes` finds them, the first of those `GONE`, `PALEST` and `POPPED`
+   * keep whose swipe as aimed is `clear` swiped. None found, or none clear, waits through the minigame's lead-in, there
+   * being nothing to pop yet, and once this minigame's have been found since its throw was taken to be playing, there
+   * being none left; otherwise it sweeps rows, the finder perhaps missing the move's bubbles. Those found once they have
+   * been gone `OVER_MS`, or once `back` says, are waited through too, being the move playing out. Undefined, where the
+   * bubbles' colour is not known, sweeps rows throughout.
    */
   bubbles?: readonly Bubble[];
 
@@ -197,6 +197,40 @@ const BUBBLES_MS = 2_000;
  * share above 1.15, so whatever is found beside the bubbles cannot put the bar above 0.58.
  */
 const GONE = 0.5;
+
+/**
+ * The least share a blob has to hold to be swiped, however little has been found for `GONE` to judge it by. Before a
+ * minigame's first bubble nothing has: at night, Palkia's wing, at 0.33 to 0.46 of Dragon's and Water's share, was all
+ * that was found for a quarter of a second before the first bubble of Spacial Rend and of Aqua Tail. The palest bubble
+ * still to pop held 0.54, one of Mewtwo's by day found only in part. Over the minigames of 212 throws in 12 kept runs,
+ * this alone kept a blob from being swiped on 31 frames, and the 27 looked at were the move playing out, its smoke, ice
+ * or the bar it struck, a bubble popped, the trail a swipe leaves or Kyogre's belly, bar two that may have been a bubble
+ * half hidden behind a trail or a chunk of ice.
+ */
+const PALEST = 0.5;
+
+/**
+ * How long a bubble swiped goes on being found where it was, in milliseconds, as it swells and pales before it goes,
+ * and how far from the swipe, in widths: an Aqua Tail bubble paled from 0.95 to 0.4 over the 0.3s after the touch
+ * reached it, `LANDS_MS` and some of the swipe's 80ms after the frame it was aimed off, by when it held less than half
+ * the bubbles' share for `GONE` to wait through, and swelled to 2,060 pixels at the finder's 180 wide, 0.14 widths in
+ * radius.
+ */
+const POP_MS = 400;
+const SWELL = 0.15;
+
+/**
+ * How much of the share of a bubble swiped within `POP_MS` and `SWELL` of a blob the blob has to hold to be swiped as
+ * another bubble, rather than waited through as that one popping. Alone on its frame, a bubble popped is all
+ * `bubbleSwipes` finds, though still over half as saturated as the bubbles: on the frame of 110.165s of a night Close
+ * Combat, two so popped held 0.6 of Fighting's share against the minigame's 1.08, and a Spacial Rend and an Aqua Tail
+ * bubble held 0.71 and 0.72 of their own 0.34s after the swipes aimed at them. A bubble come since holds about as much
+ * as the one swiped: one of Dragon's, found as one blob with those popping beside it, held 0.85. Over the minigames of
+ * 212 throws, 210 frames that would have been swiped were waited through so, and the 16 looked at, at random, were each
+ * a bubble popped. By day, a Close Combat bubble come up on Zamazenta's red body within one popping held 0.62 of the one
+ * swiped there, and was waited through.
+ */
+const POPPED = 0.8;
 
 /** How long one swipe takes, in milliseconds: short, so a fast move fires about six times a second. */
 const SWIPE_MS = 80;
@@ -291,6 +325,18 @@ export function ahead(
   return [reachable([x, y / tall]), reachable([x + (was.dx / was.apart) * on, (y + (was.dy / was.apart) * on) / tall])];
 }
 
+/** How far the middle of a blob, as `found` runs through it, lies from `swipe`, in widths. */
+function away(found: readonly [Point, Point], swipe: readonly [Point, Point], { width, height }: Size): number {
+  // In widths across and down, as in `ahead`.
+  const tall = height / width;
+  const [x, y] = [(found[0][0] + found[1][0]) / 2, ((found[0][1] + found[1][1]) / 2) * tall];
+  const [ax, ay] = [swipe[0][0], swipe[0][1] * tall];
+  const [dx, dy] = [swipe[1][0] - ax, swipe[1][1] * tall - ay];
+  const along = Math.min(Math.max(((x - ax) * dx + (y - ay) * dy) / (dx ** 2 + dy ** 2 || 1), 0), 1);
+
+  return Math.hypot(x - ax - dx * along, y - ay - dy * along);
+}
+
 /**
  * Consecutive frames a state has to hold before a tap answers it. A prompt sliding in or out matches for a frame or two
  * on its own — two such frames turned up in 6,364 of a recorded battle — and a charged move is answered sooner because
@@ -348,6 +394,12 @@ export class Player {
    * faint were found as Outrage's bubbles. With it, the most saturated share found over it, for `GONE` to judge by.
    */
   #found: { from: number; to: number; vivid: number } | undefined;
+
+  /**
+   * The swipes made through bubbles over the last `POP_MS`, as aimed, each with the share of the bubble it went through
+   * and when, for a blob found where one went to be told from that bubble popping, as `POPPED` says.
+   */
+  #swiped: { swipe: readonly [Point, Point]; share: number; at: number }[] = [];
 
   /**
    * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or what the minigame hides back after them,
@@ -472,20 +524,31 @@ export class Player {
       const found = this.#minigame && !this.#over ? (bubbles ?? []) : [];
       const stretch = this.#found && now - this.#found.to < OVER_MS ? this.#found : undefined;
       const vivid = Math.max(stretch?.vivid ?? 0, ...found.map(({ share }) => share));
+      this.#swiped = this.#swiped.filter(({ at }) => now - at < POP_MS);
+      const popping = (bubble: Bubble) =>
+        this.#swiped.some(
+          (swiped) => bubble.share < POPPED * swiped.share && away(bubble.swipe, swiped.swipe, this.#screen) <= SWELL,
+        );
       const aimed = look
         ? found
-            .filter(({ share }) => share >= GONE * vivid)
-            .map((bubble) => ahead(bubble.swipe, look, this.#before, now, SWIPE_MS, this.#screen))
+            .filter((bubble) => bubble.share >= Math.max(GONE * vivid, PALEST) && !popping(bubble))
+            .map((bubble) => ({
+              swipe: ahead(bubble.swipe, look, this.#before, now, SWIPE_MS, this.#screen),
+              share: bubble.share,
+            }))
         : [];
-      const through = aimed.find(clear);
+      const through = aimed.find((bubble) => clear(bubble.swipe));
 
-      // A frame of blobs all too pale still has the bubbles found, so that waiting through it does not end them.
-      if (this.#playing && (through || (found.length > 0 && aimed.length === 0))) {
+      // A frame of blobs all too pale or popping still has the bubbles found, so that waiting through it does not end
+      // them. Before any, it is a frame with none found, those of a move whose bubbles the finder misses swept in rows.
+      if (this.#playing && (through || (found.length > 0 && aimed.length === 0 && stretch))) {
         this.#found = { from: stretch?.from ?? now, to: now, vivid };
       }
 
       if (through) {
-        return { kind: 'swipe', from: through[0], to: through[1], ms: SWIPE_MS };
+        this.#swiped.push({ ...through, at: now });
+
+        return { kind: 'swipe', from: through.swipe[0], to: through.swipe[1], ms: SWIPE_MS };
       }
 
       // Judged on a frame with none found, so that a loop held up for a moment does not end the bubbles on its own.
