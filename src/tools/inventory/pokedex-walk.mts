@@ -541,7 +541,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
   const selects = async (box: Box): Promise<Image | null> => {
     for (let attempt = 0; attempt < 2; attempt++) {
       await tap([box.left + box.width / 2, box.top + box.height / 2]);
-      const image = await settled(device);
+      const image = await settled(device, STILL);
 
       if (framed(image, box)) {
         return image;
