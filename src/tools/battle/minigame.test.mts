@@ -75,6 +75,19 @@ test('a bubble popped is swiped after those still to pop', () => {
   expect(first && crosses(first, [0.45, 0.56, 0.75, 0.68])).toBe(false);
 });
 
+/**
+ * Zamazenta's Close Combat at night, its bubble at the lower right lit orange below the emblem by the fist beside it:
+ * only its top agrees with Fighting's colour, which cuts the fist short in its box. Followed below the box, the fist is
+ * there, and the bubble is found, marked as found so.
+ */
+test('a bubble found in part is found by the emblem its box cuts short', () => {
+  const swipes = bubbleSwipes(png('playing-minigame-zamazenta-glow'), colour('FIGHTING'));
+  const first = swipes[0];
+
+  expect(first && crosses(first.swipe, [0.47, 0.68, 0.65, 0.84])).toBe(true);
+  expect(first?.cut).toBe(true);
+});
+
 test('the Get Ready! before the bubbles has none to swipe', () => {
   expect(bubbleSwipes(png('playing-minigame-ready'), colour('DARK'))).toEqual([]);
 });
