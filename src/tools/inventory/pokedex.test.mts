@@ -556,8 +556,8 @@ test('the grid is known by its REGIONS button on any tab, and nothing else is', 
 async function counted(...names: string[]) {
   const all = new Map<string, number>();
 
-  for (const name of names) {
-    for (const { region, count } of countsOn(await listLines(capture(name)))) {
+  for (const image of names.map(capture)) {
+    for (const { region, count } of countsOn(await listLines(image), image)) {
       all.set(region, count);
     }
   }
@@ -567,7 +567,8 @@ async function counted(...names: string[]) {
 
 /**
  * The counts a tab's region list prints. The POKÉMON tab's over the three screenshots its list takes to scroll, each
- * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`.
+ * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`; and
+ * G-MAX's four, Unova's name under PGSharp's star button.
  */
 test("each tab's region list counts its regions", async () => {
   expect(await counted('tab-pokemon-0', 'tab-pokemon-1', 'tab-pokemon-2')).toStrictEqual({
@@ -585,6 +586,7 @@ test("each tab's region list counts its regions", async () => {
   });
 
   expect(await counted('tab-shiny-0')).toStrictEqual({ Kanto: 80, Johto: 51, Hoenn: 78, Sinnoh: 33, Unova: 51 });
+  expect(await counted('tab-gmax-0')).toStrictEqual({ Kanto: 2, Unova: 0, Unidentified: 0, Galar: 0 });
 });
 
 /**
@@ -600,12 +602,12 @@ test("a list's foot counts every card in sight", async () => {
 });
 
 /**
- * A count starting further in than the names has lost its first digits, and is left out rather than taken short. The
- * lines are what `tab-pokemon-0.png` read as with a treatment that left in part of the medal under each count: Johto's
- * `98` as `78`, and the first digits of Hoenn's and Sinnoh's split off into lines of their own, leaving the `7` that
- * #1042's walk reported.
+ * A POKÉMON count is taken only where the card's bar is as full, so one that has lost its first digits is left out
+ * rather than taken short. The lines are what `tab-pokemon-0.png` read as with a treatment that left in part of the
+ * medal under each count: Johto's `98` as `78`, and the first digits of Hoenn's and Sinnoh's split off into lines of
+ * their own, leaving the `7` that #1042's walk reported.
  */
-test('a count starting further in than the names is not taken', () => {
+test("a POKÉMON count is taken only where the card's bar is as full", () => {
   const tesseract: Line[] = [
     { text: 'JOHTO', left: 96, top: 916, width: 240, height: 54 },
     { text: '78 / 100', left: 112, top: 1056, width: 194, height: 90 },
@@ -624,5 +626,5 @@ test('a count starting further in than the names is not taken', () => {
     { text: '114 / 156', left: 100, top: 2424, width: 238, height: 84 },
   ];
 
-  expect(countsOn(tesseract)).toStrictEqual([{ region: 'Unova', count: 114 }]);
+  expect(countsOn(tesseract, capture('tab-pokemon-0'))).toStrictEqual([{ region: 'Unova', count: 114 }]);
 });
