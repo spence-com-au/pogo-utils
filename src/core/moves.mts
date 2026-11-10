@@ -80,12 +80,14 @@ export async function readMoves(
   };
 }
 
-/** The mega moves `pool` holds, as a Mega's form holds its own, or every mega move there is where it holds none. */
+/**
+ * The mega moves `pool` holds, which a Mega's holds its own and an ordinary form's none, so that a row below an
+ * ordinary Pokémon's moves is never read as one. Every mega move there is where there is no pool, a species unread.
+ */
 function megaMovesIn(data: GameData, pool: readonly Move[]): Move[] {
   const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
-  const own = pool.filter(isMega);
 
-  return own.length > 0 ? own : data.moves.filter(isMega);
+  return (pool.length > 0 ? pool : data.moves).filter(isMega);
 }
 
 /** The lines that can be a move: under the tabs, above the catch details, and carrying letters rather than a power. */
