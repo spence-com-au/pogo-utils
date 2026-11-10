@@ -229,8 +229,11 @@ const SWELL = 0.15;
  * bubble held 0.71 and 0.72 of their own 0.34s after the swipes aimed at them. A bubble come since holds about as much
  * as the one swiped: one of Dragon's, found as one blob with those popping beside it, held 0.85. Over the minigames of
  * 212 throws, 210 frames that would have been swiped were waited through so, and the 16 looked at, at random, were each
- * a bubble popped. By day, a Close Combat bubble come up on Zamazenta's red body within one popping held 0.62 of the one
- * swiped there, and was waited through.
+ * a bubble popped. Nor does a share rising from one look to the next tell a bubble come since: the swipe's trail often
+ * hides the bubble it popped on the look after, which is then found again, paler. Taken so, 64 of the 307 frames waited
+ * through over the minigames of 328 throws would have been swiped, and the 12 looked at, at random, were each a bubble
+ * popping. One was a Close Combat bubble swiped on Zamazenta's red body by day with another come up inside it, which
+ * went unfound (#1017): what held 0.62 of the share swiped there was the popped one around it.
  */
 const POPPED = 0.8;
 
