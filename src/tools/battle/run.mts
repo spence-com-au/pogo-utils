@@ -19,6 +19,7 @@ import {
   banner,
   blank,
   countdown,
+  darkened,
   fleeButton,
   opponentShields,
   ownShields,
@@ -201,11 +202,25 @@ function perFrame<Rest extends unknown[], T>(read: (frame: Image, ...rest: Rest)
   };
 }
 
+/**
+ * Why a run stopped lost. Where every frame kept shows the game drawn darker under a white status bar, it says so: a
+ * screen it does not know sends a reader to the screen, when a restart of the game is what cleared it (#974).
+ */
+function lostWhy(frames: readonly Image[]): string {
+  const shades = frames.map(darkened);
+  const shade = shades.at(-1);
+
+  return shade !== undefined && shades.every((each) => each !== undefined)
+    ? `nothing recognised for ${LOST_MS / 1000}s: the game is drawn ${Math.round((1 - shade) * 100)}% darker than ` +
+        `Android's status bar over it, which its colours are not read through; restart the game, or failing that the phone`
+    : `nothing recognised for ${LOST_MS / 1000}s; stopped rather than tap at a screen it does not know`;
+}
+
 export class Lost extends Error {
   readonly frames: readonly Image[];
 
   constructor(frames: readonly Image[]) {
-    super(`nothing recognised for ${LOST_MS / 1000}s; stopped rather than tap at a screen it does not know`);
+    super(lostWhy(frames));
     this.frames = frames;
   }
 }
