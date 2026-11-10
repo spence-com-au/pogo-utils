@@ -615,7 +615,7 @@ test('waits through a bubble it popped found again after a look that lost it', (
 
 // A blob kept only for the emblem followed past its box is a bubble the finder found in part, or one popped swelling
 // where a swipe just went with the trail's head for an emblem, as saturated as a bubble. Near the swipe it is waited
-// through; elsewhere, or once the swipe is too old to be popping, it is swiped.
+// through unless shaped as a bubble's top half; elsewhere, or once the swipe is too old to be popping, it is swiped.
 test('waits through a blob found by its cut emblem near a swipe it just made, but not elsewhere', () => {
   const player = new Player(SIZE);
   const swiped: Bubble = {
@@ -655,6 +655,14 @@ test('waits through a blob found by its cut emblem near a swipe it just made, bu
   again.next('playing', 3000, { minigame: true, bubbles: [swiped] });
 
   expect(again.next('playing', 3150, { bubbles: [whole] })).toMatchObject({ kind: 'swipe' });
+
+  // Shaped as a bubble's top half, it is one come up inside the bubble swiped, as on the frame of 275.655s of a kept run.
+  const half = { ...near, halved: true as const };
+  const third = new Player(SIZE);
+  play(['charged', 'charged'], third);
+  third.next('playing', 3000, { minigame: true, bubbles: [swiped] });
+
+  expect(third.next('playing', 3150, { bubbles: [half] })).toMatchObject({ kind: 'swipe' });
 });
 
 // Live, Avalanche's wave of ice hid the HUD for two frames a second after the tap, and the minigame ended there went
