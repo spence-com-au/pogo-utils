@@ -42,6 +42,8 @@ export async function parseMoves(
  *
  * A move is the fast one or a charged one by the game master's say rather than by the row it sits in. The rows are
  * where OCR is unreliable — one lost, split or read twice moves every row below it — where a move's kind is a fact.
+ *
+ * Two charged moves at most, and a Mega's mega move a third beside them.
  */
 export async function readMoves(
   rows: readonly Line[],
@@ -50,11 +52,15 @@ export async function readMoves(
   image: Image,
 ): Promise<Moves> {
   const found: Move[] = [];
+  let mega: Move | null = null;
 
   for (const row of rows) {
-    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece.
+    // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece. A
+    // Mega lists its mega move below those, matched as the row reads among the mega moves alone: among every move,
+    // `Future Sight+` is one edit from the Future Sight Armored Mewtwo holds.
     if (found.some((m) => m.fast) && found.filter((m) => !m.fast).length >= 2) {
-      break;
+      mega ??= moveIn(row.text, megaMovesIn(data, pool), MOVE_SLACK);
+      continue;
     }
 
     const move =
@@ -70,11 +76,16 @@ export async function readMoves(
 
   return {
     fast: found.find((m) => m.fast)?.name ?? null,
-    charged: found
-      .filter((m) => !m.fast)
-      .slice(0, 2)
-      .map((m) => m.name),
+    charged: [...found.filter((m) => !m.fast).slice(0, 2), ...(mega ? [mega] : [])].map((m) => m.name),
   };
+}
+
+/** The mega moves `pool` holds, as a Mega's form holds its own, or every mega move there is where it holds none. */
+function megaMovesIn(data: GameData, pool: readonly Move[]): Move[] {
+  const isMega = (move: Move) => data.megas.some((form) => form.megaMove === move.name);
+  const own = pool.filter(isMega);
+
+  return own.length > 0 ? own : data.moves.filter(isMega);
 }
 
 /** The lines that can be a move: under the tabs, above the catch details, and carrying letters rather than a power. */

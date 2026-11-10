@@ -178,8 +178,9 @@ export function chargedOf(form: Form, moveset?: Moveset): string[] {
 }
 
 /**
- * A card's two charged moves, where the panel the selection screen shows for it held read both. One read alone is no
- * surer than its species: a Pokémon whose second move is locked has one, but so does a panel whose other row OCR missed.
+ * A card's two charged moves, where the panel the selection screen shows for it held read both, and a Mega's mega move
+ * beside them where that was read too. One read alone is no surer than its species: a Pokémon whose second move is
+ * locked has one, but so does a panel whose other row OCR missed.
  */
 const ownMoves = ({ moves }: Card) => (moves && moves.charged.length >= 2 ? moves.charged : undefined);
 

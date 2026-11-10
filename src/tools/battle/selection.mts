@@ -192,11 +192,14 @@ export async function readPanel(
   const pool = (forms: readonly Form[]) => [...new Set(forms.flatMap((form) => form.moves))];
   const of = (name: string) => pool(typed.filter((form) => form.species === name));
 
-  // The one species whose forms of these types hold every move read, or null.
+  // The one species whose forms of these types hold every move read, or null. Among the Megas where a mega move was
+  // read, which no other form holds, and otherwise among the rest alone, rather than every Charizard's panel growing
+  // ambiguous with Mega Charizard Y's.
   const speciesOf = ({ fast, charged }: Moves) => {
     const known = [fast, ...charged].filter((move) => move !== null);
+    const megas = data.megas.filter((form) => form.megaMove !== undefined && known.includes(form.megaMove));
     const fits = new Set(
-      typed
+      (megas.length > 0 ? megas.filter((form) => same(form.types, types)) : typed)
         .filter((form) => known.every((move) => form.moves.some((m) => m.name === move)))
         .map((form) => form.species),
     );
