@@ -55,7 +55,7 @@ import {
   type Look,
   type Named,
 } from './pokedex.mts';
-import { SCROLL_DRAG_MS, settled } from './scroll.mts';
+import { SCROLL_DRAG_MS, settled, type Stillness } from './scroll.mts';
 import { SCROLL_STRIP } from './stitch.mts';
 import { dialogOpen, isMainMenu, toFront } from './storage.mts';
 import { GENERATIONS, SUB_REGIONS } from '../../pokemon/generations.ts';
@@ -113,6 +113,14 @@ const GRID_DRAG_MS = 2000;
  */
 const MOVED = 0.3;
 
+/**
+ * How still an entry has to be to read. Its light bands move a pixel by little, but over so much of it that by
+ * `settled`'s own measure an entry is never still, and each of the three screenshots a species took cost all four
+ * attempts. By over 32 instead, 16 pairs of a still entry changed no more than 0.08% on a Pixel 4 XL, where one still
+ * scrolling 0.8s after a drag changed 1.8%.
+ */
+const STILL: Stillness = { by: 32, share: 0.005 };
+
 /** One screenshot of the walk's, and its text. */
 interface Shot {
   image: Image;
@@ -120,7 +128,7 @@ interface Shot {
 }
 
 const shoot = async (device: Device): Promise<Shot> => {
-  const image = await settled(device);
+  const image = await settled(device, STILL);
 
   return { image, lines: await pokedexLines(image) };
 };
@@ -447,7 +455,9 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    */
   const step = async (dex: number, back: boolean): Promise<[Shot, number] | null> => {
     const [grab, drop] = config.swipes.next;
-    let before = await settled(device);
+
+    // One screenshot rather than a settled one: every step starts from an entry the walk last read once it stood still.
+    let before = await device.screenshot();
 
     for (let attempt = 0; attempt < 2; attempt++) {
       await (back ? drag(drop, grab, 300) : drag(grab, drop, 300));

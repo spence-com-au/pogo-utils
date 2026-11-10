@@ -57,6 +57,16 @@ test('a screen that never stops moving is taken as it last was, after `SETTLE_AT
   expect(taken()).toBe(SETTLE_ATTEMPTS);
 });
 
+test('a screen that only shimmers settles by a coarser measure, and never by the panel one', async () => {
+  const shimmering = Array.from({ length: SETTLE_ATTEMPTS + 2 }, (_, i) => shade(i % 2 === 0 ? 100 : 110));
+  const panel = photographed(shimmering);
+  const coarse = photographed(shimmering);
+
+  await settled(panel.device);
+  expect(await settled(coarse.device, { by: 32, share: 0.005 })).toStrictEqual(shimmering[1]);
+  expect([panel.taken(), coarse.taken()]).toStrictEqual([SETTLE_ATTEMPTS, 2]);
+});
+
 test('a scroll capture takes each frame down to one that did not move, and does not scroll back', async () => {
   const { device, swipes } = scrolling([DETAIL, MOVES]);
   const taken = await scrollFrames(device, CONFIG, DETAIL);

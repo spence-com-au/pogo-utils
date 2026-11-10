@@ -555,20 +555,21 @@ export function threshold(image: Image, keep: (r: number, g: number, b: number) 
 
 /**
  * How much of a horizontal band differs between two screenshots, as a fraction of the pixels in it. A pixel differs
- * where any of its three channels moves, blue text on a dark panel leaving red where it was.
+ * where any of its three channels moves by more than `by`, blue text on a dark panel leaving red where it was.
  *
  * The band matters more than the threshold. Through one swipe the game's panel measured 31%, then 6.2%, then 0.54% and
  * stayed near it, where the artwork above never fell below 4% because the Pokémon is animated. So a caller watching
  * for a screen to stop moving watches the panel and compares against a figure between those two, not against zero.
+ * Only a backdrop that moves itself needs the threshold raised, as a Pokédex entry's light bands do.
  */
-export function difference(a: Image, b: Image, from: number, to: number): number {
+export function difference(a: Image, b: Image, from: number, to: number, by = 8): number {
   if (a.width !== b.width || a.height !== b.height) {
     return 1;
   }
 
   const first = Math.max(0, Math.round(a.height * from));
   const last = Math.min(a.height, Math.round(a.height * to));
-  const moved = (c: number): boolean => Math.abs((a.data[c] ?? 0) - (b.data[c] ?? 0)) > 8;
+  const moved = (c: number): boolean => Math.abs((a.data[c] ?? 0) - (b.data[c] ?? 0)) > by;
   let differing = 0;
 
   for (let y = first; y < last; y++) {

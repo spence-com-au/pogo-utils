@@ -530,6 +530,15 @@ test('a pixel differs where any channel moves, not only red', () => {
   }
 });
 
+test('a pixel differs only where a channel moves by more than the threshold, 8 unless told otherwise', () => {
+  const a = { width: 1, height: 1, data: new Uint8Array([100, 100, 100, 255]) };
+  const b = { width: 1, height: 1, data: new Uint8Array([100, 120, 100, 255]) };
+
+  expect(difference(a, b, 0, 1)).toBe(1);
+  expect(difference(a, b, 0, 1, 20)).toBe(0);
+  expect(difference(a, b, 0, 1, 19)).toBe(1);
+});
+
 test('two images of different sizes differ completely rather than throwing', () => {
   expect(difference(ramp(4, 4), ramp(5, 4), 0, 1)).toBe(1);
 });
