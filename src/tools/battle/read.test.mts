@@ -75,7 +75,7 @@ test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
 
 // Nidoran♀ and Nidoran♂ are one name folded, and no read tells them apart, so the first of them stands, as it did before
 // a tie named neither.
-test.each([
+test.each<[string, string, string | null, string | null, string]>([
   ['Mega Mewtwo CP 7267', 'CP 7267 Mega Mewtwo', null, null, 'as near Mega Mewtwo X as Y names neither'],
   ['Nidoran CP 512', 'CP 7267 Mega Mewtwo ¥', 'Nidoran♀', 'Mega Mewtwo Y', 'a pair one name folded names the first'],
 ])('%j and %j read as %j and %j: %s', async (own, opponent, ownName, opponentName) => {
