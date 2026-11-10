@@ -3220,6 +3220,33 @@ test.each([
 });
 
 /**
+ * The prompt at 86% with one shield spent as above, but straight after the fight starts, before any of Magmar's fast
+ * moves has been measured on Charizard: the model's stands in, and the shield is kept as against one measured.
+ */
+test('keeps the shield on a fast move modelled where none has been measured', async () => {
+  const { phone, clock, taps } = scripted(
+    {
+      ...battleAndBack(),
+      ...charizardHit(fixture('shield-charizard-high'), true),
+      fight: {
+        frame: painted(charizard(), [111, 81, 118], OUR_SECOND_SHIELD),
+        swipes: { count: 10, to: 'prompt' },
+      },
+    },
+    'fight',
+  );
+  const report = recorder();
+
+  await play(phone, { mode: ULTRA, count: 1 }, clock, report);
+
+  expect(taps.filter((scene) => scene === 'prompt')).toEqual([]);
+  expect(report.events.filter((line) => line.includes(' shield'))).toEqual([
+    'own: kept shield: Fire Blast would take ~48%, with 86% left; leaves ~38%, more than the ~20% of 10 fast moves ' +
+      'before their next charged move, Ember modelled at ~2% a hit',
+  ]);
+});
+
+/**
  * The prompt at 9% as above, but with Magmar's fast move measured taking 8 points of Charizard rather than 2: the next
  * faints Charizard whether or not it shields Fire Blast, so the shield is kept for the next Pokémon, as a low Galarian
  * Corsola's was not in the Baltimore 2027 Regional grand final, which shielded Discharge and fainted to the Volt Switch

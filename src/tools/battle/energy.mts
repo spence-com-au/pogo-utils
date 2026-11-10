@@ -328,6 +328,20 @@ export class Energy {
   }
 
   /**
+   * What one of the opponent's fast moves would take of our bar as the damage model has it, measured or not: the fast
+   * move the count goes by, at its hardest on any pairing of builds the model has for the two, `stages` moving it as
+   * they move a charged move's hit. Undefined where nothing models it: their species unread, no fast move known for
+   * it, or no build on either side.
+   */
+  modelled(matchup: Matchup, stages: StagePair = NO_STAGE_PAIR): { fast: string; share: number } | undefined {
+    const { species, types } = matchup.opponent;
+    const fast = species === null ? undefined : this.#fastOf({ species, types }, this.#tallyOf(species));
+    const share = Math.max(...(fast === undefined ? [] : this.#fractions(fast, { matchup }, stages)));
+
+    return fast !== undefined && Number.isFinite(share) ? { fast, share } : undefined;
+  }
+
+  /**
    * Why the opponent's next fast move would faint us, `hp` being the fraction of our bar left, or undefined where it
    * would not or cannot be told: one hit taking at least what is left less the bar's `WANDER`, a hit of 12% counting
    * against 13% left. PvPoke's battle AI throws the charged move it has lit that does the most damage once one more of
@@ -361,15 +375,13 @@ export class Energy {
 
     const step = this.#stepAgainst(matchup);
     const staged = stages.their.attack !== 0 || stages.own.defense !== 0;
-    const fast =
-      step === undefined || staged
-        ? this.#fastOf({ species, types: matchup.opponent.types }, this.#tallyOf(species))
-        : undefined;
-    const modelled = Math.max(...(fast === undefined ? [] : this.#fractions(fast, { matchup }, stages)));
+    const modelled = step === undefined || staged ? this.modelled(matchup, stages) : undefined;
     const [share, by] =
-      step !== undefined && !(modelled > step) ? [step, 'one taking'] : [modelled, `${fast} modelled at`];
+      modelled && !(step !== undefined && step >= modelled.share)
+        ? [modelled.share, `${modelled.fast} modelled at`]
+        : [step, 'one taking'];
 
-    return Number.isFinite(share) && share >= hp - WANDER
+    return share !== undefined && share >= hp - WANDER
       ? `their next fast move would faint us, ${by} ~${Math.round(share * 100)}% with ${Math.round(hp * 100)}% left`
       : undefined;
   }

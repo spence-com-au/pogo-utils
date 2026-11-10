@@ -459,7 +459,46 @@ test('a fast move measured to faint us keeps no shield where our HP is unread or
   });
 });
 
-test('their fast moves unmeasured or their energy uncounted, the shield is taken', () => {
+/**
+ * With no Thunder Shock measured, the model's stands in: at 2% a hit, as one measured, the shield is kept at 90%; at 5%
+ * the six before Zapdos's next Drill Peck take more than the 56% left, and it is taken. A step measured outweighs it.
+ */
+test.each<[string, Cycle, Shielding]>([
+  [
+    'modelled at 2%',
+    { ...THUNDER_SHOCK, step: undefined, modelled: { fast: 'Thunder Shock', share: 0.02 } },
+    {
+      shield: false,
+      why:
+        'Drill Peck would take ~34%, with 90% left; leaves ~56%, more than 2 × the ~12% of 6 fast moves before ' +
+        'their next charged move, Thunder Shock modelled at ~2% a hit',
+    },
+  ],
+  [
+    'modelled at 5%',
+    { ...THUNDER_SHOCK, step: undefined, modelled: { fast: 'Thunder Shock', share: 0.05 } },
+    {
+      shield: true,
+      why:
+        'Drill Peck would take ~34%, with 90% left; leaves ~56%, no more than 2 × the ~30% of 6 fast moves before ' +
+        'their next charged move, Thunder Shock modelled at ~5% a hit',
+    },
+  ],
+  [
+    'measured at 2% and modelled at 5%',
+    { ...THUNDER_SHOCK, modelled: { fast: 'Thunder Shock', share: 0.05 } },
+    {
+      shield: false,
+      why:
+        'Drill Peck would take ~34%, with 90% left; leaves ~56%, more than 2 × the ~12% of 6 fast moves before ' +
+        'their next charged move',
+    },
+  ],
+])('Palkia at 90%% shields Drill Peck with Thunder Shock %s', (_, cycle, shielding) => {
+  expect(palkia(0.9, 2, cycle)).toEqual(shielding);
+});
+
+test('their fast moves neither measured nor modelled, or their energy uncounted, the shield is taken', () => {
   expect(palkia(0.9, 2, { ...THUNDER_SHOCK, step: undefined })).toEqual({
     shield: true,
     why: 'Drill Peck would take ~34%, with 90% left; their fast moves unmeasured',

@@ -893,6 +893,7 @@ export async function run(
       const shielding = wouldShield(data, verdict, health.own, battle.ourShields, {
         step: battle.energy.step,
         hit: battle.energy.measured(facing, battle.stages),
+        modelled: battle.energy.modelled(facing, battle.stages),
         estimate,
       });
       const shield = battle.ourShields > 0 && shielding.shield;
