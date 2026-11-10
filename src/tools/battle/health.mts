@@ -160,8 +160,9 @@ interface Strip {
 const rightOf = ({ rights }: Strip) => median(rights);
 
 /**
- * Every strip of one fill colour a few rows tall. A row's run of a colour carries over a pixel's gap, the encoder's
- * blur at an edge, and continues the strip above it where it starts and ends near where that did.
+ * Every strip of one fill colour, those too thin to be read alone `rejoin`ed. A row's run of a colour carries over a
+ * pixel's gap, the encoder's blur at an edge, and continues the strip above it where it starts and ends near where
+ * that did.
  */
 function strips(image: Image): Strip[] {
   const unit = image.width / 360;
@@ -211,9 +212,7 @@ function strips(image: Image): Strip[] {
     open = next;
   }
 
-  return rejoin([...done, ...open], unit).filter(
-    ({ rights }) => rights.length >= THICK.least * unit && rights.length <= THICK.most * unit,
-  );
+  return rejoin([...done, ...open], unit);
 }
 
 /**
@@ -285,17 +284,20 @@ function outline(image: Image, strip: Strip): { x: number; found: boolean }[] {
   });
 }
 
+/** Whether the outline is found at `OUTLINE.least` of the places `outline` looks along a strip. */
+const outlined = (image: Image, strip: Strip) =>
+  outline(image, strip).filter(({ found }) => found).length / OUTLINE.places >= OUTLINE.least;
+
 /**
- * Whether a strip has the bar's frame around it: the outline at `OUTLINE.least` of the places `outline` looks, and a
- * light line beyond a dark one at its left end too, looked for on the strip's middle row in four columns out from it.
+ * Whether a strip has the bar's frame around it: `outlined`, and a light line beyond a dark one at its left end too,
+ * looked for on the strip's middle row in four columns out from it.
  */
 function framed(image: Image, strip: Strip): boolean {
   const unit = image.width / 360;
   const middle = Math.floor(strip.top + strip.rights.length / 2);
-  const places = outline(image, strip).filter(({ found }) => found).length;
   const left = step(out(image, strip.left - 4 * unit, (x) => lum(image, x, middle)));
 
-  return places / OUTLINE.places >= OUTLINE.least && left >= OUTLINE.contrast;
+  return outlined(image, strip) && left >= OUTLINE.contrast;
 }
 
 /**
@@ -375,6 +377,14 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
  * the game writes them 8–16 rows above the bar's fill on both phones, so a strip of 4 rows or more between them ends
  * 7–12 rows above it. Two bars drawn one above the other where the opponent's starts, as a charged move starts, are
  * each a bar.
+ *
+ * A strip `rejoin`ed is read only where no strip found whole was taken for its side, so a bar it lies beside or above
+ * went unread: split into strips too thin to read, its rows' ends straying further apart than `strips` lets them, or
+ * its fill starting too far in from the outline's left end for `framed`. So `all` is every strip found, thin ones too,
+ * and a longer one only `outlined` is enough to lie above or below. Of the 546,449 pictures of the 27 GO Battle League
+ * runs kept with video, this leaves unread 13 where artwork beside or above a bar at 1–94%, autumn foliage in 9 of
+ * them, read as it at 4–11%, two runs of which `Steady` took: 6% of our bar at 22% for two pictures and 8% of the
+ * opponent's at 75% for five; and 2 where a bar at 7% had a hit's sparks or a swipe's trail across it.
  */
 function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof typeof STARTS): boolean {
   const unit = image.width / 360;
@@ -406,7 +416,7 @@ function outside(image: Image, strip: Strip, all: readonly Strip[], side: keyof 
         other.left - 4 * unit < right &&
         strip.left < rightOf(other) &&
         rightOf(other) - other.left > right - strip.left &&
-        framed(image, other)
+        (strip.rejoined ? outlined(image, other) : framed(image, other))
       );
     }) && gone.filter((x) => edged(image, strip, x)).length < OUTLINE.along * gone.length;
 
@@ -437,9 +447,11 @@ const before = (strip: Strip, other: Strip | undefined) =>
  * `before`, unless it lies `outside` the bar.
  */
 export function readHealth(image: Image): Health {
+  const unit = image.width / 360;
   const health: Health = { own: null, opponent: null };
   const taken: Partial<Record<keyof Health, Strip>> = {};
-  const all = strips(image);
+  const found = strips(image);
+  const all = found.filter(({ rights }) => rights.length >= THICK.least * unit && rights.length <= THICK.most * unit);
 
   for (const strip of all) {
     const left = strip.left / image.width;
@@ -451,7 +463,7 @@ export function readHealth(image: Image): Health {
       fraction <= 1.03 &&
       before(strip, taken[side]) &&
       framed(image, strip) &&
-      !outside(image, strip, all, side)
+      !outside(image, strip, strip.rejoined ? found : all, side)
     ) {
       health[side] =
         covered(image, strip) || cut(image, strip, all) || (strip.fill !== 'red' && fraction < LIT)

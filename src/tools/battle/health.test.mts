@@ -108,6 +108,22 @@ test('foliage split as a bar sweeping by is, beside a bar found whole, is not re
   expect(within(health.opponent, 0.76), `theirs read ${health.opponent}`).toBe(true);
 });
 
+test.each([
+  // Red foliage between the letters of "NOT VERY EFFECTIVE..." 7 rows above our bar at 22%, split in three and joined
+  // again, which read as it at 6%: the bar's fill starts 3 pixels in from its outline's left end, too far for `framed`.
+  ['other-mewtwo-foliage-letters', 'own'],
+
+  // A tree's red just left of Lugia's bar at 75%, split in two and joined again, which read as it at 8%: as a hit drains
+  // the bar, its rows end 6 pixels apart midway, splitting it into strips too thin to read.
+  ['battle-lugia-foliage-beside-split', 'opponent'],
+
+  // Red foliage just left of our bar at about 92%, split and joined again, which read as it at 4%: the bar's rows end 4
+  // pixels apart by turns, splitting it into strips too thin to read.
+  ['playing-pixel8-xerneas-foliage-ends', 'own'],
+] as const)('%s: foliage beside or above a bar that goes unfound is not read as it, for %s', (name, side) => {
+  expect(read(name)[side]).toBeNull();
+});
+
 test('a bar just above another is read rather than taken for artwork', () => {
   // As our Avalanche starts, Sylveon's bar at 22% above our Kyogre's at 53%, both where the opponent's bar starts.
   const health = read('other-two-bars');

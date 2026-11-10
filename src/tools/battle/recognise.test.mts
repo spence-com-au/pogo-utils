@@ -91,10 +91,12 @@ test.each(pngs.filter((name) => !name.startsWith('switch-')))('%s shows the coun
  * minigame's stills hide it.
  */
 const fleeing = [
+  'battle-lugia-foliage-beside-split',
   'battle-lugia-foliage-split',
   'battle-overcast',
   'battle-tap-ring-start',
   'battle-tap-ring',
+  'other-mewtwo-foliage-letters',
   'other-two-bars',
   'playing-banner-gardevoir',
   'playing-banner-ursaluna',
