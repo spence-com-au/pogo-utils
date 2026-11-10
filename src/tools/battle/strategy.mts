@@ -18,7 +18,7 @@ import { type Form, type GameData } from '../../core/game-master.mts';
 import { type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
-import { BUTTON_XS } from './recognise.mts';
+import { layoutsOf } from './recognise.mts';
 
 /** What a move sharing a type with the Pokémon using it multiplies its damage by. */
 export const STAB = 1.2;
@@ -768,14 +768,14 @@ function spared(data: GameData, weighed: readonly Weighed[], best: Weighed): Wei
 
 /**
  * Which button to throw, given the move read under each button: the one worth the most per energy, or undefined where a
- * button of the pair has no move read under it yet and so could be either. Once the opponent's shields are gone, energy
- * is all that limits the damage dealt, which over a fight comes to the energy gained times what each point of it is
- * worth. A bigger move worth no more per energy gains nothing by being held for, and risks fainting with the energy
- * stored or the opponent switching out: a player's Snorlax threw Body Slam, 78 for 40 energy, at an unshielded Garchomp
- * each time it lit rather than hold for Earthquake, 120 for 65, and Garchomp fainted to the second without having
- * thrown a charged move in its 29s out. Of two worth the same per energy, the cheaper, which fires sooner. One that
- * lowers our defense gives way to one that does not by `SPARES_DEFENSE`, short of our `lastHit`, after which there is
- * no hit for our defense to cost.
+ * button of the layout the others say has no move read under it yet and so could be any. Once the opponent's shields
+ * are gone, energy is all that limits the damage dealt, which over a fight comes to the energy gained times what each
+ * point of it is worth. A bigger move worth no more per energy gains nothing by being held for, and risks fainting with
+ * the energy stored or the opponent switching out: a player's Snorlax threw Body Slam, 78 for 40 energy, at an
+ * unshielded Garchomp each time it lit rather than hold for Earthquake, 120 for 65, and Garchomp fainted to the second
+ * without having thrown a charged move in its 29s out. Of two worth the same per energy, the cheaper, which fires
+ * sooner. One that lowers our defense gives way to one that does not by `SPARES_DEFENSE`, short of our `lastHit`, after
+ * which there is no hit for our defense to cost.
  *
  * While `bait`, the cheapest instead, and the one worth more of two that cost the same, to draw a shield the one worth
  * the most per energy would otherwise be thrown into; but only where it costs more than `BAIT_SAVES` less than that
@@ -803,8 +803,7 @@ export function bestButton(
     lit = [],
   }: { bait?: boolean; lastHit?: boolean; mirror?: string; lit?: readonly number[] } = {},
 ): Pick | undefined {
-  const [left, centre, right] = BUTTON_XS;
-  const buttons = moves.has(left) || moves.has(right) ? [left, right] : [centre];
+  const [buttons = []] = layoutsOf(moves.keys());
   const weighed: Weighed[] = [];
   let best: Weighed | undefined;
   let cheapest: Weighed | undefined;

@@ -368,13 +368,14 @@ test('reads a result again whose verdict is still fading in', async () => {
 });
 
 /**
- * PGSharp's star at the left edge near the foot of a Pixel 4 XL, as `uiautomator dump` would write it: clear of
- * everything read, but over where the minigame's last row is swept from, x 0.05 at y 0.88.
+ * PGSharp's star low at the left edge of a Pixel 4 XL, as `uiautomator dump` would write it: clear of everything read,
+ * but over where the minigame's fourth row is swept from, x 0.05 at y 0.76. Lower, by the last row's, it lies over the
+ * ring a Mega's left button reads beyond its rim.
  */
 const STAR_LOW = GAME_ALONE.replace(
   '</hierarchy>',
   '<node index="1" text="" resource-id="me.underw.hp:id/hl_floating_icon" class="android.widget.ImageView" ' +
-    'package="com.nianticlabs.pokemongo" content-desc="" bounds="[0,2614][126,2740]" /></hierarchy>',
+    'package="com.nianticlabs.pokemongo" content-desc="" bounds="[0,2247][126,2373]" /></hierarchy>',
 );
 
 // With no type icons the bubbles' colour is unknown, and the minigame is swept row by row, from the star's end too.
@@ -383,7 +384,7 @@ test('swipes around PGSharp’s star, never beginning a swipe on it', async () =
     Object.entries(battleAndBack()).map(([name, scene]) => [name, { ...scene, views: STAR_LOW }]),
   );
   const { phone, clock, strokes } = scripted(scenes, 'training');
-  const star = { left: 0, top: 2614 / 3040, right: 126 / 1440, bottom: 2740 / 3040 };
+  const star = { left: 0, top: 2247 / 3040, right: 126 / 1440, bottom: 2373 / 3040 };
   const on = ([x, y]: Point) => x <= star.right + 0.03 && y >= star.top - 0.015 && y <= star.bottom + 0.015;
 
   expect(await play(phone, { mode: ULTRA, typeIcons: {}, count: 1 }, clock)).toEqual({ battles: 1, won: 1, lost: 0 });

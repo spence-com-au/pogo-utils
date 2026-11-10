@@ -12,7 +12,7 @@ import { closest, distance, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, scale, type Image } from '../../core/png.mts';
 import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
-import { BANNER_ANCHOR, BANNERS, BUTTON_XS } from './recognise.mts';
+import { BANNER_ANCHOR, BANNERS, BUTTON_XS, LAYOUTS, layoutsOf } from './recognise.mts';
 import { fielded, formsOf, type Typing } from './strategy.mts';
 
 export interface Sighting {
@@ -64,8 +64,16 @@ const NAMES = { top: 0.1393, bottom: 0.19 } as const;
 const LABELS = { left: 0.05, right: 0.95, top: -0.1583, bottom: -0.0317 } as const;
 
 /**
- * How far a label's centre may sit from a button's and still be its label. Two buttons' labels are 0.38 apart, and a
- * long name centred under one spans about 0.15 either side.
+ * The label of a Mega's mega move, under its button raised between the other two: `FUTURE SIGHT+` at 713 to 719 of 802
+ * on a Pixel 8 Pro and how effective it is at 727 to 733, between 0.39 and 0.61 across, clear of the outer buttons'
+ * rims. Never seen lit, so taken down as far again as a lit label falls below an unlit one under the other buttons.
+ */
+const RAISED = { left: 0.32, right: 0.68, top: -0.26, bottom: -0.165 } as const;
+
+/**
+ * How far a label's centre may sit from a button's and still be its label: a pair's labels are 0.38 apart, and a long
+ * name centred under one spans about 0.15 either side. A pair's outer button and a Mega's on the same side are only
+ * 0.096 apart, within reach of the same label, which goes to the nearer.
  */
 const LABEL_REACH = 0.12;
 
@@ -144,8 +152,10 @@ export async function readBattle(
   read: (image: Image) => Promise<Line[]> = ocr,
   species: string | null = null,
 ): Promise<Sighting> {
+  // Every band is cropped before the first read, since `stream.mts` frees the frame two frames on, while OCR runs.
   const names = band(image, NAMES, TOP, 2);
   const labels = band(image, LABELS, BOTTOM, 3);
+  const raised = band(image, RAISED, BOTTOM, 3);
   const sighting = unseen();
 
   // The names share their band with each side's CP, which `speciesNamed` leaves out of a name. Each CP is placed by where
@@ -174,13 +184,16 @@ export async function readBattle(
   // Beneath each move is how effective it is, which matches no move whole. A piece of it can, and is dropped for being
   // no further from some stretch of that line than from the move: `TIVE` is no distance within SUPER EFFECTIVE and one
   // from Dive, where `DIVE` read whole is one and none.
-  for (const line of await read(labels.image)) {
-    const move = closest(line.text, charged, (name) => name);
+  const movesIn = async ({ image: lines }: typeof labels, among = charged) =>
+    (await read(lines)).flatMap((line) => {
+      const move = closest(line.text, among, (name) => name);
 
-    if (!move || EFFECTIVENESS.some((said) => distance(line.text, said, true) <= distance(line.text, move))) {
-      continue;
-    }
+      return !move || EFFECTIVENESS.some((said) => distance(line.text, said, true) <= distance(line.text, move))
+        ? []
+        : [{ line, move }];
+    });
 
+  for (const { line, move } of await movesIn(labels)) {
     const left = (labels.left + line.left / labels.factor) / image.width;
     const width = Math.min(line.width / labels.factor / image.width, move.length * LETTER);
     const x = left + width / 2;
@@ -190,6 +203,19 @@ export async function readBattle(
 
     if (button !== undefined) {
       sighting.moves.set(button, move);
+    }
+  }
+
+  // The mega move's label, read only for a Mega of ours whose mega move is known, and only where an outer button of
+  // three is labelled: elsewhere the band holds whatever another layout's buttons draw there, one move's own button
+  // among it. Matched to that move alone: among the rest, `FUTURE SIGHT+` is one edit from the Future Sight Armored
+  // Mewtwo holds.
+  const [first, middle, last] = LAYOUTS[2];
+  const mega = own === null ? [] : formsOf(data, { species: own }).flatMap((form) => form.megaMove ?? []);
+
+  if (mega.length > 0 && (sighting.moves.has(first) || sighting.moves.has(last))) {
+    for (const { move } of await movesIn(raised, mega)) {
+      sighting.moves.set(middle, move);
     }
   }
 
@@ -262,14 +288,14 @@ export async function readGetReady(image: Image): Promise<boolean> {
 }
 
 /**
- * What is known after another read: what it read, and what earlier reads did that it did not. A Pokémon has either the
- * one centred button or the pair, so a label read under one layout drops any left from the other, which a label read
- * once off a frame mid-transition would otherwise hold against the pair for the rest of the Pokémon's turn out.
+ * What is known after another read: what it read, and what earlier reads did that it did not. A Pokémon has one layout
+ * of buttons — the one centred, the pair, or a Mega's three — so a label read under one layout drops any left from
+ * those it rules out, which a label read once off a frame mid-transition would otherwise hold against the buttons for
+ * the rest of the Pokémon's turn out.
  */
 export function merge(seen: Sighting, read: Sighting): Sighting {
-  const middle = BUTTON_XS[1];
-  const layout = read.moves.size > 0 ? read.moves.has(middle) : undefined;
-  const kept = [...seen.moves].filter(([x]) => layout === undefined || (x === middle) === layout);
+  const layouts = layoutsOf(read.moves.keys());
+  const kept = [...seen.moves].filter(([x]) => layouts.some((layout) => layout.includes(x)));
 
   return {
     own: read.own ?? seen.own,
@@ -290,6 +316,7 @@ export function areas(screen: Size): Area[] {
   return [
     { name: "the battle's names and CPs", boxes: [spanning(box(NAMES), TOP, screen)] },
     { name: "the charged moves' names", boxes: [spanning(box(LABELS), BOTTOM, screen)] },
+    { name: "a Mega's mega move's name", boxes: [spanning(box(RAISED), BOTTOM, screen)] },
     {
       name: "the opponent's charged move banner",
       boxes: BANNERS.map((place) => spanning(box(place), BANNER_ANCHOR, screen)),

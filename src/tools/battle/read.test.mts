@@ -61,7 +61,7 @@ test.each([
 });
 
 // Both sides' Mega Mewtwo Y, its name run into its CP in one line, `Mega Mewtwo ¥ CP 7267` and `CP 7267 Mega Mewtwo ¥`,
-// the Y read as `¥`. Its moves are left out: its third button, Future Sight+, is drawn where no button is looked for.
+// the Y read as `¥`.
 test('reads a Mega by the name the HUD gives it, beside its CP', async () => {
   const { own, ownCp, opponent, opponentCp } = await read('battle-pixel8-mega-mewtwo-y');
 
@@ -84,6 +84,24 @@ test.each<[string, string, string | null, string | null, string]>([
   const sighting = await readBattle(image, DATA, () => Promise.resolve([line(own, 0), line(opponent, 450)]));
 
   expect([sighting.own, sighting.opponent]).toEqual([ownName, opponentName]);
+});
+
+// Mega Mewtwo Y's three buttons, off a Pixel 8 Pro in a GO Battle League run: Focus Blast and Psystrike under the outer
+// two, further out than a pair's, and its mega move under the raised one between them. Against Kingambit, Future Sight+
+// is matched to the mega move alone, where among every move of Mewtwo's it would be Armored Mewtwo's Future Sight, one
+// edit away. Against Mega Mewtwo Y, the mirror's frame above.
+test.each([
+  ['charged-pixel8-mega-psystrike', 'Kingambit', 4086],
+  ['battle-pixel8-mega-mewtwo-y', 'Mega Mewtwo Y', 7267],
+])('%s: reads the labels under a Mega’s three buttons, against %s', async (name, opponent, opponentCp) => {
+  expect(await read(name)).toEqual({
+    ...unseen(),
+    own: 'Mega Mewtwo Y',
+    opponent,
+    ownCp: 7267,
+    opponentCp,
+    moves: { 0.214: 'Focus Blast', 0.499: 'Future Sight+', 0.783: 'Psystrike' },
+  });
 });
 
 test('a frame with no labels reads none, rather than reading its artwork as moves', async () => {
@@ -118,6 +136,31 @@ test('a read keeps what earlier reads found, bar labels of the other layout', ()
     moves: new Map([[0.31, 'Crunch']]),
   });
   expect(merge(seen, { ...unseen(), opponent: 'Moltres' }).moves, 'a read of no labels').toEqual(seen.moves);
+});
+
+// The mega move's button is where one move's is across, so a label read there alone could be either layout's.
+test('a read under a Mega’s three keeps the labels of its other buttons, and drops those of the pair', () => {
+  const pair = { ...unseen(), moves: new Map([[0.31, 'Crunch']]) };
+  const three = { ...unseen(), moves: new Map([[0.214, 'Focus Blast']]) };
+
+  expect(merge(pair, { ...unseen(), moves: new Map([[0.783, 'Psystrike']]) }).moves).toEqual(
+    new Map([[0.783, 'Psystrike']]),
+  );
+  expect(merge(three, { ...unseen(), moves: new Map([[0.783, 'Psystrike']]) }).moves).toEqual(
+    new Map([
+      [0.214, 'Focus Blast'],
+      [0.783, 'Psystrike'],
+    ]),
+  );
+  expect(merge(three, { ...unseen(), moves: new Map([[0.499, 'Crunch']]) }).moves, 'the middle alone').toEqual(
+    new Map([
+      [0.214, 'Focus Blast'],
+      [0.499, 'Crunch'],
+    ]),
+  );
+  expect(merge(pair, { ...unseen(), moves: new Map([[0.499, 'Crunch']]) }).moves, 'the middle alone').toEqual(
+    new Map([[0.499, 'Crunch']]),
+  );
 });
 
 const banner = (name: string, sides: { own: string | null; opponent: string | null }) =>

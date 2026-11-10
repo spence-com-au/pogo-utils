@@ -55,8 +55,9 @@ test('covers every state', () => {
   expect(new Set(stills.map((name) => name.split('-')[0]))).toEqual(new Set(states));
 });
 
-// Which buttons are lit, by x: one move's centred, two moves' either side. The Kyogre frames are its belly behind the
-// centred button's place, white on the rim and inside and outside it alike, which the rim alone read as ready.
+// Which buttons are lit, by x: one move's centred, two moves' either side, and a Mega's three further out, Psystrike's
+// the right of Mega Mewtwo Y's. The Kyogre frames are its belly behind the centred button's place, white on the rim and
+// inside and outside it alike, which the rim alone read as ready.
 test.each([
   ['charged-shadow-sneak', [0.499]],
   ['charged-avalanche', [0.499]],
@@ -64,7 +65,9 @@ test.each([
   ['charged-two-both', [0.31, 0.69]],
   ['charged-deep-sky', [0.69]],
   ['charged-pixel8', [0.499]],
+  ['charged-pixel8-mega-psystrike', [0.783]],
   ['battle-pixel8', []],
+  ['battle-pixel8-mega-unlit', []],
   ['battle-two-unlit', []],
   ['playing-minigame-kyogre-great', []],
   ['playing-minigame-kyogre-excellent', []],
@@ -98,9 +101,11 @@ const fleeing = [
   'battle-lugia-foliage-split',
   'battle-overcast',
   'battle-pixel8-mega-mewtwo-y',
+  'battle-pixel8-mega-unlit',
   'battle-sliver-trail',
   'battle-tap-ring-start',
   'battle-tap-ring',
+  'charged-pixel8-mega-psystrike',
   'other-mewtwo-foliage-letters',
   'other-two-bars',
   'playing-banner-avalanche',
