@@ -10,6 +10,14 @@
     </extensions>
   </wpt>
 
+  <wpt lat="35.625803" lon="139.521281">
+    <name>PokéPark Kanto</name>
+    <extensions>
+      <pgr:city>Inagi, Tokyo</pgr:city>
+      <pgr:country>Japan</pgr:country>
+    </extensions>
+  </wpt>
+
   <wpt lat="35.659500" lon="139.700560">
     <name>Shibuya</name>
     <extensions>
