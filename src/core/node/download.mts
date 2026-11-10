@@ -10,7 +10,7 @@
 import { said } from '../../errors.ts';
 import { ICON_BASE, ICON_DIR, shinyIcon } from '../../pokedex/icons.ts';
 import { titleise } from '../../pokemon/names.ts';
-import { MAX_LEVEL, type Costume, type Form, type GameData, type Move } from '../game-master.mts';
+import { MAX_LEVEL, type CombatMove, type Costume, type Form, type GameData, type Move } from '../game-master.mts';
 import { decodePng, type Image } from '../png.mts';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -63,6 +63,22 @@ const WEEK = 7 * 24 * 60 * 60 * 1000;
  */
 export const CACHE = resolve('.cache/inventory');
 
+/** A move as trainer battles have it, which a `COMBAT_` template holds. */
+interface CombatTemplate {
+  type: string;
+  power?: number;
+  energyDelta?: number;
+  durationTurns?: number;
+  vfxName?: string;
+  buffs?: {
+    buffActivationChance?: number;
+    attackerAttackStatStageChange?: number;
+    attackerDefenseStatStageChange?: number;
+    targetAttackStatStageChange?: number;
+    targetDefenseStatStageChange?: number;
+  };
+}
+
 interface Template {
   templateId: string;
   data: {
@@ -92,25 +108,28 @@ interface Template {
         availableForm: string[];
         moveReassignment?: { cinematicMoves?: { replacementMoves?: string[] }[] };
       }[];
+
+      /**
+       * Each Mega Evolution or Primal Reversion, `TEMP_EVOLUTION_MEGA_Y` and the like, with its own stats and types,
+       * and its mega move by the id of the `COMBAT_VM_MOVE_` template that holds it.
+       */
+      tempEvoOverrides?: {
+        tempEvoId?: string;
+        stats?: { baseAttack?: number; baseDefense?: number; baseStamina?: number };
+        typeOverride1?: string;
+        typeOverride2?: string;
+        specialMove?: string;
+      }[];
     };
     formSettings?: {
       pokemon: string;
       forms?: { form: string | number; isCostume?: boolean }[];
     };
-    moveSettings?: object;
-    combatMove?: {
-      type: string;
-      power?: number;
-      energyDelta?: number;
-      durationTurns?: number;
-      buffs?: {
-        buffActivationChance?: number;
-        attackerAttackStatStageChange?: number;
-        attackerDefenseStatStageChange?: number;
-        targetAttackStatStageChange?: number;
-        targetDefenseStatStageChange?: number;
-      };
-    };
+
+    /** The animation the move plays, which a mega move shares with the move it is a stronger copy of. */
+    moveSettings?: { vfxName?: string };
+
+    combatMove?: CombatTemplate;
     pokemonExtendedSettings?: {
       sizeSettings: {
         xxsLowerBound: number;
@@ -168,6 +187,19 @@ const ORDINARY = /(^|_)NORMAL$/;
 const GRANTED: Record<string, string[]> = {
   DIALGA_ORIGIN: ['ROAR_OF_TIME'],
   PALKIA_ORIGIN: ['SPACIAL_REND'],
+};
+
+/**
+ * How the game names each kind of temporary evolution, by its `tempEvoId`. The number is the one its name has in the
+ * string table, `pokemon_name_0150_0003` being Mega Mewtwo Y: the game's own enum, which the game master never states,
+ * any more than it states `SCALAR_ORDER`. The name is for a Mega the table does not name yet, as 13 of the 63 went
+ * unnamed on 2026-11-10, and is how it names every one of the 50 it does.
+ */
+const TEMPORARY: Record<string, { number: string; name: (species: string) => string }> = {
+  TEMP_EVOLUTION_MEGA: { number: '0001', name: (species) => `Mega ${species}` },
+  TEMP_EVOLUTION_MEGA_X: { number: '0002', name: (species) => `Mega ${species} X` },
+  TEMP_EVOLUTION_MEGA_Y: { number: '0003', name: (species) => `Mega ${species} Y` },
+  TEMP_EVOLUTION_PRIMAL: { number: '0004', name: (species) => `Primal ${species}` },
 };
 
 /**
@@ -249,6 +281,9 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
   const moves: Move[] = [];
   const byId = new Map<string, Move>();
 
+  // Each charged move by the animation it plays, the first-numbered where several share one: what names a mega move.
+  const animations = new Map<string, Move>();
+
   for (const { templateId, data } of templates) {
     // `movementId` is a name for most moves and a bare number for a few, so the template's own id is the one to read.
     const match = /^V(\d{4})_MOVE_(\w+)$/.exec(templateId);
@@ -260,9 +295,33 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
     const fast = id.endsWith('_FAST');
     const move = { name: strings.get(`move_name_${match[1]}`) ?? titleise(id.replace(/_FAST$/, '')), fast };
+    const animation = data.moveSettings.vfxName;
+
     moves.push(move);
     byId.set(id, move);
+
+    if (!fast && animation !== undefined && !animations.has(animation)) {
+      animations.set(animation, move);
+    }
   }
+
+  const combatOf = ({ type, power, energyDelta, durationTurns, buffs }: CombatTemplate): CombatMove => ({
+    type: typeName(type),
+    power: power ?? 0,
+    energy: energyDelta ?? 0,
+    turns: (durationTurns ?? 0) + 1,
+
+    // Secret Sword carries an empty `buffs`, which changes nothing.
+    ...(buffs?.buffActivationChance && {
+      buffs: {
+        chance: buffs.buffActivationChance,
+        ownAttack: buffs.attackerAttackStatStageChange,
+        ownDefense: buffs.attackerDefenseStatStageChange,
+        theirAttack: buffs.targetAttackStatStageChange,
+        theirDefense: buffs.targetDefenseStatStageChange,
+      },
+    }),
+  });
 
   const combat: GameData['combat'] = {};
 
@@ -274,25 +333,31 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     // per type — and the screen shows only the name, so the first-numbered stands for it: the ordinary move, or for a
     // move varying by type, its first type. Splash and Transform have no power at all rather than a power of 0.
     if (data.combatMove && name && !(name in combat)) {
-      const { buffs } = data.combatMove;
+      combat[name] = combatOf(data.combatMove);
+    }
+  }
 
-      combat[name] = {
-        type: typeName(data.combatMove.type),
-        power: data.combatMove.power ?? 0,
-        energy: data.combatMove.energyDelta ?? 0,
-        turns: (data.combatMove.durationTurns ?? 0) + 1,
+  // A mega move is a template of its own, `COMBAT_VM_MOVE_` and the id a Mega's `specialMove` names, with no name in the
+  // string table: Mega Mewtwo Y's is Future Sight's animation at 130 power for 80 energy. It is named for the move whose
+  // animation it plays, with the `+` the game gives Apex Lugia's Aeroblast+: `FUTURE SIGHT+` is what its button reads,
+  // and how PvPoke names all 18 it lists. Each of the 19 shares its animation with exactly one charged move.
+  const megaMoves = new Map<string, Move>();
 
-        // Secret Sword carries an empty `buffs`, which changes nothing.
-        ...(buffs?.buffActivationChance && {
-          buffs: {
-            chance: buffs.buffActivationChance,
-            ownAttack: buffs.attackerAttackStatStageChange,
-            ownDefense: buffs.attackerDefenseStatStageChange,
-            theirAttack: buffs.targetAttackStatStageChange,
-            theirDefense: buffs.targetDefenseStatStageChange,
-          },
-        }),
-      };
+  for (const { templateId, data } of templates) {
+    const special = /^COMBAT_VM_MOVE_(\w+)$/.exec(templateId)?.[1];
+
+    if (data.combatMove && special !== undefined) {
+      const { vfxName = '' } = data.combatMove;
+      const name = `${animations.get(vfxName)?.name ?? titleise(vfxName)}+`;
+      const known = moves.find((m) => m.name === name);
+      const move = known ?? { name, fast: false };
+
+      if (!known) {
+        moves.push(move);
+      }
+
+      combat[name] ??= combatOf(data.combatMove);
+      megaMoves.set(special, move);
     }
   }
 
@@ -343,6 +408,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
   }
 
   const forms: Form[] = [];
+  const megas: Form[] = [];
   const bare = new Map<number, Form>();
 
   for (const { templateId, data } of templates) {
@@ -406,6 +472,40 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       shadowOnly: (settings.shadow?.shadowChargeMove ?? 'FRUSTRATION') !== 'FRUSTRATION',
     };
 
+    // A Mega is the ordinary form's, whose bare template and `_NORMAL` one both carry it, as some costumes do too. It
+    // keeps that form's moves and adds its mega move, where it has one.
+    for (const override of form.costume || form.form !== null ? [] : (settings.tempEvoOverrides ?? [])) {
+      const { tempEvoId = '', stats, typeOverride1, typeOverride2, specialMove = '' } = override;
+      const kind = TEMPORARY[tempEvoId];
+      const species = kind && (strings.get(`pokemon_name_${match[1]}_${kind.number}`) ?? kind.name(form.species));
+
+      if (!kind || !species || megas.some((mega) => mega.species === species)) {
+        continue;
+      }
+
+      const kindName = tempEvoId.replace(/^TEMP_EVOLUTION_/, '');
+      const artwork = iconName(index, dex, kindName, `${settings.pokemonId}_${kindName}`);
+      const megaMove = megaMoves.get(specialMove);
+
+      megas.push({
+        dex,
+        species,
+        form: null,
+        costume: false,
+        icon: artwork,
+        shiny: artwork !== null && index.has(shinyIcon(artwork)) ? shinyIcon(artwork) : null,
+        types: [typeOverride1, typeOverride2].filter((t) => t !== undefined).map(typeName),
+        attack: stats?.baseAttack ?? 0,
+        defense: stats?.baseDefense ?? 0,
+        stamina: stats?.baseStamina ?? 0,
+        heights: null,
+        moves: megaMove ? [...form.moves, megaMove] : form.moves,
+        evolveCandy: [],
+        shadowOnly: false,
+        ...(megaMove && { megaMove: megaMove.name }),
+      });
+    }
+
     // A species with forms is listed once bare and once per form, the bare entry repeating the `_NORMAL` one. Keep it
     // only for species that have nothing else.
     if (name === undefined) {
@@ -468,6 +568,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     moves,
     species: [...new Set(forms.map((f) => f.species))],
     types: [...new Set(forms.flatMap((f) => f.types))],
+    megas: megas.sort((a, b) => a.dex - b.dex),
     cpm,
     combat,
     effectiveness,
