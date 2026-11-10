@@ -30,6 +30,12 @@ export interface Bubble {
    * swipe as it does a bubble popping.
    */
   cut?: true;
+
+  /**
+   * Of a blob kept `cut`, whether it is shaped as a bubble's top half rather than one popped, as `HALVED` says, which the
+   * player swipes even near a swipe just made.
+   */
+  halved?: true;
 }
 
 /**
@@ -99,6 +105,16 @@ const WHITE = { least: 225, spread: 25 } as const;
  * white and the fist below it (#1017); followed, the fist made it 63.6%.
  */
 const CUT_REACH = 1;
+
+/**
+ * How a blob kept only for the emblem followed past its box is told for a bubble whose lower half the fist beside it lit
+ * rather than a bubble popped: at least `wide` times as wide as it is tall, and no more than `most` pixels at the
+ * finder's width. The bubble so cut is a disc's top half, about twice as wide as tall: on the frame of 275.655s of a kept
+ * run (#1017), 27 by 12 and 154 pixels, come up inside a bubble just swiped. A bubble popped swells past that, or the
+ * swipe's trail cuts it into some other shape. Of the 115 such blobs judged by eye over the kept runs' minigames, this
+ * took 36 of the 69 bubbles and 6 of the 46 popped.
+ */
+const HALVED = { wide: 1.6, most: 350 } as const;
 
 /** How far past a blob's ends a swipe through it runs, as a fraction of the width, so its end bubbles are crossed. */
 const OVERRUN = 0.03;
@@ -274,7 +290,14 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
 
     // Told again over the blobs kept rather than kept for every pixel of the field, which would take four times the mask.
     const share = blob.reduce((sum, i) => sum + washed(pixel(i), colour), 0) / blob.length;
-    swipes.push({ area: blob.length, share, swipe: along(xs, ys, width, height), ...(cut && { cut: true as const }) });
+    const halved = cut && x1 - x0 + 1 >= HALVED.wide * (y1 - y0 + 1) && blob.length <= HALVED.most;
+    swipes.push({
+      area: blob.length,
+      share,
+      swipe: along(xs, ys, width, height),
+      ...(cut && { cut: true as const }),
+      ...(halved && { halved: true as const }),
+    });
   }
 
   const vivid = Math.max(...swipes.map(({ share }) => share));
@@ -282,7 +305,7 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
 
   return swipes
     .sort((a, b) => unfaded(b) - unfaded(a) || b.area - a.area)
-    .map(({ swipe, share, cut }) => ({ swipe, share, ...(cut && { cut }) }));
+    .map(({ swipe, share, cut, halved }) => ({ swipe, share, ...(cut && { cut }), ...(halved && { halved }) }));
 }
 
 /**

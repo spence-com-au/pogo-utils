@@ -234,8 +234,8 @@ const SWELL = 0.15;
  * hides the bubble it popped on the look after, which is then found again, paler. Taken so, 64 of the 307 frames waited
  * through over the minigames of 328 throws would have been swiped, and the 12 looked at, at random, were each a bubble
  * popping. One was a Close Combat bubble swiped on Zamazenta's red body by day with another come up inside it, found
- * only by the emblem its box cut short and so waited through by `CUT_NEAR` as well (#1017): what held 0.62 of the share
- * swiped there was the popped one around it.
+ * only by the emblem its box cut short (#1017): what held 0.62 of the share swiped there was the popped one around it,
+ * and the bubble come up inside it, `halved`, is swiped.
  */
 const POPPED = 0.8;
 
@@ -246,6 +246,11 @@ const POPPED = 0.8;
  * keeping such blobs swiped 69 bubbles the finder had missed a look sooner and 46 bubbles popped. Waited through within
  * `SWELL`, it was 52 and 22; within 0.2 widths, 42 and 16; 0.25, 29 and 8; 0.3, 22 and 4. A swipe through a bubble
  * popped costs more than a look saves, being a swipe gone and a bubble for this to judge the next by.
+ *
+ * A blob `halved` is swiped near one all the same, being shaped as a bubble's top half rather than one popped: over the
+ * kept runs' minigames, 14,848 looks, 31 decisions changed, and of their frames judged by eye, 19 swiped a bubble where
+ * this waited or went through one popped, 10 swiped another bubble instead of one, 1 swiped the fist's glow and 1 was
+ * unclear.
  */
 const CUT_NEAR = 0.3;
 
@@ -556,7 +561,10 @@ export class Player {
         this.#swiped.some((swiped) => {
           const apart = away(bubble.swipe, swiped.swipe, this.#screen);
 
-          return (bubble.share < POPPED * swiped.share && apart <= SWELL) || (bubble.cut && apart <= CUT_NEAR);
+          return (
+            (bubble.share < POPPED * swiped.share && apart <= SWELL) ||
+            (bubble.cut && !bubble.halved && apart <= CUT_NEAR)
+          );
         });
       const aimed = look
         ? found
