@@ -1049,11 +1049,13 @@ export async function run(
       // While a read of the `seen` now held is under way, no lit button is thrown if any is unnamed, for as long as the
       // read takes, about 70ms: thrown unnamed, a move could be the weaker of two, and its minigame's bubbles would be
       // of no colour known. That covers one of ours sent in after a faint with energy banked, lit at once and read at
-      // once, but not one switched in from the bench, whose first read waits out `SWITCHED_MS`. Nor a named move that is
-      // to go now, a finish or a throw for fear of fainting, the turn waited being what either is thrown to save.
+      // once. So too until a read judges a switch of ours under way, whose tap forgot our moves: its first read waits
+      // out `SWITCHED_MS`, and a move lit as it was tapped, which the switch was to bank, would otherwise be thrown on
+      // the next frame, of no type known (#994). Not a named move that is to go now, a finish or a throw for fear of
+      // fainting, the turn waited being what either is thrown to save.
       const naming =
         (finish ?? now) === undefined &&
-        battle.sighting?.from === battle.seen &&
+        (battle.sighting?.from === battle.seen || battle.bench.switching) &&
         lit.some((x) => !battle.seen.moves.has(x));
 
       // Ahead of any throw about to go, finish or not: fast moves that finish an opponent with another to come before it

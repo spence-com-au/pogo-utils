@@ -2291,6 +2291,53 @@ test('aims the swipes of a throw after our switch was dropped at its bubbles', a
   }
 });
 
+/**
+ * Giratina switches to Umbreon to bank Shadow Sneak, as above with our shields held, and the tap goes nowhere: the frame
+ * stays as it was, Shadow Sneak lit and labelled. The tap forgot our moves, so the button is not thrown on the next
+ * frame, unnamed, but waits for the read that judges the switch, which gives them back. Thrown once the switch has been
+ * dropped twice, its minigame's Ghost bubbles are swiped through rather than swept across in rows.
+ */
+test('throws nothing lit while a switch of ours is still to be judged', async () => {
+  const stand = { Zeraora: 'Umbreon', Gyarados: 'Giratina' } as Record<string, string>;
+  const icons = ICONS.map((icon) => ({ ...icon, species: stand[icon.species] ?? icon.species }));
+  const balls = [0.058, 0.111, 0.161, 0.842, 0.892, 0.944].map((x) => [x - 0.01, 0.192, x + 0.01, 0.213]);
+  const red = painted(fixture('charged-shadow-sneak'), [220, 40, 40], ...balls);
+  const mamoswine = painted(red, [224, 161, 238], ...HELD);
+  const { phone, clock, strokes } = scripted(
+    {
+      ...battleAndBack(),
+      party: { frame: fixture('menu-party-full'), tap: { at: [0.5, 0.87], to: 'loading' } },
+      loading: { frame: fixture('other-vs-fade'), lasts: { ms: 4000, to: 'glaceon' } },
+      glaceon: { frame: fixture('battle-latias'), swipes: { count: 10, to: 'coming' } },
+      coming: { frame: fixture('other-vs-fade'), lasts: { ms: 3200, to: 'mamoswine' } },
+      mamoswine: { frame: mamoswine, tap: { at: [0.499, 0.889], to: 'minigame' }, lasts: { ms: 12_000, to: 'won' } },
+      minigame: minigameNoneFainted(),
+    },
+    'party',
+  );
+  const report = recorder();
+
+  await play(phone, { mode: ULTRA, icons, count: 1 }, clock, report);
+
+  const minigame = strokes.filter(({ scene }) => scene === 'minigame');
+  const switched =
+    "own: switching to Umbreon against Mamoswine, banking Shadow Sneak: Giratina is hit super effectively and banks its energy; Umbreon is safe from Mamoswine's moves";
+  const dropped = 'own: Umbreon not sent in: taken as dropped, no switch of ours in the last 45s';
+
+  expect(report.events.filter((line) => /^own: (switching|Umbreon not sent in|threw)/.test(line))).toEqual([
+    switched,
+    dropped,
+    switched,
+    dropped,
+    'own: threw Shadow Sneak',
+  ]);
+  expect(minigame.length).toBeGreaterThan(0);
+
+  for (const { from, to } of minigame) {
+    expect([from[1], to[1]].every((y) => y > 0.78 && y < 0.86)).toBe(true);
+  }
+});
+
 /** A meta in which Mamoswine is run with Powder Snow, Avalanche and Bulldoze: its Avalanche hits Giratina 1.6×. */
 const MAMOSWINE_AVALANCHE: Meta = {
   cup: 'all',
