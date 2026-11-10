@@ -120,8 +120,8 @@ test.each(pngs)('%s shows the button to flee only where it is drawn clear', (nam
 /**
  * A line of text where a charged move's banner is drawn: the banners, in either place, under cloud and a night sky and
  * on both phones, one fading in over Avalanche's bubbles left drawn after its minigame, and `Get Ready!`; the line a
- * move striking puts over a bar, `NOT VERY EFFECTIVE`, and `Go, Garchomp!` as one is sent in. Not the minigame's
- * rating, twice as tall, nor its bubbles.
+ * move striking puts over a bar, `NOT VERY EFFECTIVE`, and `Go, Garchomp!` or `Go, Zamazenta!` as one is sent in. Not
+ * the minigame's rating, twice as tall, nor its bubbles.
  */
 const lines = [
   'battle-pixel8-moltres-body',
@@ -140,6 +140,7 @@ const lines = [
   'playing-banner',
   'playing-dragonite-bench-card',
   'playing-kabutops-below-bench-card',
+  'playing-latios-left-end-noisy',
   'playing-ready-cloud',
   'playing-ready-pixel8-palkia',
   'playing-ready-zamazenta',
