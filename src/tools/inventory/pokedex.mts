@@ -379,6 +379,14 @@ export const seeAllOf = (lines: readonly Line[]) => findLine(lines, /^see ?all/)
 export const regionsButtonOf = (lines: readonly Line[]) => findLine(lines, /^regions$/);
 
 /**
+ * The button a pop-up the game puts over the map is put off with: `LATER` under `A mysterious Pokémon has appeared!`
+ * (`popup-encounter.png`) and `MAYBE LATER` under the Weekly Challenge (`popup-challenge.png`). `dialogOpen` takes
+ * neither for a dialog, and what Back does to either has not been seen, where this is the button a trainer taps. Off
+ * `pokedexLines`, which reads it on both under both engines, where `readLines` reads no `LATER` at all off the first.
+ */
+export const laterOf = (lines: readonly Line[]) => findLine(lines, /^(maybe ?)?later$/);
+
+/**
  * The rows of tiles down the first column between `from` and `to`, as their tops, found by the tile being paler than
  * the gap between the first column and the second at the same height: the backdrop shows through both, and only the
  * tile lays its white over it. Measured on `bulbasaur-2.png`, the tile's red runs 20 to 30 above the gap's.
@@ -587,6 +595,35 @@ export const isEntry = (lines: readonly Line[]) =>
 
 /** The line under the row of gender and type icons that only it carries, `ALERT OFF` or `ALERT ON`. */
 export const alertOf = (lines: readonly Line[]) => findLine(lines, /^alert\b/);
+
+/** The label over the `SEEN` counter, which every entry draws under its row of icons. */
+const seenOf = (lines: readonly Line[]) => findLine(lines, /^seen$/);
+
+/**
+ * How far above the `SEEN` label the `ALERT` label is, the foot of the row of icons between them: 94 to 98 pixels of
+ * the 1440 on `bulbasaur-0.png`, `meowth-0.png` and the rest.
+ */
+const SEEN_TO_ALERT = 0.066;
+
+/**
+ * Where an entry's form row can be on a screenshot: from the foot of its title to above its row of gender and type
+ * icons, and whether that row is on the screen to end it, which Unown's forms run past the foot of.
+ *
+ * The row of icons is found by the `ALERT` label at its foot or, where that is not read, by the `SEEN` counter's below
+ * it. Without either the band runs on into the counters and the CAUGHT tab, pale tiles all, which `formsOn` takes for
+ * forms: a full walk that went by `ALERT` alone gave Ditto, Smeargle, Kecleon, Zorua and Zoroark seven apiece.
+ */
+export function formBand(image: Image, lines: readonly Line[]): { from: number; to: number; ended: boolean } {
+  const title = titleOf(lines);
+  const seen = seenOf(lines);
+  const foot = alertOf(lines)?.top ?? (seen && seen.top - image.width * SEEN_TO_ALERT);
+
+  return {
+    from: title ? title.top + title.height : image.height * 0.42,
+    to: foot === undefined ? image.height * 0.89 : foot - image.width * 0.12,
+    ended: foot !== undefined,
+  };
+}
 
 /** How far above the `ALERT` label the middle of the row of icons is. */
 const ALERT_TO_ICONS = 0.067;

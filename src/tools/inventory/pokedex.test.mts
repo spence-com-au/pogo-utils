@@ -23,6 +23,7 @@ import {
   costumesOn,
   countsOn,
   dexOn,
+  formBand,
   formLabelled,
   formsOn,
   framed,
@@ -34,7 +35,6 @@ import {
   pokedexLines,
   regionsButtonOf,
   silhouettesNamed,
-  titleOf,
   type Candidate,
   type Category,
   type Look,
@@ -234,18 +234,13 @@ test('the genders an entry draws, solid where registered and dashed where not', 
   expect(await genders('unown-3')).toStrictEqual({});
 });
 
-/** The form row's tiles between the title and the row of icons, as the walk bounds it. */
-async function formRow(name: string) {
+/** The form row's tiles between the title and the row of icons, as the walk bounds it, with the `ALERT` label unread. */
+async function formRow(name: string, { alert = true } = {}) {
   const { image, lines: found } = await read(name);
-  const title = titleOf(found);
-  const alert = alertOf(found);
-  const tiles = formsOn(
-    image,
-    title ? title.top + title.height : 0,
-    alert ? alert.top - image.width * 0.12 : image.height * 0.89,
-  );
+  const band = formBand(image, alert ? found : found.filter((l) => l !== alertOf(found)));
+  const tiles = formsOn(image, band.from, band.to);
 
-  return { tiles, labels: await labelsOf(image, tiles) };
+  return { tiles, ended: band.ended, labels: await labelsOf(image, tiles) };
 }
 
 /**
@@ -290,6 +285,20 @@ test("every whole row of Unown's forms is found on the entry as it opens", async
 /** An entry with one form draws no form row, its band being the backdrop and nothing pale across it. */
 test('an entry with one form has no form row', async () => {
   expect((await formRow('bulbasaur-0')).tiles).toStrictEqual([]);
+});
+
+/**
+ * The `SEEN` counter ends the form row where the `ALERT` label is not read, as the label would have. Past the row of
+ * icons are the counters and the CAUGHT tab, pale tiles all: Bulbasaur's band run on to the foot of the screen found
+ * five of them, and Meowth's a fourth form.
+ */
+test('an entry whose ALERT is not read ends its form row at the same place', async () => {
+  const bulbasaur = await formRow('bulbasaur-0', { alert: false });
+  const meowth = await formRow('meowth-0', { alert: false });
+
+  expect(bulbasaur.tiles).toStrictEqual([]);
+  expect(bulbasaur.ended, 'a row that ends is not looked for past the foot of the screen').toBe(true);
+  expect(meowth.tiles.map((t) => t.box)).toStrictEqual((await formRow('meowth-0')).tiles.map((t) => t.box));
 });
 
 /** The form a CAUGHT tab is showing, off its own tile, named among the species' forms. */

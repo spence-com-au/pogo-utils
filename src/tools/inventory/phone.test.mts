@@ -593,7 +593,19 @@ describe.concurrent('scan', () => {
 });
 
 /** Where the Pokédex is, as far as `dex` drives it. */
-type Screen = 'map' | 'menu' | 'list' | 'grid' | 'entry';
+type Screen = 'popup' | 'map' | 'menu' | 'list' | 'grid' | 'entry';
+
+/** A pop-up the game puts over the map: its capture, and how far down the screen the middle of its LATER is. */
+interface Popup {
+  capture: string;
+  later: number;
+}
+
+/** The Weekly Challenge's pop-up and a research encounter's, as the game raised them one after the other (#1046). */
+const POPUPS: readonly Popup[] = [
+  { capture: 'popup-challenge', later: 0.78 },
+  { capture: 'popup-encounter', later: 0.71 },
+];
 
 /**
  * Each tab's region list as the phone draws it, a screenshot a drag down it: the POKÉMON tab's whole, the rest the
@@ -622,7 +634,8 @@ const SELECTS: Readonly<Record<string, readonly (readonly [number, number, numbe
  * map, the main menu, a tab's list of regions, Kanto's grid and the first three entries. A tap is placed by which of
  * those is showing and by where it lands, of no more than the screen's controls and `SELECTS` do; a swipe moves along
  * the entries, one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag
- * scrolls a list or an entry.
+ * scrolls a list or an entry. Any pop-ups given are over the map at the start, each put off by a tap on its LATER and
+ * by nothing else.
  *
  * The tab strip is the one thing modelled rather than recorded. The tab selected sits in the middle of it but at
  * either end, as the captures draw it — POKÉMON at a fifth of the width with SHINY in the middle, ★ 100% in the middle
@@ -630,12 +643,13 @@ const SELECTS: Readonly<Record<string, readonly (readonly [number, number, numbe
  */
 class Pokedex {
   readonly calls: string[] = [];
-  screen: Screen = 'map';
+  screen: Screen;
   tab = 0;
   #list = 0;
   #entry = 0;
   #frame = 0;
   readonly #entries: readonly (readonly string[])[];
+  readonly #popups: Popup[];
 
   /** The screenshot a tap on the entry put in place of its own, until a tap puts that back. */
   #over: string | null = null;
@@ -643,13 +657,20 @@ class Pokedex {
   /** Each `#over` a swipe or a drag left showing, the entry read on with it. */
   readonly unrestored: string[] = [];
 
-  /** `entries` are the entries a swipe steps along, each its screenshots from its top down. */
-  constructor(entries: readonly (readonly string[])[] = ENTRIES) {
+  /**
+   * `entries` are the entries a swipe steps along, each its screenshots from its top down, and `popups` those over the
+   * map, the first on top.
+   */
+  constructor(entries: readonly (readonly string[])[] = ENTRIES, popups: readonly Popup[] = []) {
     this.#entries = entries;
+    this.#popups = [...popups];
+    this.screen = popups.length > 0 ? 'popup' : 'map';
   }
 
   #shown(): string {
     switch (this.screen) {
+      case 'popup':
+        return `pokedex/${this.#popups[0]?.capture}.png`;
       case 'map':
         return 'pokedex/map.png';
       case 'menu':
@@ -702,7 +723,13 @@ class Pokedex {
   #tap(x: number, y: number) {
     const foot = y > 0.88 && Math.abs(x - 0.5) < 0.08;
 
-    if (this.screen === 'map') {
+    if (this.screen === 'popup') {
+      // On the LATER and clear of the button above it, CHOOSE GROUP or START ENCOUNTER, some 0.06 higher.
+      if (Math.abs(x - 0.5) < 0.15 && Math.abs(y - (this.#popups[0]?.later ?? 0)) < 0.02) {
+        this.#popups.shift();
+        this.screen = this.#popups.length > 0 ? 'popup' : 'map';
+      }
+    } else if (this.screen === 'map') {
       this.screen = foot ? 'menu' : 'map';
     } else if (this.screen === 'menu') {
       this.screen = Math.abs(x - 0.25) < 0.1 && Math.abs(y - 0.6) < 0.05 ? 'list' : 'map';
@@ -957,6 +984,25 @@ describe('dex', () => {
       expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
       expect(stderr).toContain('Wrote 0 species to pokedex.jsonl');
       expect(existsSync(join(cwd, 'pokedex.jsonl')), 'a line was written for a species outside the range').toBe(false);
+    },
+  );
+
+  /**
+   * Two pop-ups over the map, each of which takes the main menu's tap and does nothing with it (#1046). Each is put off
+   * with its LATER, which is the only tap the phone answers on one, and the walk goes on from the map beneath them over
+   * the same range as the test above, which gets as far as the grid and no further.
+   */
+  test(
+    'puts off the pop-ups over the map with their LATER and walks on from it',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex(ENTRIES, POPUPS);
+      const { inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { stderr } = await inventory('dex', '--from', '4', '--to', '10');
+
+      expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
+      expect(stderr.match(/a pop-up was over the map; putting it off with its LATER/g)).toHaveLength(POPUPS.length);
+      expect(phone.calls).not.toContain(`shell input keyevent ${KEY.BACK}`);
     },
   );
 
