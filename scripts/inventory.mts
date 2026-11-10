@@ -945,9 +945,9 @@ function dexRange() {
 /**
  * Walks the Pokédex from `from` to `to` and writes a line for each species it reaches, then checks the whole record
  * against what the game counts. The file is rewritten as each line is read, each species read replacing its own line
- * and every line past the last one read left as it was, so a run cut short keeps what it read and leaves the rest of
- * the record alone; and it is not touched until the first entry has been read, so a run that cannot start leaves an
- * earlier one where it was.
+ * and every other line left as it was, so a run cut short keeps what it read and leaves the rest of the record alone;
+ * and it is not touched until the first entry has been read, so a run that cannot start leaves an earlier one where it
+ * was.
  *
  * `held` is the shell the touchscreen is made on, as the scan's is.
  */
@@ -998,16 +998,10 @@ async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
     : [];
   const read = new Map<number, Entry>();
 
-  // The record as far as the walk has got. Each species read replaces its line, and a line for one the walk passed
-  // over without reading goes, the swipe from the species before it having gone straight past it. A line past the
-  // last species read is left as it was, whatever ended the walk: the end of what has been seen and a swipe the phone
-  // dropped look alike from here, and only the second would make the line stale, which the count says.
-  const record = () => {
-    const reached = Math.max(...read.keys());
-    const left = earlier.filter((e) => !read.has(e.dex) && (e.dex < from || e.dex > reached));
-
-    return [...left, ...read.values()].sort((a, b) => a.dex - b.dex);
-  };
+  // The record as far as the walk has got: each species read replaces its own line, and every other line stays as it
+  // was. A species the walk did not read is one it passed over, never reached, or stopped on, and from here those look
+  // alike; only reading it says anything new about it, and a line gone stale is the count's to name.
+  const record = () => [...earlier.filter((e) => !read.has(e.dex)), ...read.values()].sort((a, b) => a.dex - b.dex);
 
   for await (const entry of walk(from, to)) {
     read.set(entry.dex, entry);
