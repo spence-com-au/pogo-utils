@@ -43,8 +43,6 @@ import {
   regionIn,
   seeAllOf,
   titleOf,
-  LAST,
-  SIZES,
   UNIDENTIFIED,
   type Box,
   type Candidate,
@@ -57,6 +55,7 @@ import {
 import { SCROLL_DRAG_MS, settled } from './scroll.mts';
 import { SCROLL_STRIP } from './stitch.mts';
 import { isMainMenu, toFront } from './storage.mts';
+import { GENERATIONS, SUB_REGIONS } from '../../pokemon/generations.ts';
 
 /** One of an entry's forms: which it is, whether it is caught, and each category its CAUGHT tab draws a tile for. */
 export type FormEntry = { form: Named; caught: boolean } & Partial<Record<Category, boolean>>;
@@ -133,15 +132,10 @@ function has(key: Category) {
  * The regions in the order the list draws them: by their first species, but for Unidentified, which the game puts
  * last, after Paldea, though Meltan's 808 comes between Alola's and Galar's.
  */
-const LISTED = [...SIZES.keys()]
-  .filter((region) => region !== UNIDENTIFIED.region)
-  .sort((a, b) => firstOf(a) - firstOf(b))
+const LISTED = [...GENERATIONS, ...SUB_REGIONS]
+  .sort((a, b) => a.first - b.first)
+  .map((r) => r.region)
   .concat(UNIDENTIFIED.region);
-
-/** The first species the game files under `region`. */
-function firstOf(region: string) {
-  return Array.from({ length: LAST }, (_, i) => i + 1).find((dex) => regionIn(dex) === region) ?? LAST;
-}
 
 /** A region where the game's count and the record's disagree, on one tab. */
 export interface Mismatch {
