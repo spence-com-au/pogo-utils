@@ -20,6 +20,7 @@ import {
   alertOf,
   caughtFrame,
   caughtOn,
+  CostumeReader,
   costumesOn,
   countsOn,
   dexOn,
@@ -446,6 +447,48 @@ test("Pikachu's costumes are named among its own", async () => {
     'Anniversary 2026',
     undefined,
   ]);
+});
+
+/**
+ * The slots a `CostumeReader` places costumes in off `names`, read in turn as a drag at a time down an entry, and
+ * whether any went unplaced. With no icons to name them by, since naming is what costs the time and is `ranked`'s,
+ * whose own tests are above.
+ */
+async function placed(...names: readonly string[]) {
+  const reader = new CostumeReader([]);
+
+  for (const name of names) {
+    const { image, lines: found } = await read(name);
+
+    reader.read(image, found, caughtOn(image, found));
+  }
+
+  return { slots: reader.costumes.map(({ slot }) => slot), unplaced: reader.unplaced };
+}
+
+/** The slots from `from` up to but not including `to`. */
+const slots = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => from + i);
+
+/**
+ * Pikachu's 31 costumes, eight rows of four but the last, read off the five screenshots a walk takes of them: each once
+ * however many show it, in the game's order. The first row is read off `pikachu-2`, being under PGSharp's star button
+ * on `pikachu-3` (#1005); the last is shown twice, `pikachu-6` a short drag on from `pikachu-5` that the end of the
+ * entry stopped; and the pill that crosses the empty slot after it on both is no costume.
+ */
+test("each of an entry's costumes is read once, by its place among them", async () => {
+  expect(await placed('pikachu-2', 'pikachu-3', 'pikachu-4', 'pikachu-5', 'pikachu-6')).toStrictEqual({
+    slots: slots(0, 31),
+    unplaced: false,
+  });
+});
+
+/**
+ * A drag the phone dropped, which shows the same costumes again where they were, and one that went too far to line up,
+ * which leaves what it shows unread and says so rather than counting any of it twice.
+ */
+test('a dropped drag reads nothing twice, and one too far to line up reads nothing', async () => {
+  expect(await placed('pikachu-3', 'pikachu-4', 'pikachu-4')).toStrictEqual({ slots: slots(4, 24), unplaced: false });
+  expect(await placed('pikachu-2', 'pikachu-5')).toStrictEqual({ slots: slots(0, 8), unplaced: true });
 });
 
 /**
