@@ -78,7 +78,7 @@ test('a bubble popped is swiped after those still to pop', () => {
 /**
  * Zamazenta's Close Combat at night, its bubble at the lower right lit orange below the emblem by the fist beside it:
  * only its top agrees with Fighting's colour, which cuts the fist short in its box. Followed below the box, the fist is
- * there, and the bubble is found, marked as found so.
+ * there, and the bubble is found, marked as found so and as a bubble's top half.
  */
 test('a bubble found in part is found by the emblem its box cuts short', () => {
   const swipes = bubbleSwipes(png('playing-minigame-zamazenta-glow'), colour('FIGHTING'));
@@ -86,6 +86,18 @@ test('a bubble found in part is found by the emblem its box cuts short', () => {
 
   expect(first && crosses(first.swipe, [0.47, 0.68, 0.65, 0.84])).toBe(true);
   expect(first?.cut).toBe(true);
+  expect(first?.halved).toBe(true);
+});
+
+/**
+ * Tyranitar's Crunch by day, a bubble swiped swelling pale at the middle, the swipe's trail through it: the trail's head
+ * stands for its emblem, so it is kept as a bubble found in part, but swelled past a bubble's top half.
+ */
+test('a bubble popped found by the emblem its box cuts short is no bubble’s top half', () => {
+  const cut = bubbleSwipes(png('playing-minigame-tyranitar-popped'), colour('DARK')).filter((bubble) => bubble.cut);
+
+  expect(cut).not.toEqual([]);
+  expect(cut.some((bubble) => bubble.halved)).toBe(false);
 });
 
 test('the Get Ready! before the bubbles has none to swipe', () => {
