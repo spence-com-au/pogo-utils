@@ -224,10 +224,14 @@ test.each([
   });
 });
 
-// The fast move's row and Focus Blast's garbled past matching among every move, and the silhouette unread: Psystrike
-// and Future Sight+ name the Mega, and the rows the first pass lost are read again among the Mega's own moves.
-test("reads a Mega's lost rows again among its own moves once its mega move names it", async () => {
-  const read = megaMewtwoY('Future Sight+ 130+26', ['oO Psycho Cu', 'oO Focus Blas', 'Psystrike']);
+// Rows garbled past matching among every move, and the silhouette unread: Psystrike and Future Sight+ name the Mega,
+// and the rows the first pass lost are read again among the Mega's own moves. Focus Blast's lost alone leaves the panel
+// short of a charged move all the same, its mega move being neither of the two.
+test.each([
+  ['oO Psycho Cu', 'oO Focus Blas'],
+  ['Psycho Cut', 'oO Focus Blas'],
+])("reads a Mega's rows %s and %s again among its own moves once its mega move names it", async (fast, first) => {
+  const read = megaMewtwoY('Future Sight+ 130+26', [fast, first, 'Psystrike']);
 
   expect(await readPanel(fixture('menu-pixel8-held-metagross'), DATA, null, read)).toEqual({
     species: 'Mega Mewtwo Y',
