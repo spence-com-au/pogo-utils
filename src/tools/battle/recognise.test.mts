@@ -105,6 +105,7 @@ const fleeing = [
   'playing-dragonite-bench-card',
   'playing-flee-avalanche',
   'playing-flee-fading-avalanche',
+  'playing-latios-left-end-noisy',
   'playing-ready-cloud',
   'playing-ready-zamazenta',
   'playing-slate-night',
