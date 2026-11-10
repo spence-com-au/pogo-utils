@@ -71,8 +71,9 @@ const LABELS = { left: 0.05, right: 0.95, top: -0.1583, bottom: -0.0317 } as con
 const RAISED = { left: 0.32, right: 0.68, top: -0.26, bottom: -0.165 } as const;
 
 /**
- * How far a label's centre may sit from a button's and still be its label. Two buttons' labels are 0.38 apart, and a
- * long name centred under one spans about 0.15 either side.
+ * How far a label's centre may sit from a button's and still be its label: a pair's labels are 0.38 apart, and a long
+ * name centred under one spans about 0.15 either side. A pair's outer button and a Mega's on the same side are only
+ * 0.096 apart, within reach of the same label, which goes to the nearer.
  */
 const LABEL_REACH = 0.12;
 
