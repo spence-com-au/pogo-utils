@@ -576,13 +576,25 @@ export function fleeButton(image: Image): boolean {
 export const BANNER_ANCHOR = 0.19;
 
 /**
- * The banner a charged move puts up as it plays out, `Zamazenta used Close Combat!`: one line of white letters on a
- * translucent pill across the sky, in either of the places `read.mts` reads it in, between `top` and `bottom` widths
- * below `BANNER_ANCHOR`. Told by its letters' edges, as the moves' names are, counted along each row: lower in
- * luminance and higher in chroma than theirs, the letters on a night sky taking its blue through the pill as the stream
- * encodes them, 60 to 95 in chroma.
+ * The banner a charged move puts up once it is thrown, `Quaquaval used Aqua Jet!`, in a pill across the sky, in either
+ * of the two places it has been drawn. `read.mts` reads it as one line, a band below its anchor cropped and scaled up
+ * three times, the first band read that names the opponent being the one it is in.
+ *
+ * - 0.04 to 0.125 widths below the anchor, 0.21 to 0.25 of a Pixel 4 XL's height, where GO Battle League drew it on
+ *   2026-11-06: `ee Ursaluna.used Fire Punch! jam`, `|| Gardevoir used Dazzling Gleam! Ras`. The band below held only
+ *   sky there, and read nothing all set.
+ * - 0.232 to 0.317 widths below it, 0.30 to 0.34 of the height, where it was drawn before: of six banners in the GO
+ *   Battle League screenshots off a Pixel 4 XL, four read whole — `a Swampert used Hydro Cannon! at`, `ae Quaquaval
+ *   used Aqua Jet! .` — and Golem's Stone Edge as `Golem usedlistras`, which names no move; on a Pixel 8 Pro at night,
+ *   `Groudon used Solar Beam!` whole once fully drawn.
+ *
+ * One band spanning both read neither, OCR taking it for a single line: `; Ursaluna E ——/`. OCR of the whole frame read
+ * one of the six.
  */
-const BANNER = { top: 0.02, bottom: 0.34, left: 0.15, right: 0.85, by: 15, grey: 120 } as const;
+export const BANNERS = [
+  { top: 0.04, bottom: 0.125 },
+  { top: 0.2322, bottom: 0.3167 },
+] as const;
 
 /**
  * A line of the banner's letters: a run of rows of `least` edges or more, `short` to `tall` widths high and averaging
@@ -595,6 +607,22 @@ const BANNER = { top: 0.02, bottom: 0.34, left: 0.15, right: 0.85, by: 15, grey:
  * 0.089 widths high and more, and Avalanche's clouds at the banner's height averaged no more than 28.
  */
 const LINE = { least: 12, mean: 35, short: 0.025, tall: 0.06, margin: 0.02, quiet: 0.15 } as const;
+
+/**
+ * The banner a charged move puts up as it plays out, `Zamazenta used Close Combat!`: one line of white letters on a
+ * translucent pill across the sky, looked for across both of `BANNERS` and `LINE.margin` beyond them, the quiet rows a
+ * line needs either side. Told by its letters' edges, as the moves' names are, counted along each row: lower in
+ * luminance and higher in chroma than theirs, the letters on a night sky taking its blue through the pill as the stream
+ * encodes them, 60 to 95 in chroma.
+ */
+const BANNER = {
+  top: BANNERS[0].top - LINE.margin,
+  bottom: BANNERS[1].bottom + LINE.margin,
+  left: 0.15,
+  right: 0.85,
+  by: 15,
+  grey: 120,
+} as const;
 
 /**
  * Whether a line of text is drawn where a charged move's banner is. Asked only after the minigame's bubbles have run,
