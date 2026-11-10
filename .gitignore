@@ -12,8 +12,9 @@
 # Credentials
 /.env
 
-# Inventory scans
+# Inventory scans, and the Pokédex's
 /inventory*.jsonl
+/pokedex.jsonl
 
 # Generated files
 /data/entries-by-event.json

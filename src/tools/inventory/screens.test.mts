@@ -2617,10 +2617,9 @@ test('the two Squirtle captures agree on everything but the CP each reads', asyn
  * state and the half that matters. A reader that answered a dex off a detail screen would be worse than one that
  * answered nothing, since the walk calls it exactly when the name could not be trusted.
  *
- * The three Pokédex entry captures this was written against are gone, so the other half — that an entry *is* read —
- * lives in `pokedex.test.mts` over lines built there. `dexOn` takes lines and a game master and no image, so a capture
- * bought it nothing a line cannot state; what a capture could state, and this still does, is that Tesseract reading a
- * real screen never hands it something it mistakes for a title.
+ * The other half — that an entry *is* read — is `pokedex.test.mts`'s, over the Pokédex's own captures under
+ * `fixtures/pokedex/`, which are read as `pokedexLines` reads them rather than as these are. What this states is that
+ * Tesseract reading a detail screen never hands `dexOn` something it mistakes for a title.
  *
  * What makes a capture decline is the cross-check rather than the screen being bare: a number is believed only where it
  * resolves to a species and the name printed beside it folds to that same species. A detail screen carries four-digit

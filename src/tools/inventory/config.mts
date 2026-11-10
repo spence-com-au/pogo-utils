@@ -43,8 +43,11 @@ export interface Config {
     /** The first Pokémon in the storage grid. */
     firstTile: Point;
 
-    /** The close button at the foot of the detail screen. */
+    /** The close button at the foot of the detail screen, which a Pokédex entry and its grid have in the same place. */
     closeDetail: Point;
+
+    /** The Pokédex button in the main menu, tapped blind for the reason the Pokémon button is. */
+    pokedexButton: Point;
   };
 
   /** How long to let each animation settle before the next screenshot, in milliseconds. */
@@ -79,6 +82,7 @@ export const DEFAULTS: Config = {
     search: [0.5, 0.155],
     firstTile: [0.18, 0.27],
     closeDetail: [0.5, 0.93],
+    pokedexButton: [0.25, 0.6],
   },
   swipes: {
     next: [

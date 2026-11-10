@@ -557,11 +557,61 @@ carrying PGSharp's overlay, those being what every other reader depends on; it s
 refuses, and still stitches one whose only fault is a field that did not read — what it will not scroll is a screen
 PGSharp's overlay cannot vouch for, the map and a detail screen being indistinguishable there. `pnpm inventory help`
 lists the flags each command acts on, and a flag given to a command that does not act on it is refused rather than
-quietly ignored. The cache, the snaps and `inventory*.jsonl` are git-ignored, since they describe a player's own
-account.
+quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl` are git-ignored, since they describe a
+player's own account.
 
 Automated input is against Niantic's terms of service. The scan only reads and moves at about a person's pace, but the
 risk to the account is yours to weigh.
+
+### The Pokédex
+
+`pnpm inventory dex` walks the game's own Pokédex entry by entry and writes what each species has registered to
+`pokedex.jsonl`, one line a species in dex order, Meowth's spread out here:
+
+```json
+{
+  "dex": 52,
+  "species": "Meowth",
+  "caught": true,
+  "genders": { "male": true, "female": true },
+  "forms": [
+    {
+      "form": null,
+      "caught": true,
+      "shiny": true,
+      "perfect": false,
+      "lucky": true,
+      "xxl": false,
+      "xxs": true,
+      "gmax": false,
+      "shadow": false,
+      "purified": false
+    },
+    { "form": "Alola", "caught": true, "shiny": false },
+    { "form": "Galarian", "caught": true, "shiny": false }
+  ],
+  "costumes": [],
+  "notes": []
+}
+```
+
+It opens the Pokédex from the main menu on the POKÉMON tab, opens the first entry and swipes from each to the next,
+which is also why a species never seen has no line: a swipe passes over it. On each entry it selects every form in turn
+and reads its CAUGHT tab down to its foot: a tile drawn as the game's icon is a category registered, one drawn as a
+silhouette is one that is not, and a category the game draws no tile for is no key at all — Alolan Meowth has only
+`shiny`. A form the game will not select, its tile a silhouette, is one not caught. `genders` holds each gender the
+species has, `true` where the entry draws it solid and `false` where dashed, and nothing for a species with none. Forms
+and costumes are named as the game master names them, a form off its label where it carries one and otherwise off its
+icon, and a costume off its icon: the game draws its own icons on these tiles, so the right one matches almost exactly.
+One that no icon plainly matches is written as `{"unidentified": N}`, its place among the tiles, with a note saying so,
+rather than as whichever came nearest; `--keep-screens DIR` saves every screenshot read so it can be looked at.
+
+`--from N` and `--to M` walk only those numbers and replace only their lines of the file, leaving the rest of the record
+as it was. A walk ends by holding the whole record to the counts each tab of the Pokédex prints for each region,
+`148 / 151` on POKÉMON and `Caught: 80` on the others, and fails naming every region and tab that disagrees, with the
+lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes the same
+`--config`, `--serial`, `--user`, `--refresh` and `--verbose` as the scan, and swipes through the same touchscreen.
+Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
 
 ### In the browser
 
