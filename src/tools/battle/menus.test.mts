@@ -62,8 +62,9 @@ test.each([
 });
 
 // The recording's button and the full-size screenshot's differ by 28 in red, which one colour to within 20 missed. The
-// Pixel 8 Pro's are the party's card drawn darker after the card read's search in storage, a screenshot and a frame,
-// with the button lower down its taller screen, pinned as it is to the panel that stretches with it.
+// Pixel 8 Pro's are the party screen with the whole game drawn darker, as that phone has drawn it until the game was
+// restarted, a screenshot and a frame, with the button lower down its taller screen, pinned as it is to the panel that
+// stretches with it.
 test.each([
   ['menu-party', 0.87],
   ['menu-party-full', 0.87],

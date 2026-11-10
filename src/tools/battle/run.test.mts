@@ -3608,8 +3608,40 @@ test('stops, keeping its last frames, where nothing is recognised', async () => 
   const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
 
   expect(lost).toBeInstanceOf(Lost);
+  expect((lost as Lost).message).toBe(
+    'nothing recognised for 20s; stopped rather than tap at a screen it does not know',
+  );
   expect((lost as Lost).frames.length).toBeGreaterThan(0);
   expect(clock.now()).toBeGreaterThan(LOST_MS);
+  expect(taps).toEqual([]);
+});
+
+/**
+ * `image` drawn at `shade` of itself below Android's status bar, which ends 25 rows of a Pixel 8 Pro's 802 down: the
+ * whole game as that phone has drawn it until the game was restarted, 224 for 255 (#974).
+ */
+function darker(image: Image, shade: number): Image {
+  const data = image.data.slice();
+
+  for (let i = Math.round((25 / 360) * image.width) * image.width * 4; i < data.length; i++) {
+    data[i] = i % 4 === 3 ? (data[i] ?? 0) : Math.round((data[i] ?? 0) * shade);
+  }
+
+  return { ...image, data };
+}
+
+// The map so drawn has its Poké Ball too dark to be known by, and no word OCR knows: a run started there stops, and says
+// why, where it said only that it did not know the screen.
+test('stops on the map drawn darker, saying the game is', async () => {
+  const { phone, clock, taps } = scripted({ map: { frame: darker(fixture('menu-pixel8-map'), 224 / 255) } }, 'map');
+
+  const lost = await play(phone, { mode: ULTRA }, clock).catch((error: unknown) => error);
+
+  expect(lost).toBeInstanceOf(Lost);
+  expect((lost as Lost).message).toBe(
+    "nothing recognised for 20s: the game is drawn 12% darker than Android's status bar over it, which its colours " +
+      'are not read through; restart the game, or failing that the phone',
+  );
   expect(taps).toEqual([]);
 });
 
