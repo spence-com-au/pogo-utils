@@ -101,9 +101,15 @@ const MAX_INFLATION = 1032;
 /** What zlib wraps a deflate stream in, a two-byte header and a four-byte checksum, none of it pixels. */
 const ZLIB_FRAMING = 6;
 
-/** Why a screenshot cannot be read, with where to look, since a damaged one is far likelier than a damaged codec. */
-const refuse = (why: string): Error =>
-  new Error(`${why} (did the screenshot fail? run \`adb exec-out screencap -p\` by hand to see)`);
+/**
+ * Why a screenshot cannot be read, with where to look, since a damaged one is far likelier than a damaged codec: the
+ * command that took it, `-p` for a PNG and without for raw pixels.
+ */
+const refuse = (why: string, command = 'adb exec-out screencap -p'): Error =>
+  new Error(`${why} (did the screenshot fail? run \`${command}\` by hand to see)`);
+
+/** `refuse` for raw pixels, which the CLI takes without `-p`. */
+const refuseRaw = (why: string): Error => refuse(why, 'adb exec-out screencap');
 
 /**
  * Refuses rather than guesses: a cut-off or damaged `screencap` stream would otherwise decode to an image of the right
@@ -281,7 +287,7 @@ export function decodeScreencap(bytes: Uint8Array): Image {
   }
 
   if (bytes.length < 12) {
-    throw refuse(`a raw screenshot of ${bytes.length} bytes, too few for its header`);
+    throw refuseRaw(`a raw screenshot of ${bytes.length} bytes, too few for its header`);
   }
 
   const words = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -291,9 +297,9 @@ export function decodeScreencap(bytes: Uint8Array): Image {
   const header = bytes.length - width * height * 4;
 
   if (format !== RGBA_8888 && format !== RGBX_8888) {
-    throw refuse(`a raw screenshot in pixel format ${format}, which is not read here`);
+    throw refuseRaw(`a raw screenshot in pixel format ${format}, which is not read here`);
   } else if (width === 0 || height === 0 || (header !== 12 && header !== 16)) {
-    throw refuse(`a raw screenshot of ${bytes.length} bytes, which is no ${width}×${height} screen behind its header`);
+    throw refuseRaw(`a raw screenshot of ${bytes.length} bytes, no ${width}×${height} screen behind its header`);
   }
 
   // Copied out rather than viewed, a Node `Buffer`'s `slice` being a view: the image holds a plain array of its own

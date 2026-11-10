@@ -346,6 +346,13 @@ test('a raw screenshot cut short, run long or in a layout not read here is refus
   expect(() => decodeScreencap(rawOf(ramp(3, 2), 0x16))).toThrow(/pixel format 22, which is not read here/);
 });
 
+test('a refusal names the command that took the screenshot, `-p` only for a PNG', () => {
+  expect(() => decodeScreencap(rawOf(ramp(3, 2), 0x16))).toThrow(/run `adb exec-out screencap` by hand/);
+  expect(() => decodeScreencap(encodePng(ramp(3, 2)).subarray(0, 40))).toThrow(
+    /run `adb exec-out screencap -p` by hand/,
+  );
+});
+
 test('a pixel reads as its three channels, and outside the image as black', () => {
   const image = ramp(4, 3);
 
