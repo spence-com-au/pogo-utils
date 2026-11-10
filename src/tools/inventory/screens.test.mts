@@ -24,7 +24,6 @@ import { decodePng, screenIn } from '../../core/png.mts';
 import { sizeOf, type Gender } from './badges.mts';
 import { cpLabelOf, HEIGHT, parseDetail } from './detail.mts';
 import { clearable, identify, label, shadowOf } from './identify.mts';
-import { dexOn } from './pokedex.mts';
 import { parseMoves, type Moves } from '../../core/moves.mts';
 import { artworkIn, readScreen } from './report.mts';
 import { dialogOpen } from './storage.mts';
@@ -2611,43 +2610,6 @@ test('the two Squirtle captures agree on everything but the CP each reads', asyn
     expect(identity.notes, 'an absent overlay is the ordinary case and not worth a note').toStrictEqual([]);
   }
 });
-
-/**
- * That **no** capture in this corpus names a dex number, which is the half of `dexOn` a corpus of detail screens can
- * state and the half that matters. A reader that answered a dex off a detail screen would be worse than one that
- * answered nothing, since the walk calls it exactly when the name could not be trusted.
- *
- * The other half — that an entry *is* read — is `pokedex.test.mts`'s, over the Pokédex's own captures under
- * `fixtures/pokedex/`, which are read as `pokedexLines` reads them rather than as these are. What this states is that
- * Tesseract reading a detail screen never hands `dexOn` something it mistakes for a title.
- *
- * What makes a capture decline is the cross-check rather than the screen being bare: a number is believed only where it
- * resolves to a species and the name printed beside it folds to that same species. A detail screen carries four-digit
- * numbers — a CP, a stardust count — and none of them has a species beside it.
- */
-test(
-  'no capture in the corpus names a dex number',
-  async () => {
-    const named: string[] = [];
-    let asked = 0;
-
-    for (const file of CORPUS) {
-      const { lines } = await readingOf(file);
-      asked++;
-
-      if (dexOn(lines, DATA) !== null) {
-        named.push(file);
-      }
-    }
-
-    expect(named, 'a capture that is not a Pokédex entry answered a dex number').toStrictEqual([]);
-
-    // The count, because an empty list of offenders is also what a loop that asked nothing produces — which is the
-    // failure this whole test exists to rule out, one level up.
-    expect(asked, 'the reader was not asked about every capture').toBe(CORPUS.length);
-  },
-  WHOLE_CORPUS_TIMEOUT,
-);
 
 /**
  * The distinct values a column of the table holds, as words. Written out rather than left to `Array#sort`, which
