@@ -116,15 +116,17 @@ export interface Choices {
   clear?: (swipe: readonly [Point, Point]) => boolean;
 
   /**
-   * Whether what the minigame hides is back on this frame: the button to flee the battle, from its first frame fading
-   * in, or our HP bar. Both show again as the move plays out after the bubbles, which from then are over however
-   * closely what is found as them follows: Outrage's smoke, Close Combat's colour on Zamazenta's red body and Crunch's
-   * up to the minigame's last frame, each less than `OVER_MS` after the last bubble. Of the 226 throws in 18 kept runs
-   * after which both came back, the button came first after 205, by a median 1.06s: Close Combat's rating went 0.1s
-   * after its last bubble, on the frame the button began to fade in, and our bar came back 1.54s later. Our bar came
-   * first after 21, by two frames at most bar one by 0.18s. Read up only once its disc was white, the button left a
-   * median 0.165s of its fade to be swiped, after 47 throws. Not a bar centred on its Pokémon: one showed through
-   * Crunch's bubbles, read once as the opponent's.
+   * Whether what the minigame hides is back on this frame, the button to flee the battle from its first frame fading in
+   * or our HP bar, or the banner naming the move is up. Each shows as the move plays out after the bubbles, which from
+   * then are over however closely what is found as them follows: Outrage's smoke, Close Combat's colour on Zamazenta's
+   * red body and Crunch's up to the minigame's last frame, each less than `OVER_MS` after the last bubble. Of the 226
+   * throws in 18 kept runs after which both came back, the button came first after 205, by a median 1.06s: Close
+   * Combat's rating went 0.1s after its last bubble, on the frame the button began to fade in, and our bar came back
+   * 1.54s later. Our bar came first after 21, by two frames at most bar one by 0.18s. Read up only once its disc was
+   * white, the button left a median 0.165s of its fade to be swiped, after 47 throws. The banner came before either
+   * after 124 of 253 throws in 20 kept runs, by a median 0.17s and up to 0.72s, and 85 swipes went to what was found
+   * after it on 27: Zamazenta's body, unbroken from the bubbles, and Avalanche's bubbles left drawn as the move played
+   * out. Not a bar centred on its Pokémon: one showed through Crunch's bubbles, read once as the opponent's.
    */
   back?: boolean;
 }
@@ -174,8 +176,7 @@ const LEAD_IN_MS = 3_500;
  * anything found after is the move playing out, which strikes the opponent with things of its type's colour —
  * Avalanche's ice chunks, Outrage's smoke, Thunderbolt's lightning. Over 218 throws of 17 kept runs, no stretch of
  * bubbles was broken for more than 0.36s, and 129 had the move found 0.5s or more after the last of them, each looked
- * at under its `used` banner or just before it. Found sooner, it is swiped until what the minigame hides is back, as
- * `back` says.
+ * at under its `used` banner or just before it. Found sooner, it is swiped until `back` says the move is playing out.
  */
 const OVER_MS = 500;
 
@@ -184,7 +185,7 @@ const OVER_MS = 500;
  * milliseconds. A throw can be taken to be playing before its minigame begins, as when the opponent's faint hides our
  * buttons, and whatever the fight shows meanwhile is found as bubbles: 0.8s and 1.3s of it in kept runs, and the `Get
  * Ready!` after, with none found, would have ended a minigame not yet begun, as the fight's button and bar would, and
- * the button through `Get Ready!` itself. Every stretch the move came after ran 2.5s at the least.
+ * the button and the line of `Get Ready!` itself. Every stretch the move came after ran 2.5s at the least.
  */
 const BUBBLES_MS = 2_000;
 
@@ -410,8 +411,8 @@ export class Player {
   #swiped: { swipe: readonly [Point, Point]; share: number; at: number }[] = [];
 
   /**
-   * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or what the minigame hides back after them,
-   * after which none are swiped.
+   * Whether the bubbles found for `BUBBLES_MS` are over, gone `OVER_MS` or `back` after them, after which none are
+   * swiped.
    */
   #over = false;
 

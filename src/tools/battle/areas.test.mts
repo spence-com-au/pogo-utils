@@ -22,6 +22,7 @@ import { areas as healthAreas, readHealth } from './health.mts';
 import { areas as readAreas, readBanner, readBattle } from './read.mts';
 import {
   areas as recogniseAreas,
+  banner,
   countdown,
   fleeButton,
   opponentShields,
@@ -217,6 +218,7 @@ test.each(fixtures(BATTLE))('tells %s apart as it does whole with all but its ar
     ready: readyButtons(on),
     countdown: countdown(on),
     flee: fleeButton(on),
+    banner: banner(on),
   });
 
   expect(told(painted)).toEqual(near(told(image)));

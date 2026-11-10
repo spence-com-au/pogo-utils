@@ -16,6 +16,7 @@ import { bubbleSwipes, typeColour, type Colour } from './minigame.mts';
 import { readHealth } from './health.mts';
 import { merge, readBanner, readBattle, readGetReady, settle } from './read.mts';
 import {
+  banner,
   blank,
   countdown,
   fleeButton,
@@ -277,6 +278,7 @@ export async function run(
     blank: perFrame(blank),
     bubbleSwipes: perFrame(bubbleSwipes),
     fleeButton: perFrame(fleeButton),
+    banner: perFrame(banner),
   };
   let battles = 0;
   const outcomes: Record<Outcome, number> = { won: 0, lost: 0 };
@@ -1275,7 +1277,9 @@ export async function run(
         ...(battle.bench.chosen && !flying && { bench: battle.bench.chosen.at }),
         ...(bubbles && { bubbles }),
         clear: (swipe) => swipeAround(swipe, panels, frame) !== undefined,
-        back: battle.player.minigame && (reads.fleeButton(frame) || reads.readHealth(frame).own !== null),
+        back:
+          battle.player.minigame &&
+          (reads.fleeButton(frame) || reads.banner(frame) || reads.readHealth(frame).own !== null),
       });
 
       // With none of ours left to send in, by the Poké Balls or the faints counted, what reads as the switch prompt is

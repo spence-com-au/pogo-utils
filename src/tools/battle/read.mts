@@ -12,7 +12,7 @@ import { closest, distance, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, ocrLine, type Line } from '../../core/ocr.mts';
 import { crop, scale, type Image } from '../../core/png.mts';
 import { BOTTOM, down, spanning, TOP, type Area, type Size } from './layout.mts';
-import { BUTTON_XS } from './recognise.mts';
+import { BANNER_ANCHOR, BUTTON_XS } from './recognise.mts';
 import { type Typing } from './strategy.mts';
 
 export interface Sighting {
@@ -197,13 +197,6 @@ const BANNERS = [
   { top: 0.2322, bottom: 0.3167 },
 ] as const;
 
-/**
- * Where the banner is pinned, as `layout.mts` measures anchors: its line centred at 0.323 of a Pixel 4 XL's height and
- * at 0.316 of a Pixel 8 Pro's, the middle of the bands a line read finds `used` in, two banners on one and three on the
- * other. The two shapes differ little, so the anchor is good to about 0.1 either way; what it has to get right is the
- * band, which pinned to the top missed the Pixel 8 Pro's lettering, rows 250 to 261 of 802, from row 258 down.
- */
-const BANNER_ANCHOR = 0.19;
 const USED = /^(.*?)\s*used\s*([^!]*)/i;
 
 /**
