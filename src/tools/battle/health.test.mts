@@ -183,6 +183,19 @@ test.each([
   expect(read(name).own).toBeNull();
 });
 
+test('a bar whose fill runs on under a bench card goes unread', () => {
+  // Our Dragonite's bar at 80%, carried to where the opponent's starts, its fill dimmed and tinted under the top bench
+  // card from x 300, which read as Groudon's at 60%.
+  expect(read('playing-dragonite-bench-card').opponent).toBeNull();
+});
+
+test('a bar just below a bench card, its fill ending under the card’s left edge, is read', () => {
+  // Kabutops's bar at 59%, its fill ending at x 299 on the rows just below the top bench card.
+  const health = read('playing-kabutops-below-bench-card');
+
+  expect(within(health.opponent, 0.59), `theirs read ${health.opponent}`).toBe(true);
+});
+
 test.each([
   // The rings drawn where the fight's swipe touched, over our Kyogre's bar at 63%, read 24% to where a ring crosses it,
   // the fill showing again beyond; and over the start of our Tyranitar's at 60%, read 4%, too short to sample.

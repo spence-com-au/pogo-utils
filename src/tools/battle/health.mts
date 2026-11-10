@@ -10,8 +10,9 @@
  */
 
 import { chroma, luminance, median, rgb, type Image } from '../../core/png.mts';
-import { type Area } from './layout.mts';
+import { place, type Area } from './layout.mts';
 import { type Colour } from './minigame.mts';
+import { BENCH, BENCH_ANCHOR } from './play.mts';
 
 type Fill = 'green' | 'yellow' | 'red';
 
@@ -356,6 +357,37 @@ function cut(image: Image, strip: Strip, all: readonly Strip[]): boolean {
 }
 
 /**
+ * How wide and tall each of the bench's cards is, in the frame's widths, centred where `play.mts` taps it: 50 pixels of
+ * 360 each way, its frame at x 300 and on rows 438–487 in `battle-latias` and 458–507 in `battle-pixel8`.
+ */
+const CARD = 0.139;
+
+/**
+ * Whether a strip's fill ends at the left edge of one of the bench's cards, its middle row among the card's: the card
+ * drawn over the bar from there on, hiding the rest of the fill. The cards are translucent, and the fill runs on
+ * through one dimmed and tinted by its backdrop, too far from the fill's own colour for `covered`.
+ *
+ * As a charged move plays, the camera can carry a bar across the top card's rows: at 384.069s of the kept run
+ * `2026-11-01-master-screen-off` our Dragonite's bar at 80% lay at x 240, the card over it from 60%, and read as
+ * Groudon's at 60%. Of the 546,449 pictures of the 27 GO Battle League runs kept with video, this leaves 255 readings
+ * of the opponent at 59–78% unread, and `Steady`, fed only the pictures in a state `run.mts` reads bars in, takes 42
+ * fewer rises in the opponent's HP for a newcomer. A bar lies at x 240 on the rows just below the card too, where its
+ * fill ending under the card's left edge is what it has left: Kabutops's at 59% in `2026-10-28-master`.
+ */
+function benched(image: Image, strip: Strip): boolean {
+  const unit = image.width / 360;
+  const middle = strip.top + strip.rights.length / 2;
+  const half = (CARD / 2) * image.width;
+
+  return BENCH.some((card) => {
+    const [x, y] = place(card, BENCH_ANCHOR, image);
+    const edge = x * image.width - half;
+
+    return Math.abs(rightOf(strip) - edge) <= 2 * unit && Math.abs(middle - y * image.height) <= half;
+  });
+}
+
+/**
  * Whether a strip lies outside the bar's outline rather than in it, beside the bar or just above or below it, among
  * `all` the strips found, any of which starting where `side`'s bar starts may be that bar.
  *
@@ -445,8 +477,8 @@ const apart = (a: Strip, b: Strip) => a.top + a.rights.length <= b.top || b.top 
 
 /**
  * Each side's HP left, as a fraction of full. A bar not drawn — through the minigame, or with the camera elsewhere — or
- * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`
- * and `LIT`. Where a side has two strips, an effect over the fill having split it, the one taken is the bar by
+ * not told from the artwork is null, and so is one whose fill ends where something is drawn over it: `covered`, `cut`,
+ * `benched` and `LIT`. Where a side has two strips, an effect over the fill having split it, the one taken is the bar by
  * `before`, unless it lies `outside` the bar.
  *
  * Two on rows apart are two bars, or a bar and artwork, and neither is read. As the camera swings through a charged
@@ -476,7 +508,10 @@ export function readHealth(image: Image): Health {
 
     if (bar && !bars.some((other) => apart(bar, other))) {
       health[side] =
-        covered(image, bar) || cut(image, bar, all) || (bar.fill !== 'red' && fraction(bar) < LIT)
+        covered(image, bar) ||
+        cut(image, bar, all) ||
+        benched(image, bar) ||
+        (bar.fill !== 'red' && fraction(bar) < LIT)
           ? null
           : Math.min(1, fraction(bar));
     }

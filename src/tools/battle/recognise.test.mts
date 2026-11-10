@@ -100,6 +100,7 @@ const fleeing = [
   'other-two-bars',
   'playing-banner-gardevoir',
   'playing-banner-ursaluna',
+  'playing-dragonite-bench-card',
   'playing-flee-avalanche',
   'playing-ready-cloud',
   'playing-ready-zamazenta',
