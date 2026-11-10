@@ -338,6 +338,26 @@ test('a silhouette its shape cannot settle is named by elimination, and noted', 
   ]);
 });
 
+/**
+ * A species' last unregistered form, every other one named: Tauros as if Combat and Blaze were registered, with Aqua's
+ * label unread. Held against Aqua's icon alone, which is all that is left, `namedFrom` would name nothing and it would
+ * fall to elimination; held against every breed's, it is named by its shape.
+ */
+test("a species' last unregistered form is named by its shape", async () => {
+  const { image } = await read('tauros-0');
+  const { tiles } = await formRow('tauros-0');
+  const { box } = tiles[3] ?? expect.unreachable("Tauros's form row has four tiles");
+  const forms = DATA.forms.filter((f) => f.dex === 128 && !f.costume);
+
+  expect(
+    silhouettesNamed([{ index: 3, image, box, label: null }], forms, formsOf(128), [
+      null,
+      'Paldea Combat',
+      'Paldea Blaze',
+    ]),
+  ).toStrictEqual({ forms: [{ index: 3, form: 'Paldea Aqua' }], notes: [] });
+});
+
 /** The costumes on one screenshot, named among `candidates`, undefined where none is plainly nearest. */
 async function costumes(name: string, candidates: readonly Candidate[]) {
   const { image, lines: found } = await read(name);

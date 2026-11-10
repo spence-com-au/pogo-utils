@@ -1090,9 +1090,13 @@ export interface Silhouette {
 
 /**
  * Which of a species' forms each of its silhouettes is, `named` being the forms its registered tiles already are: by
- * label, then by shape among the forms not yet named, then by being the forms left once every other is. Elimination
- * settles which forms the tiles are but not which tile is which, handing them out in the game master's order rather than
- * the game's, so each form it names is noted as named that way.
+ * label, then by shape where the nearest is a form not yet named, then by being the forms left once every other is.
+ * Elimination settles which forms the tiles are but not which tile is which, handing them out in the game master's
+ * order rather than the game's, so each form it names is noted as named that way.
+ *
+ * A shape is held against every one of the species' forms, the ones already named too, so the last silhouette has more
+ * than one to be nearer than: `namedFrom` names nothing after a lone candidate, and against only the forms left, a
+ * species' last unregistered form would always fall to elimination.
  */
 export function silhouettesNamed(
   silhouettes: readonly Silhouette[],
@@ -1107,15 +1111,8 @@ export function silhouettesNamed(
 
   for (const { index, image, box, label } of silhouettes) {
     const byLabel = label === null ? null : formLabelled(label, forms);
-    const form = byLabel
-      ? byLabel.form
-      : iconIn(
-          image,
-          box,
-          formFrame(image, box),
-          'silhouette',
-          shapes.filter((c) => !taken.has(c.name)),
-        );
+    const byShape = byLabel ? undefined : iconIn(image, box, formFrame(image, box), 'silhouette', shapes);
+    const form = byLabel ? byLabel.form : byShape !== undefined && !taken.has(byShape) ? byShape : undefined;
 
     if (form === undefined) {
       unnamed.push(index);
