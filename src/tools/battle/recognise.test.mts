@@ -94,6 +94,7 @@ const fleeing = [
   'battle-lugia-foliage-beside-split',
   'battle-lugia-foliage-split',
   'battle-overcast',
+  'battle-sliver-trail',
   'battle-tap-ring-start',
   'battle-tap-ring',
   'other-mewtwo-foliage-letters',

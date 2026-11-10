@@ -108,7 +108,7 @@ const AGAIN = { shown: [0.9, 1.15], run: 6 } as const;
  * empties, and a strip of either shorter than this is one split off where the bar starts by something drawn across it.
  * Of the 6,909 bars read on the committed frames and those kept from 13 runs, the green ones under 40% and the yellow
  * under 20% were each under something drawn over them, PGSharp's yellow star over our bar's start among them, read as a
- * yellow bar at 2%. A ring split our bar 4 pixels from its start, too short a strip for `covered` to see its colour.
+ * yellow bar at 2%.
  */
 const LIT = 0.1;
 
@@ -306,6 +306,16 @@ function framed(image: Image, strip: Strip): boolean {
  * again beyond it by `AGAIN`, the fill's colour the middle of what it shows: looked for on the strip's middle row from 2
  * pixels past where the fill ends, clear of the encoder's blur at its edge, to 4 short of where a full bar's would, clear
  * of the outline. A strip that near full has nothing there to look at, and is read as it is.
+ *
+ * A strip too short to leave any of its fill clear of the blur takes its colour from those of its pixels `fillOf` takes
+ * for it. Such a strip can be a bar's left end split off from the rest of its fill: at 581.626s of the kept run
+ * `2026-10-29-master-pixel8` 2 pixels of the opponent's red at 22% fell just short of `fillOf`'s red, and the 4 before
+ * them read as the bar at 4%. Of the 566,974 pictures of the 28 GO Battle League runs kept with video, 28 readings at
+ * 2–4% so go unread, each between readings of that side at 9–25%, among them two in a row of the opponent's bar at 17%,
+ * read 4% at 500.072s of `2026-11-08-minigame-over`, which `Steady` took. Taken from all of the strip's pixels, the
+ * colour of a sliver of red takes in the orange trail of a hit blurred into the pixel beside it, and the trail then
+ * passes for the fill showing again: at 804.832s of `2026-11-01-master`, the opponent's bar at 3% as it fainted went
+ * unread twice.
  */
 function covered(image: Image, strip: Strip): boolean {
   const unit = image.width / 360;
@@ -313,7 +323,8 @@ function covered(image: Image, strip: Strip): boolean {
   const row = (from: number, to: number) =>
     Array.from({ length: Math.max(0, Math.ceil(to - from)) }, (_, i) => rgb(image, from + i, middle));
   const right = rightOf(strip);
-  const fill = row(Math.round(strip.left + 2 * unit), right - 2 * unit);
+  const clear = row(Math.round(strip.left + 2 * unit), right - 2 * unit);
+  const fill = clear.length > 0 ? clear : row(strip.left, right).filter((pixel) => fillOf(...pixel) === strip.fill);
   const colour: Colour = [
     median(fill.map(([r]) => r)),
     median(fill.map(([, g]) => g)),
