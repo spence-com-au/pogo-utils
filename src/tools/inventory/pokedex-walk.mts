@@ -282,23 +282,36 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
   const open = async (from: number): Promise<Shot> => {
     const region = regionIn(from);
 
-    for (let attempt = 0; attempt < 6; attempt++) {
+    if (region === null) {
+      throw new Error(`#${from} is past the last species, so there is no region to open it in`);
+    }
+
+    let tapped = false;
+
+    for (let attempt = 0; attempt < 6 && !tapped; attempt++) {
       const image = await settled(device);
       const lines = await listLines(image);
-      const card = lines.find((l) => region !== null && fold(l.text) === fold(region));
+      const card = lines.find((l) => fold(l.text) === fold(region));
 
       if (card) {
         await tap(centre(card), config.waits.search);
-        break;
+        tapped = true;
+        continue;
       }
 
       // Towards it along the list, which is wherever the last walk or tally left it: up where every region in sight
       // comes after it, and down otherwise. Dragged in the middle, where a drag the phone took as a tap would open a
       // region rather than press anything else.
       const shown = countsOn(lines).map((c) => LISTED.indexOf(c.region));
-      const up = shown.length > 0 && shown.every((i) => i > LISTED.indexOf(region ?? ''));
+      const up = shown.length > 0 && shown.every((i) => i > LISTED.indexOf(region));
       await drag(up ? [0.5, 0.38] : [0.5, 0.7], up ? [0.5, 0.7] : [0.5, 0.38], SCROLL_DRAG_MS);
       await sleep(config.waits.scroll);
+    }
+
+    if (!tapped) {
+      throw new Error(
+        `could not find ${region}'s card in the Pokédex's list of regions; open its grid by hand and run again`,
+      );
     }
 
     // The grid's tiles by the number under each, which the plain read gets exactly. Dragged on down the region until
@@ -340,21 +353,23 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       // Along to `from` either way, the tile tapped being any of the region's first few: back while the one before is
       // still `from` or past it, and on again from the one that was not, then on while short of it.
-      let back = await previous(shot, dex);
+      let back = await previous(dex);
 
       while (back && back[1] >= from) {
         [shot, dex] = back;
-        back = await previous(shot, dex);
+        back = await previous(dex);
       }
 
-      const forward = back ? await next(back[0], back[1]) : null;
+      // Where the step on again fails, the phone is left on the one before `from`, and that is where the walk goes on
+      // from: never a screenshot of an entry the phone is no longer showing.
+      const forward = back ? ((await next(back[1])) ?? back) : null;
 
       if (forward) {
         [shot, dex] = forward;
       }
 
       while (dex < from) {
-        const moved = await next(shot, dex);
+        const moved = await next(dex);
 
         if (!moved) {
           break;
@@ -371,11 +386,16 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     throw new Error(`no tile in sight in ${region ?? 'the region'} opened an entry; open one by hand and run again`);
   };
 
-  /** Swipes to the next entry, answering it and its number, or null where the swipe went nowhere twice: the end. */
-  const next = async (shot: Shot, dex: number): Promise<[Shot, number] | null> => {
+  /**
+   * Swipes from the entry for `dex` to the next or, `back`, to the one before, answering where it landed and its number,
+   * or null where the swipe went nowhere twice: the end of the Pokédex that way, a swipe the phone dropped leaving the
+   * same screen, so it is made twice before it is believed.
+   */
+  const step = async (dex: number, back: boolean): Promise<[Shot, number] | null> => {
+    const [grab, drop] = config.swipes.next;
+
     for (let attempt = 0; attempt < 2; attempt++) {
-      const [from, to] = config.swipes.next;
-      await drag(from, to, 300);
+      await (back ? drag(drop, grab, 300) : drag(grab, drop, 300));
       await sleep(config.waits.swipe);
       const after = await shoot(device);
       const now = dexOn(after.lines, data);
@@ -388,23 +408,8 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     return null;
   };
 
-  /** Swipes back to the entry before, answering it and its number, or null where the swipe went nowhere: the start. */
-  const previous = async (shot: Shot, dex: number): Promise<[Shot, number] | null> => {
-    // Twice, as `next` swipes, since a swipe the phone dropped and the start of the Pokédex leave the same screen.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const [to, from] = config.swipes.next;
-      await drag(from, to, 300);
-      await sleep(config.waits.swipe);
-      const after = await shoot(device);
-      const now = dexOn(after.lines, data);
-
-      if (now !== null && now !== dex) {
-        return [after, now];
-      }
-    }
-
-    return null;
-  };
+  const next = (dex: number) => step(dex, false);
+  const previous = (dex: number) => step(dex, true);
 
   /**
    * Back to the top of the entry for `dex`: to the next entry and back, or to the one before and back at the end.
@@ -413,11 +418,11 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
    * `dex`, and one that cannot be is refused.
    */
   const reopen = async (shot: Shot, dex: number): Promise<Shot> => {
-    const moved = await next(shot, dex);
-    let landed = moved ? await previous(...moved) : await previous(shot, dex).then((back) => back && next(...back));
+    const moved = await next(dex);
+    let landed = moved ? await previous(moved[1]) : await previous(dex).then((back) => back && next(back[1]));
 
-    for (let step = 0; landed && landed[1] !== dex && step < 2; step++) {
-      landed = landed[1] < dex ? await next(...landed) : await previous(...landed);
+    for (let tries = 0; landed && landed[1] !== dex && tries < 2; tries++) {
+      landed = landed[1] < dex ? await next(landed[1]) : await previous(landed[1]);
     }
 
     if (!landed || landed[1] !== dex) {
@@ -527,7 +532,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
   };
 
   /** Reads the entry showing in `top`, every form of it, and answers it; `top` is its screenshot at its top. */
-  const read = async (top: Shot, dex: number): Promise<{ entry: Entry; at: Shot }> => {
+  const read = async (top: Shot, dex: number): Promise<Entry> => {
     const species = formsOf(dex)[0]?.species ?? data.forms.find((f) => f.dex === dex)?.species ?? String(dex);
     const notes: string[] = [];
     const tag = String(dex).padStart(4, '0');
@@ -543,10 +548,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       const seen = await view(top, dex, tag);
       const named = await identityOf(seen, dex);
 
-      return {
-        entry: assemble({ dex, species, notes, views: [{ form: named === undefined ? null : named, seen }] }),
-        at: top,
-      };
+      return assemble({ dex, species, notes, views: [{ form: named === undefined ? null : named, seen }] });
     }
 
     const openedLabels = await labelsOf(top.image, opened);
@@ -693,7 +695,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     // In the order the game draws the forms, rather than the order they were read in.
     views.sort((a, b) => a.index - b.index);
 
-    return { entry: assemble({ dex, species, notes, views }), at: shot };
+    return assemble({ dex, species, notes, views });
   };
 
   /** The line for a species, out of what each of its forms' views read. */
@@ -750,10 +752,10 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     }
 
     while (dex !== null && dex <= to) {
-      const { entry, at: last } = await read(shot, dex);
+      const entry = await read(shot, dex);
       yield entry;
 
-      const moved = await next(last, dex);
+      const moved = await next(dex);
 
       if (!moved) {
         return;

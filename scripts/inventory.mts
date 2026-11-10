@@ -933,8 +933,10 @@ function dexRange() {
   const from = count('from', options.from, 1);
   const to = count('to', options.to, LAST);
 
-  if (from < 1 || from > to) {
-    throw new Error(`--from ${from} --to ${to} covers no species: --from is at least 1 and no more than --to`);
+  if (from < 1 || from > to || from > LAST) {
+    throw new Error(
+      `--from ${from} --to ${to} covers no species: --from is at least 1, no more than --to and no more than ${LAST}`,
+    );
   }
 
   return { from, to };
