@@ -298,6 +298,56 @@ test('a costume is named by its icon, and only where one is plainly nearest', as
 });
 
 /**
+ * The nearest and next nearest of Pikachu's hundred-odd costumes to each tile on `pikachu-3`, which is all a name turns
+ * on: among these the tiles are named as among every one a walk gathers, at a fifth of the cost.
+ */
+const PIKACHU: readonly Candidate[] = (
+  [
+    ['Anniversary', 'pm25.cANNIVERSARY'],
+    ['November 2018', 'pm25.cNOVEMBER_2018'],
+    ['May 2019', 'pm25.cMAY_2019_NOEVOLVE'],
+    ['Kanto 2020', 'pm25.cKANTO_2020_NOEVOLVE'],
+    ['Halloween 2017', 'pm25.cHALLOWEEN_2017'],
+    ['Fall 2018', 'pm25.cFALL_2018'],
+    ['Summer 2018', 'pm25.cSUMMER_2018'],
+    ['Winter 2018', 'pm25.cWINTER_2018'],
+    ['Gotour 2024 B', 'pm25.fGOTOUR_2024_B'],
+    ['Jan 2020', 'pm25.cJAN_2020_NOEVOLVE'],
+    ['Gofest 2022', 'pm25.cGOFEST_2022_NOEVOLVE'],
+    ['Gofest 2022', 'pm25.fGOFEST_2022'],
+    ['Halloween 2021', 'pm25.cHALLOWEEN_2021_NOEVOLVE'],
+    ['Gofest 2021', 'pm25.cGOFEST_2021_NOEVOLVE'],
+    ['Fall 2019', 'pm25.fFALL_2019'],
+    ['Gofest 2026 Cap Red', 'pm25.fGOFEST_2026_CAP_RED'],
+    ['Gofest 2026 Cap Yellow', 'pm25.fGOFEST_2026_CAP_YELLOW'],
+    ['Gofest 2026 Cap Blue', 'pm25.fGOFEST_2026_CAP_BLUE'],
+    ['Anniversary 2026', 'pm25.fANNIVERSARY_2026'],
+  ] as const
+).map(([name, file]) => ({ name, icon: icon(`${file}.icon.png`) }));
+
+/**
+ * Pikachu's costumes, named where one icon is plainly nearest; the three GO Fest 2026 caps, alike but for their colour,
+ * and two party hats are left unnamed. Three rows of the five read: the first is under PGSharp's star button (#1005),
+ * and the fifth runs under the close button.
+ */
+test("Pikachu's costumes are named among its own", async () => {
+  expect(await costumes('pikachu-3', PIKACHU)).toStrictEqual([
+    undefined,
+    'May 2019',
+    'Halloween 2017',
+    'Summer 2018',
+    'Winter 2018',
+    undefined,
+    'Halloween 2021',
+    'Fall 2019',
+    undefined,
+    undefined,
+    'Anniversary 2026',
+    undefined,
+  ]);
+});
+
+/**
  * The counts a tab's region list prints. The POKÉMON tab's over the three screenshots its list takes to scroll, each
  * count taken only where the number after it is the region's own size; SHINY's off its first, with `Caught:`.
  */
