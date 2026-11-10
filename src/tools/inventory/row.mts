@@ -63,7 +63,7 @@ export async function rowOf(
     const identity =
       shade.shadowed === null
         ? read
-        : identify(data, detail, overlay, artworkIn(image, boxes.box, icons), null, shade.shadowed);
+        : identify(data, detail, overlay, artworkIn(image, boxes.box, icons), shade.shadowed);
 
     return { ...shade, id: identity };
   };

@@ -2651,37 +2651,6 @@ test(
 );
 
 /**
- * That a species read off the Pokédex does not cost the nickname, which is the half of `identify` the override could
- * most easily have broken: the dex decides the species, and the name is still what says whether there is a nickname,
- * which is what keeps `ho-oh.png` a Ho-Oh called `96%`.
- *
- * It is also the case where the fallback changes nothing, and that is worth asserting rather than assuming: the CP
- * narrowing already settles this capture, so the dex has to agree with an answer that was right without it.
- */
-test('a species read off the Pokédex leaves the nickname alone', async () => {
-  const { detail, overlay, artwork, identity: without } = await readingOf('ho-oh.png');
-  const dex = DATA.forms.find((f) => f.species === 'Ho-Oh')?.dex ?? null;
-  const identity = identify(DATA, detail, overlay, artwork, dex);
-
-  expect(identity.form && label(identity.form)).toBe('Ho-Oh');
-
-  // Against what the same capture answers *without* the override rather than against `96%` directly, which is the claim
-  // worth making: the override leaves the nickname alone, whatever the name pass made of it. Stated as invariance it
-  // survived the name pass starting to read this screen correctly — it used to answer `LUCKY POKEMON`, the green line
-  // under the nickname taken for the name, and a `96%` written out here would have been a second thing to remember.
-  expect(identity.nickname, 'the dex override swallowed the nickname the screen prints').toBe(without.nickname);
-  expect(without.nickname, 'what `ho-oh.png` reads as its nickname has changed').toBe('96%');
-
-  // Stated as invariance for the same reason the nickname is: the Pokédex and the numbers agree here, so the override
-  // may not add a note of its own — and the one note this capture does raise is the artwork declining its two icons,
-  // which the override has no part in.
-  expect(identity.notes, 'the dex override reports something the capture did not').toStrictEqual(without.notes);
-  expect(without.notes, 'what `ho-oh.png` raises a note about has changed').toStrictEqual([
-    'nothing on the screen separates it from Ho-Oh (S)',
-  ]);
-});
-
-/**
  * The distinct values a column of the table holds, as words. Written out rather than left to `Array#sort`, which
  * stringifies an `undefined` and so files it after every capital letter — `['XL', 'XS', 'XXL', 'XXS', undefined]`,
  * which is the right set in an order nobody would write down on purpose.

@@ -276,7 +276,7 @@ const LUGIA_OVERLAY: Overlay = {
 
 /** The answer, the forms beside it and the notes for that Lugia, as `shadowed` leaves it. */
 const lugia = (shadowed: boolean | null) => {
-  const identity = identify(DATA, LUGIA, LUGIA_OVERLAY, undefined, null, shadowed);
+  const identity = identify(DATA, LUGIA, LUGIA_OVERLAY, undefined, shadowed);
 
   return {
     form: identity.form && label(identity.form),

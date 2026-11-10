@@ -75,11 +75,6 @@ export interface Identity {
  * The overlay's level is a proposal rather than a fact, being the one field OCR gets wrong with any regularity: it is
  * kept only where the HP agrees the Pokémon can be that level, and reported as a disagreement where it does not.
  *
- * `dex` is a species read off the Pokémon's own Pokédex entry, for the two cases the detail screen's name cannot
- * give: a nickname printed where the species goes, and the `♀` or `♂` OCR loses. It outranks the name rather than
- * joining it, but the name still decides whether there is a **nickname**, so a Ho-Oh called `96%` keeps it. It says
- * nothing about the form.
- *
  * `shadowed` is whether the Pokémon is shadow or purified, which the scan's `shadow` and `purified` passes answer, and
  * `shadowOf` where they did not run: null where neither says.
  */
@@ -88,23 +83,11 @@ export function identify(
   detail: Detail,
   overlay: Overlay | null,
   artwork?: Artwork,
-  dex: number | null = null,
   shadowed: boolean | null = null,
 ): Identity {
   const notes: string[] = [];
   const iv = overlay?.iv ?? null;
-
-  // Kept apart, because once a Pokédex entry is in play the species narrows the candidates and the name says whether
-  // this Pokémon is nicknamed. With no `dex` they are the same value.
-  const matched = detail.name ? closest(detail.name, data.species, (s) => s) : null;
-  const entry = dex === null ? null : (data.forms.find((f) => f.dex === dex)?.species ?? null);
-  const species = entry ?? matched;
-
-  // Only where the name does not read as the entry's species at all. Both Nidoran fold to `nidoran`, so `matched` is
-  // Nidoran♀ for either; compared directly, a Nidoran♂ entry would report the glyph loss it was opened to settle.
-  if (entry !== null && matched !== null && detail.name && closest(detail.name, [entry], (s) => s) === null) {
-    notes.push(`the Pokédex says ${entry}, where the name on the screen reads as ${matched}`);
-  }
+  const species = detail.name ? closest(detail.name, data.species, (s) => s) : null;
 
   const fits = (f: Form) =>
     (detail.types.length === 0 || sameTypes(f.types, detail.types)) &&
@@ -300,10 +283,9 @@ export function identify(
   }
 
   // A name that does not read as the species answered, which is not the same as one reading as no species at all: a
-  // Vaporeon called `Eevee` matches a species and is still nicknamed. Read against the answer rather than against
-  // `matched`, so a Nidoran whose `♀` OCR lost is not taken for a nickname once the Pokédex has said which it is.
+  // Vaporeon called `Eevee` matches a species and is still nicknamed.
   const nickname =
-    detail.name && (form ? closest(detail.name, [form.species], (s) => s) : matched) === null ? detail.name : null;
+    detail.name && (form ? closest(detail.name, [form.species], (s) => s) : species) === null ? detail.name : null;
 
   const consistent = form && iv && detail.hp !== null ? levelsOf(data, form, iv, detail.hp) : [];
   const agreed = consistent.filter((l) => stated.includes(l));

@@ -14,7 +14,6 @@
 import { expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dexOn } from './pokedex.mts';
-import { identify, label } from './identify.mts';
 import { type GameData } from '../../core/game-master.mts';
 
 /** The game master the readers are asserted against, vended beside the captures. */
@@ -67,34 +66,4 @@ test('residue after the name is tolerated and a digit before the number is not',
 test('a screen mid-swipe between two entries answers neither of them', () => {
   expect(dexOn(lines('0029 NIDORAN', '0032 NIDORAN'), DATA)).toBe(null);
   expect(dexOn(lines('0029 NIDORAN', '0029 NIDORAN'), DATA), 'one entry read twice is still that entry').toBe(29);
-});
-
-/**
- * And the end of it: a detail screen whose name has lost its `♂` is answered as Nidoran♂ once the walk hands over the
- * number it read off the entry, without the lost glyph being reported as the Pokédex disagreeing. `NIDORAN` reads as
- * either, and `closest` breaks that tie towards Nidoran♀ — so the dex is what makes the answer right rather than lucky.
- */
-test('a Nidoran whose glyph was lost is the Nidoran the entry names', () => {
-  const detail = {
-    cp: null,
-    cps: [],
-    name: 'NIDORAN',
-    hp: 32,
-    weight: 7.1,
-    height: 0.52,
-    types: ['Poison'],
-    gender: null,
-    favourite: false,
-    lucky: false,
-    size: null,
-    tags: [],
-    evolveCandy: null,
-    powerUp: null,
-    max: null,
-  };
-
-  const identity = identify(DATA, detail, null, undefined, dexOn(lines('0032 NIDORAN'), DATA));
-
-  expect(identity.form && label(identity.form)).toBe('Nidoran♂');
-  expect(identity.notes, 'the lost glyph was reported as the Pokédex disagreeing').toStrictEqual([]);
 });
