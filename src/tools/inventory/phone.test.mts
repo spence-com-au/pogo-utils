@@ -871,7 +871,8 @@ describe('dex', () => {
     'walks the first three entries, writes a line for each, and fails the count against a record of only those',
     { timeout: SLOW },
     async (context) => {
-      const phone = new Pokedex();
+      // A fourth entry that would not read, which a walk to #3 has no reason to swipe to.
+      const phone = new Pokedex([...ENTRIES, ['menu']]);
       const { cwd, inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
       const { code, stderr } = await inventory('dex', '--from', '1', '--to', '3');
 

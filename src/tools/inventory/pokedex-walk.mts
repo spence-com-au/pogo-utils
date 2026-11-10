@@ -821,6 +821,12 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       const entry = await read(shot, dex);
       yield entry;
 
+      // Not a swipe further at `to`: nothing past it is wanted, and a swipe onto an entry that would not read would fail
+      // a walk that had already read everything it was for.
+      if (dex >= to) {
+        return;
+      }
+
       const moved = await next(dex);
 
       if (!moved) {
