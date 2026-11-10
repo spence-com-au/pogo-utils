@@ -172,8 +172,8 @@ const FILLED = 0.015;
  * with the backdrop darkened, so everything inside it is within a few steps of everything else, its anti-aliased edge
  * aside; an icon is drawn in its own colours, shaded and outlined. Over the tiles of the CAUGHT tabs under
  * `fixtures/pokedex/`, no icon came out flatter than 0.36 (Galarian Meowth's own) but Beedrill's, which `OTHER` tells,
- * and no silhouette less flat than 0.75 (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes
- * are a dark slate rather than the backdrop darkened, and nearly as flat: Unown's 0.62 at the least, against 0.13 at
+ * and no silhouette less flat than 0.79 (Charizard's MEGA Y), so this sits between the two. The form row's silhouettes
+ * are a dark slate rather than the backdrop darkened, and nearly as flat: Unown's 0.63 at the least, against 0.15 at
  * the most for a letter registered, its eye white on black.
  */
 const FLAT = 0.55;
@@ -182,15 +182,15 @@ const FLAT = 0.55;
  * How much of what stands out may be another colour for it still to be a silhouette: more than a few steps from its one
  * colour and from every blend of that with the backdrop, which is all its anti-aliased edge is. An icon can be as flat
  * as a silhouette where much of it is translucent, the backdrop seen through grey: Beedrill's own is 0.61, its wings,
- * but 0.31 of it is its yellow and black. Under `fixtures/pokedex/` no silhouette came to more than 0.12 (Charizard's
- * MEGA Y), Unown's thin dark ones in the form row among them, and no icon to less than 0.26 (Galarian Meowth's tile in
- * the form row).
+ * but 0.31 of it is its yellow and black. Under `fixtures/pokedex/` no silhouette came to more than 0.13 (Charizard's
+ * MEGA Y), Unown's thin dark ones in the form row among them, and no icon to less than 0.23 (Alolan Meowth's own).
  */
 const OTHER = 0.18;
 
 /**
- * What the tile at `box` holds. A pixel stands out where it is far from the tile's backdrop, and the ones that do are a
- * silhouette where most of them are within a few steps of their own median colour and next to none are another.
+ * What the tile at `box` holds. Its backdrop is taken row by row, by `backdropAt`; a pixel stands out where it is far
+ * from its row's, and the ones that do are a silhouette where most of them are within a few steps of their own median
+ * colour and next to none are another.
  */
 export function lookOf(image: Image, box: Box): Look {
   return flatness(image, box).look;
@@ -218,20 +218,22 @@ function backdropOf(image: Image, box: Box): number[] {
 /** `lookOf`'s working: how much of the box stands out, and how much of that is one colour and how much another. */
 export function flatness(image: Image, box: Box): { filled: number; flat: number; other: number; look: Look } {
   const step = Math.max(1, Math.round(box.width / 80));
-  const backdrop = backdropOf(image, box);
-  const standing: [number, number, number][] = [];
+  const top = backdropOf(image, box);
+  const standing: { seen: [number, number, number]; behind: number[] }[] = [];
   let asked = 0;
 
   // Between the glyph in a category tile's top corner and the label along its foot, both dark, either of which would
   // pass for a dark patch of an icon; and short of the right edge, which the fourth column's tiles run under PGSharp's
   // panel at, its slate plainly another colour beside a thin silhouette.
   for (let y = box.top + box.height * 0.25; y < box.top + box.height * 0.82; y += step) {
+    const behind = backdropAt(image, box, y, top);
+
     for (let x = box.left + box.width * 0.1; x < box.left + box.width * 0.85; x += step) {
-      const p = rgb(image, x, y);
+      const seen = rgb(image, x, y);
       asked++;
 
-      if (apart(p, backdrop) > STANDS_OUT) {
-        standing.push(p);
+      if (apart(seen, behind) > STANDS_OUT) {
+        standing.push({ seen, behind });
       }
     }
   }
@@ -242,11 +244,55 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
     return { filled, flat: 0, other: 0, look: 'empty' };
   }
 
-  const middle = [0, 1, 2].map((c) => median(standing.map((p) => p[c] ?? 0)));
-  const flat = standing.filter((p) => apart(p, middle) <= 30).length / standing.length;
-  const other = standing.filter((p) => apart(p, blendNearest(p, middle, backdrop)) > 60).length / standing.length;
+  const middle = [0, 1, 2].map((c) => median(standing.map(({ seen }) => seen[c] ?? 0)));
+  const flat = standing.filter(({ seen }) => apart(seen, middle) <= 30).length / standing.length;
+  const other =
+    standing.filter(({ seen, behind }) => apart(seen, blendNearest(seen, middle, behind)) > 60).length /
+    standing.length;
 
   return { filled, flat, other, look: flat >= FLAT && other < OTHER ? 'silhouette' : 'icon' };
+}
+
+/**
+ * How far a tile's margin may be from the backdrop along its top for `backdropAt` to take it as its row's. The game
+ * sweeps bands of light down the Pokédex, and its tiles are translucent, so a tile's colour can step from one row to
+ * the next by more than `STANDS_OUT`: by 55 between the strip along the top of Unown's own tile on
+ * `unown-band-1.png` and the rows under it, and by 57 across the band through its sixteenth form on `unown-band-0.png`.
+ * At 60, four of the five forms that band crosses still came out icons. A third of the game's icons drawn onto a tile,
+ * as themselves and as silhouettes, under a band of 25 a channel along the tile's top, needed more than 90: there 67 of
+ * the 446 silhouettes came out icons, at 120 none did, and nothing read differently from 120 to 200.
+ */
+const BANDED = 120;
+
+/** A tile's margins either side, as fractions of its width: inside the white frame round the form showing. */
+const MARGINS = [
+  [0.04, 0.09],
+  [0.91, 0.96],
+] as const;
+
+/**
+ * The backdrop behind the row at `y` of the tile at `box`: whichever of its margins is nearer `top`, the backdrop along
+ * its top, where that is near enough to be the same backdrop under another band, and `top` itself where neither is —
+ * a row an icon runs into both margins of, or a fourth-column tile's beside PGSharp's panel and a silhouette.
+ *
+ * Held against `top` alone, a band across part of a tile made the rest of it stand out, and that is both ways wrong: a
+ * registered icon came out a silhouette, the tile's own colour all one, as Unown's own tile and SHINY did on
+ * `unown-band-1.png`; and a silhouette came out an icon, the tile beside it plainly another colour, as five of Unown's
+ * forms did on `unown-band-0.png`.
+ */
+function backdropAt(image: Image, box: Box, y: number, top: readonly number[]): number[] {
+  const margins = MARGINS.map(([from, to]) => {
+    const seen: [number, number, number][] = [];
+
+    for (let x = box.left + box.width * from; x < box.left + box.width * to; x++) {
+      seen.push(rgb(image, x, y));
+    }
+
+    return [0, 1, 2].map((c) => median(seen.map((p) => p[c] ?? 0)));
+  });
+  const nearest = margins.reduce((best, margin) => (apart(margin, top) < apart(best, top) ? margin : best));
+
+  return apart(nearest, top) <= BANDED ? nearest : [...top];
 }
 
 /** The blend of colours `a` and `b` nearest `p`: the point on the line between the two that is closest to it. */
