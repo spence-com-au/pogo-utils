@@ -1024,41 +1024,46 @@ export const SIZES: ReadonlyMap<string, number> = Array.from({ length: LAST_DEX 
 );
 
 /**
+ * Where a region list's names and counts lie across the screen, as fractions of its width: they start 0.068 in, and
+ * `UNIDENTIFIED`, the longest, ends at 0.41. Left of them is the backdrop beside the cards and right of them the cards'
+ * artwork, and with both in, Tesseract read no count at all off `tab-shadow-2.png`.
+ */
+const LIST_TEXT = { left: 0.04, right: 0.45 };
+
+/**
+ * How much darker than its row, by `brightness`, a pixel of a region list is drawn black; one less dark is drawn a grey
+ * between. Greys rather than black and white, since no one cut read every count on the captures: cut at 20 below the
+ * row, Sinnoh's on `tab-pokemon-0.png` did not read, and at 32 Hoenn's `Caught: 11` on `tab-perfect-0.png` read as 14.
+ */
+const LIST_INK = 60;
+
+/**
  * A region list's text, which neither of `pokedexLines`' passes reads: each card prints its region and count in the
  * tab's own colour on a near-white card — teal on the POKÉMON tab's, orange on SHINY's — and the backdrop between the
- * cards is as dark as that text on some tabs. So the ink taken is what is darker than the card, and only on the rows
- * that cross one, which is told by the light down the card's left margin; and on the left half alone, where the names
- * and counts are and the cards' artwork is not.
+ * cards is as dark as that text on some tabs. Each pixel is measured against its own row, which is the card's where the
+ * row crosses one and the backdrop's where it does not, since no one level is the card's: the list's last card fades
+ * towards the tabs, to 198 against 210 above it on `tab-xxs-2.png`. A row is as light as three quarters of it, the rest
+ * being text or the foot of the artwork.
  */
 export async function listLines(image: Image): Promise<Line[]> {
-  const width = Math.floor(image.width / 4);
+  const from = Math.round(image.width * LIST_TEXT.left);
+  const width = Math.floor((image.width * LIST_TEXT.right - from) / 2);
   const height = Math.floor(image.height / 2);
-  const data = new Uint8Array(width * height * 4).fill(255);
-  const bright = (x: number, y: number) => brightness(rgb(image, x, y));
+  const data = new Uint8Array(width * height * 4);
 
   for (let y = 0; y < height; y++) {
-    let light = 0;
-    let asked = 0;
+    const row = Array.from({ length: width }, (_, x) => brightness(rgb(image, from + x * 2, y * 2)));
+    const paper = [...row].sort((a, b) => a - b)[Math.floor(width * 0.75)] ?? 0;
 
-    for (let x = image.width * 0.05; x < image.width * 0.4; x += 8) {
-      asked++;
-      light += Number(bright(x, y * 2) > 200);
-    }
-
-    if (light < asked * 0.4) {
-      continue;
-    }
-
-    for (let x = 0; x < width; x++) {
-      if (bright(x * 2, y * 2) < 185) {
-        data.set([0, 0, 0, 255], (y * width + x) * 4);
-      }
-    }
+    row.forEach((bright, x) => {
+      const grey = Math.round(Math.min(255, Math.max(0, 255 - ((paper - bright) * 255) / LIST_INK)));
+      data.set([grey, grey, grey, 255], (y * width + x) * 4);
+    });
   }
 
   return (await ocr({ width, height, data })).map((l) => ({
     ...l,
-    left: l.left * 2,
+    left: from + l.left * 2,
     top: l.top * 2,
     width: l.width * 2,
     height: l.height * 2,
@@ -1066,18 +1071,31 @@ export async function listLines(image: Image): Promise<Line[]> {
 }
 
 /**
+ * How far from where the names start a count can start and still be whole, in heights of its region's name: every
+ * count read off the captures starts within 0.08 of it, and the ones that had lost a digit 0.2 and more further in.
+ */
+const ALIGNED = 0.15;
+
+/**
  * What a tab's region list says each region holds, from its cards: the region's name, then `Caught: 80` on every tab
  * but the first, which prints `148 / 151` — the species caught of the species there are. That second number is the
  * check on the first: a count is taken only where it is the region's own size, so `97 {107` under Sinnoh is 97 and a
  * line of the artwork read as numbers is nothing. A card whose count did not read is left out rather than read as
  * nought, so a count can be missing but never wrong.
+ *
+ * So a count is also taken only where it starts where the names do. One starting further in has lost its first digits:
+ * the medal under each card on the POKÉMON tab can split them into a line of their own, so that Sinnoh's `97 / 107`
+ * reads as `9` and `7/ 107`. Where the names start is where most of them do, since PGSharp's star button over the
+ * list's left edge hides the first letter of whichever passes under it.
  */
 export function countsOn(lines: readonly Line[]): Counted[] {
   const counted: Counted[] = [];
   const regions = [...SIZES.keys()];
+  const named = lines.map((line) => closest(line.text, regions, (r) => r));
+  const margin = median(lines.filter((_, i) => named[i]).map((line) => line.left));
 
   lines.forEach((line, i) => {
-    const region = closest(line.text, regions, (r) => r);
+    const region = named[i];
 
     if (!region) {
       return;
@@ -1088,6 +1106,10 @@ export function countsOn(lines: readonly Line[]): Counted[] {
     for (const below of lines.slice(i + 1, i + 4)) {
       if (below.top > line.top + line.height * 4) {
         break;
+      }
+
+      if (Math.abs(below.left - margin) > line.height * ALIGNED) {
+        continue;
       }
 
       const caught = /caught\D*(\d+)/i.exec(below.text);
