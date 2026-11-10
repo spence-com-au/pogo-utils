@@ -29,7 +29,6 @@ import {
   costumesOn,
   countsOn,
   dexOn,
-  formFrame,
   formLabelled,
   formsOn,
   framed,
@@ -45,6 +44,7 @@ import {
   regionIn,
   regionsButtonOf,
   seeAllOf,
+  silhouettesNamed,
   titleOf,
   UNIDENTIFIED,
   type Box,
@@ -726,43 +726,21 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       });
     }
 
-    // The silhouettes, by label, then by their shape, then by being the forms left over once every other is named.
-    const taken = new Set(views.map((v) => v.form).filter((f) => typeof f !== 'object' || f === null));
-    const shapes = await candidates(forms.map((f) => ({ name: f.form, file: f.icon })));
-    const left = () => forms.filter((f) => !taken.has(f.form));
-    const unnamed: number[] = [];
+    const unregistered = silhouettesNamed(
+      silhouettes.map(({ index, tile }) => ({ index, image: tile.image, box: tile.at, label: tile.label })),
+      forms,
+      await candidates(forms.map((f) => ({ name: f.form, file: f.icon }))),
+      views.flatMap((v) => (typeof v.form === 'object' && v.form !== null ? [] : [v.form])),
+    );
 
-    for (const { index, tile } of silhouettes) {
-      const byLabel = tile.label === null ? null : formLabelled(tile.label, forms);
-      const byShape = iconIn(
-        tile.image,
-        tile.at,
-        formFrame(tile.image, tile.at),
-        'silhouette',
-        shapes.filter((c) => !taken.has(c.name)),
-      );
-      const form = byLabel ? byLabel.form : byShape;
-
-      if (form === undefined) {
-        unnamed.push(index);
-        continue;
-      }
-
-      taken.add(form);
-      views.push({ index, form, seen: { tiles: new Map(), costumes: [], genders: null } });
-    }
-
-    const leftover = left();
-
-    for (const [i, index] of unnamed.entries()) {
-      const form = leftover.length === unnamed.length ? (leftover[i]?.form ?? null) : { unidentified: index + 1 };
-
-      if (typeof form === 'object' && form !== null) {
-        notes.push(`form ${index + 1} is a silhouette that neither its label nor its shape names`);
-      }
-
-      views.push({ index, form, seen: { tiles: new Map(), costumes: [], genders: null } });
-    }
+    notes.push(...unregistered.notes);
+    views.push(
+      ...unregistered.forms.map(({ index, form }) => ({
+        index,
+        form,
+        seen: { tiles: new Map(), costumes: [], genders: null },
+      })),
+    );
 
     // In the order the game draws the forms, rather than the order they were read in.
     views.sort((a, b) => a.index - b.index);

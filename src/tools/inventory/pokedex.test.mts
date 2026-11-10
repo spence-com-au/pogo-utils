@@ -31,6 +31,7 @@ import {
   listLines,
   pokedexLines,
   regionsButtonOf,
+  silhouettesNamed,
   titleOf,
   type Candidate,
   type Category,
@@ -280,6 +281,81 @@ test("a form is named by its own tile's icon", async () => {
   expect(await ownForm('meowth-alola-1', 52)).toBe('Alola');
   expect(await ownForm('meowth-galar-1', 52)).toBe('Galarian');
   expect(await ownForm('unown-3', 201)).toBe('G');
+});
+
+/**
+ * The silhouettes of a form row, named as the walk names them, `named` being the forms already registered, unless
+ * `unread` drops their labels or `shapes` the icons to match them against.
+ */
+async function silhouettes(
+  name: string,
+  dex: number,
+  named: readonly (string | null)[],
+  { unread = false, shapes = formsOf(dex) }: { unread?: boolean; shapes?: readonly Candidate[] } = {},
+) {
+  const { image } = await read(name);
+  const { tiles, labels } = await formRow(name);
+  const forms = DATA.forms.filter((f) => f.dex === dex && !f.costume);
+  const found = tiles.flatMap(({ box, look }, index) =>
+    look === 'silhouette' ? [{ index, image, box, label: unread ? null : (labels[index] ?? null) }] : [],
+  );
+
+  return silhouettesNamed(found, forms, shapes, named);
+}
+
+/**
+ * Unown's 14 letters not registered on the entry as it opens, each named by its own silhouette, as the phone drew them:
+ * the letters run A to T in rows of five, and G, H, M, N, P and S, whose eyes are drawn white, are the ones registered.
+ * The last column's tiles are cut short by the panel docked at the screen's edge, which E, J and O are named past.
+ */
+test("each of Unown's silhouetted letters is named by its own shape", async () => {
+  const { forms, notes } = await silhouettes('unown-0', 201, ['G', 'H', 'M', 'N', 'P', 'S']);
+
+  expect(forms.map((f) => f.form)).toStrictEqual([...'ABCDEFIJKLOQRT']);
+  expect(notes).toStrictEqual([]);
+});
+
+/**
+ * Paldean Tauros's three breeds, their labels unread, are named by shape alone: each is drawn in its own pose, and came
+ * out under a twentieth as far from its own icon as from the next. With none of their icons to be had either, which
+ * the walk says and goes on without, they are named only by elimination, in the game master's order — Aqua, Blaze,
+ * Combat — where the game draws Combat, Blaze, Aqua. A form named that way is noted as such, so a line whose order was
+ * not read says so.
+ */
+test('a silhouette its shape cannot settle is named by elimination, and noted', async () => {
+  const byShape = await silhouettes('tauros-0', 128, [null], { unread: true });
+
+  expect(byShape.forms.map((f) => f.form)).toStrictEqual(['Paldea Combat', 'Paldea Blaze', 'Paldea Aqua']);
+  expect(byShape.notes).toStrictEqual([]);
+
+  const { forms, notes } = await silhouettes('tauros-0', 128, [null], { unread: true, shapes: [] });
+
+  expect(forms.map((f) => f.form)).toStrictEqual(['Paldea Aqua', 'Paldea Blaze', 'Paldea Combat']);
+  expect(notes).toStrictEqual([
+    'form 2 is a silhouette that neither its label nor its shape names, named Paldea Aqua by elimination',
+    'form 3 is a silhouette that neither its label nor its shape names, named Paldea Blaze by elimination',
+    'form 4 is a silhouette that neither its label nor its shape names, named Paldea Combat by elimination',
+  ]);
+});
+
+/**
+ * A species' last unregistered form, every other one named: Tauros as if Combat and Blaze were registered, with Aqua's
+ * label unread. Held against Aqua's icon alone, which is all that is left, `namedFrom` would name nothing and it would
+ * fall to elimination; held against every breed's, it is named by its shape.
+ */
+test("a species' last unregistered form is named by its shape", async () => {
+  const { image } = await read('tauros-0');
+  const { tiles } = await formRow('tauros-0');
+  const { box } = tiles[3] ?? expect.unreachable("Tauros's form row has four tiles");
+  const forms = DATA.forms.filter((f) => f.dex === 128 && !f.costume);
+
+  expect(
+    silhouettesNamed([{ index: 3, image, box, label: null }], forms, formsOf(128), [
+      null,
+      'Paldea Combat',
+      'Paldea Blaze',
+    ]),
+  ).toStrictEqual({ forms: [{ index: 3, form: 'Paldea Aqua' }], notes: [] });
 });
 
 /** The costumes on one screenshot, named among `candidates`, undefined where none is plainly nearest. */
