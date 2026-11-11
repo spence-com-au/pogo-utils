@@ -378,20 +378,26 @@ const columnOf = (x: number, width: number) =>
   );
 
 /** The line the CAUGHT, INFO and BATTLE tabs share, by its `INFO`, which is short enough to read whole. */
-const headerOf = (lines: readonly Line[]) => findLine(lines, /^info$/);
+export const headerOf = (lines: readonly Line[]) => findLine(lines, /^info$/);
 
 /**
  * The tiles of the CAUGHT tab one screenshot shows whole: one per label read, the tile being up from it by `LABEL_FOOT`
  * and a tile's height; and the first, which carries no label, where the header above the tiles is on the screen to say
  * where their first row starts.
+ *
+ * A label counts below the header where that is on the screen; where it is not, anywhere if an earlier screenshot has
+ * shown the header above this one's top (`below`), and nowhere otherwise. Above it is the top of the entry, which OCR
+ * reads labels out of that no tile carries: a dark silhouette in Furfrou's form row as `mea`, one letter off `MEGA`.
  */
-export function caughtOn(image: Image, lines: readonly Line[]): Caught[] {
+export function caughtOn(image: Image, lines: readonly Line[], below: boolean): Caught[] {
   const found: Caught[] = [];
+  const header = headerOf(lines);
+  const from = header ? header.top + header.height : below ? 0 : null;
 
   for (const line of lines) {
     const category = categoryOf(line.text);
 
-    if (category === null) {
+    if (category === null || from === null || line.top < from) {
       continue;
     }
 
@@ -403,8 +409,6 @@ export function caughtOn(image: Image, lines: readonly Line[]): Caught[] {
       found.push({ category, box, look: lookOf(image, box) });
     }
   }
-
-  const header = headerOf(lines);
 
   if (header) {
     const box = tileAt(image, COLUMNS[0], header.top + header.height + image.width * HEADER_TO_TILES);

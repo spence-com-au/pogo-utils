@@ -29,6 +29,7 @@ import {
   formsOn,
   framed,
   gendersOn,
+  headerOf,
   iconIn,
   labelsOf,
   listLines,
@@ -144,13 +145,16 @@ test('every entry captured names its species, and nothing else does', async () =
 /** The CAUGHT tab's tiles over every screenshot of one form, the first whole reading of each kept, as the walk keeps it. */
 async function tilesOf(...names: string[]): Promise<Partial<Record<Category | 'own', Look>>> {
   const looks: Partial<Record<Category | 'own', Look>> = {};
+  let below = false;
 
   for (const name of names) {
     const { image, lines: found } = await read(name);
 
-    for (const { category, look } of caughtOn(image, found)) {
+    for (const { category, look } of caughtOn(image, found, below)) {
       looks[category ?? 'own'] ??= look;
     }
+
+    below ||= headerOf(found) !== undefined;
   }
 
   return looks;
@@ -196,6 +200,28 @@ test("a form's tiles read as the icon where registered and the silhouette where 
 });
 
 /**
+ * Furfrou's entry at its top, its CAUGHT tab's header near the foot of the screen and no tile whole below it. Tesseract
+ * reads `mea` out of a dark silhouette in its form row, one letter off `MEGA`, which Furfrou has none of (#1061); the
+ * line placed there by hand says the same of any version that reads nothing there. Without the header nothing counts,
+ * short of an earlier screenshot having shown it go by above.
+ */
+test('a label read above the CAUGHT tab is none of its tiles', async () => {
+  const { image, lines: found } = await read('furfrou-0');
+  const mega = { text: 'MEGA', left: 948, top: 1798, width: 90, height: 40 };
+
+  expect(await tilesOf('furfrou-0')).toStrictEqual({});
+  expect(caughtOn(image, [...found, mega], false)).toStrictEqual([]);
+
+  const later = await read('bulbasaur-2');
+  const headless = later.lines.filter((line) => line !== headerOf(later.lines));
+
+  expect(caughtOn(later.image, headless, false)).toStrictEqual([]);
+  expect(caughtOn(later.image, headless, true).map((c) => c.category)).toStrictEqual(
+    caughtOn(later.image, later.lines, false).flatMap((c) => (c.category === null ? [] : [c.category])),
+  );
+});
+
+/**
  * Which of the CAUGHT tab's tiles is showing, by the white frame round it: the form's own as Ekans's entry opens, and
  * SHINY once tapped, which the game selects though it draws the tile as a silhouette (#1047). The form's own is found
  * beside SHINY, which is how the walk puts the entry back.
@@ -203,7 +229,7 @@ test("a form's tiles read as the icon where registered and the silhouette where 
 test('the CAUGHT tile showing wears the frame, a silhouetted SHINY the game selects among them', async () => {
   const showing = async (name: string) => {
     const { image, lines: found } = await read(name);
-    const caught = caughtOn(image, found);
+    const caught = caughtOn(image, found, false);
     const shiny = caught.find((c) => c.category === 'shiny') ?? expect.unreachable(`${name} draws a SHINY tile`);
 
     return {
@@ -350,7 +376,7 @@ test('an entry whose ALERT is not read ends its form row at the same place', asy
 /** The form a CAUGHT tab is showing, off its own tile, named among the species' forms. */
 async function ownForm(name: string, dex: number) {
   const { image, lines: found } = await read(name);
-  const own = caughtOn(image, found).find((c) => c.category === null);
+  const own = caughtOn(image, found, false).find((c) => c.category === null);
 
   return own && iconIn(image, own.box, caughtFrame(image, own.box), own.look, formsOf(dex));
 }
@@ -525,11 +551,13 @@ test("Pikachu's costumes are named among its own", async () => {
  */
 async function placed(...names: readonly string[]) {
   const reader = new CostumeReader([]);
+  let below = false;
 
   for (const name of names) {
     const { image, lines: found } = await read(name);
 
-    reader.read(image, found, caughtOn(image, found));
+    reader.read(image, found, caughtOn(image, found, below));
+    below ||= headerOf(found) !== undefined;
   }
 
   return { slots: reader.costumes.map(({ slot }) => slot), unplaced: reader.unplaced };

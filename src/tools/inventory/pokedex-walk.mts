@@ -32,6 +32,7 @@ import {
   formsOn,
   framed,
   gendersOn,
+  headerOf,
   iconIn,
   isEntry,
   labelsOf,
@@ -614,6 +615,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     const costumes = new CostumeReader(await costumesOf(dex));
     let genders: Genders | null = null;
     let shot = first;
+    let below = false;
 
     for (let frame = 0; frame < FRAMES; frame++) {
       keep(`${name}-${frame}`, shot.image);
@@ -621,7 +623,9 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       genders ??= gendersOn(image, lines);
 
-      const caught = caughtOn(image, lines);
+      const caught = caughtOn(image, lines, below);
+
+      below ||= headerOf(lines) !== undefined;
 
       for (const { category, look, box } of caught) {
         if (!tiles.has(category)) {
