@@ -19,8 +19,8 @@ export function Settings() {
   const root = useRef<HTMLDivElement>(null);
 
   /**
-   * What the last export or import had to say, or null before either. A line of its own rather than a toast, since a
-   * refusal is the one thing here a reader may need to read twice and act on.
+   * What the last import or failed export had to say, or null with nothing to say. A line of its own rather than a
+   * toast, since a refusal is the one thing here a reader may need to read twice and act on.
    */
   const [status, setStatus] = useState<string | null>(null);
 
@@ -33,14 +33,13 @@ export function Settings() {
 
   /**
    * Hand the saved preferences over as a file. A storage failure is reported rather than swallowed: `writeBackup` lets
-   * one through for exactly this reason, a download that quietly did not happen being worse than one that says why.
+   * one through for exactly this reason, a download that quietly did not happen being worse than one that says why. A
+   * download that did happen says nothing, the browser showing it already, and clears what an earlier attempt said.
    */
   function exportPrefs() {
     try {
-      const name = backupName(new Date());
-
-      download(writeBackup(), name, 'application/json');
-      setStatus(`Saved ${name}.`);
+      download(writeBackup(), backupName(new Date()), 'application/json');
+      setStatus(null);
     } catch (e) {
       setStatus(`Could not save a backup: ${said(e)}`);
     }
