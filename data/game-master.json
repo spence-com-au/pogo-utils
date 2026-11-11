@@ -4698,7 +4698,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [25],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 82,
@@ -4726,7 +4727,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [100],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 83,
@@ -5305,7 +5307,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 100,
@@ -5330,7 +5333,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 101,
@@ -5354,7 +5358,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 101,
@@ -5380,7 +5385,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 102,
@@ -5931,7 +5937,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 121,
@@ -5962,7 +5969,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 122,
@@ -6365,7 +6373,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 132,
@@ -6384,7 +6393,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 132,
@@ -6403,7 +6413,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 133,
@@ -6574,7 +6585,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [25],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 138,
@@ -6820,7 +6832,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 144,
@@ -6848,7 +6861,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 145,
@@ -6873,7 +6887,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 145,
@@ -6900,7 +6915,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 146,
@@ -6925,7 +6941,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 146,
@@ -6952,7 +6969,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 147,
@@ -7057,7 +7075,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 150,
@@ -7087,7 +7106,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 151,
@@ -7143,7 +7163,8 @@
         { "name": "Surf", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 152,
@@ -8579,7 +8600,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8598,7 +8620,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8617,7 +8640,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8636,7 +8660,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8655,7 +8680,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8674,7 +8700,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8693,7 +8720,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8712,7 +8740,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8731,7 +8760,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8750,7 +8780,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8769,7 +8800,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8788,7 +8820,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8807,7 +8840,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8826,7 +8860,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8845,7 +8880,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8864,7 +8900,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8883,7 +8920,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8902,7 +8940,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8921,7 +8960,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8940,7 +8980,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8959,7 +9000,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8978,7 +9020,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -8997,7 +9040,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -9016,7 +9060,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -9035,7 +9080,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -9054,7 +9100,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -9073,7 +9120,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 201,
@@ -9092,7 +9140,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 202,
@@ -10014,7 +10063,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [100],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 234,
@@ -10245,7 +10295,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 243,
@@ -10271,7 +10322,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 244,
@@ -10298,7 +10350,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 244,
@@ -10325,7 +10378,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 245,
@@ -10354,7 +10408,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 245,
@@ -10383,7 +10438,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 246,
@@ -10485,7 +10541,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 249,
@@ -10512,7 +10569,8 @@
         { "name": "Aeroblast++", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": true
+      "shadowOnly": true,
+      "genderless": true
     },
     {
       "dex": 250,
@@ -10540,7 +10598,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 250,
@@ -10568,7 +10627,8 @@
         { "name": "Sacred Fire++", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": true
+      "shadowOnly": true,
+      "genderless": true
     },
     {
       "dex": 251,
@@ -10594,7 +10654,8 @@
         { "name": "Aura Sphere", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 252,
@@ -11624,7 +11685,8 @@
         { "name": "Dig", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 293,
@@ -13179,7 +13241,8 @@
         { "name": "Weather Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 338,
@@ -13203,7 +13266,8 @@
         { "name": "Weather Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 339,
@@ -13330,7 +13394,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 344,
@@ -13360,7 +13425,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 345,
@@ -14146,7 +14212,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [25],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 375,
@@ -14171,7 +14238,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [100],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 376,
@@ -14198,7 +14266,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 377,
@@ -14224,7 +14293,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 378,
@@ -14250,7 +14320,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 379,
@@ -14276,7 +14347,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 380,
@@ -14408,7 +14480,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 383,
@@ -14434,7 +14507,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 384,
@@ -14459,7 +14533,8 @@
         { "name": "Dragon Ascent", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 385,
@@ -14482,7 +14557,8 @@
         { "name": "Aura Sphere", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 386,
@@ -14504,7 +14580,8 @@
         { "name": "Dark Pulse", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 386,
@@ -14527,7 +14604,8 @@
         { "name": "Rock Slide", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 386,
@@ -14549,7 +14627,8 @@
         { "name": "Hyper Beam", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 386,
@@ -14571,7 +14650,8 @@
         { "name": "Swift", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 387,
@@ -15924,7 +16004,8 @@
         { "name": "Payback", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 437,
@@ -15951,7 +16032,8 @@
         { "name": "Weather Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 438,
@@ -16564,7 +16646,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 463,
@@ -16875,7 +16958,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 475,
@@ -17003,7 +17087,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 479,
@@ -17025,7 +17110,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 479,
@@ -17047,7 +17133,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 479,
@@ -17070,7 +17157,8 @@
         { "name": "Leaf Storm", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 479,
@@ -17092,7 +17180,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 479,
@@ -17114,7 +17203,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 480,
@@ -17136,7 +17226,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 481,
@@ -17158,7 +17249,8 @@
         { "name": "Blizzard", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 482,
@@ -17180,7 +17272,8 @@
         { "name": "Fire Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 483,
@@ -17204,7 +17297,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 483,
@@ -17229,7 +17323,8 @@
         { "name": "Roar of Time", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 484,
@@ -17254,7 +17349,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 484,
@@ -17280,7 +17376,8 @@
         { "name": "Spacial Rend", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 485,
@@ -17332,7 +17429,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 487,
@@ -17357,7 +17455,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 487,
@@ -17382,7 +17481,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 488,
@@ -17429,7 +17529,8 @@
         { "name": "Surf", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 490,
@@ -17451,7 +17552,8 @@
         { "name": "Surf", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 491,
@@ -17478,7 +17580,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 492,
@@ -17502,7 +17605,8 @@
         { "name": "Seed Flare", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 492,
@@ -17526,7 +17630,8 @@
         { "name": "Seed Flare", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17548,7 +17653,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17570,7 +17676,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17592,7 +17699,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17614,7 +17722,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17636,7 +17745,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17658,7 +17768,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17680,7 +17791,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17702,7 +17814,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17724,7 +17837,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17746,7 +17860,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17768,7 +17883,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17790,7 +17906,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17812,7 +17929,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17834,7 +17952,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17856,7 +17975,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17878,7 +17998,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17900,7 +18021,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 493,
@@ -17922,7 +18044,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 494,
@@ -17946,7 +18069,8 @@
         { "name": "Psyshock", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 495,
@@ -20889,7 +21013,8 @@
         { "name": "Zap Cannon", "fast": false }
       ],
       "evolveCandy": [25],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 600,
@@ -20912,7 +21037,8 @@
         { "name": "Zap Cannon", "fast": false }
       ],
       "evolveCandy": [100],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 601,
@@ -20936,7 +21062,8 @@
         { "name": "Mirror Shot", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 602,
@@ -21312,7 +21439,8 @@
         { "name": "Triple Axel", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 616,
@@ -21509,7 +21637,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 623,
@@ -21534,7 +21663,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 624,
@@ -21905,7 +22035,8 @@
         { "name": "Sacred Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 639,
@@ -21929,7 +22060,8 @@
         { "name": "Sacred Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 640,
@@ -21953,7 +22085,8 @@
         { "name": "Sacred Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 641,
@@ -22081,7 +22214,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 644,
@@ -22107,7 +22241,8 @@
         { "name": "Return", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 645,
@@ -22183,7 +22318,8 @@
         { "name": "Freeze Shock", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 646,
@@ -22206,7 +22342,8 @@
         { "name": "Glaciate", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 646,
@@ -22232,7 +22369,8 @@
         { "name": "Ice Burn", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 647,
@@ -22256,7 +22394,8 @@
         { "name": "Sacred Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 647,
@@ -22281,7 +22420,8 @@
         { "name": "Secret Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 648,
@@ -22304,7 +22444,8 @@
         { "name": "Hyper Beam", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 648,
@@ -22327,7 +22468,8 @@
         { "name": "Hyper Beam", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 649,
@@ -22350,7 +22492,8 @@
         { "name": "Techno Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 649,
@@ -22373,7 +22516,8 @@
         { "name": "Techno Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 649,
@@ -22396,7 +22540,8 @@
         { "name": "Techno Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 649,
@@ -22419,7 +22564,8 @@
         { "name": "Techno Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 649,
@@ -22442,7 +22588,8 @@
         { "name": "Techno Blast", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 650,
@@ -25492,7 +25639,8 @@
         { "name": "Power Gem", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 704,
@@ -26016,7 +26164,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 717,
@@ -26042,7 +26191,8 @@
         { "name": "Oblivion Wing", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 718,
@@ -26067,7 +26217,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 718,
@@ -26092,7 +26243,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 718,
@@ -26117,7 +26269,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 718,
@@ -26142,7 +26295,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 718,
@@ -26167,7 +26321,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 719,
@@ -26189,7 +26344,8 @@
         { "name": "Power Gem", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 720,
@@ -26211,7 +26367,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 720,
@@ -26233,7 +26390,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 721,
@@ -26258,7 +26416,8 @@
         { "name": "Scald", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 722,
@@ -27724,7 +27883,8 @@
         { "name": "Aerial Ace", "fast": false }
       ],
       "evolveCandy": [200],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27748,7 +27908,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27772,7 +27933,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27796,7 +27958,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27820,7 +27983,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27844,7 +28008,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27868,7 +28033,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27892,7 +28058,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27916,7 +28083,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27940,7 +28108,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27964,7 +28133,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -27988,7 +28158,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28012,7 +28183,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28036,7 +28208,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28060,7 +28233,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28084,7 +28258,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28108,7 +28283,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28132,7 +28308,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 773,
@@ -28156,7 +28333,8 @@
         { "name": "X-Scissor", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28178,7 +28356,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28200,7 +28379,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28222,7 +28402,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28245,7 +28426,8 @@
       ],
       "evolveCandy": [],
       "shadowOnly": false,
-      "battleOnly": true
+      "battleOnly": true,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28267,7 +28449,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28289,7 +28472,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28311,7 +28495,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28333,7 +28518,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28355,7 +28541,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28377,7 +28564,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28399,7 +28587,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28421,7 +28610,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28443,7 +28633,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28465,7 +28656,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 774,
@@ -28487,7 +28679,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 775,
@@ -28674,7 +28867,8 @@
         { "name": "Brutal Swing", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 782,
@@ -28770,7 +28964,8 @@
         { "name": "Nature’s Madness", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 786,
@@ -28795,7 +28990,8 @@
         { "name": "Nature’s Madness", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 787,
@@ -28819,7 +29015,8 @@
         { "name": "Nature’s Madness", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 788,
@@ -28843,7 +29040,8 @@
         { "name": "Nature’s Madness", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 789,
@@ -28862,7 +29060,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [25],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 790,
@@ -28881,7 +29080,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [100],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 791,
@@ -28904,7 +29104,8 @@
         { "name": "Flamethrower", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 792,
@@ -28928,7 +29129,8 @@
         { "name": "Future Sight", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 793,
@@ -28952,7 +29154,8 @@
         { "name": "Rock Slide", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 794,
@@ -28975,7 +29178,8 @@
         { "name": "Superpower", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 795,
@@ -28998,7 +29202,8 @@
         { "name": "Close Combat", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 796,
@@ -29021,7 +29226,8 @@
         { "name": "Dazzling Gleam", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 797,
@@ -29044,7 +29250,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 798,
@@ -29069,7 +29276,8 @@
         { "name": "Sacred Sword", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 799,
@@ -29092,7 +29300,8 @@
         { "name": "Sludge Bomb", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 800,
@@ -29117,7 +29326,8 @@
         { "name": "Moongeist Beam", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 800,
@@ -29142,7 +29352,8 @@
         { "name": "Sunsteel Strike", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 800,
@@ -29166,7 +29377,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 800,
@@ -29185,7 +29397,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 801,
@@ -29204,7 +29417,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 801,
@@ -29223,7 +29437,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 802,
@@ -29249,7 +29464,8 @@
         { "name": "Rock Slide", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 803,
@@ -29271,7 +29487,8 @@
         { "name": "Fell Stinger", "fast": false }
       ],
       "evolveCandy": [200],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 804,
@@ -29295,7 +29512,8 @@
         { "name": "Dragon Claw", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 805,
@@ -29317,7 +29535,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 806,
@@ -29340,7 +29559,8 @@
         { "name": "Mind Blown", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 807,
@@ -29364,7 +29584,8 @@
         { "name": "Dynamic Punch", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 808,
@@ -29384,7 +29605,8 @@
         { "name": "Thunderbolt", "fast": false }
       ],
       "evolveCandy": [400],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 809,
@@ -29409,7 +29631,8 @@
         { "name": "Double Iron Bash", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 810,
@@ -30480,7 +30703,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [400],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 854,
@@ -30502,7 +30726,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [400],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 854,
@@ -30524,7 +30749,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 854,
@@ -30546,7 +30772,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 855,
@@ -30569,7 +30796,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 855,
@@ -30592,7 +30820,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 855,
@@ -30615,7 +30844,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 855,
@@ -30638,7 +30868,8 @@
         { "name": "Psychic", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 856,
@@ -30991,7 +31222,8 @@
         { "name": "Megahorn", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 870,
@@ -31013,7 +31245,8 @@
         { "name": "Megahorn", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 871,
@@ -31301,7 +31534,8 @@
         { "name": "Ancient Power", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 881,
@@ -31323,7 +31557,8 @@
         { "name": "Ancient Power", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 882,
@@ -31345,7 +31580,8 @@
         { "name": "Ancient Power", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 883,
@@ -31367,7 +31603,8 @@
         { "name": "Ancient Power", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 884,
@@ -31477,7 +31714,8 @@
         { "name": "Behemoth Blade", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 888,
@@ -31502,7 +31740,8 @@
         { "name": "Close Combat", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 889,
@@ -31525,7 +31764,8 @@
         { "name": "Behemoth Bash", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 889,
@@ -31550,7 +31790,8 @@
         { "name": "Close Combat", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 890,
@@ -31573,7 +31814,8 @@
         { "name": "Dynamax Cannon", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 890,
@@ -31596,7 +31838,8 @@
         { "name": "Dynamax Cannon", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 891,
@@ -31688,7 +31931,8 @@
         { "name": "Dark Pulse", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 894,
@@ -31712,7 +31956,8 @@
         { "name": "Thunder Cage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 895,
@@ -31737,7 +31982,8 @@
         { "name": "Dragon Energy", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 896,
@@ -31759,7 +32005,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 897,
@@ -31781,7 +32028,8 @@
         { "name": "Bulldoze", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 898,
@@ -31804,7 +32052,8 @@
         { "name": "Avalanche", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 898,
@@ -31826,7 +32075,8 @@
         { "name": "Energy Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 898,
@@ -31849,7 +32099,8 @@
         { "name": "Shadow Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 899,
@@ -32492,7 +32743,8 @@
         { "name": "Crunch", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 925,
@@ -32515,7 +32767,8 @@
         { "name": "Crunch", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 925,
@@ -32538,7 +32791,8 @@
         { "name": "Crunch", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 926,
@@ -34046,7 +34300,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 985,
@@ -34065,7 +34320,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 986,
@@ -34084,7 +34340,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 987,
@@ -34103,7 +34360,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 988,
@@ -34122,7 +34380,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 989,
@@ -34141,7 +34400,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 990,
@@ -34160,7 +34420,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 991,
@@ -34179,7 +34440,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 992,
@@ -34198,7 +34460,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 993,
@@ -34217,7 +34480,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 994,
@@ -34236,7 +34500,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 995,
@@ -34255,7 +34520,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 996,
@@ -34345,7 +34611,8 @@
         { "name": "Shadow Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 999,
@@ -34364,7 +34631,8 @@
         { "name": "Shadow Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 999,
@@ -34383,7 +34651,8 @@
         { "name": "Shadow Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1000,
@@ -34406,7 +34675,8 @@
         { "name": "Power Gem", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1001,
@@ -34428,7 +34698,8 @@
         { "name": "Leaf Storm", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1002,
@@ -34450,7 +34721,8 @@
         { "name": "Blizzard", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1003,
@@ -34472,7 +34744,8 @@
         { "name": "Earthquake", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1004,
@@ -34494,7 +34767,8 @@
         { "name": "Flame Wheel", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1005,
@@ -34513,7 +34787,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1006,
@@ -34532,7 +34807,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1007,
@@ -34555,7 +34831,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1008,
@@ -34578,7 +34855,8 @@
         { "name": "Outrage", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1009,
@@ -34597,7 +34875,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1010,
@@ -34616,7 +34895,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1011,
@@ -34661,7 +34941,8 @@
         { "name": "Poltergeist", "fast": false }
       ],
       "evolveCandy": [400],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1012,
@@ -34683,7 +34964,8 @@
         { "name": "Poltergeist", "fast": false }
       ],
       "evolveCandy": [50],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1013,
@@ -34705,7 +34987,8 @@
         { "name": "Poltergeist", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1013,
@@ -34727,7 +35010,8 @@
         { "name": "Poltergeist", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1014,
@@ -34880,7 +35164,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1021,
@@ -34899,7 +35184,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1022,
@@ -34918,7 +35204,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1023,
@@ -34937,7 +35224,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1024,
@@ -34956,7 +35244,8 @@
         { "name": "Struggle", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     },
     {
       "dex": 1025,
@@ -34977,7 +35266,8 @@
         { "name": "Poltergeist", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "genderless": true
     }
   ],
   "costumes": [

@@ -266,8 +266,8 @@ afterAll(() => rmSync(bin, { recursive: true }));
 /**
  * The cache a run reads, so that it reaches no network and knows `species`, and a `--config` with nothing waited for:
  * a recording has no animation to let settle. The game master is the vended one cut back to those species and written
- * as the download is — a template for each form and each move it holds — so nothing in it is transcribed, and what
- * `loadGameData` makes of it is what the readers' own tests are given.
+ * as the download is — a template for each form, each move it holds and a genderless form's spawns — so nothing in it
+ * is transcribed, and what `loadGameData` makes of it is what the readers' own tests are given.
  *
  * `icons` are the game's icons the run may match against, copied in from `fixtures/icons/` and listed as the artwork's
  * directory listing lists them, which is also what names a costume the game master does not: `pm1.cJAN_2020…` is
@@ -320,6 +320,12 @@ function seed(cwd: string, species: readonly string[], icons: readonly string[] 
           },
         },
       })),
+      ...forms
+        .filter((form) => form.genderless)
+        .map((form) => ({
+          templateId: `SPAWN_V${String(form.dex).padStart(4, '0')}_POKEMON_${form.species.toUpperCase()}`,
+          data: { genderSettings: { gender: { genderlessPercent: 1 } } },
+        })),
     ]),
   );
   writeFileSync(join(cache, 'english.json'), JSON.stringify({ data: [] }));
@@ -1178,5 +1184,34 @@ describe('dex', () => {
     expect(linesIn(cwd).map(({ dex, genders }) => ({ dex, genders }))).toStrictEqual([
       { dex: 76, genders: { male: false, female: false } },
     ]);
+  });
+
+  /**
+   * Porygon's entry and a swipe on to Omanyte's, the step on which a full walk read Omanyte no genders (#1071). Porygon
+   * draws the empty ring of a species the game master gives no gender, which is recorded as none without a second look
+   * at the entry; Omanyte draws both.
+   */
+  test('records no genders for a genderless species without looking again', { timeout: SLOW }, async (context) => {
+    const phone = new Pokedex([
+      ['porygon-0', 'porygon-1'],
+      ['omanyte-0', 'omanyte-1'],
+    ]);
+    const { cwd, inventory } = await harness(context, phone, ['Porygon', 'Omanyte']);
+
+    await inventory('dex', '--from', '1', '--to', '138');
+
+    expect(linesIn(cwd).map(({ dex, genders, notes }) => ({ dex, genders, notes }))).toStrictEqual([
+      { dex: 137, genders: {}, notes: [] },
+      { dex: 138, genders: { male: true, female: true }, notes: [] },
+    ]);
+
+    // A second look would leave Porygon for Omanyte and come back before the walk went on to it.
+    expect(
+      phone.calls
+        .filter((call) => call.startsWith('shell input swipe '))
+        .map((call) => direction(call.split(' ').slice(3).map(Number)))
+        .filter((way) => way === 'left'),
+      'one swipe on, from Porygon to Omanyte',
+    ).toStrictEqual(['left']);
   });
 });

@@ -151,6 +151,9 @@ interface Template {
       purifiedStardustMultiplier: number;
     };
     luckyPokemonSettings?: { powerUpStardustDiscountPercent: number };
+
+    /** How a form's wild spawns split between the genders, or `genderlessPercent` alone where it has none. */
+    genderSettings?: { gender: { malePercent?: number; femalePercent?: number; genderlessPercent?: number } };
   };
 }
 
@@ -410,6 +413,13 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  // A form's genders are on its `SPAWN_` template, as its sizes are on its `EXTENDED_` one.
+  const genderless = new Set(
+    templates.flatMap(({ templateId, data }) =>
+      data.genderSettings?.gender.genderlessPercent === undefined ? [] : [templateId.replace(/^SPAWN_/, '')],
+    ),
+  );
+
   // The forms a species takes only in battle are named by the change into them, on its bare template.
   const battleOnly = new Set(
     templates.flatMap(({ data }) => {
@@ -483,6 +493,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       // and Sacred Fire+. `RAIKOU_S` and its kind keep Frustration, and nothing in the data says they are shadows.
       shadowOnly: (settings.shadow?.shadowChargeMove ?? 'FRUSTRATION') !== 'FRUSTRATION',
       ...(battleOnly.has(name ?? '') && { battleOnly: true }),
+      ...(genderless.has(templateId) && { genderless: true }),
     };
 
     // A Mega is the ordinary form's, whose bare template and `_NORMAL` one both carry it, as some costumes do too. It

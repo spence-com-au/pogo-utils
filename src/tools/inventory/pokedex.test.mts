@@ -306,13 +306,16 @@ const GENDERS: [string, Genders][] = [
   ['golem-0', { male: false, female: false }],
   ['tauros-0', { male: true }],
   ['nidoran-female-0', { female: true }],
+  ['omanyte-0', { male: true, female: true }],
+  ['porygon-0', {}],
   ['unown-3', {}],
 ];
 
 /**
  * Each way the game draws genders: both registered, one of two not — Ivysaur's ♀ dashed — both seen and neither caught,
- * one gender alone either way round, and Unown's ring, which is no gender at all. A screen scrolled past the row of
- * icons has none to read, and the walk reads the next.
+ * one gender alone either way round, and Unown's and Porygon's ring, which is no gender at all. Omanyte's is the entry
+ * a full walk read no genders on (#1071). A screen scrolled past the row of icons has none to read, and the walk reads
+ * the next.
  */
 test('the genders an entry draws, solid where registered and dashed where not', async () => {
   for (const [name, genders] of GENDERS) {
