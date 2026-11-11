@@ -4,42 +4,51 @@
  * against: a battle with nothing at stake, which is where its timing and its reading of the screen are tuned. GO Battle
  * League plays the same battles against other trainers, with the game's Recommended Battle Party.
  *
- * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
+ * On a terminal, which a run takes over until it stops, a table shows the battle, ours at the left and the opponent's
+ * at the right, and what each side does under it, with how the run stands above it and the menus it taps through
+ * below, and the phone's screen down the left where the terminal draws Kitty graphics and is wide enough, unless
+ * `--no-graphics` leaves it out. `--verbose` writes the same as lines where stderr is not a terminal, each after how
+ * long the run has gone on.
  *
- *   pnpm battle run --leader blanche|candela|spark --league great|ultra|master [--count N] [--serial SERIAL]
- *                   [--keep-frames DIR] [--keep-video FILE] [--no-graphics] [--verbose]
- *   pnpm battle run --mode gbl --league LEAGUE [--party NAME] [--count N] [--serial SERIAL] [--keep-frames DIR]
- *                   [--keep-video FILE] [--no-graphics] [--verbose]
- *                       play Team Leader or GO Battle League battles one after another, from the map or anywhere
- *                       between the result of one battle and the start of the next, until `N` have finished or
- *                       Ctrl-C; stops where nothing on screen has been recognised for 20s. GO Battle League stops at
- *                       the end of a set with a reward to collect, the encounter among them, which is left to be
- *                       caught by hand.
- *                       `DIR` is given the frames from a second before each faint, ours or theirs, and each shield
- *                       prompt to a second after it, named by when they were seen and for what, as
- *                       `0012.437s-shield.png`, and the last frames before a run stops for nothing recognised.
- *                       `FILE` is given the whole of the screen the run watched, battles and menus alike, as the
- *                       MPEG-TS video `mpv FILE` or `ffplay FILE` plays, its time the seconds since the run began
- *                       that `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, kept
- *                       rather than recorded twice: about 15 MB a minute at most, and less for a still screen. Like
- *                       the frames, it shows the account's trainer names, and is not to be committed as it is.
- *                       `LEAGUE` is how the title of one league on now starts, as `ultra` or `fantasy cup`, and
- *                       `NAME` a party saved for it, which is battled with rather than whichever the screen opens
- *                       on; one not saved stops the run.
- *                       On a terminal, which it takes over until it stops, a table shows the battle, ours at the
- *                       left and the opponent's at the right, and what each side does under it, with how the run
- *                       stands above it and the menus it taps through below, and the phone's screen down the left
- *                       where the terminal draws Kitty graphics and is wide enough, unless `--no-graphics` leaves it
- *                       out; `--verbose` writes the same as lines where stderr is not a terminal, each after how long
- *                       the run has gone on
- *   pnpm battle record [--seconds N] [--serial SERIAL] OUT
- *                       save `N` seconds (30 unless given, at most 180) of the screen to `OUT` as the raw H.264
- *                       a battle decodes, which is what the recognition fixtures are cut from
- *   A flag handed to a command whose line omits it is refused rather than ignored — see `HONOURED`.
- *   `help`, or `--help` beside any command, prints this.
+ * `--keep-frames DIR` is given the frames from a second before each faint, ours or theirs, and each shield prompt to a
+ * second after it, named by when they were seen and for what, as `0012.437s-shield.png`, and the last frames before a
+ * run stops for nothing recognised. `--keep-video FILE` is given the whole of the screen the run watched, battles and
+ * menus alike, as the MPEG-TS video `mpv FILE` or `ffplay FILE` plays, its time the seconds since the run began that
+ * `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, kept rather than recorded twice:
+ * about 15 MB a minute at most, and less for a still screen.
  *
  * Automating input breaks Niantic's terms of service, and unlike `pnpm inventory` this does not only read: it taps
  * through battles. Run it on an account whose loss you would accept.
+ *
+ * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
+ *
+ *   pnpm battle run [OPTIONS]
+ *     Play Team Leader or GO Battle League battles one after another, from the map or anywhere between one battle's
+ *     result and the next one's start, until Ctrl-C or --count. Stops where nothing on screen has been recognised
+ *     for 20s, and GO Battle League at the end of a set with a reward to collect, which is left to be caught by hand.
+ *
+ *     --mode MODE        training against a Team Leader, or gbl for GO Battle League (training when not given)
+ *     --leader LEADER    the Team Leader to train against: blanche, candela or spark
+ *     --league LEAGUE    great, ultra or master for training; for gbl, how the title of a league on now starts, as
+ *                        ultra or fantasy cup
+ *     --party NAME       for gbl, a party saved for the league to battle with rather than whichever the screen opens
+ *                        on; one not saved stops the run
+ *     --count N          stop once N battles have finished
+ *     --keep-frames DIR  save the frames around each faint and shield prompt, and before a stop, to DIR
+ *     --keep-video FILE  save everything the run watched to FILE as MPEG-TS video, about 15 MB a minute at most
+ *     --no-graphics      leave the phone's screen out of the terminal's table
+ *     --verbose          write the table as timed lines where stderr is not a terminal
+ *     --serial SERIAL    the phone to drive, where more than one is plugged in
+ *
+ *   pnpm battle record [OPTIONS] OUT
+ *     Save the screen to OUT as the raw H.264 a battle decodes, which is what the recognition fixtures are cut from.
+ *
+ *     --seconds N        how long to record, from 1 to 180 (30 when not given)
+ *     --serial SERIAL    the phone to drive, where more than one is plugged in
+ *
+ * Kept frames and video show the account's trainer names, so neither is to be committed as it is.
+ *
+ * A flag a command does not list is refused rather than ignored. `help`, or `--help` beside any command, prints this.
  */
 
 import { said } from '../src/errors.ts';
@@ -97,7 +106,7 @@ const [command = 'help', ...rest] = options.help ? [] : positionals;
 
 /** The synopsis out of this file's own header, as `inventory.mts` reads its own. */
 const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
-  .match(/Usage[^]*?\n \*\n[^]*?\n \*\n/)?.[0]
+  .match(/Usage[^]*?(?=\n \*\/)/)?.[0]
   .replace(/^ \* ?/gm, '');
 
 /** Which flags each command acts on, for the reason `inventory.mts` gives beside its own. */

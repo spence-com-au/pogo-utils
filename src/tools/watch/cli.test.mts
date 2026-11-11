@@ -337,7 +337,9 @@ test.each([['--help'], ['-h'], ['help']])(
     });
     const exited = new Promise<number | null>((done) => child.on('exit', done));
 
-    expect(await text(child.stdout)).toMatch(/^usage: pnpm watch:livepokemap \[--verbose\] FILTER\.json…/);
+    expect(await text(child.stdout)).toMatch(
+      /^Usage, from the repository root:\n\n {2}pnpm watch:livepokemap \[OPTIONS\] FILTER\.json…\n/,
+    );
     expect(await exited).toBe(0);
   },
 );

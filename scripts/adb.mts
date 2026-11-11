@@ -3,14 +3,20 @@
  *
  * Usage, from the repository root, with the phone plugged in and USB debugging on:
  *
- *   pnpm adb screen-off [--serial SERIAL]
- *                       turn the phone's panel off beneath Android, to spare an OLED a long battle's still HUD. The
- *                       game goes on drawing, `screenrecord` on recording and touches on landing as if it were lit,
- *                       since Android is not told. It stays dark until `screen-on`, or until the phone sleeps and is
- *                       woken, which Pokémon GO's own wake lock puts off for as long as the game is in front
- *   pnpm adb screen-on [--serial SERIAL]
- *                       turn it back on
- *   `help`, or `--help` beside any command, prints this.
+ *   pnpm adb screen-off [OPTIONS]
+ *     Turn the phone's panel off beneath Android, to spare an OLED a long battle's still HUD. The game goes on
+ *     drawing, `screenrecord` on recording and touches on landing as if it were lit, since Android is not told. It
+ *     stays dark until screen-on, or until the phone sleeps and is woken, which Pokémon GO's own wake lock puts off
+ *     for as long as the game is in front.
+ *
+ *     --serial SERIAL  the phone to drive, where more than one is plugged in
+ *
+ *   pnpm adb screen-on [OPTIONS]
+ *     Turn the panel back on.
+ *
+ *     --serial SERIAL  the phone to drive, where more than one is plugged in
+ *
+ * `help`, or `--help` beside any command, prints this.
  */
 
 import { said } from '../src/errors.ts';

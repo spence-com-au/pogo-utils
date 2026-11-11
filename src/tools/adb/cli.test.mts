@@ -36,7 +36,7 @@ test.each([[[]], [['help']], [['--help']], [['screen-off', '--help']]])('%j prin
   const { code, stdout, said } = await adb('exit 1', ...args);
 
   expect(code).toBe(0);
-  expect(stdout).toContain('pnpm adb screen-off [--serial SERIAL]');
+  expect(stdout).toContain('pnpm adb screen-off [OPTIONS]');
   expect(said).toBeUndefined();
 });
 
@@ -44,7 +44,7 @@ test.each([[['screen-dim']], [['screen-off', 'now']]])('refuses %j with the usag
   const { code, stderr, said } = await adb('exit 1', ...args);
 
   expect(code).toBe(1);
-  expect(stderr).toContain('pnpm adb screen-off [--serial SERIAL]');
+  expect(stderr).toContain('pnpm adb screen-off [OPTIONS]');
   expect(said).toBeUndefined();
 });
 
