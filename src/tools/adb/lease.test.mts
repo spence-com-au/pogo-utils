@@ -336,6 +336,20 @@ test('keeps the phone for a command a finished subagent left on it, and lets go 
   expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 0 });
 });
 
+test('holds the phone between the commands of a finished subagent resumed with SendMessage', async () => {
+  const a = await session('pogo-utils-a');
+  const battle = 'adb shell true && echo && exec sleep 1000';
+  note(a, 'fork-1', battle);
+  const pid = await start('bash', script(battle), env(a));
+  hook(a, 'stop', { agent_id: 'fork-1' });
+
+  expect(await bash(a, 'fork-1', 'adb shell input tap 1 1')).toMatchObject({ code: 0 });
+
+  await kill(pid);
+
+  expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 1 });
+});
+
 test('gives a phone to exactly one of the subagents of a session racing for it', async () => {
   const a = await session('pogo-utils-a');
   const commands = [...Array(8).keys()].map((i) => `adb shell echo ${i}`);

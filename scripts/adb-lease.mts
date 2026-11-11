@@ -412,6 +412,9 @@ switch (process.argv[2]) {
       }
 
       db.prepare('INSERT INTO bash VALUES (?, ?, ?, ?, ?)').run(claudePid, started, agent, Number(at), input.command);
+
+      // A finished subagent runs no more commands of its own unless `SendMessage` resumes it, which this one has.
+      db.prepare('DELETE FROM finished WHERE agent = ?').run(agent);
     });
 
     break;
