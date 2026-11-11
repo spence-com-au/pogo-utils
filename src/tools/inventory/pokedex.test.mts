@@ -25,6 +25,7 @@ import {
   countsOn,
   dexOn,
   formBand,
+  formFrame,
   formLabelled,
   formsOn,
   framed,
@@ -33,6 +34,7 @@ import {
   labelsOf,
   listLines,
   ownBeside,
+  placedForm,
   pokedexLines,
   regionsButtonOf,
   silhouettesNamed,
@@ -435,6 +437,43 @@ test("a species' last unregistered form is named by its shape", async () => {
       'Paldea Blaze',
     ]),
   ).toStrictEqual({ forms: [{ index: 3, form: 'Paldea Aqua' }], notes: [] });
+});
+
+/**
+ * Minior's entry as it opens, Green the one core registered: its seven cores in a rainbow's order, two rows of them, and
+ * apart from them under `BATTLE-ONLY FORM` its Meteor shell. The shell is named by its place, its icon being each of the
+ * game master's seven coloured Meteor forms' as nearly as its own, and no tile above the heading is named that way.
+ */
+test('a battle-only form is named by its place under its heading, which its icon cannot name it', async () => {
+  const { image, lines: found } = await read('minior-0');
+  const { tiles } = await formRow('minior-0');
+  const forms = DATA.forms.filter((f) => f.dex === 774 && !f.costume);
+  const shell = tiles[7] ?? expect.unreachable("Minior's form row has eight tiles");
+
+  expect(tiles.map((t) => placedForm(found, t.box, forms)?.form ?? null)).toStrictEqual([
+    ...Array.from({ length: 7 }, () => null),
+    'Meteor',
+  ]);
+  expect(iconIn(image, shell.box, formFrame(image, shell.box), shell.look, formsOf(774))).toBeUndefined();
+});
+
+/**
+ * Minior's six cores not registered, which are one shape in seven colours, so none is named by its shape. Of all its 15
+ * forms 13 are left for them, Green and the shell registered, but of those their shapes fit only six, which they are.
+ * They are named in the game master's order, the game drawing them in a rainbow's: Red, Orange, Yellow, Blue, Indigo,
+ * Violet.
+ */
+test('silhouettes of one shape are named by elimination among the forms that shape fits', async () => {
+  const { forms, notes } = await silhouettes('minior-0', 774, ['Green', 'Meteor']);
+  const named = ['Blue', 'Indigo', 'Orange', 'Red', 'Violet', 'Yellow'];
+
+  expect(forms.map((f) => f.form)).toStrictEqual(named);
+  expect(notes).toStrictEqual(
+    [1, 2, 3, 5, 6, 7].map(
+      (form, i) =>
+        `form ${form} is a silhouette that neither its label nor its shape names, named ${named[i]} by elimination`,
+    ),
+  );
 });
 
 /** The costumes on one screenshot, named among `candidates`, undefined where none is plainly nearest. */
