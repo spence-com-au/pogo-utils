@@ -19,7 +19,7 @@ import { type Config, type Point } from './config.mts';
 import { readLines } from './detail.mts';
 import { type Form, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, type Line } from '../../core/ocr.mts';
-import { difference, type Image } from '../../core/png.mts';
+import { crop, difference, type Image } from '../../core/png.mts';
 import {
   alertOf,
   caughtFrame,
@@ -120,6 +120,34 @@ const MOVED = 0.3;
  * scrolling 0.8s after a drag changed 1.8%.
  */
 const STILL: Stillness = { by: 32, share: 0.005 };
+
+/**
+ * Where the map draws the main menu's Poké Ball, as fractions of the screen: the button `config.taps.mainMenu` taps,
+ * drawn alike over any map, where a screen opened over the map draws something else.
+ */
+const MENU_BUTTON = { left: 0.45, top: 0.9, width: 0.1, height: 0.06 };
+
+/**
+ * How much of `MENU_BUTTON` may change, by over 32 in a channel, with the map still showing. Between `map.png`, the
+ * map #1058's run was left on and another from that session, three places that share nothing but the button, no more
+ * than 0.17 did, the scenery behind its corners; from any of them to every other 1440x3040 capture here, a menu, a
+ * pop-up, an entry, a detail screen or a dialog, 0.61 or more did.
+ */
+const BUTTON_KEPT = 0.4;
+
+/** Whether the main menu's button is drawn as it was, which a tap the phone dropped leaves it, and the map with it. */
+function buttonKept(before: Image, after: Image): boolean {
+  const button = (image: Image) =>
+    crop(
+      image,
+      MENU_BUTTON.left * image.width,
+      MENU_BUTTON.top * image.height,
+      MENU_BUTTON.width * image.width,
+      MENU_BUTTON.height * image.height,
+    );
+
+  return difference(button(before), button(after), 0, 1, 32) < BUTTON_KEPT;
+}
 
 /** One screenshot of the walk's, and its text. */
 interface Shot {
@@ -281,12 +309,20 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       }
 
       await tap(at(image, config.taps.mainMenu), config.waits.menu);
+      const after = await device.screenshot();
 
-      // Thrown rather than tried again, for `toStorage`'s reason: a tap that opened something else leaves a screen
-      // nothing here knows the controls of, and every further tap there is a guess.
-      if (!isMainMenu(await readLines(await device.screenshot()))) {
+      if (isMainMenu(await readLines(after))) {
+        continue;
+      }
+
+      // Tried again only where the button is drawn as it was, which is what a tap the phone dropped leaves (#1058).
+      // Thrown otherwise, for `toStorage`'s reason: a tap that opened something else leaves a screen nothing here
+      // knows the controls of, and every further tap there is a guess.
+      if (!buttonKept(image, after)) {
         throw new Error('the main menu did not open; open the Pokédex by hand and run again');
       }
+
+      say('  the main menu did not open, the map left as it was; tapping it again');
     }
 
     throw new Error('could not find the Pokédex; open its list of regions by hand and run again');
