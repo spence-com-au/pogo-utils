@@ -3,24 +3,30 @@
  * of its queries wants. A query is a Live PokeMap display filter, one file each, as its own Export writes it or as the
  * Integrations page copies the shiny hunt.
  *
+ * None of the secrets below is printed; nor is the token the login answers.
+ *
+ * Automated access is against Live PokeMap's terms and puts that account at risk, however closely this keeps to what
+ * one tab does; the risk is the user's to weigh.
+ *
  * Usage, from the repository root:
  *
- *   LPM_USERNAME=… LPM_PASSWORD=… [NTFY_TOPIC=…] pnpm watch:livepokemap [--verbose] FILTER.json…
+ *   pnpm watch:livepokemap [OPTIONS] FILTER.json…
+ *     Log in to Live PokeMap and push a notification through ntfy for each spawn a filter wants, in the foreground
+ *     until stopped. A filter is a Live PokeMap display filter, as its own Export writes it or as the Integrations
+ *     page copies the shiny hunt.
  *
- *   LPM_USERNAME, LPM_PASSWORD  the Live PokeMap account to log in as
+ *     --verbose  print every request as it is sent and a line per poll
+ *
+ * Environment, which `.env` at the repository root can set instead, one set on the command line overriding it:
+ *
+ *   LPM_USERNAME, LPM_PASSWORD  the Live PokeMap account to log in as, both needed
  *   NTFY_TOPIC                  the ntfy topic to publish to, which anyone who knows it can read; unset, it runs
  *                               console only, printing each match in full rather than sending it
  *   NTFY_SERVER                 the ntfy server, `https://ntfy.sh` unless set
  *   NTFY_TOKEN                  an ntfy access token, for a server or topic that needs one
  *   LPM_BASE_URL                Live PokeMap itself, `https://play.livepokemap.com` unless set
  *
- * Any of these can come from `.env` at the repository root instead, which one set on the command line overrides.
- *
- * It runs in the foreground until stopped. None of the secrets above is printed; nor is the token the login answers.
- * `--verbose` adds every request as it is sent and a line per poll.
- *
- * Automated access is against Live PokeMap's terms and puts that account at risk, however closely this keeps to what
- * one tab does; the risk is the user's to weigh.
+ * `help`, `--help` or `-h` prints this.
  */
 
 import { LIVE_POKEMAP, LivePokeMap } from '../src/tools/watch/client.mts';
@@ -31,9 +37,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import { parseArgs } from 'node:util';
 
+/**
+ * The synopsis out of this file's own header, as `inventory.mts` reads its own. Empty where the header no longer
+ * matches, which `cli.test.mts` fails on.
+ */
 const USAGE =
-  'usage: pnpm watch:livepokemap [--verbose] FILTER.json…  ' +
-  '(with LPM_USERNAME and LPM_PASSWORD set, in the environment or `.env`, and NTFY_TOPIC to notify a phone)';
+  readFileSync(new URL(import.meta.url), 'utf8')
+    .match(/Usage[^]*?(?=\n \*\/)/)?.[0]
+    .replace(/^ \* ?/gm, '') ?? '';
 
 const { values: options, positionals } = parseArgs({
   allowPositionals: true,

@@ -89,9 +89,9 @@ const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
         .split(/^ {2}pnpm inventory /m)
         .slice(1)
         .map((chunk) => {
-          // A continuation of the command above is indented past it; a line sitting at the margin is prose beneath the
-          // synopsis, and the flags it names in passing are not an offer to the last command listed.
-          const lines = chunk.split('\n').filter((line) => !/^ {2}\S/.test(line));
+          // A command's own lines are indented past it; one at the margin or two in is the shared options or the prose
+          // beneath them, and the flags it names are not an offer to the last command listed.
+          const lines = chunk.split('\n').filter((line, i) => i === 0 || !/^ {0,2}\S/.test(line));
 
           return [
             /^([a-z]+)/.exec(chunk)?.[1] ?? '',
