@@ -595,8 +595,8 @@ describe.concurrent('scan', () => {
   });
 });
 
-/** Where the Pokédex is, as far as `dex` drives it. */
-type Screen = 'popup' | 'map' | 'menu' | 'list' | 'grid' | 'entry';
+/** Where the Pokédex is, as far as `dex` drives it, `other` being what a tap on the main menu's button opened. */
+type Screen = 'popup' | 'map' | 'menu' | 'list' | 'grid' | 'entry' | 'other';
 
 /** A pop-up the game puts over the map: its capture, and how far down the screen the middle of its LATER is. */
 interface Popup {
@@ -638,7 +638,7 @@ const SELECTS: Readonly<Record<string, readonly (readonly [number, number, numbe
  * those is showing and by where it lands, of no more than the screen's controls and `SELECTS` do; a swipe moves along
  * the entries, one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag
  * scrolls a list or an entry. Any pop-ups given are over the map at the start, each put off by a tap on its LATER and
- * by nothing else.
+ * by nothing else, and `menuTaps` says what the phone makes of the taps on the main menu's button before one opens it.
  *
  * The tab strip is the one thing modelled rather than recorded. The tab selected sits in the middle of it but at
  * either end, as the captures draw it — POKÉMON at a fifth of the width with SHINY in the middle, ★ 100% in the middle
@@ -653,6 +653,15 @@ class Pokedex {
   #frame = 0;
   readonly #entries: readonly (readonly string[])[];
   readonly #popups: Popup[];
+
+  /**
+   * What the phone makes of each tap on the main menu's button, in turn, until they run out and one opens the menu:
+   * null for a tap it drops, leaving the map as it was, and a capture for one that opens that instead.
+   */
+  readonly menuTaps: (string | null)[] = [];
+
+  /** The capture a tap on the main menu's button opened instead of it. */
+  #other = '';
 
   /** The screenshot a tap on the entry put in place of its own, until a tap puts that back. */
   #over: string | null = null;
@@ -684,6 +693,8 @@ class Pokedex {
         return `pokedex/${LISTS[this.tab]?.[this.#list]}.png`;
       case 'entry':
         return `pokedex/${this.#over ?? this.#entries[this.#entry]?.[this.#frame]}.png`;
+      case 'other':
+        return this.#other;
     }
   }
 
@@ -732,8 +743,14 @@ class Pokedex {
         this.#popups.shift();
         this.screen = this.#popups.length > 0 ? 'popup' : 'map';
       }
-    } else if (this.screen === 'map') {
-      this.screen = foot ? 'menu' : 'map';
+    } else if (this.screen === 'map' && foot) {
+      const instead = this.menuTaps.shift();
+
+      if (instead === undefined) {
+        this.screen = 'menu';
+      } else if (instead !== null) {
+        [this.screen, this.#other] = ['other', instead];
+      }
     } else if (this.screen === 'menu') {
       this.screen = Math.abs(x - 0.25) < 0.1 && Math.abs(y - 0.6) < 0.05 ? 'list' : 'map';
     } else if (this.screen === 'entry' && foot) {
@@ -1006,6 +1023,40 @@ describe('dex', () => {
       expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
       expect(stderr.match(/a pop-up was over the map; putting it off with its LATER/g)).toHaveLength(POPUPS.length);
       expect(phone.calls).not.toContain(`shell input keyevent ${KEY.BACK}`);
+    },
+  );
+
+  /**
+   * A first tap on the main menu's button that the phone drops, leaving the map as it was with the button drawn where
+   * it was (#1058). The walk taps it again and goes on over the same range as the test above.
+   */
+  test('taps the main menu again where the phone dropped the tap', { timeout: SLOW }, async (context) => {
+    const phone = new Pokedex();
+    phone.menuTaps.push(null);
+    const { inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+    const { stderr } = await inventory('dex', '--from', '4', '--to', '10');
+
+    expect(stderr).toContain('Nothing from #4 on has been seen, the last species seen before it being #3');
+    expect(stderr.match(/the main menu did not open, the map left as it was; tapping it again/g)).toHaveLength(1);
+  });
+
+  /**
+   * A tap on the main menu's button that opens something else, a dialog standing in for the stop a walking avatar
+   * carried under the button, which draws something else where the button was. A second tap there would be a guess at
+   * a screen the walk knows nothing of, so it stops having made only the one.
+   */
+  test(
+    'stops where a tap on the main menu opened something else, without tapping again',
+    { timeout: SLOW },
+    async (context) => {
+      const phone = new Pokedex();
+      phone.menuTaps.push('dialog/persian-power-up.png');
+      const { inventory } = await harness(context, phone, ['Bulbasaur', 'Ivysaur', 'Venusaur'], KANTO_ICONS);
+      const { code, stderr } = await inventory('dex', '--from', '4', '--to', '10');
+
+      expect(code).toBe(1);
+      expect(stderr).toContain('the main menu did not open; open the Pokédex by hand and run again');
+      expect(phone.calls.filter((call) => call.startsWith('shell input tap'))).toHaveLength(1);
     },
   );
 
