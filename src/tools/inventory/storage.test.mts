@@ -254,7 +254,7 @@ test("a dialog whose button does not read is told by the scrim it draws over the
 /**
  * The power-up sheet over a Persian, whose `CANCEL` neither engine reads, so its title is all that says it is open
  * (#967). Read under both engines whatever `INVENTORY_OCR` asks for, since both missed it and CI runs this file with the
- * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's three looks closes it with Back
+ * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's five looks closes it with Back
  * and none taps under it.
  */
 test.for([
@@ -268,7 +268,7 @@ test.for([
 
   await expect(search('shiny').finally(finished)).rejects.toThrow('could not find Pokémon storage');
   expect(tapped(sent)).toStrictEqual([]);
-  expect(sent.filter((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toHaveLength(3);
+  expect(sent.filter((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toHaveLength(5);
 });
 
 /**
@@ -510,21 +510,28 @@ test('the map is walked from by the main menu under tesseract.js, whatever its s
   await expect(search('shiny').finally(finished)).rejects.toThrow('could not find Pokémon storage');
   expect(sent).not.toContainEqual(['input', 'keyevent', String(KEY.BACK)]);
   expect(tapped(sent)).toStrictEqual(
-    Array(3).fill(['input', 'tap', ...at(DEFAULTS.taps.mainMenu).map((n) => String(Math.round(n)))]),
+    Array(5).fill(['input', 'tap', ...at(DEFAULTS.taps.mainMenu).map((n) => String(Math.round(n)))]),
   );
 });
 
-/** A first tap on the main menu's button that the phone drops, leaving the map as it was, the button with it. */
-test('a menu tap the phone dropped is made again, and storage reached by the second', async () => {
+/**
+ * Taps on the main menu's button that the phone drops, leaving the map as it was, the button with it: two of them after
+ * a dialog closed with Back, the furthest the walk's tries reach.
+ */
+test('menu taps the phone dropped are made again, two of them after a dialog, and storage reached', async () => {
   const { sent, device } = phone(DEFAULTS.package);
-  reads(sent, MAP, MAP, MAP, MENU, STORAGE);
+  reads(sent, DIALOG, MAP, MAP, MAP, MAP, MAP, MENU, STORAGE);
   const said: string[] = [];
   const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
 
   await search('shiny');
 
-  expect(said).toContain('  the main menu did not open, the map left as it was; tapping it again');
+  expect(sent).toContainEqual(['input', 'keyevent', String(KEY.BACK)]);
+  expect(said.filter((message) => message.includes('tapping it again'))).toStrictEqual(
+    Array<string>(2).fill('  the main menu did not open, the map left as it was; tapping it again'),
+  );
   expect(tapped(sent)).toStrictEqual([
+    ['input', 'tap', '50', '182'],
     ['input', 'tap', '50', '182'],
     ['input', 'tap', '50', '182'],
     ['input', 'tap', '25', '164'],
@@ -549,23 +556,23 @@ test('a menu tap that opened anything but the menu stops the walk, without tappi
   ]);
 });
 
-test('a detail screen the close button never closes stops the walk after three taps', async () => {
+test('a detail screen the close button never closes stops the walk after five taps', async () => {
   const { sent, device } = phone(DEFAULTS.package);
   reads(sent, DETAIL);
   const { search, at } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
-  expect(tapped(sent)).toStrictEqual(Array(3).fill(['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]));
+  expect(tapped(sent)).toStrictEqual(Array(5).fill(['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]));
 });
 
-test('a map the main menu is walked from three times without reaching storage stops the walk', async () => {
+test('a map the main menu is walked from five times without reaching storage stops the walk', async () => {
   const { sent, device } = phone(DEFAULTS.package);
-  reads(sent, MAP, MENU, MAP, MENU, MAP, MENU);
+  reads(sent, ...Array<string[]>(5).fill([MAP, MENU]).flat());
   const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
   expect(tapped(sent)).toStrictEqual(
-    Array(3)
+    Array(5)
       .fill([
         ['input', 'tap', '50', '182'],
         ['input', 'tap', '25', '164'],

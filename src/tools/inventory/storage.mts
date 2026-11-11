@@ -397,7 +397,9 @@ export function storage(
   const toStorage = async () => {
     await (fronted ??= toFront(device, config, say));
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Three from a dialog, the furthest a walk starts from: Back, then the close button or the menu and its Pokémon
+    // button, then storage. Two more for main menu taps the phone drops, each of which costs one.
+    for (let attempt = 0; attempt < 5; attempt++) {
       const image = await device.screenshot();
       const lines = await readLines(image);
 
