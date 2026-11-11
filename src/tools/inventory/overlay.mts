@@ -536,6 +536,41 @@ export function widen(a: OverlayBox, b: OverlayBox): OverlayBox {
 }
 
 /**
+ * The form's suffix at the end of the overlay's line, `(M)` or Spinda's `(04)`, read under each of the two alphabets
+ * and each kept only where it has the shape of one.
+ *
+ * Both alphabets always run and a two-digit answer wins, because only one of them could have produced it: the letters
+ * alphabet holds no digits, so it says "letter" about Spinda's `(04)` either way. Nothing but Spinda is labelled
+ * numerically, so a two-digit read is not a close call to arbitrate.
+ *
+ * Off the first pass always, and deliberately not off whichever pass the triple came from: the two are separate
+ * readings of separate parts of the line. `unown-m.png`'s IVs are only right under brightness and its `(M)` only under
+ * near-white, so following the triple would trade one for the other.
+ *
+ * Under its own thresholds for the same reason — a lower floor and tighter chroma keeps the thin upright of a `[`.
+ * Thresholds rather than a vote, because a vote cannot work here: swept over 72 treatments and scales, that capture's
+ * bracket reads `N` eighteen times, `T` seven, `[` six and `I` four, and `N` and `I` are both real Unown forms. There
+ * is no majority to take; there is only a treatment that is right.
+ */
+function suffixesOf(
+  image: Image,
+  box: OverlayBox,
+): [lettered: Promise<string | null>, numeric: Promise<string | null>] {
+  const suffixIn = async (region: Image, alphabet: string) =>
+    [...((await ocrLine(region, alphabet))?.matchAll(FORM_SUFFIX) ?? [])].at(-1)?.[1]?.trim() ?? null;
+  const shaped = (suffix: string | null) => (suffix !== null && SUFFIX_SHAPE.test(suffix) ? suffix : null);
+  const bracket = scale(
+    isolate(cropBox(image, box, OVERLAY_SUFFIX_REACH), SUFFIX_LUMINANCE, SUFFIX_CHROMA),
+    OVERLAY_SCALE,
+  );
+
+  return [
+    suffixIn(bracket, OVERLAY_FORM_ALPHABET).then(shaped),
+    suffixIn(bracket, OVERLAY_NUMERIC_ALPHABET).then(shaped),
+  ];
+}
+
+/**
  * The level and the three IVs, read out of a box already found. Isolating the white text and doubling it is what makes
  * this reliable: over twelve captures the IVs came out right in all twelve, where the same screens read whole gave
  * three. The level is a guess by comparison, at ten of twelve — the `IV` label beside it OCRs as a `1` and runs into
@@ -562,8 +597,19 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
   // label's upright run into it.
   const ahead: string[] = [];
 
-  for (const treat of OVERLAY_TREATMENTS) {
-    const text = (await ocrLine(scale(treat(raw), OVERLAY_SCALE), OVERLAY_ALPHABET)) ?? '';
+  // Every treatment read at once rather than each once the one before has failed to confirm, and the suffix below read
+  // beside them: each read is its own Tesseract, held to one thread, and a scan waits on this for every Pokémon. Taken
+  // in the same order with the same stop, so the reading is the one a pass at a time gives; a read not reached costs a
+  // core for a fifth of a second and nothing else. Its failure is the caller's only where it is reached, as before.
+  const reads = OVERLAY_TREATMENTS.map((treat) => ocrLine(scale(treat(raw), OVERLAY_SCALE), OVERLAY_ALPHABET));
+  const suffixes = suffixesOf(image, box);
+
+  for (const read of [...reads, ...suffixes]) {
+    read.catch(() => {});
+  }
+
+  for (const read of reads) {
+    const text = (await read) ?? '';
     const triple = tripleIn(text);
 
     if (!triple) {
@@ -606,30 +652,7 @@ export async function readOverlay(image: Image, box: OverlayBox): Promise<Overla
     return null;
   }
 
-  const suffixIn = async (region: Image, alphabet: string) =>
-    [...((await ocrLine(region, alphabet))?.matchAll(FORM_SUFFIX) ?? [])].at(-1)?.[1]?.trim() ?? null;
-
-  // Both alphabets always run and a two-digit answer wins, because only one of them could have produced it: the
-  // letters alphabet holds no digits, so it says "letter" about Spinda's `(04)` either way. Nothing but Spinda is
-  // labelled numerically, so a two-digit read is not a close call to arbitrate.
-  //
-  // Off the first pass always, and deliberately not off whichever pass the triple came from: the two are separate
-  // readings of separate parts of the line. `unown-m.png`'s IVs are only right under brightness and its `(M)` only
-  // under near-white, so following the triple would trade one for the other.
-  //
-  // Under its own thresholds for the same reason — a lower floor and tighter chroma keeps the thin upright of a `[`.
-  // Thresholds rather than a vote, because a vote cannot work here: swept over 72 treatments and scales, that
-  // capture's bracket reads `N` eighteen times, `T` seven, `[` six and `I` four, and `N` and `I` are both real Unown
-  // forms. There is no majority to take; there is only a treatment that is right.
-  const shaped = (suffix: string | null) => (suffix !== null && SUFFIX_SHAPE.test(suffix) ? suffix : null);
-  const bracket = scale(
-    isolate(cropBox(image, box, OVERLAY_SUFFIX_REACH), SUFFIX_LUMINANCE, SUFFIX_CHROMA),
-    OVERLAY_SCALE,
-  );
-  const [lettered, numeric] = await Promise.all([
-    suffixIn(bracket, OVERLAY_FORM_ALPHABET).then(shaped),
-    suffixIn(bracket, OVERLAY_NUMERIC_ALPHABET).then(shaped),
-  ]);
+  const [lettered, numeric] = await Promise.all(suffixes);
 
   return {
     // Unioned per text rather than over the texts joined, so that `levelsIn`'s pair spanning two runs stays inside one

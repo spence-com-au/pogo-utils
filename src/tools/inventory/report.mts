@@ -111,15 +111,21 @@ export async function readScreen(
   const [lines, stitched] = await Promise.all([readLines(screen), screen === image ? undefined : readLines(image)]);
 
   const whole = stitched ?? lines;
+
+  // The overlay read beside the detail rather than after it, since it needs nothing of it and is read whatever the
+  // detail says: the detail's own reads leave cores idle while its last few finish, and the overlay's fill them.
+  const overlaid = configured
+    ? readOverlay(screen, configured).then((reading) => ({ box: configured, overlay: reading }))
+    : findOverlay(screen);
+  overlaid.catch(() => {});
+
   const read = await parseDetail(lines, data, screen);
 
   // The one reading off the stitch besides the moves: a panel above `POWER UP` can push it below the screen's foot, as
   // Necrozma's fusion panel does, and the scan reads it off the screen scrolled down for the moves the same way.
   const powerUp = read.powerUp ?? (screen === image ? null : await powerUpOn(image));
   const detail = { ...read, powerUp };
-  const found = configured
-    ? { box: configured, overlay: await readOverlay(screen, configured) }
-    : await findOverlay(screen);
+  const found = await overlaid;
   const box = found?.box ?? null;
   const overlay = found?.overlay ?? null;
   const identity = identify(data, detail, overlay, artworkIn(screen, box, icons));

@@ -57,7 +57,18 @@ export async function readMoves(
   const found: Move[] = [];
   let mega: Move | null = null;
 
-  for (const row of rows) {
+  // Every row that names no move as it reads is read again at once rather than as the loop reaches it, each read its
+  // own Tesseract: one after another, a screen whose moves the whole-screen pass half caught waited on four in a row.
+  // The loop still takes them in order and stops where it did, so a rescue below the moves it needed is read for
+  // nothing but changes nothing, and fails nothing either, only a rescue the loop reaches being its to fail.
+  const matched = rows.map((row) => moveIn(row.text, pool, POOL_SLACK) ?? moveIn(row.text, data.moves, MOVE_SLACK));
+  const rescues = rows.map((row, i) => (matched[i] ? null : moveUnder(image, row, pool)));
+
+  for (const rescue of rescues) {
+    rescue?.catch(() => {});
+  }
+
+  for (const [i, row] of rows.entries()) {
     // Enough once a fast move and two charged ones are in, which spares what lies below them a rescue read apiece, but
     // for a mega move, matched as the row reads.
     if (found.some((m) => m.fast) && found.filter((m) => !m.fast).length >= 2) {
@@ -70,10 +81,7 @@ export async function readMoves(
       continue;
     }
 
-    const move =
-      moveIn(row.text, pool, POOL_SLACK) ??
-      moveIn(row.text, data.moves, MOVE_SLACK) ??
-      (await moveUnder(image, row, pool));
+    const move = matched[i] ?? (await rescues[i]) ?? null;
 
     // Once however many lines it spans: a rescue band at an energy bar's height takes in the name beside the bar too.
     if (move && !found.includes(move)) {
