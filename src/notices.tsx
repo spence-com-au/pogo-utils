@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { coinBagReleaseStore } from './coin-bag/release-store.js';
+import { relative, type ParsedEvent } from './event-schedule.js';
 import { eventStore, useEventStore } from './event-store.js';
 import { pgsharpReleaseStore } from './pgsharp/release-store.js';
 import { useDismiss } from './popover.js';
@@ -20,7 +21,12 @@ import { toHash } from './router.js';
 /** One entry in the list, whatever kind of thing it reports. */
 export interface Notice {
   title: string;
-  detail: string;
+
+  /**
+   * The line under the title. A `Date` in it is drawn relative to when the list draws — "2 days ago" — with the day
+   * itself on hover, so the times stay text the source cannot word ahead of the moment they are read.
+   */
+  detail: readonly (string | Date)[];
 
   /** Unique across every kind, so a source prefixes its own IDs. */
   key: string;
@@ -45,15 +51,24 @@ const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeri
  * `?event=` link the Map page's route cards use; clearing one marks the event seen, which takes the mark off its card.
  */
 function eventNotices(): Notice[] {
-  const store = eventStore;
+  return eventStore.newlyVisible().map(eventNotice);
+}
 
-  return store.newlyVisible().map((ev) => ({
+/**
+ * The notice for one event. Its start stays a date, being what a reader plans around; the relative time is when the
+ * site first vended the event, as a release's is when it was first seen, and an event not yet stamped has none.
+ */
+export function eventNotice(ev: ParsedEvent): Notice {
+  return {
     key: `event:${ev.eventID}`,
     title: ev.name,
-    detail: [ev.heading || ev.eventType, ev.start ? `from ${dayFmt.format(ev.start)}` : 'date unknown'].join(' · '),
+    detail: [
+      [ev.heading || ev.eventType, ev.start ? `from ${dayFmt.format(ev.start)}` : 'date unknown'].join(' · '),
+      ...(ev.added ? [' · seen ', ev.added] : []),
+    ],
     href: toHash('events', `event=${encodeURIComponent(ev.eventID)}`),
-    clear: () => store.acknowledge([ev]),
-  }));
+    clear: () => eventStore.acknowledge([ev]),
+  };
 }
 
 /**
@@ -69,7 +84,7 @@ function pgsharpNotices(): Notice[] {
         {
           key: `pgsharp:${release.version}`,
           title: `PGSharp ${release.version}`,
-          detail: `Seen ${dayFmt.format(new Date(release.firstSeen))} · Download the APK`,
+          detail: ['Seen ', new Date(release.firstSeen), ' · Download the APK'],
           href: release.url,
           external: true,
           clear: () => pgsharpReleaseStore.acknowledge(),
@@ -90,7 +105,7 @@ function coinBagNotices(): Notice[] {
         {
           key: `coin-bag:${release.version}`,
           title: `Coin Bag ${release.version}`,
-          detail: `Seen ${dayFmt.format(new Date(release.firstSeen))} · see the release`,
+          detail: ['Seen ', new Date(release.firstSeen), ' · see the release'],
           href: release.url,
           external: true,
           clear: () => coinBagReleaseStore.acknowledge(),
@@ -134,6 +149,7 @@ export function Notices() {
 
   const notices = SOURCES.flatMap((source) => source.notices());
   const count = notices.length;
+  const now = new Date();
   const label = count === 0 ? 'Notifications: none' : `Notifications: ${count} new`;
 
   return (
@@ -192,7 +208,17 @@ export function Notices() {
                   }}
                 >
                   <span class="notices-title">{notice.title}</span>
-                  <span class="notices-detail">{notice.detail}</span>
+                  <span class="notices-detail">
+                    {notice.detail.map((part) =>
+                      typeof part === 'string' ? (
+                        part
+                      ) : (
+                        <time dateTime={part.toISOString()} title={dayFmt.format(part)}>
+                          {relative(part, now)}
+                        </time>
+                      ),
+                    )}
+                  </span>
                 </a>
                 <button
                   type="button"
