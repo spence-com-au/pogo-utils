@@ -818,20 +818,24 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     // In the order the game draws the forms, rather than the order they were read in.
     views.sort((a, b) => a.index - b.index);
 
-    return assemble({ dex, species, notes, views });
+    // A form not registered is not viewed, so a species with none registered has only the entry as it opened to say
+    // its genders, as Golem's on `golem-0.png` does (#1070).
+    return assemble({ dex, species, notes, views, opened: gendersOn(top.image, top.lines) });
   };
 
-  /** The line for a species, out of what each of its forms' views read. */
+  /** The line for a species, out of what each of its forms' views read, and the genders `opened` where none read any. */
   const assemble = ({
     dex,
     species,
     notes,
     views,
+    opened = null,
   }: {
     dex: number;
     species: string;
     notes: string[];
     views: { form: Named; seen: View }[];
+    opened?: Genders | null;
   }): Entry => {
     const forms = views.map(({ form, seen }) => formFrom(form, seen));
     const held: Costume[] = [];
@@ -868,7 +872,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       notes.push(`some of ${species}'s costumes could not be lined up with those above them, so are not counted`);
     }
 
-    const genders = views.find(({ seen }) => seen.genders !== null)?.seen.genders ?? {};
+    const genders = views.find(({ seen }) => seen.genders !== null)?.seen.genders ?? opened ?? {};
 
     return { dex, species, caught: forms.some((f) => f.caught), genders, forms, costumes, notes };
   };
