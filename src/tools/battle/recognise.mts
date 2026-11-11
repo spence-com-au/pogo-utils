@@ -26,15 +26,31 @@ import { type Colour } from './minigame.mts';
 export type State = 'battle' | 'charged' | 'playing' | 'shield' | 'switch' | 'other';
 
 /** Where a box `top` to `bottom` widths from `anchor` runs down `image`, in pixels. */
-const rows = (image: Image, top: number, bottom: number, anchor: number) =>
+const rows = (image: Size, top: number, bottom: number, anchor: number) =>
   [down(top, anchor, image), down(bottom, anchor, image)].map((y) => Math.round(y * image.height)) as [number, number];
 
-function* pixels(image: Image, [left, top, right, bottom]: AnchoredBox, anchor: number): Generator<Colour> {
-  const [from, to] = rows(image, top, bottom, anchor);
+/**
+ * Hands `visit` each pixel of a box as its three channels, black where the box runs off the frame as `rgb` has it. Read
+ * off the data rather than yielded as an array apiece, which is what a generator of `rgb`'s made of every pixel of
+ * every box sampled, every frame.
+ */
+function eachPixel(
+  { width, height, data }: Image,
+  [left, top, right, bottom]: AnchoredBox,
+  anchor: number,
+  visit: (r: number, g: number, b: number) => void,
+): void {
+  const [from, to] = rows({ width, height }, top, bottom, anchor);
+  const [x0, x1] = [Math.round(left * width), Math.round(right * width)];
 
   for (let y = from; y < to; y++) {
-    for (let x = Math.round(left * image.width); x < Math.round(right * image.width); x++) {
-      yield rgb(image, x, y);
+    for (let x = x0; x < x1; x++) {
+      if (x < 0 || y < 0 || x >= width || y >= height) {
+        visit(0, 0, 0);
+      } else {
+        const i = (y * width + x) * 4;
+        visit(data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0);
+      }
     }
   }
 }
@@ -42,12 +58,12 @@ function* pixels(image: Image, [left, top, right, bottom]: AnchoredBox, anchor: 
 function mean(image: Image, box: AnchoredBox, anchor: number): Colour {
   let [r, g, b, n] = [0, 0, 0, 0];
 
-  for (const [red, green, blue] of pixels(image, box, anchor)) {
+  eachPixel(image, box, anchor, (red, green, blue) => {
     r += red;
     g += green;
     b += blue;
     n++;
-  }
+  });
 
   n = Math.max(n, 1);
 
@@ -56,13 +72,15 @@ function mean(image: Image, box: AnchoredBox, anchor: number): Colour {
 
 /** Each channel's median over a box: the colour of whatever covers most of it, deaf to what covers the rest. */
 function medianColour(image: Image, box: AnchoredBox, anchor: number): Colour {
-  const channels: [number[], number[], number[]] = [[], [], []];
+  const [reds, greens, blues]: [number[], number[], number[]] = [[], [], []];
 
-  for (const colour of pixels(image, box, anchor)) {
-    colour.forEach((level, i) => channels[i]?.push(level));
-  }
+  eachPixel(image, box, anchor, (r, g, b) => {
+    reds.push(r);
+    greens.push(g);
+    blues.push(b);
+  });
 
-  return channels.map(median) as unknown as Colour;
+  return [median(reds), median(greens), median(blues)];
 }
 
 const near = (colour: Colour, target: Colour, within: number) =>
@@ -125,14 +143,14 @@ const panel = (colour: Colour) => Math.min(...colour) >= 195 && chroma(...colour
 function darkIn(image: Image, box: AnchoredBox): { dark: number; grey: number } {
   let [dark, grey, n] = [0, 0, 0];
 
-  for (const colour of pixels(image, box, TOP)) {
-    if (luminance(...colour) < TEXT.dark) {
+  eachPixel(image, box, TOP, (r, g, b) => {
+    if (luminance(r, g, b) < TEXT.dark) {
       dark++;
-      grey += chroma(...colour) <= TEXT.grey ? 1 : 0;
+      grey += chroma(r, g, b) <= TEXT.grey ? 1 : 0;
     }
 
     n++;
-  }
+  });
 
   n = Math.max(n, 1);
 
@@ -184,10 +202,10 @@ const TITLE_WHITE = 0.1;
 function whiteIn(image: Image, box: AnchoredBox, anchor = BOTTOM): number {
   let [whites, n] = [0, 0];
 
-  for (const colour of pixels(image, box, anchor)) {
-    whites += luminance(...colour) > 200 ? 1 : 0;
+  eachPixel(image, box, anchor, (r, g, b) => {
+    whites += luminance(r, g, b) > 200 ? 1 : 0;
     n++;
-  }
+  });
 
   return whites / Math.max(n, 1);
 }
@@ -440,23 +458,53 @@ const NAMED = 5;
 /**
  * The edges along row `y` from `left` to `right` across, in pixels: neighbours a 360th of the width apart differing by
  * more than `by` in luminance, the lighter of them under `grey` in chroma.
+ *
+ * Each pixel is placed as `rgb` places it, black off the frame, but read off the data, and its luminance and chroma
+ * carried on to the next pair, of which it is the first. `banner` asks this of every row of a band a third of the
+ * width tall, every frame of a minigame, and the two arrays `rgb` made for each pair and the two more its swap did took
+ * 3.5ms of each frame.
  */
 function edgesAlong(
-  image: Image,
+  { width, height, data }: Image,
   y: number,
   [left, right]: readonly [number, number],
   { by, grey }: { by: number; grey: number },
 ): number {
-  const unit = image.width / 360;
+  const unit = width / 360;
+  const row = y < 0 || y >= height ? -1 : Math.floor(y) * width;
   let found = 0;
+  let tint = 0;
+
+  /** The pixel at `x` along the row, as its luminance, its chroma left in `tint`. */
+  const at = (x: number) => {
+    if (row < 0 || x < 0 || x >= width) {
+      tint = 0;
+
+      return 0;
+    }
+
+    const i = (row + Math.floor(x)) * 4;
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
+    tint = chroma(r, g, b);
+
+    return luminance(r, g, b);
+  };
+
+  let level = left < right ? at(left) : 0;
+  let colour = tint;
 
   for (let px = left; px < right; px += unit) {
-    const [a, b] = [rgb(image, px, y), rgb(image, px + unit, y)];
-    const [lighter, darker] = luminance(...a) > luminance(...b) ? [a, b] : [b, a];
+    const next = at(px + unit);
 
-    if (luminance(...lighter) - luminance(...darker) > by && chroma(...lighter) < grey) {
+    // The first of the two is the lighter only where it is strictly lighter, a tie going to the second.
+    if (level > next ? level - next > by && colour < grey : next - level > by && tint < grey) {
       found++;
     }
+
+    level = next;
+    colour = tint;
   }
 
   return found;

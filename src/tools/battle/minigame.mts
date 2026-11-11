@@ -181,42 +181,52 @@ function agreesLit(pixel: Colour, colour: Colour): boolean {
 
 /**
  * The share of `colour` a pixel holds washed towards white, the same in each channel that tells under some light, or
- * 0 where it is not so washed. How much share there is, and how pale the channels that do not tell are, are judged
- * under full white: dimmed, the `PALE` guard let Mewtwo's lavender back in.
+ * 0 where it is not so washed, as a function of the pixel's three channels. How much share there is, and how pale the
+ * channels that do not tell are, are judged under full white: dimmed, the `PALE` guard let Mewtwo's lavender back in.
+ *
+ * Asked of every pixel of the field each frame, so what the colour alone settles is settled once a frame: which
+ * channels tell, and each one's share at each of its 256 levels, the same division of the same two numbers it would
+ * otherwise make a pixel at a time. The tests that turn most pixels away come before `agreesLit`, the dearest.
  */
-function washed(pixel: Colour, colour: Colour): number {
-  // Run on every pixel of the field each frame, so written without the arrays a `map` would make, and with the tests
-  // that turn most pixels away before `agreesLit`, the dearest.
-  let sum = 0;
-  let told = 0;
+function washer(colour: Colour): (r: number, g: number, b: number) => number {
+  const froms = [0, 1, 2].map((i) => 255 - (colour[i] ?? 0)) as [number, number, number];
+  const shares = froms.map((from) =>
+    from > CHANNEL_FROM_WHITE ? Float64Array.from({ length: 256 }, (_, level) => (255 - level) / from) : null,
+  );
+  const told = shares.filter((share) => share !== null).length;
+  const [[fromR, fromG, fromB], [shareR, shareG, shareB]] = [froms, shares];
+  const pixel: [number, number, number] = [0, 0, 0];
 
-  for (let i = 0; i < 3; i++) {
-    const from = 255 - (colour[i] ?? 0);
+  // Summed in the channels' order, as a loop over them would, so that the share comes out to the very same bits.
+  return (r, g, b) => {
+    let sum = 0;
+    sum += shareR ? (shareR[r] ?? 0) : 0;
+    sum += shareG ? (shareG[g] ?? 0) : 0;
+    sum += shareB ? (shareB[b] ?? 0) : 0;
 
-    if (from > CHANNEL_FROM_WHITE) {
-      sum += (255 - (pixel[i] ?? 0)) / from;
-      told++;
-    }
-  }
+    const mean = sum / told;
 
-  const mean = sum / told;
-
-  if (told < 1 || mean < SHARE.least || mean > SHARE.most) {
-    return 0;
-  }
-
-  for (let i = 0; i < 3; i++) {
-    const from = 255 - (colour[i] ?? 0);
-
-    if (from <= CHANNEL_FROM_WHITE && 255 - mean * from - (pixel[i] ?? 0) > PALE) {
+    if (told < 1 || mean < SHARE.least || mean > SHARE.most) {
       return 0;
     }
-  }
 
-  return agreesLit(pixel, colour) ? mean : 0;
+    if (
+      (!shareR && 255 - mean * fromR - r > PALE) ||
+      (!shareG && 255 - mean * fromG - g > PALE) ||
+      (!shareB && 255 - mean * fromB - b > PALE)
+    ) {
+      return 0;
+    }
+
+    pixel[0] = r;
+    pixel[1] = g;
+    pixel[2] = b;
+
+    return agreesLit(pixel, colour) ? mean : 0;
+  };
 }
 
-const white = ([r, g, b]: Colour) =>
+const white = (r: number, g: number, b: number) =>
   Math.min(r, g, b) >= WHITE.least && Math.max(r, g, b) - Math.min(r, g, b) <= WHITE.spread;
 
 /**
@@ -228,15 +238,22 @@ const white = ([r, g, b]: Colour) =>
  */
 export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
   const image = frame.width === WIDTH ? frame : scale(frame, WIDTH / frame.width);
-  const { width, height } = image;
-  const pixel = (i: number): Colour => [image.data[i * 4] ?? 0, image.data[i * 4 + 1] ?? 0, image.data[i * 4 + 2] ?? 0];
-  const whiteAt = (x: number, y: number) => x >= 0 && x < width && y >= 0 && y < height && white(pixel(y * width + x));
+  const { width, height, data } = image;
+  const washed = washer(colour);
+  const washedAt = (i: number) => washed(data[i * 4] ?? 0, data[i * 4 + 1] ?? 0, data[i * 4 + 2] ?? 0);
+
+  const whiteAt = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+
+    return x >= 0 && x < width && y >= 0 && y < height && white(data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0);
+  };
+
   const top = Math.round(FIELD.top * height);
   const bottom = Math.round(FIELD.bottom * height);
   const mask = new Uint8Array(width * height);
 
   for (let i = top * width; i < bottom * width; i++) {
-    mask[i] = washed(pixel(i), colour) ? 1 : 0;
+    mask[i] = washedAt(i) ? 1 : 0;
   }
 
   const swipes: (Bubble & { area: number })[] = [];
@@ -252,22 +269,37 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
     const stack = [start];
     seen[start] = 1;
 
+    // Its neighbours pushed in the order left, right, above, below, without an array of them made for each pixel.
+    const push = (j: number) => {
+      if (j >= 0 && j < width * height && mask[j] && !seen[j]) {
+        seen[j] = 1;
+        stack.push(j);
+      }
+    };
+
     while (stack.length > 0) {
       const i = stack.pop() ?? 0;
       const x = i % width;
       blob.push(i);
-
-      for (const j of [x > 0 ? i - 1 : -1, x < width - 1 ? i + 1 : -1, i - width, i + width]) {
-        if (j >= 0 && j < width * height && mask[j] && !seen[j]) {
-          seen[j] = 1;
-          stack.push(j);
-        }
-      }
+      push(x > 0 ? i - 1 : -1);
+      push(x < width - 1 ? i + 1 : -1);
+      push(i - width);
+      push(i + width);
     }
 
-    const xs = blob.map((i) => i % width);
-    const ys = blob.map((i) => Math.floor(i / width));
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    // Its box measured in one pass, rather than off arrays of every pixel's x and y spread into `Math.min`: a blob of
+    // sky or field the size of the screen is turned away by its size, and needs nothing more of it.
+    let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+
+    for (const i of blob) {
+      const x = i % width;
+      const y = Math.floor(i / width);
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+
     const box = (x1 - x0 + 1) * (y1 - y0 + 1);
 
     if (blob.length < AREA.least || blob.length > AREA.most || blob.length / box < FILL) {
@@ -289,12 +321,17 @@ export function bubbleSwipes(frame: Image, colour: Colour): Bubble[] {
     }
 
     // Told again over the blobs kept rather than kept for every pixel of the field, which would take four times the mask.
-    const share = blob.reduce((sum, i) => sum + washed(pixel(i), colour), 0) / blob.length;
+    const share = blob.reduce((sum, i) => sum + washedAt(i), 0) / blob.length;
     const halved = cut && x1 - x0 + 1 >= HALVED.wide * (y1 - y0 + 1) && blob.length <= HALVED.most;
     swipes.push({
       area: blob.length,
       share,
-      swipe: along(xs, ys, width, height),
+      swipe: along(
+        blob.map((i) => i % width),
+        blob.map((i) => Math.floor(i / width)),
+        width,
+        height,
+      ),
       ...(cut && { cut: true as const }),
       ...(halved && { halved: true as const }),
     });

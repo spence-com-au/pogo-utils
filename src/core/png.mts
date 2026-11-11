@@ -465,17 +465,47 @@ export function scale(image: Image, factor: number): Image {
   const w = image.width * factor;
   const h = image.height * factor;
   const data = new Uint8Array(w * h * 4);
+  const from = image.data;
+
+  // The column each column is taken from, worked out once rather than for every row: `bubbleSwipes` shrinks every
+  // frame of a minigame to its width, and the two divisions a pixel were much of what that cost.
+  const columns: number[] = [];
+
+  for (let x = 0; x < w; x++) {
+    columns.push(Math.floor(x / factor));
+  }
+
+  // A pixel a word at a time where the sizes come out whole and both arrays sit on a word's boundary, as a frame and
+  // anything made here do, and otherwise a byte at a time. A size that does not, as shrinking a Pixel 8 Pro's 2244
+  // rows to 180 across leaves 400.71, sizes the data short of its last pixel, and only the bytes of it that fit are
+  // written, as before.
+  if (Number.isInteger(w) && Number.isInteger(h) && from.byteOffset % 4 === 0 && from.length % 4 === 0) {
+    const source = new Uint32Array(from.buffer, from.byteOffset, from.length / 4);
+    const target = new Uint32Array(data.buffer);
+
+    for (let y = 0; y < h; y++) {
+      const row = Math.floor(y / factor) * image.width;
+
+      for (let x = 0, to = y * w; x < w; x++, to++) {
+        target[to] = source[row + (columns[x] ?? 0)] ?? 0;
+      }
+    }
+
+    return { width: w, height: h, data };
+  }
 
   for (let y = 0; y < h; y++) {
+    const row = Math.floor(y / factor) * image.width;
+
     for (let x = 0; x < w; x++) {
-      const src = (Math.floor(y / factor) * image.width + Math.floor(x / factor)) * 4;
+      const src = (row + (columns[x] ?? 0)) * 4;
       const to = (y * w + x) * 4;
 
       // Copied a byte at a time rather than through `subarray`, which made an array for each pixel.
-      data[to] = image.data[src] ?? 0;
-      data[to + 1] = image.data[src + 1] ?? 0;
-      data[to + 2] = image.data[src + 2] ?? 0;
-      data[to + 3] = image.data[src + 3] ?? 0;
+      data[to] = from[src] ?? 0;
+      data[to + 1] = from[src + 1] ?? 0;
+      data[to + 2] = from[src + 2] ?? 0;
+      data[to + 3] = from[src + 3] ?? 0;
     }
   }
 

@@ -166,7 +166,8 @@ const rightOf = ({ rights }: Strip) => median(rights);
  * that did.
  */
 function strips(image: Image): Strip[] {
-  const unit = image.width / 360;
+  const { width, data } = image;
+  const unit = width / 360;
   const done: Strip[] = [];
   let open: Strip[] = [];
 
@@ -175,11 +176,21 @@ function strips(image: Image): Strip[] {
     let run: Run | undefined;
     let gap = 0;
 
-    for (let x = 0; x <= image.width; x++) {
+    for (let x = 0; x <= width; x++) {
+      // With no run open, a pixel too dark in both red and green for any of the three fills changes nothing, and most
+      // of the screen is that: so it is passed over two bytes at a time until one that could be a fill. This search
+      // was more than half of what `readHealth` took a frame.
+      if (!run) {
+        for (let at = (y * width + x) * 4; x < width && (data[at] ?? 0) <= 200 && (data[at + 1] ?? 0) <= 200; at += 4) {
+          x++;
+        }
+      }
+
       // Read off the data rather than through `rgb`, which made an array for each pixel of the search.
-      const i = (y * image.width + x) * 4;
-      const fill =
-        x < image.width ? fillOf(image.data[i] ?? 0, image.data[i + 1] ?? 0, image.data[i + 2] ?? 0) : undefined;
+      const i = (y * width + x) * 4;
+      const r = x < width ? (data[i] ?? 0) : 0;
+      const g = x < width ? (data[i + 1] ?? 0) : 0;
+      const fill = r > 200 || g > 200 ? fillOf(r, g, data[i + 2] ?? 0) : undefined;
 
       if (run && fill === run.fill) {
         run.right = x + 1;
@@ -232,23 +243,47 @@ function rejoin(found: Strip[], unit: number): Strip[] {
   const thin = (strip: Strip) => strip.rights.length < THICK.least * unit;
   const joined = new Set<Strip>();
 
+  // The thin strips by the row just below their last, each list in `found`'s order, so that the one taken above a strip
+  // is the first in `found` to end just above it, as a search of the whole of `found` for each strip finds it. That
+  // search was a quarter of the time `readHealth` took a frame, a frame of artwork in the fill's colours turning up
+  // hundreds of strips. A strip that is not thin never becomes so, and one that takes another in is filed again by
+  // where it now ends.
+  const index = new Map(found.map((strip, i) => [strip, i]));
+  const ending = new Map<number, Strip[]>();
+
+  const file = (strip: Strip) => {
+    const end = strip.top + strip.rights.length;
+    const list = ending.get(end) ?? [];
+    const at = list.findIndex((other) => (index.get(other) ?? 0) > (index.get(strip) ?? 0));
+    list.splice(at === -1 ? list.length : at, 0, strip);
+    ending.set(end, list);
+  };
+
+  for (const strip of found.filter(thin)) {
+    file(strip);
+  }
+
   for (const lower of [...found].sort((a, b) => a.top - b.top)) {
-    const upper = found.find(
+    const above = thin(lower) ? (ending.get(lower.top) ?? []) : [];
+    const upper = above.find(
       (s) =>
         !joined.has(s) &&
         s.fill === lower.fill &&
         thin(s) &&
-        thin(lower) &&
-        s.top + s.rights.length === lower.top &&
         Math.abs(s.left - lower.left) <= 2 * unit &&
         Math.abs((s.rights.at(-1) ?? 0) - (lower.rights[0] ?? 0)) <= 3 * unit,
     );
 
     if (upper) {
+      above.splice(above.indexOf(upper), 1);
       upper.left = Math.min(upper.left, lower.left);
       upper.rights.push(...lower.rights);
       upper.rejoined = true;
       joined.add(lower);
+
+      if (thin(upper)) {
+        file(upper);
+      }
     }
   }
 
