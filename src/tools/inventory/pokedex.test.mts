@@ -248,11 +248,8 @@ test('the CAUGHT tile showing wears the frame, a silhouetted SHINY the game sele
 /**
  * A band of the backdrop's light across part of a tile, which the game sweeps down the Pokédex and the tiles are
  * translucent over. On `unown-band-1`, Unown's own tile and SHINY are registered letters, black with a white eye, under
- * a light band along their tops. `unown-band-0` is its entry at the top, the four forms with a white eye registered and
- * the rest silhouettes, the five from the sixteenth on crossed by bands through their middles.
- *
- * The form row's second row is not there to read: PGSharp's star button over the screen's left margin, which `formsOn`
- * takes the backdrop's colour from, hides it (#1059).
+ * a light band along their tops. `unown-band-0` is its entry at the top, the six forms with a white eye registered and
+ * the rest silhouettes, the five from the twenty-first on crossed by bands through their middles.
  */
 test('a band of light across a tile leaves what it holds as it is', async () => {
   expect(await tilesOf('unown-band-1')).toStrictEqual({
@@ -264,8 +261,35 @@ test('a band of light across a tile leaves what it holds as it is', async () => 
 
   const forms = (await formRow('unown-band-0')).tiles.map((t) => t.look);
 
-  expect(forms.flatMap((look, i) => (look === 'icon' ? [i + 1] : []))).toStrictEqual([8, 9, 11, 14]);
-  expect(forms).toHaveLength(23);
+  expect(forms.flatMap((look, i) => (look === 'icon' ? [i + 1] : []))).toStrictEqual([7, 8, 13, 14, 16, 19]);
+  expect(forms).toHaveLength(28);
+});
+
+/**
+ * Furfrou's ten forms, two rows of five, on its entry at its top as two walks captured it minutes apart, Pharaoh Trim
+ * the one of the second row registered. On each a diagonal light line of the backdrop's crosses the left margin, where
+ * `formsOn` takes the backdrop's colour from, level with the second row and at a different height (#1076).
+ */
+test('a light line across the margin leaves the form row whole', async () => {
+  const forms = DATA.forms.filter((f) => f.dex === 676 && !f.costume);
+
+  for (const name of ['furfrou-0', 'furfrou-line-0']) {
+    const { tiles, labels } = await formRow(name);
+    const seen = labels.map((l, i) => [l && formLabelled(l, forms)?.form, tiles[i]?.look]);
+
+    expect(seen, name).toStrictEqual([
+      ['Natural', 'icon'],
+      ['Heart', 'silhouette'],
+      ['Star', 'silhouette'],
+      ['Diamond', 'icon'],
+      ['Debutante', 'silhouette'],
+      ['Matron', 'silhouette'],
+      ['Dandy', 'silhouette'],
+      ['La Reine', 'silhouette'],
+      ['Kabuki', 'silhouette'],
+      ['Pharaoh', 'icon'],
+    ]);
+  }
 });
 
 /** The genders an entry draws, as the walk reads them, or with the `ALERT` label unread. */

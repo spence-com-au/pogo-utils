@@ -256,11 +256,11 @@ export function flatness(image: Image, box: Box): { filled: number; flat: number
 /**
  * How far a tile's margin may be from the backdrop along its top for `backdropAt` to take it as its row's. The game
  * sweeps bands of light down the Pokédex, and its tiles are translucent, so a tile's colour can step from one row to
- * the next by more than `STANDS_OUT`: by 55 between the strip along the top of Unown's own tile on
- * `unown-band-1.png` and the rows under it, and by 57 across the band through its sixteenth form on `unown-band-0.png`.
- * At 60, four of the five forms that band crosses still came out icons. A third of the game's icons drawn onto a tile,
- * as themselves and as silhouettes, under a band of 25 a channel along the tile's top, needed more than 90: there 67 of
- * the 446 silhouettes came out icons, at 120 none did, and nothing read differently from 120 to 200.
+ * the next by more than `STANDS_OUT`: by 55 between the strip along the top of Unown's own tile on `unown-band-1.png`
+ * and the rows under it, and by 57 across the band through its twenty-first form on `unown-band-0.png`. At 60, four of
+ * the five forms that band crosses still came out icons. A third of the game's icons drawn onto a tile, as themselves
+ * and as silhouettes, under a band of 25 a channel along the tile's top, needed more than 90: there 67 of the 446
+ * silhouettes came out icons, at 120 none did, and nothing read differently from 120 to 200.
  */
 const BANDED = 120;
 
@@ -715,11 +715,33 @@ export interface FormTile {
  * rows are, by being paler than the backdrop, but with no columns to go by: the game centres one row of up to five and
  * wraps the rest, so every run of pale pixels across a row is a tile.
  *
- * The backdrop's colour at a height is taken at the left margin, which no tile reaches.
+ * The backdrop's colour at a height is taken from the left margin, which no tile reaches, as the median across it: the
+ * backdrop's diagonal light lines cross a line of the margin a few pixels wide, but run down any one column of it for
+ * tens of lines. Taken at x = 43 alone, a line 10 to 15 paler there broke Furfrou's second row in two on
+ * `furfrou-0.png` and `furfrou-line-0.png`, each piece short of a tile or joined to the labels above it.
  */
 export function formsOn(image: Image, from: number, to: number): FormTile[] {
   const margin = image.width * 0.03;
-  const pale = (x: number, y: number) => rgb(image, x, y)[0] - rgb(image, margin, y)[0] > 10;
+  const backdrops = new Map<number, number>();
+
+  const backdrop = (y: number) => {
+    let red = backdrops.get(y);
+
+    if (red === undefined) {
+      const reds: number[] = [];
+
+      for (let x = 0; x < margin * 2; x += 2) {
+        reds.push(rgb(image, x, y)[0]);
+      }
+
+      red = median(reds);
+      backdrops.set(y, red);
+    }
+
+    return red;
+  };
+
+  const pale = (x: number, y: number) => rgb(image, x, y)[0] - backdrop(y) > 10;
   const step = 4;
   const rows: [number, number][] = [];
   let run: number | null = null;
