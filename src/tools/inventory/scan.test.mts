@@ -705,9 +705,16 @@ const landmark = (hp: number): Landmark => ({ hp, weight: 6.1, height: 0.41, iv:
 
 /**
  * Lands a skip of `from` over a storage of `hps`, with the forward swipes numbered in `dropped` — counting the blind
- * skip's — going nowhere. Answers where the walk would start and what `land` said it had been off by.
+ * skip's — going nowhere, and the rows before it as `asWritten` has them. Answers where the walk would start and
+ * what `land` said it had been off by.
  */
-async function landed(hps: readonly number[], from: number, dropped: readonly number[] = [], reach = 10) {
+async function landed(
+  hps: readonly number[],
+  from: number,
+  dropped: readonly number[] = [],
+  reach = 10,
+  asWritten = landmark,
+) {
   let position = 0;
   let swipes = 0;
   const drop = new Set(dropped);
@@ -724,7 +731,7 @@ async function landed(hps: readonly number[], from: number, dropped: readonly nu
     await next();
   }
 
-  const behind = hps.slice(Math.max(from - 3, 0), from).map(landmark);
+  const behind = hps.slice(Math.max(from - 3, 0), from).map(asWritten);
   const off = await land(
     {
       read: async () => ({ key: String(hps[position]) }),
@@ -758,6 +765,13 @@ test('twins among the rows checked are found all the same', async () => {
   const twins = [...storage.slice(0, 18), 500, 500, ...storage.slice(20)];
 
   expect(await landed(twins, 20, [2])).toStrictEqual({ position: 20, off: 1 });
+});
+
+/** A row whose height `identify` left blank, the screen having read one its form cannot be, against any it reads now. */
+test('a row written with no height is found by a screen that reads one', async () => {
+  const blanked = (hp: number) => ({ ...landmark(hp), height: hp === 118 ? null : 0.41 });
+
+  expect(await landed(storage, 20, [], 10, blanked)).toStrictEqual({ position: 20, off: 0 });
 });
 
 test('a skip to near the start of storage lands where it was asked to', async () => {
