@@ -93,6 +93,15 @@ export function relativeUnit(target: Date, now: Date) {
   return { value: Math.round(mins / (60 * 24)), unit: 'day' as const };
 }
 
+const relFmt = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+/** `target` worded against `now` — "in 3 days", "yesterday" — for the Events page's cards and the notifications alike. */
+export function relative(target: Date, now: Date) {
+  const { value, unit } = relativeUnit(target, now);
+
+  return relFmt.format(value, unit);
+}
+
 /**
  * Where an event sits relative to now. `active` covers both a running window and one started with no end.
  *

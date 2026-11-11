@@ -21,7 +21,7 @@ import {
   DAY_MS,
   layoutTracks,
   overlaps,
-  relativeUnit,
+  relative,
   startOfDay,
   statusOf,
   trackBar,
@@ -75,7 +75,6 @@ const dateFmt = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 });
-const relFmt = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
@@ -83,12 +82,6 @@ const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeri
 // English. The grid itself is Sunday-first.
 const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 const WEEKDAYS = Array.from({ length: 7 }, (_, i) => weekdayFmt.format(new Date(2023, 0, 1 + i)));
-
-function relative(target: Date, now: Date) {
-  const { value, unit } = relativeUnit(target, now);
-
-  return relFmt.format(value, unit);
-}
 
 /**
  * The cards view's status buckets, in the order they are drawn. An array rather than an object keyed by kind, the
