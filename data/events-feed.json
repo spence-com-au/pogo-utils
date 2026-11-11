@@ -83,8 +83,8 @@
     "heading": "GO Battle League",
     "link": "https://leekduck.com/events/gbl-twilight-trails_great-league-mega-edition_ultra-league-mega-edition_master-league-mega-edition-split-3/",
     "image": "https://cdn.leekduck.com/assets/img/events/go-battle-league-season-28-twilight-trails.png",
-    "start": "2026-11-03T21:00:00.000Z",
-    "end": "2026-11-10T21:00:00.000Z",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
