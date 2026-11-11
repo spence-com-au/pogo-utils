@@ -100,6 +100,15 @@ test("a row holds the reading's fields, with the CP worked out where the screen 
   });
 });
 
+test('a height no Elgyem can be is written blank, with the note that says why', async () => {
+  const row = await rowOf(elgyem({ height: 46 }), 0, writing());
+
+  expect({ height: row.height, notes: row.notes }).toStrictEqual({
+    height: null,
+    notes: ['the screen reads a height of 46m, which no Elgyem can be'],
+  });
+});
+
 test('a flag is taken from its pass once, so of two rows alike the pass found once only the first is', async () => {
   const reading = elgyem();
   const marked = passes({ shiny: [reading] });
@@ -190,6 +199,7 @@ function bulbasaur() {
     nickname: null,
     notes: [],
     cp: 637,
+    height: 0.46,
     alternatives: [],
     unseparated: [],
   };

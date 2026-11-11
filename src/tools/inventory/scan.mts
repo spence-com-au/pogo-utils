@@ -327,7 +327,9 @@ export function shortfall(
 /**
  * What a row already written says of its Pokémon that the screen can be checked against: the HP, weight and height,
  * and the IVs where they were read. The name is left out for the reason `looseKeyOf` leaves it out, and the IVs are
- * only compared where both sides have them, an overlay that went unread once being no reason to miss the row.
+ * only compared where both sides have them, an overlay that went unread once being no reason to miss the row. The
+ * height likewise, which a row leaves blank where `identify` found the form cannot be what the screen read, and which
+ * the screen may read right this time.
  */
 export interface Landmark {
   hp: number;
@@ -352,7 +354,7 @@ function sameLandmark(a: Landmark | null, b: Landmark | null): boolean {
     b !== null &&
     a.hp === b.hp &&
     a.weight === b.weight &&
-    a.height === b.height &&
+    (a.height === null || b.height === null || a.height === b.height) &&
     (a.iv === null || b.iv === null || a.iv === b.iv)
   );
 }

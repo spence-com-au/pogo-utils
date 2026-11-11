@@ -12,6 +12,7 @@
 import {
   closest,
   cpOf,
+  fitsAnyBand,
   fitsHeight,
   levelsOf,
   multiplierOf,
@@ -54,6 +55,12 @@ export interface Identity {
    * ambiguous, since two levels are two CPs and guessing between them would be worse than saying nothing.
    */
   cp: number | null;
+
+  /**
+   * The height read, or null where the form answered cannot be that tall in any band: a decimal point OCR dropped
+   * reads a 1.18m Miltank as `118m`, which `HEIGHT` takes as readily as the real thing.
+   */
+  height: number | null;
 
   /** Other forms the numbers fit equally well, which a better reading of the same screen could still separate. */
   alternatives: Form[];
@@ -146,16 +153,17 @@ export function identify(
   //
   // Nothing reports it when that fails, the disagreement below being gated on `detail.cp` — null on exactly the
   // captures left to candidates — so a candidate that does reproduce a form answers a form or a level silently. What
-  // that takes is 73 CP on this corpus: `castform-rainy.png` read as `905` answers **Quaxwell**, no alternatives and no
-  // notes. Two of the 17 captures left to candidates have such a number within 190 and the other 15 have none, which
-  // `screens.test.mts` pins by forging one.
+  // that takes is 190 CP on this corpus: `deoxys-defense.png` read that far from its CP answers **Deoxys (Attack)**,
+  // no alternatives and no notes. One of the 17 captures left to candidates has such a number within 190 and the other
+  // 16 have none, which `screens.test.mts` pins by forging one.
   //
   // The floor is a property of the candidate list rather than of the arithmetic, and the two differ by more than an
-  // order of magnitude. `castform-rainy.png` is the floor because its nickname leaves no species established, so the
-  // list is every form that fits; where a species *is* recognised the list is that species' forms and the nearest
-  // sibling is far — 190 on `deoxys-defense.png`. Arithmetic alone says 16 there, an Espeon reaching 1585 at the level
-  // its HP admits, but the search across every species is reached only on an empty list and Deoxys' forms fill it, so
-  // that number comes back as one Deoxys with the three the CP did not settle beside it.
+  // order of magnitude. Where a species is recognised the list is that species' forms and the nearest sibling is far:
+  // arithmetic alone says 16 on `deoxys-defense.png`, an Espeon reaching 1585 at the level its HP admits, but the
+  // search across every species is reached only on an empty list and Deoxys' forms fill it, so that number comes back
+  // as one Deoxys with the three the CP did not settle beside it. Where none is, the list is every form that fits, and
+  // the height is what speaks up: `castform-rainy.png`'s nickname leaves its species unread and `905` answers
+  // **Quaxwell**, where no Quaxwell is 0.29m. Nothing within 3,000 of its CP answers a wrong form silently.
   const printed = [detail.cp, ...detail.cps].filter((n): n is number => n !== null);
 
   const shows = (f: Form, level: number) => {
@@ -348,7 +356,16 @@ export function identify(
     notes.push(`the screen reads CP ${read.join(' or ')}, where this form at this level is ${cp}`);
   }
 
-  return { form, cp, alternatives, unseparated, levels, nickname, notes };
+  // A height the answer cannot be in any band is a misread rather than a Pokémon that tall: OCR that drops the point
+  // reads a 1.18m Miltank as `118m`. Any band rather than the badge's, since a missed badge leaves a height read right
+  // in the wrong band. Left unread rather than written, and said, which is what has a scan read the screen again.
+  const misread = form !== null && detail.height !== null && !fitsAnyBand(form, detail.height);
+
+  if (misread) {
+    notes.push(`the screen reads a height of ${detail.height}m, which no ${label(form)} can be`);
+  }
+
+  return { form, cp, height: misread ? null : detail.height, alternatives, unseparated, levels, nickname, notes };
 }
 
 /**
