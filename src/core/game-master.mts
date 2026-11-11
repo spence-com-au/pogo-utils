@@ -81,6 +81,13 @@ export interface Form {
    * game drawing it a third button. Absent on every other form, and on the 44 Megas the game master gives none.
    */
   megaMove?: string;
+
+  /**
+   * Whether the species takes this form only in battle, as Minior's Meteor shell and Aegislash's Blade: what a change
+   * of form mid-battle turns it into. The Pokédex draws one apart from the rest, under `BATTLE-ONLY FORM`. Absent on
+   * every other form.
+   */
+  battleOnly?: true;
 }
 
 export interface Move {

@@ -39,6 +39,7 @@ import {
   laterOf,
   listLines,
   ownBeside,
+  placedForm,
   pokedexLines,
   regionIn,
   regionsButtonOf,
@@ -774,8 +775,10 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       scrolled = true;
       const seen = await view(shot, dex, `${tag}-${index + 1}`);
+      const byPlace = placedForm(top.lines, tile.box, forms);
       const byLabel = label === null ? null : formLabelled(label, forms);
       const byIcon = await identityOf(seen, dex);
+      const named = byPlace ?? byLabel;
 
       if (byLabel && byIcon !== undefined && byLabel.form !== byIcon) {
         notes.push(`form ${index + 1} is labelled ${label}, where its icon is ${byIcon ?? 'the plain form'}`);
@@ -783,21 +786,29 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
       views.push({
         index,
-        form: byLabel ? byLabel.form : byIcon === undefined ? { unidentified: index + 1 } : byIcon,
+        form: named ? named.form : byIcon === undefined ? { unidentified: index + 1 } : byIcon,
         seen,
       });
     }
 
+    // A silhouette under the battle-only heading is named by its place, as a registered tile there is.
+    const apart = silhouettes.flatMap(({ index, tile }) => {
+      const form = placedForm(top.lines, tile.box, forms);
+
+      return form ? [{ index, form: form.form }] : [];
+    });
     const unregistered = silhouettesNamed(
-      silhouettes.map(({ index, tile }) => ({ index, image: tile.image, box: tile.at, label: tile.label })),
+      silhouettes
+        .filter(({ index }) => !apart.some((a) => a.index === index))
+        .map(({ index, tile }) => ({ index, image: tile.image, box: tile.at, label: tile.label })),
       forms,
       await candidates(forms.map((f) => ({ name: f.form, file: f.icon }))),
-      views.flatMap((v) => (typeof v.form === 'object' && v.form !== null ? [] : [v.form])),
+      [...views, ...apart].flatMap((v) => (typeof v.form === 'object' && v.form !== null ? [] : [v.form])),
     );
 
     notes.push(...unregistered.notes);
     views.push(
-      ...unregistered.forms.map(({ index, form }) => ({
+      ...[...apart, ...unregistered.forms].map(({ index, form }) => ({
         index,
         form,
         seen: { tiles: new Map(), costumes: [], unplaced: false, genders: null },

@@ -855,6 +855,21 @@ export const alertOf = (lines: readonly Line[]) => findLine(lines, /^alert\b/);
 /** The label over the `SEEN` counter, which every entry draws under its row of icons. */
 const seenOf = (lines: readonly Line[]) => findLine(lines, /^seen$/);
 
+/** The heading `BATTLE-ONLY FORM`, which the form row draws a species' battle-only forms under, below the rest. */
+const battleOnlyOf = (lines: readonly Line[]) => findLine(lines, /^battle only\b/);
+
+/**
+ * The form a tile of the form row is by where it is drawn: under the battle-only heading, the species' one battle-only
+ * form, and null above it or where the species has none or several. Its place is all that names Minior's Meteor shell,
+ * whose icon each of its seven coloured Meteor forms' matches to within a few pixels.
+ */
+export function placedForm(lines: readonly Line[], box: Box, forms: readonly Form[]): Form | null {
+  const heading = battleOnlyOf(lines);
+  const [only, ...more] = forms.filter((f) => f.battleOnly);
+
+  return heading && box.top > heading.top && only && more.length === 0 ? only : null;
+}
+
 /**
  * How far above the `SEEN` label the `ALERT` label is, the foot of the row of icons between them: 94 to 98 pixels of
  * the 1440 on `bulbasaur-0.png`, `meowth-0.png` and the rest.
@@ -1330,6 +1345,10 @@ export function namedFrom([first, second]: readonly { name: string | null; cost:
   return !first || !second || first.cost > second.cost * NAMED_BY ? undefined : first.name;
 }
 
+/** The names of a ranking `namedFrom` cannot tell from its first: each not plainly further from the tile than it. */
+const fitting = (ranking: readonly { name: string | null; cost: number }[]) =>
+  ranking.filter((r) => r.cost * NAMED_BY <= (ranking[0]?.cost ?? 0)).map((r) => r.name);
+
 /** Every candidate with how far the tile is from its icon, nearest first, which is what `iconIn` decides on. */
 export function ranked(
   image: Image,
@@ -1542,6 +1561,11 @@ export interface Silhouette {
  * Elimination settles which forms the tiles are but not which tile is which, handing them out in the game master's
  * order rather than the game's, so each form it names is noted as named that way.
  *
+ * The forms left are those the silhouettes' shapes fit, and any whose shape was not had to hold against them. Minior's
+ * seven cores are one shape in seven colours, and beside them and its Meteor shell the game master has seven coloured
+ * shells the Pokédex draws nowhere: 13 of its 15 forms are left for the six cores not registered, and six of those are
+ * cores. A shape that fits only forms named already says nothing of which a silhouette is, and leaves every form in.
+ *
  * A shape is held against every one of the species' forms, the ones already named too, so the last silhouette has more
  * than one to be nearer than: `namedFrom` names nothing after a lone candidate, and against only the forms left, a
  * species' last unregistered form would always fall to elimination.
@@ -1555,24 +1579,30 @@ export function silhouettesNamed(
   const taken = new Set(named);
   const found: { index: number; form: Named }[] = [];
   const notes: string[] = [];
-  const unnamed: number[] = [];
+  const unnamed: { index: number; fits: (string | null)[] }[] = [];
 
   for (const { index, image, box, label } of silhouettes) {
     const byLabel = label === null ? null : formLabelled(label, forms);
-    const byShape = byLabel ? undefined : iconIn(image, box, formFrame(image, box), 'silhouette', shapes);
+    const ranking = byLabel ? [] : ranked(image, box, formFrame(image, box), 'silhouette', shapes);
+    const byShape = namedFrom(ranking);
     const form = byLabel ? byLabel.form : byShape !== undefined && !taken.has(byShape) ? byShape : undefined;
 
     if (form === undefined) {
-      unnamed.push(index);
+      unnamed.push({ index, fits: fitting(ranking) });
     } else {
       taken.add(form);
       found.push({ index, form });
     }
   }
 
-  const left = forms.filter((f) => !taken.has(f.form));
+  const held = new Set(shapes.map((s) => s.name));
+  const open = unnamed.map(({ fits }) => fits.filter((name) => !taken.has(name)));
+  const left = forms.filter(
+    (f) =>
+      !taken.has(f.form) && (!held.has(f.form) || open.some((names) => names.length === 0 || names.includes(f.form))),
+  );
 
-  for (const [i, index] of unnamed.entries()) {
+  for (const [i, { index }] of unnamed.entries()) {
     const unread = `form ${index + 1} is a silhouette that neither its label nor its shape names`;
 
     if (left.length === unnamed.length) {

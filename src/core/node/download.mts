@@ -109,6 +109,9 @@ interface Template {
         moveReassignment?: { cinematicMoves?: { replacementMoves?: string[] }[] };
       }[];
 
+      /** The change of form mid-battle, by the forms it turns into: Minior's `MINIOR_METEOR`, Cramorant's two. */
+      ibfc?: { alternateForm?: string; AlternateForms?: string[] };
+
       /**
        * Each Mega Evolution or Primal Reversion, `TEMP_EVOLUTION_MEGA_Y` and the like, with its own stats and types,
        * and its mega move by the id of the `COMBAT_VM_MOVE_` template that holds it.
@@ -407,6 +410,15 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     }
   }
 
+  // The forms a species takes only in battle are named by the change into them, on its bare template.
+  const battleOnly = new Set(
+    templates.flatMap(({ data }) => {
+      const { alternateForm, AlternateForms = [] } = data.pokemonSettings?.ibfc ?? {};
+
+      return alternateForm === undefined ? AlternateForms : [alternateForm, ...AlternateForms];
+    }),
+  );
+
   const forms: Form[] = [];
   const megas: Form[] = [];
   const bare = new Map<number, Form>();
@@ -470,6 +482,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
       // every form that has a shadow at all but the two Apex forms, whose `shadowChargeMove` is their own Aeroblast+
       // and Sacred Fire+. `RAIKOU_S` and its kind keep Frustration, and nothing in the data says they are shadows.
       shadowOnly: (settings.shadow?.shadowChargeMove ?? 'FRUSTRATION') !== 'FRUSTRATION',
+      ...(battleOnly.has(name ?? '') && { battleOnly: true }),
     };
 
     // A Mega is the ordinary form's, whose bare template and `_NORMAL` one both carry it, as some costumes do too. It
