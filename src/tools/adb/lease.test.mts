@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const WRAPPER = fileURLToPath(new URL('../../../bin/adb', import.meta.url));
 const SCRIPT = fileURLToPath(new URL('../../../scripts/adb-lease.mts', import.meta.url));
@@ -315,14 +315,25 @@ test('lets go as a subagent finishes of what it took, and of nothing its session
   expect(await adb(b, '-s', 'OTHER', 'shell', 'true')).toMatchObject({ code: 1 });
 });
 
-test('keeps what a finished subagent took while a command it started runs on', async () => {
+test('keeps the phone for a command a finished subagent left on it, and lets go as that ends', async () => {
   const a = await session('pogo-utils-a');
-  const battle = 'adb shell true && echo && exec sleep 1000';
+  const go = join(dir, 'go');
+  execFileSync('mkfifo', [go]);
+  const battle = `adb shell true && echo && read -r _ < ${go} && adb shell true && exec sleep 1000`;
   note(a, 'fork-1', battle);
-  await start('bash', script(battle), env(a));
+  const pid = await start('bash', script(battle), env(a));
   hook(a, 'stop', { agent_id: 'fork-1' });
+  writeFileSync(go, '\n');
+  await vi.waitFor(() => expect(ran()).toHaveLength(2));
 
-  expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 1 });
+  const { code, stderr } = await bash(a, 'fork-2', 'adb shell true');
+
+  expect(code).toBe(1);
+  expect(stderr).toContain('It has finished, and the phone is free once the command it left running ends.');
+
+  await kill(pid);
+
+  expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 0 });
 });
 
 test('gives a phone to exactly one of the subagents of a session racing for it', async () => {

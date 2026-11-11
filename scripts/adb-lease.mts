@@ -15,7 +15,8 @@
  *                                      one interrupted with `Esc` or ended by an API error. Not `StopFailure`, which is
  *                                      given no `background_tasks`, while `idle_prompt` never comes as long as a
  *                                      background subagent runs. And as a subagent finishes, from `SubagentStop`: let
- *                                      go of what its own commands took, unless one of them is still running
+ *                                      go of what its own commands took, but for any still running, which keep the
+ *                                      session's other subagents off the phone until they end
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
@@ -63,6 +64,9 @@ interface Use {
 /** A use with the subagent whose command took it, or `''` where the session's own command or an older script did. */
 interface Held extends Use {
   agent: string;
+
+  /** Whether that subagent has finished, leaving the command running. */
+  done: number;
 }
 
 /** The directory holding the `adb` that stands in front of the real one. */
@@ -129,6 +133,9 @@ function open(): DatabaseSync {
     agent TEXT NOT NULL,
     PRIMARY KEY (serial, command)
   )`);
+
+  // The subagents that have finished leaving a command on the phone, which holds it only until it ends.
+  db.exec('CREATE TABLE IF NOT EXISTS finished (agent TEXT PRIMARY KEY)');
 
   // `at` is when the `bash` hook that noted the command started, in `/proc`'s ticks.
   db.exec(`CREATE TABLE IF NOT EXISTS bash (
@@ -230,7 +237,10 @@ function refusal(held: Held): string {
     return [
       `adb: the phone ${held.serial} is in use by ${held.agent}, another subagent of this Claude session`,
       `(working in ${held.cwd}), which last ran \`adb ${held.args}\` on it at ${held.since}.`,
-      `It lets go of the phone as it finishes. ${wait}.`,
+      held.done
+        ? 'It has finished, and the phone is free once the command it left running ends.'
+        : 'It lets go of the phone as it finishes.',
+      `${wait}.`,
       'Do not run the real adb by its path to get past this.',
     ].join(' ');
   }
@@ -324,15 +334,18 @@ switch (process.argv[2]) {
       const command = Number(stat('self')?.[SESSION]);
       const agent = agentOf(db, command);
 
-      // Another session's use, while it runs, or another subagent's of this one where this command is a subagent's too:
-      // the session's own commands share the phone with every one of its subagents.
+      // Another session's use, while it runs, or another subagent's of this one where this command is a subagent's too,
+      // while that subagent runs or the command it left does: the session's own share with all its subagents.
       const theirs = (use: Held) =>
-        use.pid === claudePid ? agent !== '' && use.agent !== '' && use.agent !== agent : live(use);
+        use.pid === claudePid
+          ? agent !== '' && use.agent !== '' && use.agent !== agent && (!use.done || running([use.command]))
+          : live(use);
 
       const held = exclusively(db, () => {
         const uses = db
           .prepare(
-            `SELECT use.*, coalesce(agent.agent, '') AS agent FROM use LEFT JOIN agent USING (serial, command)
+            `SELECT use.*, coalesce(agent.agent, '') AS agent, finished.agent IS NOT NULL AS done
+            FROM use LEFT JOIN agent USING (serial, command) LEFT JOIN finished ON finished.agent = agent.agent
             ORDER BY since DESC`,
           )
           .all() as unknown as Held[];
@@ -360,6 +373,7 @@ switch (process.argv[2]) {
         ).run({ ...mine });
         db.prepare('INSERT OR REPLACE INTO agent VALUES (?, ?, ?)').run(serial, command, agent);
         db.exec('DELETE FROM agent WHERE (serial, command) NOT IN (SELECT serial, command FROM use)');
+        db.exec('DELETE FROM finished WHERE agent NOT IN (SELECT agent FROM agent)');
       });
 
       if (held) {
@@ -404,7 +418,7 @@ switch (process.argv[2]) {
 
   case 'stop': {
     // Run by hand, as a session asked by another to let go of the phone does, it is given nothing on stdin.
-    const { agent_id: agent = '', background_tasks: tasks } = JSON.parse(readFileSync(0, 'utf8') || '{}') as {
+    const { agent_id: agent, background_tasks: tasks } = JSON.parse(readFileSync(0, 'utf8') || '{}') as {
       agent_id?: string;
       background_tasks?: { type: string; status: string }[];
     };
@@ -418,22 +432,38 @@ switch (process.argv[2]) {
       break;
     }
 
-    // A subagent finishing lets go of what its own commands took, and the session of everything.
-    const whose = `pid = :pid AND (:agent = '' OR EXISTS (SELECT * FROM agent
-      WHERE agent.serial = use.serial AND agent.command = use.command AND agent.agent = :agent))`;
-
-    const parameters = { pid: claudePid, agent };
     const db = open();
 
+    // A subagent finishing lets go of what its commands took, but for any still running, which hold the phone against
+    // the session's other subagents until they end, there being no `SubagentStop` to come for them.
+    if (agent) {
+      exclusively(db, () => {
+        const uses = db
+          .prepare(
+            'SELECT serial, command FROM use JOIN agent USING (serial, command) WHERE pid = ? AND agent.agent = ?',
+          )
+          .all(claudePid, agent) as Pick<Use, 'serial' | 'command'>[];
+
+        const left = uses.filter(({ command }) => running([command]));
+
+        for (const { serial, command } of uses.filter((use) => !left.includes(use))) {
+          db.prepare('DELETE FROM use WHERE serial = ? AND command = ?').run(serial, command);
+        }
+
+        if (left.length > 0) {
+          db.prepare('INSERT OR IGNORE INTO finished VALUES (?)').run(agent);
+        }
+      });
+
+      break;
+    }
+
     exclusively(db, () => {
-      const uses = db.prepare(`SELECT command FROM use WHERE ${whose}`).all(parameters) as Pick<Use, 'command'>[];
+      const uses = db.prepare('SELECT command FROM use WHERE pid = ?').all(claudePid) as Pick<Use, 'command'>[];
 
       if (!running(uses.map(({ command }) => command))) {
-        db.prepare(`DELETE FROM use WHERE ${whose}`).run(parameters);
-
-        if (!agent) {
-          db.prepare('DELETE FROM bash WHERE pid = ?').run(claudePid);
-        }
+        db.prepare('DELETE FROM use WHERE pid = ?').run(claudePid);
+        db.prepare('DELETE FROM bash WHERE pid = ?').run(claudePid);
       }
     });
 
