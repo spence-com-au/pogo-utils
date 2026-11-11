@@ -1164,4 +1164,19 @@ describe('dex', () => {
     ]);
     expect(phone.unrestored, 'the tab was read on with the shiny selected').toStrictEqual([]);
   });
+
+  /**
+   * Golem's entry, seen and never caught, whose two forms are both silhouettes that no tap selects, so neither is
+   * viewed: the genders are the ones the entry draws as it opens (#1070).
+   */
+  test('records the genders of a species with several forms and none caught', { timeout: SLOW }, async (context) => {
+    const phone = new Pokedex([['golem-0']]);
+    const { cwd, inventory } = await harness(context, phone, ['Golem']);
+
+    await inventory('dex', '--from', '1', '--to', '76');
+
+    expect(linesIn(cwd).map(({ dex, genders }) => ({ dex, genders }))).toStrictEqual([
+      { dex: 76, genders: { male: false, female: false } },
+    ]);
+  });
 });
