@@ -380,8 +380,8 @@
     "heading": "Event",
     "link": "https://leekduck.com/events/pokemon-night-out-london-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/pokemon-night-out-2026.jpg",
-    "start": "2026-11-10T18:00:00.000Z",
-    "end": "2026-11-10T22:30:00.000Z",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
