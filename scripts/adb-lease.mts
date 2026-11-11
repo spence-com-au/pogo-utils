@@ -267,8 +267,9 @@ const evaled = (input: string) => `eval '${input.replaceAll("'", `'"'"'`)}'`;
 /**
  * The subagent whose Bash or Monitor command runs in process session `command`, or `''` for one of the session's own or
  * one the `bash` hook never noted. Its `bash` starts once the hook has noted it, so of the commands noted with the text
- * its script runs, it is the one noted last before then: an earlier one with the same text was run before, and a later
- * one is still to come.
+ * its script runs, it is the one whose hook started last before then. Another subagent's command with the same text
+ * whose hook starts in between — while this one's hook runs, or while a permission prompt holds this command back —
+ * takes this one's place, so that both are taken for the later subagent and neither is refused.
  */
 function agentOf(db: DatabaseSync, command: number): string {
   const begun = stat(command)?.[STARTED];
