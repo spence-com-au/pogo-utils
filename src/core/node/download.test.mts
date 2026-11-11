@@ -400,6 +400,35 @@ test('a form carries its size bands, the candy its evolutions cost and whether o
   ]);
 });
 
+/**
+ * Minior's Meteor shell, which the change of form mid-battle on its bare template turns it into, and Cramorant's two,
+ * which the dump lists under its own spelling, `AlternateForms`. The core the shell breaks open into, and every form no
+ * change names, is not battle-only.
+ */
+test('a form is battle-only where a change of form mid-battle turns its species into it', async () => {
+  const forms = await formsOf([
+    species('V0774_POKEMON_MINIOR', { pokemonId: 'MINIOR', form: undefined, ibfc: { alternateForm: 'MINIOR_METEOR' } }),
+    species('V0774_POKEMON_MINIOR_RED', { pokemonId: 'MINIOR', form: 'MINIOR_RED', ibfc: {} }),
+    species('V0774_POKEMON_MINIOR_METEOR', { pokemonId: 'MINIOR', form: 'MINIOR_METEOR', ibfc: {} }),
+    species('V0845_POKEMON_CRAMORANT', {
+      pokemonId: 'CRAMORANT',
+      form: undefined,
+      ibfc: { defaultForm: 'CRAMORANT_NORMAL', AlternateForms: ['CRAMORANT_GULPING', 'CRAMORANT_GORGING'] },
+    }),
+    species('V0845_POKEMON_CRAMORANT_NORMAL', { pokemonId: 'CRAMORANT', form: 'CRAMORANT_NORMAL' }),
+    species('V0845_POKEMON_CRAMORANT_GULPING', { pokemonId: 'CRAMORANT', form: 'CRAMORANT_GULPING' }),
+    species('V0845_POKEMON_CRAMORANT_GORGING', { pokemonId: 'CRAMORANT', form: 'CRAMORANT_GORGING' }),
+  ]);
+
+  expect(forms.map((f) => [f.form, f.battleOnly ?? false])).toStrictEqual([
+    ['Red', false],
+    ['Meteor', true],
+    [null, false],
+    ['Gulping', true],
+    ['Gorging', true],
+  ]);
+});
+
 test('a form takes the artwork the listing names: trimmed, in full or, for the ordinary form only, bare', async () => {
   const listing = {
     tree: [

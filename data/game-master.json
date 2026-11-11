@@ -24938,7 +24938,8 @@
         { "name": "Shadow Ball", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "battleOnly": true
     },
     {
       "dex": 681,
@@ -28243,7 +28244,8 @@
         { "name": "Acrobatics", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "battleOnly": true
     },
     {
       "dex": 774,
@@ -28577,7 +28579,8 @@
         { "name": "Thunder", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "battleOnly": true
     },
     {
       "dex": 778,
@@ -31230,7 +31233,8 @@
         { "name": "Psychic Fangs", "fast": false }
       ],
       "evolveCandy": [],
-      "shadowOnly": false
+      "shadowOnly": false,
+      "battleOnly": true
     },
     {
       "dex": 878,
