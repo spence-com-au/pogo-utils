@@ -15,7 +15,7 @@ import {
 } from './state.js';
 
 const state = (over: Partial<State>): State => ({ ...emptyState(), ...over });
-const admitted = (over: Partial<State>) => ENTRIES.filter((entry) => matches(entry, state(over)));
+const admitted = (over: Partial<State>) => ENTRIES.filter(matches(state(over)));
 
 /** The entry a case is about, which has to be there for the case to be about anything. */
 const entryAt = (dex: number): Entry => {
@@ -126,7 +126,7 @@ test('a number means that dex number, however it was typed', () => {
   }
 
   expect(admitted({ q: '2' })).toEqual([entryAt(2)]);
-  expect(matchesQuery(pikachu, '2')).toBe(false);
+  expect(matchesQuery('2')(pikachu)).toBe(false);
 });
 
 /** A number past the end of the dex names nothing, rather than falling back to matching it as text. */
@@ -182,7 +182,7 @@ test('a long run of zeros costs its length, not its square', () => {
 });
 
 test('an empty query admits everything', () => {
-  expect(matchesQuery(entryAt(25), '   ')).toBe(true);
+  expect(matchesQuery('   ')(entryAt(25))).toBe(true);
 });
 
 /**

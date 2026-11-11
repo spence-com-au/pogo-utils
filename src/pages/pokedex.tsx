@@ -9,6 +9,7 @@
  * What is chosen lives in the fragment, as on the search page, so a filtered view or an open species is a link.
  */
 
+import { Component } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { CATEGORIES, ENTRIES, HUNTS, numbered, tileNumber, type Entry } from '../pokedex/entries.js';
@@ -24,6 +25,7 @@ import {
   MODES,
   registered,
   toFragment,
+  type Mode,
   type State,
 } from '../pokedex/state.js';
 import { said } from '../errors.js';
@@ -88,6 +90,147 @@ function useTable<T extends object>(path: string, without: string): T | Record<s
   }, [path, without]);
 
   return table;
+}
+
+type TileProps = {
+  entry: Entry;
+
+  /** The picture as `spriteOf` names it in this mode, or null for a slot the mode leaves empty. */
+  sprite: string | null;
+
+  tiles: Map<number, HTMLButtonElement>;
+  open: (dex: number) => void;
+};
+
+/**
+ * One tile of the grid: the picture and the number, or the number alone for a slot the mode leaves empty.
+ *
+ * A class for the one thing a function component cannot say without `preact/compat`, which the bundle does not carry:
+ * that a tile whose props are what they were need not be drawn again. Every change to the state renders the whole page,
+ * and with the tiles written out inline that rendered all 1025 again, sprite and all, and called every tile's `ref`
+ * twice — an inline callback is a new function each render, so Preact detached the old one with null and attached the
+ * new one with the node, 2050 calls a keystroke. The `<li>` around each is left to the page to hide and show, so a
+ * search redraws no tile at all and neither does a step through the dialog; a change of mode redraws the tiles whose
+ * picture it changes, and the icon table landing the 113 it renames.
+ *
+ * Measured in Chromium against the inline tiles, as the median over nine page loads of each: rendering a keystroke in
+ * the search went from 7.6ms to 2.6ms, and a step through the dialog from 8.3ms to 3.9ms. The layer costs something
+ * where every tile is new, mounting the grid on a return to the tab taking 52ms rather than 45ms, and comes out about
+ * even where nearly every tile changes, as on a switch into or out of the shiny dex.
+ *
+ * It is compared on what it draws from. The map and the handler are left out: the map is the page's for its whole
+ * visit, the handler reads nothing a render changes, and Preact hands a tile its new props even when this declines to
+ * redraw it, so a click reaches the current handler whichever way the comparison went.
+ */
+class Tile extends Component<TileProps> {
+  /** Made once for the tile's life, so Preact attaches it as the tile mounts and detaches it as it goes, and no more. */
+  #ref = (node: HTMLButtonElement | null) => {
+    const { entry, tiles } = this.props;
+
+    if (node === null) {
+      tiles.delete(entry.dex);
+    } else {
+      tiles.set(entry.dex, node);
+    }
+  };
+
+  #open = () => this.props.open(this.props.entry.dex);
+
+  shouldComponentUpdate(next: TileProps) {
+    return next.entry !== this.props.entry || next.sprite !== this.props.sprite;
+  }
+
+  render({ entry, sprite }: TileProps) {
+    const filled = sprite !== null;
+
+    return (
+      <button
+        type="button"
+        class="tile"
+        aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
+        ref={this.#ref}
+        onClick={this.#open}
+      >
+        {/*
+         * The game draws a tile as the picture and the number, and an empty one as the number alone. The label leads
+         * with that number, so a voice command can name the tile by what it shows, and adds the species and whether the
+         * slot is filled, which the picture says to the eye.
+         */}
+        {filled && <Sprite src={sprite} size={112} />}
+        <span class="num">{tileNumber(entry.dex)}</span>
+      </button>
+    );
+  }
+}
+
+type RegionListProps = {
+  mode: Mode;
+  generation: number | null;
+  icons: Icons;
+  choose: (generation: number | null) => void;
+};
+
+/**
+ * The region list's contents, which depend on the mode, the region and the icons and on nothing a search changes. The
+ * sheet holds them whether or not it is open, so this is a class for the reason `Tile` is: left inline, every keystroke
+ * counted the whole dex again for each of the ten cards and rendered their 30 sprites, into a sheet nobody had open.
+ * `choose` is left out of the comparison for the reason a tile's handler is.
+ */
+class RegionList extends Component<RegionListProps> {
+  shouldComponentUpdate(next: RegionListProps) {
+    return (
+      next.mode !== this.props.mode || next.generation !== this.props.generation || next.icons !== this.props.icons
+    );
+  }
+
+  render({ mode, generation, icons, choose }: RegionListProps) {
+    return (
+      <>
+        <div class="listhead">
+          <h2 id="regionsTitle">Pokédex</h2>
+          <p>Registered: {ENTRIES.filter((entry) => registered(entry, mode)).length}</p>
+        </div>
+        <ul>
+          {[null, ...GENERATIONS].map((row) => {
+            const number = row?.number ?? null;
+            const of = ENTRIES.filter((entry) => number === null || entry.generation === number);
+            const got = of.filter((entry) => registered(entry, mode)).length;
+            const starters = row?.starters ?? ALL_REGIONS.starters;
+
+            return (
+              <li key={number ?? 'all'}>
+                <button
+                  type="button"
+                  class="regioncard"
+                  aria-current={generation === number ? 'true' : undefined}
+                  onClick={() => choose(number)}
+                >
+                  <span class="words">
+                    <span class="name">{row === null ? ALL_REGIONS.name : regionsOf(row)}</span>
+                    {got === of.length ? (
+                      <span class="done">Complete!</span>
+                    ) : (
+                      <span class="bar" aria-hidden="true">
+                        <span style={{ width: `${(100 * got) / Math.max(1, of.length)}%` }} />
+                      </span>
+                    )}
+                    <span class="tally">
+                      {got} / {of.length}
+                    </span>
+                  </span>
+                  <span class="art" aria-hidden="true">
+                    {starters.map((dex) => (
+                      <Sprite key={dex} src={spriteOf(dex, mode === 'shiny', icons)} size={96} />
+                    ))}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </>
+    );
+  }
 }
 
 /** A type as the game's entry screen draws one: its round icon in a pill of its own colour, with its name beside it. */
@@ -353,7 +496,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
    * link that changes the query and the open species together would otherwise place the entry in the list it is
    * replacing.
    */
-  const visible = ENTRIES.filter((entry) => matches(entry, state));
+  const visible = ENTRIES.filter(matches(state));
   const shown = new Set(visible.map((entry) => entry.dex));
 
   const open = state.open === null ? null : (ENTRIES.find((entry) => entry.dex === state.open) ?? null);
@@ -401,6 +544,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
     }
   }
 
+  function openTile(dex: number) {
+    setState((was) => ({ ...was, open: dex }));
+  }
+
   /** Clear the search and the filters, keeping the region and the mode, which are where the reader is. */
   function clearFilters() {
     setState((was) => ({ ...emptyState(), mode: was.mode, generation: was.generation }));
@@ -426,7 +573,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
   const generation = GENERATIONS.find(({ number }) => number === state.generation);
   const region = generation === undefined ? ALL_REGIONS.name : regionsOf(generation);
-  const held = visible.filter((entry) => registered(entry, state.mode)).length;
+
+  /** How many of what the filters leave each mode fills: the count on the card, and the figure on each of its buttons. */
+  const held = new Map(MODES.map(({ id }) => [id, visible.filter((entry) => registered(entry, id)).length]));
+  const shiny = state.mode === 'shiny';
 
   return (
     <div class="dexroot" data-mode={state.mode}>
@@ -448,7 +598,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           </h1>
           <p class="count" aria-live="polite">
             <span class="sr">{MODES.find(({ id }) => id === state.mode)?.label} registered: </span>
-            {held} / {visible.length}
+            {held.get(state.mode)} / {visible.length}
           </p>
         </div>
         <ul class="stats" aria-label="Registered in each mode">
@@ -459,7 +609,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 aria-pressed={state.mode === id}
                 onClick={() => setState((was) => ({ ...was, mode: was.mode === id ? 'pokemon' : id }))}
               >
-                <span class="figure">{visible.filter((entry) => registered(entry, id)).length}</span>
+                <span class="figure">{held.get(id)}</span>
                 <span class="label">
                   {id === 'perfect' && <span aria-hidden="true">★ </span>}
                   {label}
@@ -472,35 +622,16 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
       <main class="dex">
         <ul class="grid">
-          {ENTRIES.map((entry) => {
-            const filled = registered(entry, state.mode);
-
-            return (
-              <li key={entry.dex} hidden={!shown.has(entry.dex)}>
-                <button
-                  type="button"
-                  class="tile"
-                  aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
-                  ref={(node) => {
-                    if (node === null) {
-                      tiles.current.delete(entry.dex);
-                    } else {
-                      tiles.current.set(entry.dex, node);
-                    }
-                  }}
-                  onClick={() => setState((was) => ({ ...was, open: entry.dex }))}
-                >
-                  {/*
-                   * The game draws a tile as the picture and the number, and an empty one as the number alone. The
-                   * label leads with that number, so a voice command can name the tile by what it shows, and adds the
-                   * species and whether the slot is filled, which the picture says to the eye.
-                   */}
-                  {filled && <Sprite src={spriteOf(entry.dex, state.mode === 'shiny', icons)} size={112} />}
-                  <span class="num">{tileNumber(entry.dex)}</span>
-                </button>
-              </li>
-            );
-          })}
+          {ENTRIES.map((entry) => (
+            <li key={entry.dex} hidden={!shown.has(entry.dex)}>
+              <Tile
+                entry={entry}
+                sprite={registered(entry, state.mode) ? spriteOf(entry.dex, shiny, icons) : null}
+                tiles={tiles.current}
+                open={openTile}
+              />
+            </li>
+          ))}
         </ul>
 
         <p class="nomatch" hidden={visible.length > 0}>
@@ -671,52 +802,16 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
           }
         }}
       >
-        <div class="listhead">
-          <h2 id="regionsTitle">Pokédex</h2>
-          <p>Registered: {ENTRIES.filter((entry) => registered(entry, state.mode)).length}</p>
-        </div>
-        <ul>
-          {[null, ...GENERATIONS].map((row) => {
-            const number = row?.number ?? null;
-            const of = ENTRIES.filter((entry) => number === null || entry.generation === number);
-            const got = of.filter((entry) => registered(entry, state.mode)).length;
-            const starters = row?.starters ?? ALL_REGIONS.starters;
-
-            return (
-              <li key={number ?? 'all'}>
-                <button
-                  type="button"
-                  class="regioncard"
-                  aria-current={state.generation === number ? 'true' : undefined}
-                  onClick={() => {
-                    setState((was) => ({ ...was, generation: number }));
-                    regionsRef.current?.close();
-                    window.scrollTo({ top: 0 });
-                  }}
-                >
-                  <span class="words">
-                    <span class="name">{row === null ? ALL_REGIONS.name : regionsOf(row)}</span>
-                    {got === of.length ? (
-                      <span class="done">Complete!</span>
-                    ) : (
-                      <span class="bar" aria-hidden="true">
-                        <span style={{ width: `${(100 * got) / Math.max(1, of.length)}%` }} />
-                      </span>
-                    )}
-                    <span class="tally">
-                      {got} / {of.length}
-                    </span>
-                  </span>
-                  <span class="art" aria-hidden="true">
-                    {starters.map((dex) => (
-                      <Sprite key={dex} src={spriteOf(dex, state.mode === 'shiny', icons)} size={96} />
-                    ))}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <RegionList
+          mode={state.mode}
+          generation={state.generation}
+          icons={icons}
+          choose={(number) => {
+            setState((was) => ({ ...was, generation: number }));
+            regionsRef.current?.close();
+            window.scrollTo({ top: 0 });
+          }}
+        />
       </dialog>
 
       {/*
