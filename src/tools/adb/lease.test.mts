@@ -97,6 +97,30 @@ const adb = (pid: number | undefined, ...args: string[]) =>
 const hook = (pid: number, name: string, input: object = {}) =>
   execFileSync('node', [SCRIPT, name], { env: env(pid), input: JSON.stringify(input) });
 
+/** What Claude Code runs a Bash or Monitor command by: `bash` given a script that `eval`s it single-quoted. */
+const script = (command: string) => ['-c', `eval '${command.replaceAll("'", `'"'"'`)}' < /dev/null`];
+
+/** Runs the `PreToolUse` hooks of a `tool` command of `pid`'s subagent `agent`, or of the session's own where none. */
+const note = (pid: number, agent: string | undefined, command: string, tool = 'Bash') =>
+  settingsHooks(pid, 'PreToolUse', tool, {
+    ...(agent && { agent_id: agent }),
+    tool_name: tool,
+    tool_input: { command },
+  });
+
+/** `command` as a Bash command of `pid`'s already noted, in a process session of its own. */
+const run = (pid: number, command: string) =>
+  promisify(execFile)('setsid', ['-w', 'bash', ...script(command)], { env: env(pid) }).then(
+    ({ stderr }) => ({ code: 0, stderr }),
+    (error: { code: number; stderr: string }) => error,
+  );
+
+/** `command` as a Bash command of `pid`'s subagent `agent`, or of the session's own where it is none. */
+function bash(pid: number, agent: string | undefined, command: string) {
+  note(pid, agent, command);
+  return run(pid, command);
+}
+
 test('takes a free phone and runs the command', async () => {
   const a = await session('pogo-utils-a');
 
@@ -248,6 +272,68 @@ test.each(['subagent', 'workflow', 'teammate'])(
     expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
   },
 );
+
+test.each(['Bash', 'Monitor'])(
+  "refuses a subagent's %s command while another of its session's holds the phone, saying which",
+  async (tool) => {
+    const a = await session('pogo-utils-a');
+    await bash(a, 'fork-1', "adb shell input text 'one'");
+    note(a, 'fork-2', "adb shell input text 'one'", tool);
+
+    const { code, stderr } = await run(a, "adb shell input text 'one'");
+
+    expect(code).toBe(1);
+    expect(stderr).toContain('the phone PHONE is in use by fork-1, another subagent of this Claude session');
+    expect(stderr).toContain('which last ran `adb shell input text one`');
+    expect(stderr).toContain('`until adb -s PHONE get-state');
+    expect(ran()).toStrictEqual(['shell input text one']);
+  },
+);
+
+test('shares the phone between a session and each of its subagents, which carry on with it past its turn', async () => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, 'shell', 'true');
+  hook(a, 'stop', { background_tasks: [{ type: 'subagent', status: 'running' }] });
+
+  expect(await bash(a, 'fork-1', 'adb shell true')).toMatchObject({ code: 0 });
+  expect(await bash(a, undefined, 'adb shell true')).toMatchObject({ code: 0 });
+  expect(await adb(b, 'shell', 'true')).toMatchObject({ code: 1 });
+});
+
+test('lets go as a subagent finishes of what it took, and of nothing its session holds', async () => {
+  const a = await session('pogo-utils-a');
+  const b = await session('pogo-utils-b');
+  await adb(a, '-s', 'OTHER', 'shell', 'true');
+  await bash(a, 'fork-1', 'adb shell true');
+  settingsHooks(a, 'SubagentStop', 'general-purpose', {
+    agent_id: 'fork-1',
+    background_tasks: [{ type: 'subagent', status: 'running' }],
+  });
+
+  expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 0 });
+  expect(await adb(b, '-s', 'OTHER', 'shell', 'true')).toMatchObject({ code: 1 });
+});
+
+test('keeps what a finished subagent took while a command it started runs on', async () => {
+  const a = await session('pogo-utils-a');
+  const battle = 'adb shell true && echo && exec sleep 1000';
+  note(a, 'fork-1', battle);
+  await start('bash', script(battle), env(a));
+  hook(a, 'stop', { agent_id: 'fork-1' });
+
+  expect(await bash(a, 'fork-2', 'adb shell true')).toMatchObject({ code: 1 });
+});
+
+test('gives a phone to exactly one of the subagents of a session racing for it', async () => {
+  const a = await session('pogo-utils-a');
+  const commands = [...Array(8).keys()].map((i) => `adb shell echo ${i}`);
+  commands.forEach((command, i) => note(a, `fork-${i}`, command));
+
+  const codes = await Promise.all(commands.map(async (command) => (await run(a, command)).code));
+
+  expect(codes.filter((code) => code === 0)).toHaveLength(1);
+});
 
 /**
  * Runs the hooks `.claude/settings.json` gives `event` as Claude Code runs them, for those whose matcher, a regular
