@@ -9,7 +9,7 @@ import { type Config, type Point } from './config.mts';
 import { CP_LABEL, parseDetail, readLines, SKY } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
-import { luminance, median, rgb, type Image } from '../../core/png.mts';
+import { crop, difference, luminance, median, rgb, type Image } from '../../core/png.mts';
 import { isDetail } from './report.mts';
 import { SCROLL_STRIP } from './stitch.mts';
 
@@ -109,6 +109,38 @@ function isStorage(lines: readonly Line[]): boolean {
  * is, on the map, a patch of ground PGSharp's tap-to-walk takes as somewhere to walk to.
  */
 export const isMainMenu = (lines: readonly Line[]) => findLine(lines, /^pokemon$/) !== undefined;
+
+/**
+ * The patch of the screen the main menu's Poké Ball is drawn in, as fractions of the screen from where
+ * `config.taps.mainMenu` taps it: drawn alike over any map, where a screen opened over the map draws something else.
+ * The tap is above the patch's middle, the button reaching further below it than above.
+ */
+const MENU_BUTTON = { left: -0.05, top: -0.01, width: 0.1, height: 0.06 };
+
+/**
+ * How much of `MENU_BUTTON` may change, by over 32 in a channel, with the map still showing. Between `pokedex/map.png`,
+ * the map #1058's run was left on and another from that session, three places that share nothing but the button, no
+ * more than 0.17 did, the scenery behind its corners; from any of them to every other 1440x3040 capture committed, a
+ * menu, a pop-up, an entry, a detail screen or a dialog, 0.61 or more did.
+ */
+const BUTTON_KEPT = 0.4;
+
+/**
+ * Whether the main menu's button tapped at `tap` is drawn as it was, which a tap the phone dropped leaves it, and the
+ * map with it. What lets a walk from the map tap the button again where the menu did not open, and only there.
+ */
+export function buttonKept(before: Image, after: Image, tap: Point): boolean {
+  const button = (image: Image) =>
+    crop(
+      image,
+      (tap[0] + MENU_BUTTON.left) * image.width,
+      (tap[1] + MENU_BUTTON.top) * image.height,
+      MENU_BUTTON.width * image.width,
+      MENU_BUTTON.height * image.height,
+    );
+
+  return difference(button(before), button(after), 0, 1, 32) < BUTTON_KEPT;
+}
 
 /**
  * Whether storage's suggestions panel is showing, by a heading only it has as a line of its own: `Recent`,
@@ -365,7 +397,9 @@ export function storage(
   const toStorage = async () => {
     await (fronted ??= toFront(device, config, say));
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Three from a dialog, the furthest a walk starts from: Back, then the close button or the menu and its Pokémon
+    // button, then storage. Two more for main menu taps the phone drops, each of which costs one.
+    for (let attempt = 0; attempt < 5; attempt++) {
       const image = await device.screenshot();
       const lines = await readLines(image);
 
@@ -385,14 +419,21 @@ export function storage(
       }
 
       await tap(at(config.taps.mainMenu), config.waits.menu);
+      const after = await device.screenshot();
 
-      // Thrown rather than tried again: a menu tap that opened something else — the stop a walking avatar carried under
-      // the Poké Ball — leaves a screen nothing here knows the controls of, and every further tap there is a guess.
-      if (!isMainMenu(await readLines(await device.screenshot()))) {
+      if (isMainMenu(await readLines(after))) {
+        await tap(at(config.taps.pokemonButton), config.waits.search);
+        continue;
+      }
+
+      // Tried again only where the button is drawn as it was, which is what a tap the phone dropped leaves (#1073).
+      // Thrown otherwise: a menu tap that opened something else — the stop a walking avatar carried under the Poké Ball
+      // — leaves a screen nothing here knows the controls of, and every further tap there is a guess.
+      if (!buttonKept(image, after, config.taps.mainMenu)) {
         throw new Error('the main menu did not open; open Pokémon storage by hand and run again');
       }
 
-      await tap(at(config.taps.pokemonButton), config.waits.search);
+      say('  the main menu did not open, the map left as it was; tapping it again');
     }
 
     // Opening it by hand is enough on its own: storage showing means the game is in front, so the next run reads that

@@ -34,15 +34,20 @@ const STORAGE = [word(1, '(12)', 70, 10, 20, 8), word(2, 'SEARCH', 40, 30, 20, 1
 
 /**
  * A phone showing storage, with `focus` in front as Android user `user`, that records every command and answers each
- * screenshot alike, with `screen`. `dumpsys package` answers that the package is installed for each of `installs`, in the form a
- * Pixel 4 XL on Android 13 writes it, with a user it was uninstalled for alongside so that the field is what is read.
+ * screenshot with the next of `screens`, and the last of them from then on. `dumpsys package` answers that the package
+ * is installed for each of `installs`, in the form a Pixel 4 XL on Android 13 writes it, with a user it was uninstalled
+ * for alongside so that the field is what is read.
  */
 function phone(
   focus: string,
-  { user = 0, installs = [0], screen = SCREEN }: { user?: number; installs?: readonly number[]; screen?: Image } = {},
+  {
+    user = 0,
+    installs = [0],
+    screens = [SCREEN],
+  }: { user?: number; installs?: readonly number[]; screens?: readonly Image[] } = {},
 ) {
   const sent: string[][] = [];
-  const png = encodePng(screen);
+  const pngs = screens.map((screen) => encodePng(screen));
   const transport: Transport = {
     state: () => Promise.resolve('device'),
     shell: (args) => {
@@ -67,9 +72,10 @@ function phone(
       return Promise.resolve(new TextEncoder().encode(`mCurrentFocus=Window{81ff99a u${user} ${focus}/.Main}`));
     },
     screencap: () => {
+      const shot = sent.filter(([command]) => command === 'screencap').length;
       sent.push(['screencap']);
 
-      return Promise.resolve(png);
+      return Promise.resolve(pngs[Math.min(shot, pngs.length - 1)] as Uint8Array);
     },
   };
 
@@ -248,7 +254,7 @@ test("a dialog whose button does not read is told by the scrim it draws over the
 /**
  * The power-up sheet over a Persian, whose `CANCEL` neither engine reads, so its title is all that says it is open
  * (#967). Read under both engines whatever `INVENTORY_OCR` asks for, since both missed it and CI runs this file with the
- * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's three looks closes it with Back
+ * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's five looks closes it with Back
  * and none taps under it.
  */
 test.for([
@@ -257,12 +263,12 @@ test.for([
 ] as const)('the power-up sheet is closed with Back under %s, though its CANCEL does not read', async ([, use]) => {
   const finished = use();
   const image = capture('dialog/persian-power-up.png');
-  const { sent, device } = phone(DEFAULTS.package, { screen: image });
+  const { sent, device } = phone(DEFAULTS.package, { screens: [image] });
   const { search } = storage(device, CONFIG, DATA, image, () => {});
 
   await expect(search('shiny').finally(finished)).rejects.toThrow('could not find Pokémon storage');
   expect(tapped(sent)).toStrictEqual([]);
-  expect(sent.filter((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toHaveLength(3);
+  expect(sent.filter((command) => command.join(' ') === `input keyevent ${KEY.BACK}`)).toHaveLength(5);
 });
 
 /**
@@ -426,7 +432,7 @@ test.for([
   const finished = useTestEngine();
   const image = decodePng(new Uint8Array(readFileSync(new URL(`fixtures/storage/${name}.png`, import.meta.url))));
   const { search, firstTile } = storage(
-    phone(DEFAULTS.package, { screen: image }).device,
+    phone(DEFAULTS.package, { screens: [image] }).device,
     CONFIG,
     DATA,
     image,
@@ -460,7 +466,7 @@ test.for([
   async ([name, closed]) => {
     const finished = useTestEngine();
     const image = capture(`storage/${name}.png`);
-    const { sent, device } = phone(DEFAULTS.package, { screen: image });
+    const { sent, device } = phone(DEFAULTS.package, { screens: [image] });
     const { search } = storage(device, CONFIG, DATA, image, () => {});
 
     await search('').finally(finished);
@@ -491,48 +497,82 @@ test('the map is walked to storage by the main menu, and the Pokémon button tap
 
 /**
  * The map as the Inventory page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
- * reads a `yes` into the rooftops of `overworld.png` (#935). The phone answers every screenshot with the map, so the
- * menu never opens and the walk stops there, having pressed no Back.
+ * reads a `yes` into the rooftops of `overworld.png` (#935). The phone answers every screenshot with the map, as it
+ * would were it to drop every tap, so the menu never opens: the walk taps its button again each time the map is left
+ * as it was (#1073) and stops once out of tries, having pressed no Back.
  */
 test('the map is walked from by the main menu under tesseract.js, whatever its scenery reads as', async () => {
   const finished = useWasmEngine();
   const image = capture('overworld.png');
-  const { sent, device } = phone(DEFAULTS.package, { screen: image });
+  const { sent, device } = phone(DEFAULTS.package, { screens: [image] });
   const { search, at } = storage(device, CONFIG, DATA, image, () => {});
 
-  await expect(search('shiny').finally(finished)).rejects.toThrow('the main menu did not open');
+  await expect(search('shiny').finally(finished)).rejects.toThrow('could not find Pokémon storage');
   expect(sent).not.toContainEqual(['input', 'keyevent', String(KEY.BACK)]);
+  expect(tapped(sent)).toStrictEqual(
+    Array(5).fill(['input', 'tap', ...at(DEFAULTS.taps.mainMenu).map((n) => String(Math.round(n)))]),
+  );
+});
+
+/**
+ * Taps on the main menu's button that the phone drops, leaving the map as it was, the button with it: two of them after
+ * a dialog closed with Back, the furthest the walk's tries reach.
+ */
+test('menu taps the phone dropped are made again, two of them after a dialog, and storage reached', async () => {
+  const { sent, device } = phone(DEFAULTS.package);
+  reads(sent, DIALOG, MAP, MAP, MAP, MAP, MAP, MENU, STORAGE);
+  const said: string[] = [];
+  const { search } = storage(device, CONFIG, DATA, SCREEN, (message) => said.push(message));
+
+  await search('shiny');
+
+  expect(sent).toContainEqual(['input', 'keyevent', String(KEY.BACK)]);
+  expect(said.filter((message) => message.includes('tapping it again'))).toStrictEqual(
+    Array<string>(2).fill('  the main menu did not open, the map left as it was; tapping it again'),
+  );
+  expect(tapped(sent)).toStrictEqual([
+    ['input', 'tap', '50', '182'],
+    ['input', 'tap', '50', '182'],
+    ['input', 'tap', '50', '182'],
+    ['input', 'tap', '25', '164'],
+    ['input', 'tap', '50', '35'],
+  ]);
+});
+
+/**
+ * A tap on the main menu's button that opens something else, the power-up sheet standing in for the stop a walking
+ * avatar carried under the button, which draws something else where the button was. A second tap there would be a
+ * guess at a screen the walk knows nothing of.
+ */
+test('a menu tap that opened anything but the menu stops the walk, without tapping where the button would be', async () => {
+  const image = capture('pokedex/map.png');
+  const { sent, device } = phone(DEFAULTS.package, { screens: [image, capture('dialog/persian-power-up.png')] });
+  reads(sent, MAP);
+  const { search, at } = storage(device, CONFIG, DATA, image, () => {});
+
+  await expect(search('shiny')).rejects.toThrow('the main menu did not open');
   expect(tapped(sent)).toStrictEqual([
     ['input', 'tap', ...at(DEFAULTS.taps.mainMenu).map((n) => String(Math.round(n)))],
   ]);
 });
 
-test('a menu tap that opened anything but the menu stops the walk, without tapping where the button would be', async () => {
-  const { sent, device } = phone(DEFAULTS.package);
-  reads(sent, MAP);
-  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
-
-  await expect(search('shiny')).rejects.toThrow('the main menu did not open');
-  expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '182']]);
-});
-
-test('a detail screen the close button never closes stops the walk after three taps', async () => {
+test('a detail screen the close button never closes stops the walk after five taps', async () => {
   const { sent, device } = phone(DEFAULTS.package);
   reads(sent, DETAIL);
   const { search, at } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
-  expect(tapped(sent)).toStrictEqual(Array(3).fill(['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]));
+  expect(tapped(sent)).toStrictEqual(Array(5).fill(['input', 'tap', ...at(DEFAULTS.taps.closeDetail).map(String)]));
 });
 
-test('a map the main menu is walked from three times without reaching storage stops the walk', async () => {
+test('a map the main menu is walked from five times without reaching storage stops the walk', async () => {
   const { sent, device } = phone(DEFAULTS.package);
-  reads(sent, MAP, MENU, MAP, MENU, MAP, MENU);
+  reads(sent, ...Array<string[]>(5).fill([MAP, MENU]).flat());
   const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
   await expect(search('shiny')).rejects.toThrow('could not find Pokémon storage; open it by hand and run again');
   expect(tapped(sent)).toStrictEqual(
-    Array(3)
+    Array(5)
       .fill([
         ['input', 'tap', '50', '182'],
         ['input', 'tap', '25', '164'],
