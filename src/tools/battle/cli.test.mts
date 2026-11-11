@@ -141,7 +141,7 @@ function record(bin: string, out: string) {
   );
 }
 
-// `/dev/full` is Linux only, and `ubuntu-latest` is every runner in `.github/workflows/`.
+// `/dev/full` and `/proc` are Linux only, and `ubuntu-latest` is every runner in `.github/workflows/`.
 test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and stops recording', async () => {
   // An `adb` that answers `wm size`, then writes its pid and a byte before it records for a minute. A script that left
   // it running would leave that pid alive, which is what is checked: the child's piped stdio lets the script exit
@@ -162,12 +162,15 @@ test.skipIf(process.platform !== 'linux')('reports an OUT it cannot write and st
 
     const pid = Number(readFileSync(pidFile, 'utf8'));
 
+    // Stopped once it is gone or a zombie, which `kill(pid, 0)` would still find until whatever adopted it reaps it,
+    // and a container's init can take seconds to. The state is the field after the name, which ends at the last `)`
+    // because the name can hold one of its own.
     await expect
       .poll(() => {
         try {
-          process.kill(pid, 0);
+          const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
 
-          return true;
+          return stat[stat.lastIndexOf(')') + 2] !== 'Z';
         } catch {
           return false;
         }
