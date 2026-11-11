@@ -122,10 +122,11 @@ const MOVED = 0.3;
 const STILL: Stillness = { by: 32, share: 0.005 };
 
 /**
- * Where the map draws the main menu's Poké Ball, as fractions of the screen: the button `config.taps.mainMenu` taps,
- * drawn alike over any map, where a screen opened over the map draws something else.
+ * The patch of the screen the main menu's Poké Ball is drawn in, as fractions of the screen from where
+ * `config.taps.mainMenu` taps it: drawn alike over any map, where a screen opened over the map draws something else.
+ * The tap is above the patch's middle, the button reaching further below it than above.
  */
-const MENU_BUTTON = { left: 0.45, top: 0.9, width: 0.1, height: 0.06 };
+const MENU_BUTTON = { left: -0.05, top: -0.01, width: 0.1, height: 0.06 };
 
 /**
  * How much of `MENU_BUTTON` may change, by over 32 in a channel, with the map still showing. Between `map.png`, the
@@ -135,13 +136,16 @@ const MENU_BUTTON = { left: 0.45, top: 0.9, width: 0.1, height: 0.06 };
  */
 const BUTTON_KEPT = 0.4;
 
-/** Whether the main menu's button is drawn as it was, which a tap the phone dropped leaves it, and the map with it. */
-function buttonKept(before: Image, after: Image): boolean {
+/**
+ * Whether the main menu's button tapped at `tap` is drawn as it was, which a tap the phone dropped leaves it, and the
+ * map with it.
+ */
+function buttonKept(before: Image, after: Image, tap: Point): boolean {
   const button = (image: Image) =>
     crop(
       image,
-      MENU_BUTTON.left * image.width,
-      MENU_BUTTON.top * image.height,
+      (tap[0] + MENU_BUTTON.left) * image.width,
+      (tap[1] + MENU_BUTTON.top) * image.height,
       MENU_BUTTON.width * image.width,
       MENU_BUTTON.height * image.height,
     );
@@ -318,7 +322,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       // Tried again only where the button is drawn as it was, which is what a tap the phone dropped leaves (#1058).
       // Thrown otherwise, for `toStorage`'s reason: a tap that opened something else leaves a screen nothing here
       // knows the controls of, and every further tap there is a guess.
-      if (!buttonKept(image, after)) {
+      if (!buttonKept(image, after, config.taps.mainMenu)) {
         throw new Error('the main menu did not open; open the Pokédex by hand and run again');
       }
 
