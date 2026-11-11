@@ -4,12 +4,12 @@
  * `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
  */
 
-import { decodePng, type Image } from './png.mts';
+import { decodeScreencap, type Image } from './png.mts';
 
 /**
- * How a `Device` reaches the phone: its state as `adb get-state` names it, a shell command's output, and a screenshot's
- * PNG. The screenshot is its own method because it is the one binary answer, and a transport has to keep it clear of
- * anything written to stderr — the CLI by `exec-out`, the page by the shell protocol.
+ * How a `Device` reaches the phone: its state as `adb get-state` names it, a shell command's output, and a screenshot,
+ * as `decodeScreencap` reads one. The screenshot is its own method because it is the one binary answer, and a transport
+ * has to keep it clear of anything written to stderr — the CLI by `exec-out`, the page by the shell protocol.
  */
 export interface Transport {
   state(): Promise<string>;
@@ -75,7 +75,7 @@ export class Device {
   }
 
   async screenshot(): Promise<Image> {
-    return decodePng(await this.#transport.screencap());
+    return decodeScreencap(await this.#transport.screencap());
   }
 
   async tap([x, y]: readonly [number, number]): Promise<void> {

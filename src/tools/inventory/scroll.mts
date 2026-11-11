@@ -12,13 +12,23 @@ import { offsetBetween, scrollStep } from './stitch.mts';
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
- * The band a screen is watched for movement in, and how much of it may still differ for it to count as still. The
- * game's own panel, since the artwork above it holds an animated Pokémon that never stops and the status bar ticks with
- * the clock. Measured through one swipe: 31%, then 6.2%, then 0.54% and steady, so anything between settles it.
+ * The band a screen is watched for movement in: the game's own panel, since the artwork above it holds an animated
+ * Pokémon that never stops and the status bar ticks with the clock.
  */
 const SETTLE_BAND = { from: 0.34, to: 0.95 };
-const SETTLE_CHANGE = 0.02;
 export const SETTLE_ATTEMPTS = 4;
+
+/**
+ * How still a screen has to be to count as settled: no more than `share` of `SETTLE_BAND` changing between two
+ * screenshots running, a pixel changing where a channel moves by more than `by`.
+ */
+export interface Stillness {
+  by: number;
+  share: number;
+}
+
+/** A detail screen's panel, measured through one swipe: 31%, then 6.2%, then 0.54% and steady. */
+const PANEL: Stillness = { by: 8, share: 0.02 };
 
 /** How many frames one `--scroll` may take before it is a loop rather than a screen. */
 const SCROLL_FRAMES = 12;
@@ -34,15 +44,17 @@ export const SCROLL_DRAG_MS = 1000;
 /**
  * A screenshot of a screen that has stopped moving, which is what a fixed wait after a swipe can only guess at. The
  * cost is one extra screenshot where the screen was already still, and the gain is that a scan slowed down by anything
- * — a phone thinking, an animation that ran long — waits for it rather than reading through it.
+ * — a phone thinking, an animation that ran long — waits for it rather than reading through it. Still as a detail
+ * screen's panel is unless told otherwise: a screen whose backdrop moves of itself never is, by that measure, and pays
+ * for every attempt instead.
  */
-export async function settled(device: Device): Promise<Image> {
+export async function settled(device: Device, { by, share }: Stillness = PANEL): Promise<Image> {
   let previous = await device.screenshot();
 
   for (let attempt = 1; attempt < SETTLE_ATTEMPTS; attempt++) {
     const image = await device.screenshot();
 
-    if (difference(previous, image, SETTLE_BAND.from, SETTLE_BAND.to) < SETTLE_CHANGE) {
+    if (difference(previous, image, SETTLE_BAND.from, SETTLE_BAND.to, by) < share) {
       return image;
     }
 

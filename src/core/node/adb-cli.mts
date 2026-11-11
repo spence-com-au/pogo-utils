@@ -35,7 +35,10 @@ export function adbCli(serial?: string): Transport {
   return {
     state: async () => (await adb(['get-state'])).toString(),
     shell: (args) => adb(['shell', ...args]),
-    screencap: () => adb(['exec-out', 'screencap', '-p']),
+
+    // Raw pixels rather than `-p`'s PNG, which the phone takes longer to compress than USB takes to carry the pixels:
+    // 0.87s a screenshot on a Pixel 4 XL against 1.2s, and no inflating it again here.
+    screencap: () => adb(['exec-out', 'screencap']),
   };
 }
 

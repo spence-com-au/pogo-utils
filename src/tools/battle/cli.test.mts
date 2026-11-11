@@ -284,7 +284,7 @@ case "$*" in
   'shell settings get '*) echo "$SETTING" ;;
   'shell settings put '*) sleep 0.3 ;;
   shell) cat > /dev/null ;;
-  'exec-out screencap -p')
+  'exec-out screencap')
     i=0
     while [ -n "$HANG" ] && ! grep -q 'settings put' "$LOG" && [ $i -lt 200 ]; do sleep 0.05; i=$((i + 1)); done
     echo 'screencap: no display' >&2

@@ -14,6 +14,7 @@ import {
   crc32 as ownCrc32,
   crop,
   decodePng,
+  decodeScreencap,
   difference,
   encodePng,
   isolate,
@@ -302,6 +303,56 @@ test('a bit depth or an interlace this does not read is refused by name', () => 
   }
 });
 
+/**
+ * `image` as `screencap` writes it without `-p`: little-endian words for its width, its height, `format` and, in the
+ * fourth of `words`, the colour space Android 9 added, then its pixels.
+ */
+const rawOf = (image: Image, format = 1, words = 4): Buffer => {
+  const bytes = Buffer.alloc(words * 4 + image.data.length);
+  [image.width, image.height, format, 0].slice(0, words).forEach((word, i) => bytes.writeUInt32LE(word, i * 4));
+  bytes.set(image.data, words * 4);
+
+  return bytes;
+};
+
+test('a raw screenshot reads as its pixels behind either header, and a PNG still reads as one', () => {
+  const image = ramp(7, 5);
+
+  for (const words of [3, 4]) {
+    const bytes = rawOf(image, 1, words);
+    const back = decodeScreencap(bytes);
+    bytes.fill(0);
+
+    expect([back.width, back.height], `a ${words}-word header`).toStrictEqual([7, 5]);
+    expect([...back.data], 'pixels of its own, not a view into the bytes they came in').toStrictEqual([...image.data]);
+  }
+
+  expect([...decodeScreencap(encodePng(image)).data]).toStrictEqual([...image.data]);
+});
+
+test('a raw screenshot whose fourth byte is padding reads as opaque, and one with alpha keeps it', () => {
+  const clear: Image = { width: 1, height: 1, data: Uint8Array.of(10, 20, 30, 0) };
+
+  expect([...decodeScreencap(rawOf(clear, 2)).data]).toStrictEqual([10, 20, 30, 255]);
+  expect([...decodeScreencap(rawOf(clear, 1)).data]).toStrictEqual([10, 20, 30, 0]);
+});
+
+test('a raw screenshot cut short, run long or in a layout not read here is refused rather than guessed at', () => {
+  const valid = rawOf(ramp(3, 2));
+
+  expect(() => decodeScreencap(valid.subarray(0, 8))).toThrow(/too few for its header/);
+  expect(() => decodeScreencap(valid.subarray(0, valid.length - 1))).toThrow(/no 3×2 screen behind its header/);
+  expect(() => decodeScreencap(Buffer.concat([valid, Buffer.alloc(4)]))).toThrow(/no 3×2 screen behind its header/);
+  expect(() => decodeScreencap(rawOf(ramp(3, 2), 0x16))).toThrow(/pixel format 22, which is not read here/);
+});
+
+test('a refusal names the command that took the screenshot, `-p` only for a PNG', () => {
+  expect(() => decodeScreencap(rawOf(ramp(3, 2), 0x16))).toThrow(/run `adb exec-out screencap` by hand/);
+  expect(() => decodeScreencap(encodePng(ramp(3, 2)).subarray(0, 40))).toThrow(
+    /run `adb exec-out screencap -p` by hand/,
+  );
+});
+
 test('a pixel reads as its three channels, and outside the image as black', () => {
   const image = ramp(4, 3);
 
@@ -484,6 +535,15 @@ test('a pixel differs where any channel moves, not only red', () => {
 
     expect(difference(a, b, 0, 1), `(0,1,2) to (${changed.join(',')})`).toBe(1);
   }
+});
+
+test('a pixel differs only where a channel moves by more than the threshold, 8 unless told otherwise', () => {
+  const a = { width: 1, height: 1, data: new Uint8Array([100, 100, 100, 255]) };
+  const b = { width: 1, height: 1, data: new Uint8Array([100, 120, 100, 255]) };
+
+  expect(difference(a, b, 0, 1)).toBe(1);
+  expect(difference(a, b, 0, 1, 20)).toBe(0);
+  expect(difference(a, b, 0, 1, 19)).toBe(1);
 });
 
 test('two images of different sizes differ completely rather than throwing', () => {
