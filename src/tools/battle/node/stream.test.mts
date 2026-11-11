@@ -205,9 +205,22 @@ test('keeps the whole screen as video across the hand-over, the first recording 
   const started = performance.now();
   const video = new Video((bytes) => written.push(bytes), started);
 
+  // When each recording's bytes came, in seconds, heard just ahead of the video, which stamps its pictures by the same.
+  const arrivals: number[][] = [];
+  let closed = false;
+
   const screen = watched(() => {
     const recording = clip(colours[recordings.length] ?? 'blue', 3);
+    const arrived: number[] = [];
     recordings.push(recording);
+    arrivals.push(arrived);
+
+    recording.stdout.on('data', () => {
+      if (!closed) {
+        arrived.push((performance.now() - started) / 1000);
+      }
+    });
+
     return video.watch(recording);
   }, 1000);
 
@@ -219,6 +232,7 @@ test('keeps the whole screen as video across the hand-over, the first recording 
   } finally {
     screen.close();
     video.close();
+    closed = true;
   }
 
   // What a player shows: each picture's time, and whether it is the first recording's red or the second's blue.
@@ -250,10 +264,14 @@ test('keeps the whole screen as video across the hand-over, the first recording 
   expect(pictures.slice(over).every((colour) => colour === 'blue')).toBe(true);
   expect(times.every((time, i) => i === 0 || time > (times[i - 1] ?? Infinity))).toBe(true);
 
-  // Thirty a second from each, but for the `HELD_MS` before the next's first byte, which the phone's next recording
-  // shows again and these clips do not.
-  const gaps = times.slice(2).map((time, i) => time - (times[i + 1] ?? 0));
-  expect(Math.max(...gaps)).toBeLessThan((HELD_MS + 50) / 1000);
+  // As long between pictures as between the bytes that brought them, but for the `HELD_MS` before the next's first
+  // byte, which the phone's next recording shows again and these clips do not. Measured against the bytes rather than
+  // a frame's 33ms, since a busy machine is slowest to send the first's frames right at the cut, as it starts the next
+  // `ffmpeg`. The millisecond is for the video's own stamp, taken a moment after this one's.
+  const gaps = (at: number[]) => at.slice(2).map((time, i) => time - (at[i + 1] ?? 0));
+  const next = arrivals[1]?.[0] ?? Infinity;
+  const shown = [...(arrivals[0] ?? []).filter((at) => at < next - HELD_MS / 1000), ...(arrivals[1] ?? [])];
+  expect(Math.max(...gaps(times))).toBeLessThan(Math.max(...gaps(shown)) + 0.001);
 });
 
 test('fails when a recording ends without a later one taking over', async () => {
