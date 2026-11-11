@@ -21,7 +21,6 @@ import { type Form, type GameData } from '../../core/game-master.mts';
 import { centre, fold, ocr, type Line } from '../../core/ocr.mts';
 import { difference, type Image } from '../../core/png.mts';
 import {
-  alertOf,
   caughtFrame,
   caughtOn,
   CATEGORIES,
@@ -580,9 +579,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       keep(`${name}-${frame}`, shot.image);
       const { image, lines } = shot;
 
-      if (genders === null && alertOf(lines)) {
-        genders = gendersOn(image, lines);
-      }
+      genders ??= gendersOn(image, lines);
 
       const caught = caughtOn(image, lines);
 
