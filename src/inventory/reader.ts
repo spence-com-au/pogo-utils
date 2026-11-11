@@ -1,8 +1,8 @@
 /**
  * What the pages read the phone's screen with: the WebAssembly Tesseract, the vended game master and the form icons,
  * each fetched the first time it is wanted and held for every read after. The Inventory page's reading is `readScreen`,
- * the very function `pnpm inventory parse` prints, and the Search page's walk to storage is `storage`, the one
- * `snap --search` drives — so neither can answer differently from the CLI for any reason but the engine.
+ * the very function `bin/inventory parse` prints, and the Search page's walk to storage is `storage`, the one `snap
+ * --search` drives — so neither can answer differently from the CLI for any reason but the engine.
  *
  * **Nothing read leaves the page.** What is fetched is the model, the game master and the icons, none of which carries
  * anything about the screen; the screenshot and what it reads as stay in memory here, and leave only as a download.

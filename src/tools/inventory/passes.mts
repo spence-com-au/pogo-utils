@@ -1,7 +1,7 @@
 /**
- * The flag passes `pnpm inventory scan` makes before its full pass: one search a flag, walked to its end, whose
- * Pokémon the full pass then knows by their keys. Here rather than in the script so the suite can drive them against
- * a storage it makes up, the script reaching storage and the walk only through what it hands in.
+ * The flag passes `bin/inventory scan` makes before its full pass: one search a flag, walked to its end, whose Pokémon
+ * the full pass then knows by their keys. Here rather than in the script so the suite can drive them against a storage
+ * it makes up, the script reaching storage and the walk only through what it hands in.
  */
 
 import { type Line } from '../../core/ocr.mts';

@@ -11,9 +11,9 @@ body:
     attributes:
       label: 'Page'
       description:
-        'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, `Trainer battles` for a `pnpm
-        battle` command, or `Repository tooling` for CI, a hook or a script such as `bin/adb`. The Inventory and Battle
-        tabs on the site are `Inventory` and `Battle`.'
+        'The tab it happened on, `Pokémon inventory` for a `bin/inventory` command, `Trainer battles` for a `bin/battle`
+        command, or `Repository tooling` for CI, a hook or a script such as `bin/adb`. The Inventory and Battle tabs on
+        the site are `Inventory` and `Battle`.'
       options:
         - 'Events'
         - 'Map'
@@ -35,8 +35,8 @@ body:
       label: 'Link'
       description:
         'The address bar, copied. The fragment carries the state a page was left in, so this is what reproduces it. A
-        `pnpm inventory` or `pnpm battle` command, or a failure in repository tooling, has no address, so leave this
-        empty for one and give the command or the run that failed under What happened instead.'
+        `bin/inventory` or `bin/battle` command, or a failure in repository tooling, has no address, so leave this empty
+        for one and give the command or the run that failed under What happened instead.'
       placeholder: 'https://spence.com.au/pogo-utils/#/pokedex?q=pika&n=25'
 
   - type: 'textarea'

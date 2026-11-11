@@ -1,7 +1,7 @@
 /**
  * `stay_on_while_plugged_in`, which keeps the phone awake through a battle: a screen gone dark mid-battle reads as
- * nothing recognised and ends the run. `pnpm battle` and the Battle tab's Worker both read it, set it and put it back
- * as found through these, and each keeps the value found its own way: the CLI for its signal handler, the Worker in
+ * nothing recognised and ends the run. `bin/battle` and the Battle tab's Worker both read it, set it and put it back as
+ * found through these, and each keeps the value found its own way: the CLI for its signal handler, the Worker in
  * IndexedDB ([`src/battle/awake.ts`](../../battle/awake.ts)). Through nothing but `shell`, so that a page can run it
  * over WebUSB as well.
  */

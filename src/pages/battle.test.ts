@@ -1,6 +1,6 @@
 /**
- * The Battle tab's form read as `pnpm battle run` reads its flags, without a DOM around it: what each mode sends, what
- * a blank field means, and each refusal headed by the field it is about.
+ * The Battle tab's form read as `bin/battle run` reads its flags, without a DOM around it: what each mode sends, what a
+ * blank field means, and each refusal headed by the field it is about.
  */
 
 import { expect, test } from 'vitest';

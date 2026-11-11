@@ -150,7 +150,7 @@ test('puts back what a run cut short found, rather than what it left, where the 
   expect(pixel.settings.get('stay_on_while_plugged_in')).toBe('1');
 });
 
-test('reads a setting Android does not answer with a number as off, as `pnpm battle` does', async () => {
+test('reads a setting Android does not answer with a number as off, as `bin/battle` does', async () => {
   const pixel = phone('pixel', 'null');
   const restore = await keepAwake('pixel', pixel.transport, () => {});
   await restore();

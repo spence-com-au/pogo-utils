@@ -3,8 +3,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "adb": "node scripts/adb.mts",
-    "battle": "node scripts/battle.mts",
     "build": "npm-run-all --print-label --serial build:clean build:types build:data build:sprites build:bundle build:ics build:icons build:manifest build:assemble",
     "build:assemble": "node scripts/assemble.mts",
     "build:bundle": "node scripts/bundle.mts",
@@ -16,7 +14,6 @@
     "build:sprites": "node scripts/build-sprites.mts",
     "build:types": "tsc -b tsconfig.json scripts/tsconfig.json",
     "clean": "rm -rf dist .types",
-    "inventory": "node scripts/inventory.mts",
     "lint": "npm-run-all --continue-on-error --parallel --print-label 'lint:!(fix|dex)'",
     "lint:css": "stylelint '**/*.css'",
     "lint:css:fix": "stylelint --fix '**/*.css'",

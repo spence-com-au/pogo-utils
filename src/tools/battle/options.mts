@@ -1,5 +1,5 @@
 /**
- * What a run is asked to play, read out of what was typed: `pnpm battle run`'s flags, or the Battle tab's form, which
+ * What a run is asked to play, read out of what was typed: `bin/battle run`'s flags, or the Battle tab's form, which
  * names its fields as the flags are named so that the two are held to the same rules and refused in the same words.
  */
 

@@ -1,8 +1,7 @@
 /**
- * The row `pnpm inventory scan` writes for one Pokémon, put together from the reading the walk handed it, what each
- * flag pass found and what the look down its screen read of its moves. Here rather than in the script so the suite can
- * hold each field to what it came from, the script handing in the passes, the artwork and the look it reaches the phone
- * by.
+ * The row `bin/inventory scan` writes for one Pokémon, put together from the reading the walk handed it, what each flag
+ * pass found and what the look down its screen read of its moves. Here rather than in the script so the suite can hold
+ * each field to what it came from, the script handing in the passes, the artwork and the look it reaches the phone by.
  */
 
 import { type Colourings } from './artwork.mts';

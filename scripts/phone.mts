@@ -1,9 +1,9 @@
 /**
- * Things done to an Android phone over `adb` that neither `pnpm inventory` nor `pnpm battle` does for itself.
+ * Things done to an Android phone over `adb` that neither `bin/inventory` nor `bin/battle` does for itself.
  *
  * Usage, from the repository root, with the phone plugged in and USB debugging on:
  *
- *   pnpm adb screen-off [OPTIONS]
+ *   bin/phone screen-off [OPTIONS]
  *     Turn the phone's panel off beneath Android, to spare an OLED a long battle's still HUD. The game goes on
  *     drawing, `screenrecord` on recording and touches on landing as if it were lit, since Android is not told. It
  *     stays dark until screen-on, or until the phone sleeps and is woken, which Pokémon GO's own wake lock puts off
@@ -11,7 +11,7 @@
  *
  *     --serial SERIAL  the phone to drive, where more than one is plugged in
  *
- *   pnpm adb screen-on [OPTIONS]
+ *   bin/phone screen-on [OPTIONS]
  *     Turn the panel back on.
  *
  *     --serial SERIAL  the phone to drive, where more than one is plugged in

@@ -14,9 +14,9 @@ application and reached from a shared top tab bar:
   PokeMap display filter built from the shiny hunt list, and links to the
   [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
 - **Inventory** (`#/inventory`) — one Pokémon's detail screen read end to end, off a phone over WebUSB or from a saved
-  screenshot: what [`pnpm inventory parse`](#pokémon-inventory) prints, without installing anything.
+  screenshot: what [`bin/inventory parse`](#pokémon-inventory) prints, without installing anything.
 - **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected with 📱 in the
-  top bar, as [`pnpm battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
+  top bar, as [`bin/battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
 
 **➡️ [Open the site](https://spence.com.au/pogo-utils/)**
 
@@ -484,14 +484,14 @@ light theme's dark colour every time, rather than whenever the person rendering 
 
 ## Pokémon inventory
 
-`pnpm inventory scan` lists every Pokémon in storage as [JSON Lines](https://jsonlines.org/), one object per Pokémon
+`bin/inventory scan` lists every Pokémon in storage as [JSON Lines](https://jsonlines.org/), one object per Pokémon
 (species, nickname, form, costume, shiny, lucky, XXL/XXS, Dynamax or Gigantamax, CP, HP, level, IVs and moves), by
 driving an Android phone over `adb`. Pokémon GO is drawn by Unity, so Android can't read its text; instead the script
 takes a screenshot at each step and reads it with Tesseract. Both tools have to be on `PATH`:
 
 ```sh
 brew install android-platform-tools tesseract   # or: apt install adb tesseract-ocr
-pnpm inventory scan --out inventory.jsonl
+bin/inventory scan --out inventory.jsonl
 ```
 
 Each line is written as its Pokémon is read, so a run cut short keeps every one before it, and `--skip` adds to the same
@@ -517,7 +517,7 @@ search lists every costume it comes in. `--search TERM` scans only what storage'
 `--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
 rather than using the week-old cache. The icons are found through GitHub's API, which answers an address without a token
 60 times an hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. The swipe from
-one Pokémon to the next goes through a touchscreen the scan makes on the phone, as `pnpm battle` does, since
+one Pokémon to the next goes through a touchscreen the scan makes on the phone, as `bin/battle` does, since
 `input swipe` drops about one in ten on some phones and a dropped swipe looks just like the end of storage; where the
 phone will not make one it says so and falls back to `input swipe`. Each pass is held to the count the game shows for
 it, the `🔍(N)` of a search or the `N / M` under POKÉMON: a pass that seems to reach the end short of it takes the last
@@ -529,7 +529,7 @@ the launch is for the copy in front, or the only one installed; with a copy in b
 and asks, and `--user 10` (or `"user": 10` in a `--config` file) names the work profile's.
 
 A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
-into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any
+into one tall image, which is how a screen longer than the phone is seen whole. `bin/inventory snap` takes one of any
 screen it can confirm is a detail screen and leaves it as `NAME.png`, leaving the plain screenshot under that same name
 only where PGSharp's overlay did not read, which is where it does not scroll at all; a scan takes one where `--scroll`
 asks for it, reading the moves from it rather than from one screenshot taken part way down. A snap will not write over a
@@ -542,9 +542,9 @@ are lined up in is `scrollBand` in `--config`; it has to end above the game's fl
 panel rather than in it, or their top is stitched in once per frame.
 
 Every tap position, swipe and delay can be overridden from a JSON file passed as `--config`. When something is misread,
-`pnpm inventory snap` saves a screenshot of whatever the phone shows and prints what each reader makes of it, and
-`pnpm inventory parse FILE.png` does the same for a saved one. `--search` drives the phone to the Pokémon first, typing
-a term into storage's own search box and opening the first thing it matches, so that `--search '+burmy & cp196'` names
+`bin/inventory snap` saves a screenshot of whatever the phone shows and prints what each reader makes of it, and
+`bin/inventory parse FILE.png` does the same for a saved one. `--search` drives the phone to the Pokémon first, typing a
+term into storage's own search box and opening the first thing it matches, so that `--search '+burmy & cp196'` names
 what the capture wanted where a screen set up by hand records nothing about which Pokémon that was. `--verbose` adds
 every line OCR found with its box, which is what separates a field left empty because no text was read there from one
 left empty because a reader anchored on the wrong line. On all three commands it also un-silences the preamble narrated
@@ -555,7 +555,7 @@ run is actually waiting on. What went wrong is never held back either: a stale c
 an icon that could not be had, prints regardless. `snap` exits non-zero unless the screen is a Pokémon detail screen
 carrying PGSharp's overlay, those being what every other reader depends on; it still saves the screenshot when it
 refuses, and still stitches one whose only fault is a field that did not read — what it will not scroll is a screen
-PGSharp's overlay cannot vouch for, the map and a detail screen being indistinguishable there. `pnpm inventory help`
+PGSharp's overlay cannot vouch for, the map and a detail screen being indistinguishable there. `bin/inventory help`
 lists the flags each command acts on, and a flag given to a command that does not act on it is refused rather than
 quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl` are git-ignored, since they describe a
 player's own account.
@@ -565,7 +565,7 @@ risk to the account is yours to weigh.
 
 ### The Pokédex
 
-`pnpm inventory dex` walks the game's own Pokédex entry by entry and writes what each species has registered to
+`bin/inventory dex` walks the game's own Pokédex entry by entry and writes what each species has registered to
 `pokedex.jsonl`, one line a species in dex order, Meowth's spread out here:
 
 ```json
@@ -668,12 +668,12 @@ tesseract.js reads a `yes` into the scenery of `overworld.png`, which `dialogOpe
 
 ## Trainer battles
 
-`pnpm battle` plays the game's Team Leader training battles one after another, driving the same phone over `adb` as
-[`pnpm inventory`](#pokémon-inventory). Unlike the inventory scanner it does not only read, and automating input breaks
+`bin/battle` plays the game's Team Leader training battles one after another, driving the same phone over `adb` as
+[`bin/inventory`](#pokémon-inventory). Unlike the inventory scanner it does not only read, and automating input breaks
 Niantic's terms of service, so run it on an account whose loss you would accept.
 
 ```sh
-pnpm battle run --leader spark --league great --count 5
+bin/battle run --leader spark --league great --count 5
 ```
 
 Start it from the map, or anywhere between the result of one battle and the start of the next: from the map it opens the
@@ -734,21 +734,21 @@ phone's shape is the reference: a position down the screen is written as where t
 the foot, or a fraction of the height between — and how many of the screen's widths it sits from there, a number every
 phone agrees on, as [`src/tools/battle/layout.mts`](src/tools/battle/layout.mts) explains. A position added needs its
 anchor too, measured on both the Pixel 8 Pro's fixtures and the Pixel 4 XL's, which the tests read alike.
-`pnpm battle record` saves what the recognisers are tuned against, at the phone's own shape:
+`bin/battle record` saves what the recognisers are tuned against, at the phone's own shape:
 
 ```sh
-pnpm battle record --seconds 60 battle.h264
+bin/battle record --seconds 60 battle.h264
 ```
 
 ## Phone's screen
 
-`pnpm adb screen-off` turns the phone's panel off, to spare an OLED the still HUD of a long run of battles, and
-`pnpm adb screen-on` turns it back on; `--serial` picks a phone where more than one is plugged in.
+`bin/phone screen-off` turns the phone's panel off, to spare an OLED the still HUD of a long run of battles, and
+`bin/phone screen-on` turns it back on; `--serial` picks a phone where more than one is plugged in.
 
 ```sh
-pnpm adb screen-off
-pnpm battle run --mode gbl --league master
-pnpm adb screen-on
+bin/phone screen-off
+bin/battle run --mode gbl --league master
+bin/phone screen-on
 ```
 
 The panel goes dark beneath Android rather than the phone going to sleep, as scrcpy's `--turn-screen-off` darkens it, so

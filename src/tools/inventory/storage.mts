@@ -1,7 +1,7 @@
 /**
- * The walk to Pokémon storage and the search typed into it, which `pnpm inventory` and the Search page share. It runs
- * in Node and in the browser alike, reaching the phone only through a `Device` and the screen only through whichever
- * OCR engine was installed.
+ * The walk to Pokémon storage and the search typed into it, which `bin/inventory` and the Search page share. It runs in
+ * Node and in the browser alike, reaching the phone only through a `Device` and the screen only through whichever OCR
+ * engine was installed.
  */
 
 import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from '../../core/adb.mts';

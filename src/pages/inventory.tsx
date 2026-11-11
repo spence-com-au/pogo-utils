@@ -1,5 +1,5 @@
 /**
- * The Inventory page: one Pokémon's detail screen read end to end in the browser, which is what `pnpm inventory snap`
+ * The Inventory page: one Pokémon's detail screen read end to end in the browser, which is what `bin/inventory snap`
  * and `parse` do from a terminal. A phone connected over WebUSB — from the phone button, which every tab shares — is
  * asked for whatever it is showing, or a PNG already saved is dropped in, and the page prints what every reader makes
  * of it — the same four blocks `parse` prints, from the same `readScreen`.
@@ -175,7 +175,7 @@ export default function InventoryPage() {
         <h1 class="sr">Inventory</h1>
         <p class="sub">
           Read one Pokémon’s detail screen — species, form, CP, HP, level, IVs, size, tags and moves — the way{' '}
-          <code>pnpm inventory parse</code> does, in the browser. Nothing leaves the page.
+          <code>bin/inventory parse</code> does, in the browser. Nothing leaves the page.
         </p>
       </header>
 
@@ -208,7 +208,7 @@ export default function InventoryPage() {
 
           <p>
             Drop a screenshot anywhere here, or pick one — a PNG as <code>adb exec-out screencap -p</code> or{' '}
-            <code>pnpm inventory snap</code> saves it, a scroll capture included.
+            <code>bin/inventory snap</code> saves it, a scroll capture included.
           </p>
 
           {unread && <p class="note">{unread}</p>}

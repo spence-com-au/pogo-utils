@@ -1,8 +1,8 @@
 /**
- * `scripts/battle.mts` driven as a subprocess, which is the one way a test reaches it: nothing imports it, and importing
- * it would run it. What is refused before a phone is asked for needs no `adb` or device, and a run that changes the
- * phone's setting and then fails or is stopped is driven against a fake `adb` on the `PATH`, which answers as a phone
- * does and logs what it was asked.
+ * `scripts/battle.mts` driven through `bin/battle` as a subprocess, which is the one way a test reaches it: nothing
+ * imports it, and importing it would run it. What is refused before a phone is asked for needs no `adb` or device, and
+ * a run that changes the phone's setting and then fails or is stopped is driven against a fake `adb` on the `PATH`,
+ * which answers as a phone does and logs what it was asked.
  */
 
 import { execFile } from 'node:child_process';
@@ -16,12 +16,12 @@ import { expect, onTestFinished, test } from 'vitest';
 import { reads } from '../../core/node/test-cache.mts';
 import { tessdata } from '../../core/node/test-engine.mts';
 
-const SCRIPT = fileURLToPath(new URL('../../../scripts/battle.mts', import.meta.url));
+const BIN = fileURLToPath(new URL('../../../bin/battle', import.meta.url));
 
 /** The script's exit code and output, a non-zero exit being an answer here rather than a failure. */
 async function battle(...args: string[]) {
   try {
-    const { stdout, stderr } = await promisify(execFile)('node', [SCRIPT, ...args]);
+    const { stdout, stderr } = await promisify(execFile)(BIN, args);
 
     return { code: 0, stdout, stderr };
   } catch (error) {
@@ -35,14 +35,14 @@ test('help prints the usage out of the header', async () => {
   const { code, stdout } = await battle('help');
 
   expect(code).toBe(0);
-  expect(stdout).toContain('pnpm battle record [OPTIONS] OUT');
+  expect(stdout).toContain('bin/battle record [OPTIONS] OUT');
 });
 
 test.each([[[]], [['run']], [['record', 'out.h264']]])('--help after %j prints the usage', async (args) => {
   const { code, stdout } = await battle(...args, '--help');
 
   expect(code).toBe(0);
-  expect(stdout).toContain('pnpm battle record [OPTIONS] OUT');
+  expect(stdout).toContain('bin/battle record [OPTIONS] OUT');
 });
 
 /** A typo's usage goes with the refusal on stderr, leaving stdout to the `help` that was asked for. */
@@ -50,7 +50,7 @@ test('an unknown command prints the usage to stderr and fails', async () => {
   const { code, stdout, stderr } = await battle('rnu');
 
   expect(code).toBe(1);
-  expect(stderr).toContain('pnpm battle record [OPTIONS] OUT');
+  expect(stderr).toContain('bin/battle record [OPTIONS] OUT');
   expect(stdout).toBe('');
 });
 
@@ -107,7 +107,7 @@ test.each([['0'], ['181'], ['2.5'], ['ten']])('refuses --seconds %s', async (sec
 });
 
 test('reports an adb it cannot find rather than throwing', async () => {
-  const { code, stderr } = await promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', devNull], {
+  const { code, stderr } = await promisify(execFile)(BIN, ['record', '--seconds', '1', devNull], {
     env: { ...process.env, PATH: dirname(process.execPath) },
   }).then(
     () => ({ code: 0, stderr: '' }),
@@ -132,7 +132,7 @@ function fakeAdb(body: (dir: string) => string) {
 
 /** `record` to `out` for a second, with the `adb` in `bin` the first on the PATH. */
 function record(bin: string, out: string) {
-  return promisify(execFile)('node', [SCRIPT, 'record', '--seconds', '1', out], {
+  return promisify(execFile)(BIN, ['record', '--seconds', '1', out], {
     env: { ...process.env, PATH: `${bin}:${dirname(process.execPath)}:${process.env.PATH}` },
     timeout: 10_000,
   }).then(
@@ -306,7 +306,7 @@ function drive(setting: string, args: string[] = [], hang = false) {
   writeFileSync(join(bin, 'adb'), ADB, { mode: 0o755 });
   writeFileSync(log, '');
 
-  const child = promisify(execFile)('node', [SCRIPT, 'run', '--leader', 'spark', '--league', 'great', ...args], {
+  const child = promisify(execFile)(BIN, ['run', '--leader', 'spark', '--league', 'great', ...args], {
     cwd: dir,
     env: {
       ...process.env,

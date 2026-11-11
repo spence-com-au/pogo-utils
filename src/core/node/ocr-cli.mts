@@ -1,7 +1,7 @@
 /**
- * The Tesseract CLI as an `Engine`, which is what `pnpm inventory` reads with. It has to be installed separately
- * (`brew install tesseract`, `apt install tesseract-ocr`) at 4.1 or later, since earlier releases' LSTM engine ignores
- * the whitelist `ocrLine` narrows a read with.
+ * The Tesseract CLI as an `Engine`, which is what `bin/inventory` reads with. It has to be installed separately (`brew
+ * install tesseract`, `apt install tesseract-ocr`) at 4.1 or later, since earlier releases' LSTM engine ignores the
+ * whitelist `ocrLine` narrows a read with.
  */
 
 import { type Engine } from '../ocr.mts';

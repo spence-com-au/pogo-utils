@@ -1,8 +1,8 @@
 /**
  * What a battle reads the screen against beyond the game master and PvPoke's meta, and how each is read: the type icons
  * and the forms' silhouettes. Each is fetched through a `Download` the caller hands over, as `meta.mts` fetches
- * PvPoke's files, because the callers fetch differently: `pnpm battle` keeps a week's copy under `.cache` as
- * `pnpm inventory` does, and a page has `fetch` and nothing to keep a copy on.
+ * PvPoke's files, because the callers fetch differently: `bin/battle` keeps a week's copy under `.cache` as
+ * `bin/inventory` does, and a page has `fetch` and nothing to keep a copy on.
  *
  * The silhouettes are the exception in a page. It would have to fetch some 1,300 form icons and 40 MB to outline them,
  * so `scripts/vend-silhouettes.mts` outlines them once into `data/silhouettes.json`, which is what `encodeSilhouettes`
@@ -54,8 +54,8 @@ export function formIcons(data: GameData): Map<string, string> {
 
 /**
  * Every form's outline that could be had, by its icon, out of some 1,300 icons and 40 MB fetched by `download`. One
- * that cannot be had is left out for the caller to answer for, since the two answer differently: `pnpm battle` reads
- * the party without it, and `pnpm vend:silhouettes` asks again and then refuses.
+ * that cannot be had is left out for the caller to answer for, since the two answer differently: `bin/battle` reads the
+ * party without it, and `pnpm vend:silhouettes` asks again and then refuses.
  *
  * `FETCH_BATCH` at a time, and in the order the game master lists the forms rather than the order the downloads finish,
  * so a vend over the same upstream writes the same file.

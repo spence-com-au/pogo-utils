@@ -46,7 +46,7 @@
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
- *   pnpm inventory scan [OPTIONS]
+ *   bin/inventory scan [OPTIONS]
  *     Walk every Pokémon in storage and write one line of JSON for each.
  *
  *     --out FILE          write to FILE rather than inventory.jsonl, replacing what it held
@@ -61,19 +61,19 @@
  *     --keep-screens DIR  save each screen read to DIR
  *     also the shared --config, --serial, --user, --refresh and --verbose
  *
- *   pnpm inventory snap [OPTIONS] [NAME]
+ *   bin/inventory snap [OPTIONS] [NAME]
  *     Save the screen as .cache/inventory/snaps/NAME.png, named for the time when NAME is not given, and print what
  *     each reader makes of it. Fails unless it is a detail screen carrying PGSharp's overlay.
  *
  *     --search TERM       open the first Pokémon storage's own search matches, as --search '+burmy & cp196'
  *     also the shared --config, --serial, --user, --refresh and --verbose
  *
- *   pnpm inventory parse [OPTIONS] FILE.png…
+ *   bin/inventory parse [OPTIONS] FILE.png…
  *     Print what each reader makes of screenshots already saved. Needs no phone.
  *
  *     also the shared --config, --refresh and --verbose
  *
- *   pnpm inventory dex [OPTIONS]
+ *   bin/inventory dex [OPTIONS]
  *     Walk the Pokédex and write one line of JSON for each species, then check the record against the counts each
  *     tab prints. Fails naming each region and tab that disagrees, keeping the lines it wrote.
  *
@@ -465,7 +465,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
     shot,
   );
 
-  // The swipe from one Pokémon to the next on a touchscreen of the scan's own, the one `pnpm battle` drives the field
+  // The swipe from one Pokémon to the next on a touchscreen of the scan's own, the one `bin/battle` drives the field
   // with. `input swipe` went nowhere 3 to 5 times in 40 on a Pixel 4 XL with Android 13, at every wait and height
   // `--config` offers, and nothing a walk reads can tell a dropped swipe from the end of storage: the same Pokémon is
   // on the screen either way, and two of one species differ by less of the panel than a still screen does from itself
@@ -684,7 +684,7 @@ async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof 
   if (opened.key === null) {
     const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
 
-    throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
+    throw new Error(`${empty}, or the first Pokémon did not open; try \`bin/inventory snap\` to see why`);
   }
 
   // Emptied of an earlier scan's rows, a skip adding to them instead. Only once the full pass has a first Pokémon open,

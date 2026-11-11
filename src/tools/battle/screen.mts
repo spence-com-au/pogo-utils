@@ -1,7 +1,8 @@
 /**
- * The phone's screen kept current out of one `screenrecord` after another, however each is run and decoded: `pnpm
- * battle` runs it under the `adb` binary and decodes with `ffmpeg`, in `stream.mts`, and a page runs it over WebUSB and
- * decodes with WebCodecs, in `src/battle/feed.ts`. Each hands `Screen` a `Feed`, which is all it knows of either.
+ * The phone's screen kept current out of one `screenrecord` after another, however each is run and decoded:
+ * `bin/battle` runs it under the `adb` binary and decodes with `ffmpeg`, in `stream.mts`, and a page runs it over
+ * WebUSB and decodes with WebCodecs, in `src/battle/feed.ts`. Each hands `Screen` a `Feed`, which is all it knows of
+ * either.
  */
 
 import { type Image } from '../../core/png.mts';

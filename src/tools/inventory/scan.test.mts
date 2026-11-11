@@ -1,5 +1,5 @@
 /**
- * The parts of `pnpm inventory scan` that need no phone: the arguments it takes, the rows it writes and the keys that
+ * The parts of `bin/inventory scan` that need no phone: the arguments it takes, the rows it writes and the keys that
  * decide whether a flag search and the full pass saw the same Pokémon. A wrong key is a flag lost from a row or set on
  * the wrong one, and nothing on a phone screen says which.
  */

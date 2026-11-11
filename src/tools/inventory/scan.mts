@@ -1,5 +1,5 @@
 /**
- * The decisions `pnpm inventory scan` makes that need no phone: which arguments it takes, what a row holds, whether two
+ * The decisions `bin/inventory scan` makes that need no phone: which arguments it takes, what a row holds, whether two
  * passes saw the same Pokémon, where storage ends and whether a pass got there. Here rather than in
  * `scripts/inventory.mts` so the suite can import them, that script parsing `process.argv` and driving a phone at its
  * top level; `passes.mts`, `row.mts` and `look.mts` beside it hold the flag passes, the row and the look for the moves
@@ -80,7 +80,7 @@ export function count(option: string, value: string | undefined, fallback: numbe
   return n;
 }
 
-/** One Pokémon as `pnpm inventory scan` writes it, a line of JSON each. */
+/** One Pokémon as `bin/inventory scan` writes it, a line of JSON each. */
 export interface Row {
   index: number;
   species: string | null;

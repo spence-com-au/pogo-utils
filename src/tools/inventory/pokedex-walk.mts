@@ -1,5 +1,5 @@
 /**
- * The walk through the game's Pokédex that `pnpm inventory dex` takes, entry by entry, and the check of what it read
+ * The walk through the game's Pokédex that `bin/inventory dex` takes, entry by entry, and the check of what it read
  * against the counts the game prints. It runs in Node and in the browser alike, reaching the phone only through a
  * `Device` and a drag the caller makes, and the screen only through `pokedex.mts`.
  *
@@ -65,7 +65,7 @@ import { GENERATIONS, SUB_REGIONS } from '../../pokemon/generations.ts';
 export type FormEntry = { form: Named; caught: boolean } & Partial<Record<Category, boolean>>;
 
 /**
- * One species, as `pnpm inventory dex` writes it: its forms in the order the game draws them, its genders, and the
+ * One species, as `bin/inventory dex` writes it: its forms in the order the game draws them, its genders, and the
  * costumes it has registered by name. A category is a key only where the game draws its tile, `false` meaning the tile
  * is there and not registered; `caught` is the species', any form of it caught.
  */

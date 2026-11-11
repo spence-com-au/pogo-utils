@@ -59,7 +59,7 @@ test('makes the touchscreen through the held shell, taps through it, and answers
   const battle = await battlePhone(phone.connection);
 
   try {
-    // The stream's shape out of a screenshot shaped as a Pixel 4 XL's screen, as `pnpm battle` takes it.
+    // The stream's shape out of a screenshot shaped as a Pixel 4 XL's screen, as `bin/battle` takes it.
     expect(phone.spawned).toEqual([
       'sh',
       'screenrecord --output-format=h264 --size=360x760 --bit-rate=2000000 --time-limit=180 -',

@@ -17,12 +17,12 @@
  * `--verbose` and the frames' names are timed by. It is the H.264 the run decodes, kept rather than recorded twice:
  * about 15 MB a minute at most, and less for a still screen.
  *
- * Automating input breaks Niantic's terms of service, and unlike `pnpm inventory` this does not only read: it taps
+ * Automating input breaks Niantic's terms of service, and unlike `bin/inventory` this does not only read: it taps
  * through battles. Run it on an account whose loss you would accept.
  *
  * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
  *
- *   pnpm battle run [OPTIONS]
+ *   bin/battle run [OPTIONS]
  *     Play Team Leader or GO Battle League battles one after another, from the map or anywhere between one battle's
  *     result and the next one's start, until Ctrl-C or --count. Stops where nothing on screen has been recognised
  *     for 20s, and GO Battle League at the end of a set with a reward to collect, which is left to be caught by hand.
@@ -40,7 +40,7 @@
  *     --verbose          write the table as timed lines where stderr is not a terminal
  *     --serial SERIAL    the phone to drive, where more than one is plugged in
  *
- *   pnpm battle record [OPTIONS] OUT
+ *   bin/battle record [OPTIONS] OUT
  *     Save the screen to OUT as the raw H.264 a battle decodes, which is what the recognition fixtures are cut from.
  *
  *     --seconds N        how long to record, from 1 to 180 (30 when not given)
@@ -151,7 +151,7 @@ async function silhouettes(data: GameData): Promise<Icon[]> {
   }
 
   // None at all is every party read against nothing. Where no form even names an icon, it is the listing of the artwork
-  // that failed, which `loadGameData` reports and carries on from: `pnpm inventory` loses only its narrowing by artwork.
+  // that failed, which `loadGameData` reports and carries on from: `bin/inventory` loses only its narrowing by artwork.
   if (read.size === 0) {
     throw new Error('no form icon could be had, so no party could be read');
   }
@@ -195,7 +195,7 @@ if (command === 'run') {
   const ocr = tesseractWasm({ langPath: tessdata, workers: 2, cache: false });
   useEngine(ocr);
 
-  // Which move is worth the most per energy, out of the game master `pnpm inventory` downloads and caches for a week.
+  // Which move is worth the most per energy, out of the game master `bin/inventory` downloads and caches for a week.
   const data = await loadGameData(CACHE);
 
   const icons = await silhouettes(data);

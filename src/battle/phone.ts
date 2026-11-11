@@ -72,7 +72,7 @@ export async function battlePhone(
   connection: Pick<Connection, 'transport' | 'spawn'>,
   watch: (connection: Pick<Connection, 'spawn'>, size: Size) => Feed = feed,
 ): Promise<Phone & { close(): void; failed: Promise<Error> }> {
-  // Shell commands through the shell held open, as `pnpm battle` sends them, and the screenshot a process of its own.
+  // Shell commands through the shell held open, as `bin/battle` sends them, and the screenshot a process of its own.
   const held = await heldShell(connection);
   const transport = { ...connection.transport, shell: held.shell };
   const device = new Device(transport);

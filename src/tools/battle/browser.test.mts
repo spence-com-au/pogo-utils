@@ -1,7 +1,7 @@
 /**
  * The battle modules a page will run, bundled for a browser as `scripts/bundle.mts` bundles a page, so that one reaching
  * Node fails here rather than in the build of the page that first imports it. They are written as `.mts` for Node and
- * run there under `pnpm battle`, which is what makes it easy for a `node:` import to arrive unnoticed: nothing about
+ * run there under `bin/battle`, which is what makes it easy for a `node:` import to arrive unnoticed: nothing about
  * running them under Node or Vitest would say a browser cannot.
  *
  * Node's built-ins are left external rather than left to fail, since a failed build has no metafile to say how the

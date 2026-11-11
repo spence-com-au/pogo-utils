@@ -1,5 +1,5 @@
 /**
- * A touchscreen of its caller's own — `pnpm battle`'s, `pnpm inventory scan`'s or the Battle tab's — made on the phone
+ * A touchscreen of its caller's own — `bin/battle`'s, `bin/inventory scan`'s or the Battle tab's — made on the phone
  * through `/dev/uhid` from the shell a `Transport` holds open: each touch is a HID report written by the shell's
  * `print` builtin, where `input tap` and `input swipe` start a Java runtime on the phone for every command, about 20ms
  * each. The phone's own touchscreen is no way in: SELinux refuses the shell a write to `/dev/input/event*`,

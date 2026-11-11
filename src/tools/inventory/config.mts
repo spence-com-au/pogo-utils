@@ -1,6 +1,6 @@
 /**
  * Where the phone is tapped and swiped, and how long each animation is given, for everything that drives storage:
- * `pnpm inventory`, which takes a `--config` file over `DEFAULTS`, and the Search page, which has no file to take.
+ * `bin/inventory`, which takes a `--config` file over `DEFAULTS`, and the Search page, which has no file to take.
  */
 
 import { launchable } from '../../core/adb.mts';

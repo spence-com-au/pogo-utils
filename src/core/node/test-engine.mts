@@ -42,8 +42,8 @@ export function useTestEngine(): () => Promise<void> {
 }
 
 /**
- * The WebAssembly build whatever the environment asks for, which is what the battle readers' tests run under: `pnpm
- * battle` and the Battle tab both read with it, so the CLI's answers are no reader's to keep.
+ * The WebAssembly build whatever the environment asks for, which is what the battle readers' tests run under:
+ * `bin/battle` and the Battle tab both read with it, so the CLI's answers are no reader's to keep.
  */
 export const wasmEngine = () => tesseractWasm({ langPath: tessdata(), workers: availableParallelism(), cache: false });
 

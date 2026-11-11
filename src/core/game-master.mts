@@ -161,8 +161,8 @@ export interface GameData {
   /**
    * Every Mega Evolution and Primal Reversion, each a form of its own and named as the game names it, `Mega Mewtwo Y`
    * and `Primal Kyogre`: its own stats and types, its base form's moves and its `megaMove`. Apart from `forms`, which
-   * `pnpm inventory` identifies a Pokémon in storage against and has never been checked against a Mega; a trainer
-   * battle fields them, in `Master League: Mega`.
+   * `bin/inventory` identifies a Pokémon in storage against and has never been checked against a Mega; a trainer battle
+   * fields them, in `Master League: Mega`.
    */
   megas: Form[];
 
