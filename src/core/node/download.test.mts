@@ -429,6 +429,22 @@ test('a form is battle-only where a change of form mid-battle turns its species 
   ]);
 });
 
+/** Porygon's and Omanyte's spawns as the dump splits them, on the `SPAWN_` templates beside their own. */
+test('a form is genderless where its spawns are all genderless', async () => {
+  const spawn = (templateId: string, gender: object) => ({ templateId, data: { genderSettings: { gender } } });
+  const forms = await formsOf([
+    spawn('SPAWN_V0137_POKEMON_PORYGON_NORMAL', { genderlessPercent: 1 }),
+    species('V0137_POKEMON_PORYGON_NORMAL', { pokemonId: 'PORYGON', form: 'PORYGON_NORMAL' }),
+    spawn('SPAWN_V0138_POKEMON_OMANYTE_NORMAL', { malePercent: 0.875, femalePercent: 0.125 }),
+    species('V0138_POKEMON_OMANYTE_NORMAL', { pokemonId: 'OMANYTE', form: 'OMANYTE_NORMAL' }),
+  ]);
+
+  expect(forms.map((f) => [f.dex, f.genderless ?? false])).toStrictEqual([
+    [137, true],
+    [138, false],
+  ]);
+});
+
 test('a form takes the artwork the listing names: trimmed, in full or, for the ordinary form only, bare', async () => {
   const listing = {
     tree: [

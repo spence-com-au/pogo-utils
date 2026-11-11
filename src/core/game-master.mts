@@ -88,6 +88,12 @@ export interface Form {
    * every other form.
    */
   battleOnly?: true;
+
+  /**
+   * Whether the form has no gender, as Porygon and Mew: the Pokédex draws it an empty ring where every other draws ♂,
+   * ♀ or both. Absent on every other form, and on every Mega, which nothing reads it of.
+   */
+  genderless?: true;
 }
 
 export interface Move {

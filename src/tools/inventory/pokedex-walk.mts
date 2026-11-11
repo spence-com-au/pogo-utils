@@ -142,6 +142,10 @@ export const TABS: readonly { label: string; counts: (entry: Entry) => boolean }
   ...(['shadow', 'purified', 'perfect'] as const).map((key) => ({ label: CATEGORIES[key], counts: has(key) })),
 ];
 
+/** Whether a read of an entry's genders names one, solid or dashed, which an entry with any genders draws. */
+const namesGender = (genders: Genders | null): genders is Genders =>
+  genders?.male !== undefined || genders?.female !== undefined;
+
 /** Whether any form of an entry has `key` registered, which is what fills the species' tile in that tab. */
 function has(key: Category) {
   return (entry: Entry) => entry.forms.some((form) => form[key] === true);
@@ -521,7 +525,7 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     }
 
     if (!landed || landed[1] !== dex) {
-      throw new Error(`could not get back to the top of #${dex}'s entry to select its next form`);
+      throw new Error(`could not get back to the top of #${dex}'s entry`);
     }
 
     return landed[0];
@@ -589,8 +593,11 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     for (let frame = 0; frame < FRAMES; frame++) {
       keep(`${name}-${frame}`, shot.image);
       const { image, lines } = shot;
+      const found = gendersOn(image, lines);
 
-      genders ??= gendersOn(image, lines);
+      // A read that names no gender is a genderless species' or a misread, which `gendersOf` tells apart, so the next
+      // frame's gets its turn.
+      genders ??= namesGender(found) ? found : null;
 
       const caught = caughtOn(image, lines, below);
 
@@ -656,7 +663,13 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
       const seen = await view(top, dex, tag);
       const named = await identityOf(seen, dex);
 
-      return assemble({ dex, species, notes, views: [{ form: named === undefined ? null : named, seen }] });
+      return assemble({
+        dex,
+        species,
+        notes,
+        views: [{ form: named === undefined ? null : named, seen }],
+        genders: await gendersOf(top, dex, species, notes, [seen.genders]),
+      });
     }
 
     const openedLabels = await labelsOf(top.image, opened);
@@ -788,22 +801,67 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
 
     // A form not registered is not viewed, so a species with none registered has only the entry as it opened to say
     // its genders, as Golem's on `golem-0.png` does (#1070).
-    return assemble({ dex, species, notes, views, opened: gendersOn(top.image, top.lines) });
+    const genders = await gendersOf(top, dex, species, notes, [
+      ...views.map(({ seen }) => seen.genders),
+      gendersOn(top.image, top.lines),
+    ]);
+
+    return assemble({ dex, species, notes, views, genders });
   };
 
-  /** The line for a species, out of what each of its forms' views read, and the genders `opened` where none read any. */
+  /**
+   * The genders of the species `dex`, by the first of `reads` that names one. Where none does, none for a species the
+   * game master gives no gender, whose entry draws an empty ring; any other draws ♂ or ♀ at least, so its reads were
+   * misreads, and its entry's top is read once more, after leaving it for the next and coming back. Where that names
+   * none either, the line says so.
+   *
+   * A full walk read no genders for Omanyte or Chikorita, each gendered and caught and each straight after a genderless
+   * species. Why is not known: since then they have read both every time, opened from the grid once each and swiped to
+   * from the species before nine times between them (#1071).
+   */
+  const gendersOf = async (
+    top: Shot,
+    dex: number,
+    species: string,
+    notes: string[],
+    reads: readonly (Genders | null)[],
+  ): Promise<Genders> => {
+    const first = reads.find(namesGender);
+
+    if (first) {
+      return first;
+    }
+
+    if (formsOf(dex).every((f) => f.genderless)) {
+      return {};
+    }
+
+    const again = await reopen(top, dex);
+    keep(`${String(dex).padStart(4, '0')}-genders`, again.image);
+    const genders = gendersOn(again.image, again.lines);
+
+    if (namesGender(genders)) {
+      return genders;
+    }
+
+    notes.push(`no genders read for ${species}, which has them`);
+
+    return {};
+  };
+
+  /** The line for a species, out of what each of its forms' views read and the `genders` they come to. */
   const assemble = ({
     dex,
     species,
     notes,
     views,
-    opened = null,
+    genders,
   }: {
     dex: number;
     species: string;
     notes: string[];
     views: { form: Named; seen: View }[];
-    opened?: Genders | null;
+    genders: Genders;
   }): Entry => {
     const forms = views.map(({ form, seen }) => formFrom(form, seen));
     const held: Costume[] = [];
@@ -839,8 +897,6 @@ export function pokedex({ device, config, data, icon, drag, keep, say }: Walking
     if (views.some(({ seen }) => seen.unplaced)) {
       notes.push(`some of ${species}'s costumes could not be lined up with those above them, so are not counted`);
     }
-
-    const genders = views.find(({ seen }) => seen.genders !== null)?.seen.genders ?? opened ?? {};
 
     return { dex, species, caught: forms.some((f) => f.caught), genders, forms, costumes, notes };
   };
