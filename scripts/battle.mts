@@ -380,12 +380,14 @@ if (command === 'run') {
   const file = createWriteStream(out);
 
   // An OUT that cannot be written fails here, with `adb` still recording into a pipe nobody reads, which would keep the
-  // script alive until `--seconds` ran out.
+  // script alive until `--seconds` ran out. It is waited for once killed, so that the script has reaped it on exit
+  // rather than leave a zombie for whatever adopts it, which can take seconds to.
   try {
     await pipeline(recording.stdout, file);
   } catch (error) {
     recording.kill();
     console.error(`could not write ${out}: ${said(error)}`);
+    await exited;
     process.exit(1);
   }
 
