@@ -49,7 +49,16 @@ const READING: Reading = {
     checked: true,
     form: null,
   },
-  identity: { form: APPLIN, cp: 286, alternatives: [], unseparated: [], levels: [15], nickname: null, notes: [] },
+  identity: {
+    form: APPLIN,
+    cp: 286,
+    height: 0.28,
+    alternatives: [],
+    unseparated: [],
+    levels: [15],
+    nickname: null,
+    notes: [],
+  },
 };
 
 /**

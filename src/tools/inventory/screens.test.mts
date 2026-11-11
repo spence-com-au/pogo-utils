@@ -1997,15 +1997,14 @@ test(
  * two and the loop measured nothing where it reports no floor; uncounted, all 380 of each reach the comparison.
  *
  * Nothing nearer than an arithmetic reach of `CP_SWEEP`'s own band is interesting, so the search stops at 190, which
- * is where the last of the two sits. Measuring it is what makes the comment's claim falsifiable rather than a
+ * is where `deoxys-defense.png`'s sits. Measuring it is what makes the comment's claim falsifiable rather than a
  * reassurance, and what would catch a later change widening the generosity.
  *
  * Over the captures the CLI leaves to candidates, and so the CLI's own where the maps above are pinned for each engine:
- * `deoxys-defense.png` is the second of the two only for as long as the engine reads no CP off it, which tesseract.js
- * does.
+ * `deoxys-defense.png` has a floor only for as long as the engine reads no CP off it, which tesseract.js does.
  */
 test.skipIf(ON_WASM)(
-  'the nearest band reading answered with a wrong form and no note is 73 CP away',
+  'the nearest band reading answered with a wrong form and no note is 190 CP away',
   async () => {
     const REACH = 190;
     const shape = (identity: { form: Form | null; levels: readonly number[] }) =>
@@ -2038,7 +2037,6 @@ test.skipIf(ON_WASM)(
       Object.fromEntries(floors),
       "`identify`'s comment on `printed` quotes this floor; update both or neither",
     ).toStrictEqual({
-      'castform-rainy.png': '73 away, answered as Quaxwell at 18',
       'deoxys-defense.png': '190 away, answered as Deoxys (Attack) at 25',
     });
   },
@@ -2501,7 +2499,16 @@ test('a stray coloured pixel beside the size pill does not cost the badge', asyn
  * What `identify` answers for a screen with no Pokémon on it, which it declines without comment. One definition, and a
  * whole object, so a field added to `Identity` fails each screen asserted against it until it is accounted for.
  */
-const DECLINED = { form: null, cp: null, alternatives: [], unseparated: [], levels: [], nickname: null, notes: [] };
+const DECLINED = {
+  form: null,
+  cp: null,
+  height: null,
+  alternatives: [],
+  unseparated: [],
+  levels: [],
+  nickname: null,
+  notes: [],
+};
 
 /**
  * `fixtures/overworld.png` is the map, and this is what the detail readers answer on it: nothing, in every field. That

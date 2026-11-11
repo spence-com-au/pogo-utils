@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { type Detail } from './detail.mts';
 import { type Form, type GameData } from '../../core/game-master.mts';
-import { identify, label, shadowOf } from './identify.mts';
+import { clearable, identify, label, shadowOf } from './identify.mts';
 import { type Overlay } from './overlay.mts';
 
 /** The game master the readers are asserted against, vended beside the captures. */
@@ -80,6 +80,44 @@ test('a height no form fits leaves the forms the numbers left', () => {
     form: 'Pumpkaboo (Large)',
     alternatives: ['Pumpkaboo (Super)'],
   });
+});
+
+/**
+ * A height the answer cannot be in any band is a misread rather than a Pokémon that tall, so it is answered as unread
+ * and said, in a note a scan reads the screen again for. One of two scans of the same Miltank read its 1.18m as `118m`
+ * and wrote it, where a Miltank runs from 0.58m to 2.08m.
+ */
+test('a height the form answered cannot be is left unread, and the screen read again for it', () => {
+  const miltank = (height: number): Detail => ({
+    cp: 981,
+    cps: [],
+    name: 'Miltank',
+    hp: 117,
+    weight: 70.74,
+    height,
+    types: ['Normal'],
+    gender: 'female',
+    favourite: false,
+    lucky: false,
+    size: null,
+    tags: [],
+    evolveCandy: null,
+    powerUp: null,
+    max: null,
+  });
+
+  const read = (height: number) => {
+    const identity = identify(DATA, miltank(height), null);
+
+    return { height: identity.height, notes: identity.notes, clearable: clearable(identity) };
+  };
+
+  expect(read(118)).toStrictEqual({
+    height: null,
+    notes: ['the screen reads a height of 118m, which no Miltank can be'],
+    clearable: 1,
+  });
+  expect(read(1.18)).toStrictEqual({ height: 1.18, notes: [], clearable: 0 });
 });
 
 const SINISTEA: Detail = {

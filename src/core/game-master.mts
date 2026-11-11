@@ -245,6 +245,12 @@ export function fitsHeight(form: Form, height: number, size: Size | null): boole
 }
 
 /**
+ * Whether a form can be this tall whatever badge it wears, from XXS's floor to XXL's ceiling: what a height is held to
+ * where the badge over it may have been missed. True for a form the game master gives no bands.
+ */
+export const fitsAnyBand = (form: Form, height: number) => BANDS.some((size) => fitsHeight(form, height, size));
+
+/**
  * Levenshtein distance over folded text, so case, accents and OCR's stray punctuation cost nothing. `within` measures
  * `a` against the nearest stretch of `b` rather than all of it, which costs nothing for what it leaves off either end:
  * `TIVE` is no distance within SUPER EFFECTIVE.

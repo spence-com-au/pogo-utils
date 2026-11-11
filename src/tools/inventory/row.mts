@@ -137,7 +137,7 @@ export async function rowOf(
     iv,
     moves: looked.moves,
     weight: detail.weight,
-    height: detail.height,
+    height: id.height,
     types: detail.types,
     notes: [...notes, ...id.notes],
   };
