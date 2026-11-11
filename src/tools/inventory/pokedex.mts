@@ -1560,7 +1560,7 @@ export interface Silhouette {
  * The forms left are those the silhouettes' shapes fit, and any whose shape was not had to hold against them. Minior's
  * seven cores are one shape in seven colours, and beside them and its Meteor shell the game master has seven coloured
  * shells the Pokédex draws nowhere: 13 of its 15 forms are left for the six cores not registered, and six of those are
- * cores.
+ * cores. A shape that fits only forms named already says nothing of which a silhouette is, and leaves every form in.
  *
  * A shape is held against every one of the species' forms, the ones already named too, so the last silhouette has more
  * than one to be nearer than: `namedFrom` names nothing after a lone candidate, and against only the forms left, a
@@ -1592,8 +1592,10 @@ export function silhouettesNamed(
   }
 
   const held = new Set(shapes.map((s) => s.name));
+  const open = unnamed.map(({ fits }) => fits.filter((name) => !taken.has(name)));
   const left = forms.filter(
-    (f) => !taken.has(f.form) && (!held.has(f.form) || unnamed.some(({ fits }) => fits.includes(f.form))),
+    (f) =>
+      !taken.has(f.form) && (!held.has(f.form) || open.some((names) => names.length === 0 || names.includes(f.form))),
   );
 
   for (const [i, { index }] of unnamed.entries()) {

@@ -440,6 +440,29 @@ test("a species' last unregistered form is named by its shape", async () => {
 });
 
 /**
+ * A silhouette whose shape plainly names a form registered already: Combat Breed's tile, as if Combat and Blaze were
+ * registered and Aqua were the one left. Its shape then says nothing of which it is, so every form left is held to it,
+ * and it is the one: Aqua, by elimination.
+ */
+test('a silhouette whose shape names a registered form is named by elimination among every form left', async () => {
+  const { image } = await read('tauros-0');
+  const { tiles } = await formRow('tauros-0');
+  const { box } = tiles[1] ?? expect.unreachable("Tauros's form row has four tiles");
+  const forms = DATA.forms.filter((f) => f.dex === 128 && !f.costume);
+
+  expect(
+    silhouettesNamed([{ index: 1, image, box, label: null }], forms, formsOf(128), [
+      null,
+      'Paldea Combat',
+      'Paldea Blaze',
+    ]),
+  ).toStrictEqual({
+    forms: [{ index: 1, form: 'Paldea Aqua' }],
+    notes: ['form 2 is a silhouette that neither its label nor its shape names, named Paldea Aqua by elimination'],
+  });
+});
+
+/**
  * Minior's entry as it opens, Green the one core registered: its seven cores in a rainbow's order, two rows of them, and
  * apart from them under `BATTLE-ONLY FORM` its Meteor shell. The shell is named by its place, its icon being each of the
  * game master's seven coloured Meteor forms' as nearly as its own, and no tile above the heading is named that way.
