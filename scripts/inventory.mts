@@ -17,30 +17,6 @@
  * hand and the game's own icons (`inventory/costume.mts`), with every costume it could be where the artwork does not
  * settle which, and any other species' as every costume it has once the pass has found it.
  *
- * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
- *
- *   pnpm inventory scan [--out inventory.jsonl] [--search TERM] [--limit N] [--skip N] [--flags shiny,lucky,…]
- *                       [--tags 'Trade to 0xNULL,…'] [--no-moves] [--scroll] [--keep-screens DIR]
- *                       [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
- *   pnpm inventory snap [--search TERM] [--verbose] [--refresh] [--config FILE] [--serial SERIAL] [--user N]
- *                       [NAME]
- *                       save `NAME.png` — the whole screen stitched out of a scroll, or the plain screenshot where
- *                       PGSharp's overlay did not read, which is where nothing is scrolled at all — and print what
- *                       each reader makes of it; fails unless it is a detail screen carrying that overlay, and a
- *                       failure leaves a capture already saved under the name as it was. `--search` opens the first
- *                       Pokémon that storage's own search matches, so that a capture names the Pokémon it wants —
- *                       `--search '+burmy & cp196'` rather than a screen set up by hand
- *   pnpm inventory parse [--verbose] [--refresh] [--config FILE] FILE.png…
- *                       the same for screenshots already saved, with no phone needed
- *   pnpm inventory dex [--out pokedex.jsonl] [--from N] [--to M] [--keep-screens DIR]
- *                      [--config FILE] [--serial SERIAL] [--user N] [--refresh] [--verbose]
- *                       walk the game's Pokédex entry by entry and write what each species has registered, one line
- *                       each; `--from` and `--to` walk those numbers alone and replace only their lines of `--out`.
- *                       Ends by checking the record against the counts each tab of the Pokédex prints, and fails
- *                       naming each region and tab that disagrees, the lines it wrote kept
- *   A flag handed to a command whose line omits it is refused rather than ignored — see `HONOURED`.
- *   `help`, or `--help` beside any command, prints this.
- *
  * `--search TERM` scans only what storage's own search matches, the flag passes too: each searches `shiny&TERM` and the
  * like, the game reading a `,` inside a clause as or and the `&` between clauses as and.
  *
@@ -60,10 +36,61 @@
  * phone of the same shape. Each prints its answer — species, form, CP, HP, level, IVs and moves, once each, coloured by
  * whether it was read off the screen or worked out from what was — with the notes that qualify it. `--verbose` adds the
  * lines OCR found with their boxes, which is what separates a field left empty because no text was read there from one
- * left empty because a reader anchored on the wrong line, and what each reader made of them.
+ * left empty because a reader anchored on the wrong line, and what each reader made of them. A snap saves the whole
+ * screen stitched out of a scroll, or the plain screenshot where PGSharp's overlay did not read, which is where nothing
+ * is scrolled at all; one that fails leaves a capture already saved under its name as it was. `--search` is what lets a
+ * capture name the Pokémon it wants rather than take a screen set up by hand.
  *
  * Automating input breaks Niantic's terms of service. This only reads, and moves at a person's pace, but the risk to
  * the account is the user's to weigh.
+ *
+ * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
+ *
+ *   pnpm inventory scan [OPTIONS]
+ *     Walk every Pokémon in storage and write one line of JSON for each.
+ *
+ *     --out FILE          write to FILE rather than inventory.jsonl, replacing what it held
+ *     --search TERM       scan only what storage's own search matches
+ *     --limit N           stop after N Pokémon
+ *     --skip N            resume a scan whose --out already holds rows 1 to N, adding to it
+ *     --flags LIST        the search passes to run, of shiny, lucky, costume, shadow and purified
+ *                         (shiny,lucky,costume when not given)
+ *     --tags LIST         the tags to recognise on the chips under the HP, as 'Trade to 0xNULL,…'
+ *     --no-moves          leave the moves unread
+ *     --scroll            read the moves off a stitched scroll capture of the whole screen
+ *     --keep-screens DIR  save each screen read to DIR
+ *     also the shared --config, --serial, --user, --refresh and --verbose
+ *
+ *   pnpm inventory snap [OPTIONS] [NAME]
+ *     Save the screen as .cache/inventory/snaps/NAME.png, named for the time when NAME is not given, and print what
+ *     each reader makes of it. Fails unless it is a detail screen carrying PGSharp's overlay.
+ *
+ *     --search TERM       open the first Pokémon storage's own search matches, as --search '+burmy & cp196'
+ *     also the shared --config, --serial, --user, --refresh and --verbose
+ *
+ *   pnpm inventory parse [OPTIONS] FILE.png…
+ *     Print what each reader makes of screenshots already saved. Needs no phone.
+ *
+ *     also the shared --config, --refresh and --verbose
+ *
+ *   pnpm inventory dex [OPTIONS]
+ *     Walk the Pokédex and write one line of JSON for each species, then check the record against the counts each
+ *     tab prints. Fails naming each region and tab that disagrees, keeping the lines it wrote.
+ *
+ *     --out FILE          write to FILE rather than pokedex.jsonl
+ *     --from N, --to M    walk only numbers N to M, replacing just their lines of --out
+ *     --keep-screens DIR  save each screen read to DIR
+ *     also the shared --config, --serial, --user, --refresh and --verbose
+ *
+ * Shared options:
+ *
+ *   --config FILE    take taps, swipes and waits from FILE, over `DEFAULTS` in `src/tools/inventory/config.mts`
+ *   --serial SERIAL  the phone to drive, where more than one is plugged in
+ *   --user N         the Android user whose copy of the game to drive: 0 personal, 10 a work profile
+ *   --refresh        download the game data again rather than use a copy less than a week old
+ *   --verbose        narrate reading the form icons, and for snap and parse print what OCR read and each raw reading
+ *
+ * A flag a command does not list is refused rather than ignored. `help`, or `--help` beside any command, prints this.
  */
 
 import { said } from '../src/errors.ts';
@@ -178,7 +205,7 @@ const [command = 'help', ...rest] = options.help ? [] : positionals;
  * wants it as much as `help` does: a complaint about a flag is most useful beside the list the flag was not on.
  */
 const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
-  .match(/Usage[^]*?\n \*\n[^]*?\n \*\n/)?.[0]
+  .match(/Usage[^]*?(?=\n \*\/)/)?.[0]
   .replace(/^ \* ?/gm, '');
 
 /**
