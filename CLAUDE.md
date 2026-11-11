@@ -26,14 +26,15 @@
   `.claude/settings.json` puts `bin/adb` first on the PATH of a session's Bash commands and names it as `ADB`, which
   scrcpy runs in place of the `adb` on the PATH or a portable build's own. So every way to the phone — by hand, from
   scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm adb` — runs `bin/adb`, which takes the phone's lease or is
-  refused while another session holds it. `bin/adb` runs the first other `adb` on the PATH, so a machine whose only
-  `adb` is one bundled with scrcpy needs one there too. The refusal names the holder and says how to wait for it or ask
-  it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is the one way past the lease
-  and taps over the other session's run. A session lets go of the phone when a turn ends with no command that reached it
-  still running and no background agent — or, after a turn interrupted with `Esc` or ended by an API error, neither of
-  which fires `Stop`, once it has sat idle about a minute — or when it exits, and a crashed one holds nothing. Settings
-  are read as a session starts, so one started before these hooks were in its checkout runs the bare `adb` until it
-  restarts.
+  refused while another session holds it. A subagent shares its session's lease, but two subagents of one session, as
+  forks run side by side, take turns as two sessions do. `bin/adb` runs the first other `adb` on the PATH, so a machine
+  whose only `adb` is one bundled with scrcpy needs one there too. The refusal names the holder and says how to wait for
+  it or ask it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is the one way past
+  the lease and taps over the other session's run. A session lets go of the phone when a turn ends with no command that
+  reached it still running and no background agent — or, after a turn interrupted with `Esc` or ended by an API error,
+  neither of which fires `Stop`, once it has sat idle about a minute — or when it exits, and a crashed one holds
+  nothing; a subagent lets go of what it took as it finishes. Settings are read as a session starts, so one started
+  before these hooks were in its checkout runs the bare `adb` until it restarts.
 - **Cover the account in every capture of the phone.** A fixture, a PR screenshot or a recording hides each of the
   account's trainer names — on the VS screen, under the avatar on the map and as the partner under "OBTAINED IN A TRADE"
   on a detail screen — and the Nearby Battle QR code on the Battle tab, which is tied to the account. Fill them solid,
