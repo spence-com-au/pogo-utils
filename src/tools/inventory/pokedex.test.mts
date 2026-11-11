@@ -38,6 +38,7 @@ import {
   silhouettesNamed,
   type Candidate,
   type Category,
+  type Genders,
   type Look,
 } from './pokedex.mts';
 import { type GameData } from '../../core/game-master.mts';
@@ -239,23 +240,44 @@ test('a band of light across a tile leaves what it holds as it is', async () => 
   expect(forms).toHaveLength(23);
 });
 
+/** The genders an entry draws, as the walk reads them, or with the `ALERT` label unread. */
+async function gendersOf(name: string, { alert = true } = {}) {
+  const { image, lines: found } = await read(name);
+
+  return gendersOn(image, alert ? found : found.filter((l) => l !== alertOf(found)));
+}
+
+/** Captures of entries and the genders each draws. */
+const GENDERS: [string, Genders][] = [
+  ['bulbasaur-0', { male: true, female: true }],
+  ['ivysaur-0', { male: true, female: false }],
+  ['golem-0', { male: false, female: false }],
+  ['tauros-0', { male: true }],
+  ['nidoran-female-0', { female: true }],
+  ['unown-3', {}],
+];
+
 /**
  * Each way the game draws genders: both registered, one of two not — Ivysaur's ♀ dashed — both seen and neither caught,
- * one gender alone either way round, and Unown's ring, which is no gender at all.
+ * one gender alone either way round, and Unown's ring, which is no gender at all. A screen scrolled past the row of
+ * icons has none to read, and the walk reads the next.
  */
 test('the genders an entry draws, solid where registered and dashed where not', async () => {
-  const genders = async (name: string) => {
-    const { image, lines: found } = await read(name);
+  for (const [name, genders] of GENDERS) {
+    expect(await gendersOf(name), name).toStrictEqual(genders);
+  }
 
-    return gendersOn(image, found);
-  };
+  expect(await gendersOf('charizard-2'), 'scrolled past the row of icons').toBe(null);
+});
 
-  expect(await genders('bulbasaur-0')).toStrictEqual({ male: true, female: true });
-  expect(await genders('ivysaur-0')).toStrictEqual({ male: true, female: false });
-  expect(await genders('golem-0')).toStrictEqual({ male: false, female: false });
-  expect(await genders('tauros-0')).toStrictEqual({ male: true });
-  expect(await genders('nidoran-female-0')).toStrictEqual({ female: true });
-  expect(await genders('unown-3')).toStrictEqual({});
+/**
+ * The `SEEN` counter finds the row of icons where the `ALERT` label is not read, as the label would have: a full walk
+ * that went by `ALERT` alone read no genders for Kecleon, Smeargle or Zorua.
+ */
+test('an entry whose ALERT is not read draws the same genders', async () => {
+  for (const [name, genders] of GENDERS) {
+    expect(await gendersOf(name, { alert: false }), name).toStrictEqual(genders);
+  }
 });
 
 /** The form row's tiles between the title and the row of icons, as the walk bounds it, with the `ALERT` label unread. */

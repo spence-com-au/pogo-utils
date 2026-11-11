@@ -858,17 +858,27 @@ const seenOf = (lines: readonly Line[]) => findLine(lines, /^seen$/);
 const SEEN_TO_ALERT = 0.066;
 
 /**
- * Where an entry's form row can be on a screenshot: from the foot of its title to above its row of gender and type
- * icons, and whether that row is on the screen to end it, which Unown's forms run past the foot of.
+ * The foot of an entry's row of gender and type icons, which its form row ends above and its genders are read along:
+ * the top of the `ALERT` label or, where that is not read, the top of the `SEEN` label below it less the gap between
+ * the two.
  *
- * The row of icons is found by the `ALERT` label at its foot or, where that is not read, by the `SEEN` counter's below
- * it. Without either the band runs on into the counters and the CAUGHT tab, pale tiles all, which `formsOn` takes for
- * forms: a full walk that went by `ALERT` alone gave Ditto, Smeargle, Kecleon, Zorua and Zoroark seven apiece.
+ * A full walk that went by `ALERT` alone ran Ditto, Smeargle, Kecleon, Zorua and Zoroark's form rows on to seven tiles
+ * apiece, and read no genders for Kecleon, Smeargle or Zorua, each gendered and caught.
+ */
+function iconsFoot(image: Image, lines: readonly Line[]): number | undefined {
+  const seen = seenOf(lines);
+
+  return alertOf(lines)?.top ?? (seen && seen.top - image.width * SEEN_TO_ALERT);
+}
+
+/**
+ * Where an entry's form row can be on a screenshot: from the foot of its title to above its row of gender and type
+ * icons, and whether that row is on the screen to end it, which Unown's forms run past the foot of. Without the row the
+ * band runs on into the counters and the CAUGHT tab, pale tiles all, which `formsOn` takes for forms.
  */
 export function formBand(image: Image, lines: readonly Line[]): { from: number; to: number; ended: boolean } {
   const title = titleOf(lines);
-  const seen = seenOf(lines);
-  const foot = alertOf(lines)?.top ?? (seen && seen.top - image.width * SEEN_TO_ALERT);
+  const foot = iconsFoot(image, lines);
 
   return {
     from: title ? title.top + title.height : image.height * 0.42,
@@ -897,18 +907,22 @@ interface Mark {
  * on `golem-0.png` and `ivysaur-0.png`, a dashed ♂ carries 68 marks to the upper right against 24 below, where a dashed
  * ♀ carries 30 and 32; and Unown's ring on `unown-2.png` carries none inside at all, where every dashed glyph has over
  * a hundred.
+ *
+ * Null where the row is not on the screen, or nothing along its foot is read to say where its types begin.
  */
-export function gendersOn(image: Image, lines: readonly Line[]): Genders {
-  const alert = alertOf(lines);
+export function gendersOn(image: Image, lines: readonly Line[]): Genders | null {
+  const foot = iconsFoot(image, lines);
 
-  if (!alert) {
-    return {};
+  // The labels along the row's foot, within a label's height of it, are the types' and the alert's, and the gender
+  // icons are what comes before them.
+  const labels = lines.filter((l) => foot !== undefined && Math.abs(l.top - foot) < image.width * 0.02);
+
+  if (foot === undefined || labels.length === 0) {
+    return null;
   }
 
-  // The types are the labels on the alert's own line left of it, and the gender icons are what comes before them.
-  const types = lines.filter((l) => Math.abs(l.top - alert.top) < alert.height && l.left < alert.left);
-  const end = Math.min(...types.map((l) => l.left), alert.left) - image.width * 0.03;
-  const middle = alert.top - image.width * ALERT_TO_ICONS;
+  const end = Math.min(...labels.map((l) => l.left)) - image.width * 0.03;
+  const middle = foot - image.width * ALERT_TO_ICONS;
   const reach = image.width * 0.04;
   const step = 2;
   const backdrop = rgb(image, image.width * 0.02, middle);
