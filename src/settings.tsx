@@ -95,11 +95,11 @@ export function Settings() {
           <span>Settings</span>
         </div>
 
-        <section class="settings-section" aria-labelledby="settings-backup">
+        <section class="menu-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="settings-note">Save this browser’s preferences as a file, or restore one.</p>
+          <p class="menu-note">Save this browser’s preferences as a file, or restore one.</p>
 
-          <div class="settings-actions">
+          <div class="menu-actions">
             <button type="button" title="Save every preference this browser has stored as a file" onClick={exportPrefs}>
               Export
             </button>

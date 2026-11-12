@@ -2,10 +2,11 @@
  * The phone this document holds over WebUSB, shared by every tab rather than owned by any one of them: the phone
  * button connects it, the Inventory page reads its screen, and the Search page types its string into storage on it.
  *
- * Held until another phone replaces it or it is unplugged, so a tab switch costs no reconnection. The phone stays
- * claimed meanwhile, which is the trade: an `adb` server on this computer cannot reach it until it is unplugged or the
- * site is closed. A battle's Worker borrows it for a run, through `lend` in `battle/client.ts`, and none is held here
- * meanwhile, unless the phone button connects another, which then stays held in place of the lent one.
+ * Held until another phone replaces it, the phone button's panel disconnects it, or it is unplugged, so a tab switch
+ * costs no reconnection. The phone stays claimed meanwhile, which is the trade: an `adb` server on this computer cannot
+ * reach it until it is disconnected, unplugged or the site is closed. A battle's Worker borrows it for a run, through
+ * `lend` in `battle/client.ts`, and none is held here meanwhile, unless the phone button connects another, which then
+ * stays held in place of the lent one.
  *
  * Only the `Phone` type comes from `webusb.ts`, so a tab that merely asks whether a phone is held loads none of Tango.
  */
