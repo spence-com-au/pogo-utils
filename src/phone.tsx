@@ -15,6 +15,7 @@ import { loadChunk } from './chunks.js';
 import { said } from './errors.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
+import { ticked } from './ticked.js';
 
 /**
  * Whether the address asks for the demo phone: `/?demo#/inventory`, in the address's own query rather than the page's
@@ -141,7 +142,7 @@ export function Phone() {
       {status && (
         <div class="menu-panel phone-note">
           <p role="alert">
-            {status.message}
+            {ticked(status.message)}
             {status.failed && (
               <>
                 {/*

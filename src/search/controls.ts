@@ -1,7 +1,7 @@
 /**
  * What the Search page's boxes, chips and tooltips say, taken out of the page so they can be tested without a DOM: the
- * marks the `@` and `#` boxes put in front of what a reader types, a chip's tooltip, a sentence's backticked parts, what
- * a span pill's boxes show and offer and which answer to a send to the phone is still worth showing.
+ * marks the `@` and `#` boxes put in front of what a reader types, a chip's tooltip, what a span pill's boxes show and
+ * offer and which answer to a send to the phone is still worth showing.
  */
 
 import { names } from './query.js';
@@ -74,24 +74,6 @@ export const rangeTitle = (range: Range) => {
 
 /** Whether two paths name the same node, which is how a span's box knows it is the one being typed in. */
 const same = (one: Path, two: Path) => one.length === two.length && one.every((index, at) => two[at] === index);
-
-/**
- * A sentence split on its backticks: prose at the even positions and the quoted characters at the odd ones, the string
- * having begun outside a pair.
- *
- * **An unpaired tick is prose rather than markup**, so the tail it opens is rejoined and left as text. One caller of
- * `ticked` in `pages/search.js` is a refusal from `parse.js` that quotes a token the reader typed, and a reader can
- * type a tick — in a name, where the box splits on commas and leaves everything else alone. Pairing from the left and
- * giving up on the last one is what keeps that from setting the rest of the refusal in `<code>`: `terms.test.js` holds
- * the help table to pairs, and this holds the strings that arrive from outside any table.
- *
- * The page's `ticked` is the only caller; the test calls it directly.
- */
-export function spans(message: string): string[] {
-  const parts = message.split('`');
-
-  return parts.length % 2 === 0 ? [...parts.slice(0, -2), parts.slice(-2).join('`')] : parts;
-}
 
 /**
  * A bound as the tree should hold it: a number inside the range's limits, or nothing where the box is empty.

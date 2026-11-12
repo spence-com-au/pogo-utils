@@ -1,37 +1,18 @@
 /**
  * What the Search page has to be true of without a DOM around it.
  *
- * The page's own prose convention is the one thing here that is a claim about a string rather than about a render.
- * `help` in `terms.js` is prose this repository authors, and `terms.test.js` holds it to balanced ticks; a refusal from
- * `parse.js` quotes a token the reader typed, which no table can hold. So this is the other half of that invariant,
- * taken from the side the page does not get to author.
- *
- * A span pill's boxes are the other thing here, and the one with a reader at the far end of it: what a box shows and
- * what the tree takes from it are two answers rather than one, which `boxText` carries and the keystrokes below walk.
+ * A span pill's boxes are the one thing here with a reader at the far end of it: what a box shows and what the tree
+ * takes from it are two answers rather than one, which `boxText` carries and the keystrokes below walk.
  */
 
 import { expect, test } from 'vitest';
 
 import { compose, emptyState, presetTree } from './query.js';
 import { leafText, spanned } from './tree.js';
-import { read } from './parse.js';
 import { GROUPS, PRESETS, RANGES, type Range } from './terms.js';
 import { range } from '../testing/search.js';
 import { unsearchable } from '../tools/inventory/storage.mts';
-import { answered, boxText, marked, pickable, rangeTitle, readBound, spans, unmarked, type Sent } from './controls.js';
-
-/**
- * Both halves of what `spans` promises, for any message at all: an odd number of pieces, so the last one is prose and
- * every `<code>` the sentence opened is one it closed; and a join on the tick that gives the message back, so nothing
- * has been dropped or merged away on the way.
- */
-const faithful = (message: string) => ({
-  message,
-  prose: spans(message).length % 2 === 1,
-  joined: spans(message).join('`'),
-});
-
-const kept = (message: string) => ({ message, prose: true, joined: message });
+import { answered, boxText, marked, pickable, rangeTitle, readBound, unmarked, type Sent } from './controls.js';
 
 /**
  * A number typed into one of a span pill's boxes, a digit at a time: what the box shows while the caret is in it, what
@@ -208,33 +189,6 @@ test('a mark the reader typed is dropped rather than doubled', () => {
     '# + #3things': '#3things',
     '# + 3things': '#3things',
   });
-});
-
-test('a sentence is split on its backtick pairs', () => {
-  expect(spans('the game has no `gen1`')).toEqual(['the game has no ', 'gen1', '']);
-  expect(spans('`a` and `b`')).toEqual(['', 'a', ' and ', 'b', '']);
-  expect(spans('no ticks at all')).toEqual(['no ticks at all']);
-});
-
-test('an unpaired tick leaves the sentence prose rather than opening a span it cannot close', () => {
-  for (const message of ['a`b', '`', '``', 'a `b` c', 'a `b` c`', '`a`b`c`', '']) {
-    expect(faithful(message)).toEqual(kept(message));
-  }
-});
-
-test('a refusal quoting a tick the reader typed keeps it, and keeps the rest of the sentence prose', () => {
-  /*
-   * The reachable case: a name holding a tick, the box splitting on commas and leaving everything else alone, so the
-   * token this refusal quotes is the reader's own text. Seven ticks cannot be paired — before this, the stray one
-   * vanished off the page and the tail of the refusal was handed to `<code>`.
-   */
-  const refusal = read('(shiny)`a').error ?? '';
-
-  expect([...refusal].filter((character) => character === '`')).toHaveLength(7);
-  expect(faithful(refusal)).toEqual(kept(refusal));
-
-  // The tick is still there to be read, in the prose at the end rather than swallowed as a delimiter.
-  expect(spans(refusal).at(-1)).toBe('a`');
 });
 
 /** What a pair composes, through the writer rather than a second model of it. */

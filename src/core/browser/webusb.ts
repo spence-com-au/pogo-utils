@@ -192,7 +192,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
   } catch (error) {
     if (error instanceof AdbDaemonWebUsbDevice.DeviceBusyError) {
       throw new Error(
-        'the phone is in use, most likely by an adb server (adb kill-server stops it), this site in another tab or ' +
+        'the phone is in use, most likely by an adb server (`adb kill-server` stops it), this site in another tab or ' +
           'a battle still running',
         { cause: error },
       );

@@ -37,6 +37,7 @@ import {
 import { current } from '../search/optimise.js';
 import { read } from '../search/parse.js';
 import { replaceQuery } from '../router.js';
+import { ticked } from '../ticked.js';
 import { stepped, suggestions, written as speciesTerm, type Offer } from '../search/species.js';
 import { GROUPS, PRESETS, RANGES, RANGES_BY_ID, type Range } from '../search/terms.js';
 import {
@@ -47,7 +48,6 @@ import {
   pickable,
   rangeTitle,
   readBound,
-  spans,
   type Edge,
   type Sent,
   type Typed,
@@ -228,17 +228,6 @@ const pathAttribute = (path: Path) => path.join('.');
 
 /** The length of the string, said in words. A one-character query is what the shortening makes reachable. */
 const characters = (length: number) => `${length} character${length === 1 ? '' : 's'}`;
-
-/**
- * A sentence's backticked parts set in `<code>`, so that prose written in this repository's convention reads on screen
- * the way the caveat beside it does rather than showing its own punctuation.
- *
- * Four callers: the two refusals, from `clauses.js` and `parse.js`; a category's own help in `terms.js`, which would
- * otherwise show its ticks as ticks — `the game has no \`gen1\``; and the caveats beside a phrase the game mishandles,
- * one of which quotes the span it reads a shortcut as instead.
- */
-const ticked = (message: string) =>
-  spans(message).map((part, index) => (index % 2 === 0 ? part : <code key={index}>{part}</code>));
 
 /** What each end of a span is called, which is the whole of what its box needs beyond the range's own two limits. */
 const EDGES: Record<Edge, string> = { from: 'lowest', to: 'highest' };
