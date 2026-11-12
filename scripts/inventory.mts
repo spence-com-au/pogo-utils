@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds as JSON Lines, one object per
  * Pokémon: species, form, costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO

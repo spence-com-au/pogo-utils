@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * Things done to an Android phone over `adb` that neither `pnpm inventory` nor `pnpm battle` does for itself.
  *
