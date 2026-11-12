@@ -7,12 +7,24 @@
  * a term typed is a search, and the screenshot after Enter shows its result — after which the next screenshot is a
  * detail screen again, the next in turn, as though the reader had opened another Pokémon. So the Inventory page reads
  * a different Pokémon at every press, and the Search page finds storage from wherever the last read left the phone.
+ *
+ * Asked what it is, it answers as the Pixel 8 Pro the recordings were taken on, so the phone button's panel reads as
+ * a real phone's: its properties as that phone lists them, a charge made up for it, and the size its recordings were
+ * drawn at as its screen.
  */
 
 import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
 import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
+
+const PROPS = [
+  '[ro.build.version.release]: [17]',
+  '[ro.product.manufacturer]: [Google]',
+  '[ro.product.model]: [Pixel 8 Pro]',
+];
+
+const encode = (text: string) => new TextEncoder().encode(text);
 
 /** `read` answers a recording's bytes by its path in the repository, which is where the site publishes it too. */
 export function demoTransport(read: (path: string) => Promise<Uint8Array>): Transport {
@@ -45,8 +57,24 @@ export function demoTransport(read: (path: string) => Promise<Uint8Array>): Tran
     shell: (args) => {
       const [command, action, ...rest] = args;
 
+      if (command === 'getprop') {
+        return Promise.resolve(encode(PROPS.join('\n')));
+      }
+
+      if (command === 'wm') {
+        return screenOf(DEMO_STORAGE).then((screen) => {
+          const { width, height } = decodePng(screen);
+
+          return encode(`Physical size: ${width}x${height}`);
+        });
+      }
+
+      if (command === 'dumpsys' && action === 'battery') {
+        return Promise.resolve(encode('Current Battery Service state:\n  level: 76\n  scale: 100'));
+      }
+
       if (command === 'dumpsys') {
-        return Promise.resolve(new TextEncoder().encode(`mCurrentFocus=Window{0 u0 ${DEFAULTS.package}/.Main}`));
+        return Promise.resolve(encode(`mCurrentFocus=Window{0 u0 ${DEFAULTS.package}/.Main}`));
       }
 
       if (command === 'input') {

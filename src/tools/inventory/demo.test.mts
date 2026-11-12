@@ -68,3 +68,16 @@ test('the unsearched grid answers how many storage holds, under the POKÉMON tab
   // `storage/grid.png` reads `12800 / 12825` under POKÉMON and `12 / 12` under EGGS.
   expect(stored(await readLines(screenAt(DEMO_STORAGE)))).toBe(12800);
 });
+
+test('asked what it is, it answers as the Pixel 8 Pro its recordings were taken on', async () => {
+  expect(await new Device(demoTransport(read)).about()).toStrictEqual({
+    maker: 'Google',
+    model: 'Pixel 8 Pro',
+    android: '17',
+
+    // Its 1344 × 2992 at the display size the recordings were drawn at, read off them: a recording from another phone
+    // fails here, which is when the model above wants changing with it.
+    screen: [1008, 2244],
+    battery: 76,
+  });
+});

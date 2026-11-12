@@ -155,6 +155,25 @@
   line-height: 1.5;
 }
 
+/** What the phone held says of itself, in the panel a press on it opens: a column of names beside one of values. */
+.phone-about {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.phone-about dt {
+  color: var(--muted);
+}
+
+/** A serial has no spaces to break at, and is broken anywhere rather than run past the panel's edge. */
+.phone-about dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .notices-count {
   position: absolute;
   top: 7px;
@@ -272,31 +291,31 @@
 }
 
 /**
- * The settings panel's contents: a titled section per thing it controls, each a line of explanation, its buttons, and
- * the line that reports what the last press did.
+ * A panel's contents, the settings panel's and the phone's: a section per thing it controls, each a line of explanation
+ * and its buttons, and in settings a title and the line that reports what the last press did.
  */
-.settings-section {
+.menu-section {
   padding: 10px 12px 12px;
 }
 
-.settings-section h2 {
+.menu-section h2 {
   margin: 0 0 4px;
   font-size: 13px;
 }
 
-.settings-note {
+.menu-note {
   margin: 0 0 10px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.settings-actions {
+.menu-actions {
   display: flex;
   gap: 8px;
 }
 
-.settings-actions button {
+.menu-actions button {
   padding: 6px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -307,13 +326,13 @@
   cursor: pointer;
 }
 
-.settings-actions button:hover:not(:disabled),
-.settings-actions button:focus-visible {
+.menu-actions button:hover:not(:disabled),
+.menu-actions button:focus-visible {
   border-color: var(--track);
   color: var(--track);
 }
 
-.settings-actions button:disabled {
+.menu-actions button:disabled {
   opacity: 0.5;
   cursor: default;
 }

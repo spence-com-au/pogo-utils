@@ -1,7 +1,7 @@
 /**
- * The phone, driven over ADB. Everything a scan or a battle asks of it is ten methods over one `Transport`, the only
- * part that differs between the CLI and the Inventory page: `node/adb-cli.mts` runs the `adb` binary, and
- * `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
+ * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is eleven methods over one
+ * `Transport`, the only part that differs between the CLI and the Inventory page: `node/adb-cli.mts` runs the `adb`
+ * binary, and `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
  */
 
 import { decodeScreencap, type Image } from './png.mts';
@@ -56,6 +56,19 @@ function launching(pkg: string): string {
 export interface Focus {
   package: string;
   user: number;
+}
+
+/** What a phone says of itself, each part left out where it said nothing of it, as the demo phone says of none. */
+export interface About {
+  maker?: string;
+  model?: string;
+  android?: string;
+
+  /** The width and height apps draw at, in pixels. */
+  screen?: readonly [number, number];
+
+  /** The charge, as a percentage. */
+  battery?: number;
 }
 
 export class Device {
@@ -170,6 +183,29 @@ export class Device {
    */
   async views(): Promise<string> {
     return new TextDecoder().decode(await this.#shell('uiautomator', 'dump', '/dev/stdout', '|', 'cat'));
+  }
+
+  /**
+   * What the phone says of itself: its maker, model and Android version among the properties `getprop` lists as
+   * `[ro.product.model]: [Pixel 8 Pro]`, its screen from `wm size`, and its charge from `dumpsys battery`. A display
+   * scaled in the phone's settings lists an `Override size:` after its `Physical size:`, and the last listed is the
+   * one apps draw at — and so the one a screenshot comes at.
+   */
+  async about(): Promise<About> {
+    const text = async (...args: string[]) => new TextDecoder().decode(await this.#shell(...args));
+    const [props, size, battery] = await Promise.all([text('getprop'), text('wm', 'size'), text('dumpsys', 'battery')]);
+
+    const prop = new Map([...props.matchAll(/^\[(.+?)\]: \[(.+)\]/gm)].map(([, key, value]) => [key, value]));
+    const [, width, height] = [...size.matchAll(/size: (\d+)x(\d+)/g)].at(-1) ?? [];
+    const [, level] = /^\s*level: (\d+)/m.exec(battery) ?? [];
+
+    return {
+      maker: prop.get('ro.product.manufacturer'),
+      model: prop.get('ro.product.model'),
+      android: prop.get('ro.build.version.release'),
+      screen: width === undefined || height === undefined ? undefined : [Number(width), Number(height)],
+      battery: level === undefined ? undefined : Number(level),
+    };
   }
 
   #shell(...args: string[]): Promise<Uint8Array> {

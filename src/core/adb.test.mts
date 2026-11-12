@@ -6,15 +6,15 @@
 import { Device, type Transport } from './adb.mts';
 import { expect, test } from 'vitest';
 
-/** A phone in `state` that records every shell command and answers each with `answer`. */
-function phone(state = 'device', answer = '') {
+/** A phone in `state` that records every shell command and answers each with `answer`, or what `answer` makes of it. */
+function phone(state = 'device', answer: string | ((args: readonly string[]) => string) = '') {
   const sent: string[][] = [];
   const transport: Transport = {
     state: () => Promise.resolve(state),
     shell: (args) => {
       sent.push([...args]);
 
-      return Promise.resolve(new TextEncoder().encode(answer));
+      return Promise.resolve(new TextEncoder().encode(typeof answer === 'string' ? answer : answer(args)));
     },
     screencap: () => Promise.reject(new Error('no screenshot is taken here')),
   };
@@ -91,4 +91,46 @@ test('the views are what `uiautomator dump` writes to stdout through a pipe', as
 
   expect(await device.views()).toBe('<hierarchy rotation="0"/>');
   expect(sent).toStrictEqual([['uiautomator', 'dump', '/dev/stdout', '|', 'cat']]);
+});
+
+test.for([
+  ['a phone', '\n'],
+  ['an older phone, through a terminal', '\r\n'],
+])('what %s says of itself is read from its properties, the screen size in force and its battery', async ([, eol]) => {
+  const answers: Record<string, string[]> = {
+    'getprop': [
+      '[ro.boot.serialno]: []',
+      '[ro.build.version.release]: [15]',
+      '[ro.product.manufacturer]: [Google]',
+      '[ro.product.model]: [Pixel 8 Pro]',
+    ],
+    'wm size': ['Physical size: 1344x2992', 'Override size: 1008x2244'],
+    'dumpsys battery': [
+      'Current Battery Service state:',
+      '  USB powered: true',
+      '  status: 2',
+      '  level: 87',
+      '  scale: 100',
+    ],
+  };
+  const { sent, device } = phone('device', (args) => (answers[args.join(' ')] ?? []).join(eol));
+
+  expect(await device.about()).toStrictEqual({
+    maker: 'Google',
+    model: 'Pixel 8 Pro',
+    android: '15',
+    screen: [1008, 2244],
+    battery: 87,
+  });
+  expect(sent).toStrictEqual([['getprop'], ['wm', 'size'], ['dumpsys', 'battery']]);
+});
+
+test('a phone that says nothing of itself, as the demo phone does, reads as nothing known', async () => {
+  expect(await phone().device.about()).toStrictEqual({
+    maker: undefined,
+    model: undefined,
+    android: undefined,
+    screen: undefined,
+    battery: undefined,
+  });
 });
