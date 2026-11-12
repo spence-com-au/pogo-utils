@@ -16,10 +16,10 @@ import { Store, useStore } from './store.js';
 
 /**
  * What the demo phone in `demo-phone.ts` is found by: made up in a Pixel's form, so the phone button's panel reads as a
- * real phone's, and as unlikely to be a real phone's as any 14 characters picked at random. Here rather than there so
- * the Battle page can refuse it without fetching the demo phone.
+ * real phone's, but opening on `DEMO` where a Pixel's opens on digits, so nobody takes it for the serial of a phone
+ * they own. Here rather than there so the Battle page can refuse it without fetching the demo phone.
  */
-export const DEMO_SERIAL = '35231FDJG004DM';
+export const DEMO_SERIAL = 'DEMO1FDJG00428';
 
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
 export class PhoneStore extends Store {
