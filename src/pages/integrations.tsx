@@ -153,7 +153,7 @@ export default function IntegrationsPage() {
             kind: 'ok',
           }
         : {
-            message: 'Could not reach the clipboard. This page needs HTTPS, or a browser that permits copying.',
+            message: 'Could not copy. This page needs HTTPS, or a browser that allows copying.',
             kind: 'err',
           },
     );
@@ -175,7 +175,7 @@ export default function IntegrationsPage() {
       download(backup.bytes, 'PGSData.dat', 'application/octet-stream');
       setStatus({ message: backupSummary(backup), kind: 'ok' });
     } catch (e) {
-      setStatus({ message: `Failed to build backup: ${said(e)}`, kind: 'err' });
+      setStatus({ message: `Could not build the backup: ${said(e)}`, kind: 'err' });
     } finally {
       setRunning(false);
     }
@@ -206,10 +206,7 @@ export default function IntegrationsPage() {
         <div class="body">
           <h2>PGSharp</h2>
 
-          <p>
-            PGSharp is installed from an APK rather than from a store, so open this page on the phone it is for and
-            download it there.
-          </p>
+          <p>PGSharp is not in any app store. Open this page on your phone and download the APK there.</p>
 
           <a class="run" href={release?.url ?? DOWNLOAD_URL} target="_blank" rel="noopener">
             {release ? `Download PGSharp ${release.version}` : 'Download PGSharp'}
@@ -220,9 +217,8 @@ export default function IntegrationsPage() {
           <h2>PGSharp backup</h2>
 
           <p>
-            Build a partial PGSharp backup holding every route and waypoint in this collection, plus whichever options
-            below are ticked — nothing else. Importing it overwrites exactly those and leaves the rest of your PGSharp
-            settings as they were. Everything runs in your browser.
+            Build a PGSharp backup holding this site’s routes and waypoints and the options ticked below. Importing it
+            replaces only those and leaves the rest of your PGSharp settings alone. Everything runs in your browser.
           </p>
 
           <details class="subgroup" open>
@@ -249,9 +245,7 @@ export default function IntegrationsPage() {
                 </label>
               ))}
 
-              <p class="note">
-                Replaces every feed filter in the profile with these {FEED_COUNT} rather than adding to them.
-              </p>
+              <p class="note">Replaces every feed filter in your profile with these {FEED_COUNT}.</p>
             </div>
           </details>
 
@@ -270,15 +264,14 @@ export default function IntegrationsPage() {
             <a href="https://livepokemap.com" target="_blank" rel="noopener">
               Live PokeMap
             </a>{' '}
-            display filter that allowlists every species still wanted for a shiny — the same list the backup above hands
-            PGSharp, narrowed to what the wild turns up. XXL, XXS and 100% are not here: they are thresholds rather than
-            lists, and Live PokeMap shows all three without being told which species to watch.
+            display filter for every wild species the shiny hunt still wants, the same list the backup above gives
+            PGSharp. XXL, XXS and 100% need no list, as Live PokeMap shows them for every species.
           </p>
 
           <p class="note">
-            Importing replaces your Live PokeMap display filters entirely — anything not set here, your IV and level
-            bounds among it, goes back to its default. Then press <strong>Import</strong> under Live PokeMap&apos;s own
-            display filters: it reads the clipboard itself, so there is nothing to paste into.
+            After copying, press <strong>Import</strong> under Live PokeMap&apos;s display filters, which reads the
+            clipboard itself. This replaces all your display filters and resets anything not set here, including IV and
+            level bounds.
           </p>
 
           <button class="run" type="button" onClick={() => void runFilter()}>
@@ -301,9 +294,9 @@ export default function IntegrationsPage() {
             <a href={REPO_URL} target="_blank" rel="noopener">
               Coin Bag
             </a>{' '}
-            stands in for a Nintendo Switch over Bluetooth, so Pokémon GO will pair with it and send it postcards — no
-            Switch needed. The web app runs in Chrome or Edge; the Android and iOS apps keep scanning and handle each
-            connection themselves.
+            pretends to be a Nintendo Switch over Bluetooth, so Pokémon GO pairs with it and sends it postcards without
+            a Switch. The web app runs in Chrome or Edge; the Android and iOS apps keep scanning and connect on their
+            own.
           </p>
 
           {builds.ipa && <p class="note">The iOS build is unsigned: sideload it with AltStore or TrollStore.</p>}
@@ -329,8 +322,8 @@ export default function IntegrationsPage() {
           {/* The guess can be wrong, and a phone can be fetching a build for another one, so nothing is out of reach. */}
           {platform !== 'other' && !allBuilds && (
             <p class="note">
-              Showing what installs on {PLATFORM_NAMES[platform]}
-              {platform === 'ios' ? ' — no iOS browser has the Bluetooth the web app needs' : ''}.{' '}
+              Showing builds for {PLATFORM_NAMES[platform]}
+              {platform === 'ios' ? ', since no iOS browser has the Bluetooth the web app needs' : ''}.{' '}
               <button type="button" class="more" onClick={() => setAllBuilds(true)}>
                 Show every build
               </button>

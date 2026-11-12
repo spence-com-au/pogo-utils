@@ -924,7 +924,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     });
 
     return {
-      count: shown ? `${shown} event${shown === 1 ? '' : 's'} across the tracks` : 'No events to show',
+      count: shown ? `${shown} event${shown === 1 ? '' : 's'}` : 'No events to show',
       body: (
         <div class="tracks">
           <div class="tracks-scroll">
@@ -1135,12 +1135,11 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           <a href="https://github.com/bigfoott/ScrapedDuck" target="_blank" rel="noopener">
             ScrapedDuck
           </a>
-          , copied here every hour, plus events defined in this repository. Times are shown in your device's local
-          timezone.
+          , updated hourly, plus events added by this site. Times are in your device's timezone.
         </p>
         <p>
-          <a href={EVENTS_FEED}>Subscribe in your own calendar</a>, without Spotlight Hours, Raid Hours, Max Mondays or
-          seasons. In Google Calendar, copy the link into <em>Other calendars → From URL</em>.
+          <a href={EVENTS_FEED}>Subscribe in your calendar</a>, leaving out Spotlight Hours, Raid Hours, Max Mondays and
+          seasons. In Google Calendar, paste the link into <em>Other calendars → From URL</em>.
         </p>
         <p>This site is unofficial. Click an event to open its source page.</p>
       </footer>

@@ -37,7 +37,7 @@ export interface Group {
   id: string;
   label: string;
   hue: number;
-  help: string;
+  help?: string;
   terms: readonly Term[];
   exclusive?: boolean;
   exhaustive?: boolean;
@@ -136,10 +136,8 @@ export const GROUPS: readonly Group[] = [
     label: 'Status',
     hue: 8,
     help:
-      'What a Pokémon is, or what has been put into it, however it was caught. A lucky shiny is two cards, one ' +
-      'apiece: picked on one card, the two ask for either. Two are narrower than they read: `candyxl` passes over a ' +
-      'Best Buddy boosted past 40, and `hypertraining` finds the ones still training rather than the ones that have ' +
-      'finished.',
+      'For a lucky shiny, put each on its own card. `candyxl` misses a Best Buddy boosted past 40, and ' +
+      '`hypertraining` finds Pokémon still in training, not finished ones.',
     terms: [
       { id: 'shiny', term: 'shiny', label: 'Shiny' },
       { id: 'lucky', term: 'lucky', label: 'Lucky' },
@@ -153,7 +151,6 @@ export const GROUPS: readonly Group[] = [
     label: 'Rarity',
     hue: 70,
     exclusive: true,
-    help: 'A species is one of these at most, so picking several asks for anything rare.',
     terms: [
       { id: 'legendary', term: 'legendary', label: 'Legendary' },
       { id: 'mythical', term: 'mythical', label: 'Mythical' },
@@ -165,7 +162,6 @@ export const GROUPS: readonly Group[] = [
     label: 'Team GO Rocket',
     hue: 292,
     exclusive: true,
-    help: 'Purifying a Shadow Pokémon is what makes it Purified, so nothing is both — picking both asks for either.',
     terms: [
       { id: 'shadow', term: 'shadow', label: 'Shadow' },
       { id: 'purified', term: 'purified', label: 'Purified' },
@@ -175,7 +171,7 @@ export const GROUPS: readonly Group[] = [
     id: 'mega',
     label: 'Mega and Max',
     hue: 95,
-    help: 'What the species can turn into, which is a property of the species rather than of the one you caught.',
+    help: 'Matches by species, not by what your own Pokémon can do.',
     terms: [
       { id: 'megaevolve', term: 'megaevolve', label: 'Can Mega Evolve' },
       { id: 'dynamax', term: 'dynamax', label: 'Can Dynamax' },
@@ -188,7 +184,7 @@ export const GROUPS: readonly Group[] = [
     hue: 145,
     exclusive: true,
     exhaustive: true,
-    help: 'The star rating, as the appraisal gives it. Four stars is a hundred percent.',
+    help: 'The appraisal’s star rating: 4 ★ is 100%.',
     terms: [
       { id: 'star0', term: '0*', label: '0 ★' },
       { id: 'star1', term: '1*', label: '1 ★' },
@@ -201,7 +197,7 @@ export const GROUPS: readonly Group[] = [
     id: 'evolution',
     label: 'Evolution',
     hue: 265,
-    help: 'What can be evolved right now, what that evolution would be worth, and what an evolution is waiting on.',
+    help: '`New to the dex` evolves into a species you have not registered.',
     terms: [
       { id: 'evolve', term: 'evolve', label: 'Can evolve now' },
       { id: 'evolvenew', term: 'evolvenew', label: 'New to the dex' },
@@ -217,10 +213,8 @@ export const GROUPS: readonly Group[] = [
     label: 'Moves',
     hue: 120,
     help:
-      'A move the Pokémon knows, or the weather right now. Picking several on one card asks for any of them. The ' +
-      'last of them reads the second charged slot, which the game fills with a placeholder named `move_name_0000` ' +
-      'where nothing has been unlocked — so `@3move` is the ones with the slot still shut, and ruling it out is the ' +
-      'ones with a second move.',
+      'The game fills a locked second charged slot with a move named `move_name_0000`, which `@3move` matches. Rule ' +
+      'it out to find Pokémon with a second move.',
     terms: [
       { id: 'special', term: '@special', label: 'Exclusive move' },
       { id: 'adventureeffect', term: 'adventureeffect', label: 'Adventure Effect' },
@@ -240,10 +234,8 @@ export const GROUPS: readonly Group[] = [
      * Niantic can fix out from under the sentence.
      */
     help:
-      'Where it came from, which the game records on the Pokémon itself. Three come with a caveat the community ' +
-      'phrase list reports: `EX raid` returns nothing now, the raids being long past the dates it looks at; `Primal ' +
-      'raid` is not working; and `From Team GO Rocket` misses shadows that came from a raid or from research, which ' +
-      '`Shadow` or `Purified` will find.',
+      'The community phrase list reports three that fail: `EX raid` finds nothing now, `Primal raid` is broken, and ' +
+      '`From Team GO Rocket` misses Shadows from raids or research, which `Shadow` or `Purified` finds.',
 
     terms: [
       { id: 'traded', term: 'traded', label: 'Traded' },
@@ -265,7 +257,7 @@ export const GROUPS: readonly Group[] = [
     id: 'background',
     label: 'Background',
     hue: 220,
-    help: 'The backdrop the catch was recorded against, where `background` is the word the game has for either.',
+    help: '`Any background` matches either kind.',
     terms: [
       { id: 'locationbackground', term: 'locationbackground', label: 'Location' },
       { id: 'specialbackground', term: 'specialbackground', label: 'Event' },
@@ -288,7 +280,7 @@ export const GROUPS: readonly Group[] = [
     id: 'kept',
     label: 'Kept aside',
     hue: 35,
-    help: 'The ones you have marked. Worth excluding from anything you mean to mass-transfer.',
+    help: 'Worth ruling out before a mass transfer.',
     terms: [
       { id: 'favorite', term: 'favorite', label: 'Favourite' },
 
@@ -306,7 +298,6 @@ export const GROUPS: readonly Group[] = [
     hue: 344,
     exclusive: true,
     exhaustive: true,
-    help: 'Nothing is two of these, so picking several asks for any of them.',
     terms: [
       { id: 'male', term: 'male', label: 'Male' },
       { id: 'female', term: 'female', label: 'Female' },
@@ -318,7 +309,7 @@ export const GROUPS: readonly Group[] = [
     label: 'Size',
     hue: 52,
     exclusive: true,
-    help: 'The four sizes the game records. Most Pokémon are none of them, so ruling one out barely narrows anything.',
+    help: 'Most Pokémon are none of these, so ruling one out barely narrows a search.',
     terms: [
       { id: 'xxs', term: 'xxs', label: 'XXS' },
       { id: 'xs', term: 'xs', label: 'XS' },
@@ -339,9 +330,8 @@ export const GROUPS: readonly Group[] = [
      * write `alola&!hisui` as `alola` — dropping exactly that one, quietly.
      */
     help:
-      'A regional variant answers to its region. `kanto` is the odd one of the five: it is the Kanto region with the ' +
-      'variants taken out, which is both what makes it the Kantonian form and what makes it narrower than the Gen 1 ' +
-      'chip — `1-151` matches an Alolan Vulpix, where `kanto` does not.',
+      '`kanto` leaves out regional variants, so it is narrower than the Gen 1 chip: `1-151` matches an Alolan Vulpix ' +
+      'and `kanto` does not.',
 
     terms: [
       { id: 'kanto', term: 'kanto', label: 'Kantonian' },
@@ -356,18 +346,13 @@ export const GROUPS: readonly Group[] = [
     label: 'Type',
     hue: 175,
     exhaustive: true,
-    help:
-      'The type the Pokémon is. Picking several matches any of them, and the three groups after this one read the ' +
-      'same eighteen words a different way.',
     terms: typeTerms('', ''),
   },
   {
     id: 'weakto',
     label: 'Weak to',
     hue: 175,
-    help:
-      'What the Pokémon takes super effective damage from, which its whole typing settles rather than either half ' +
-      'of it — a Fire that is also Water is not `<water`.',
+    help: 'Counts both of its types, so a Fire and Water Pokémon is not `<water`.',
     terms: typeTerms('weak', '<'),
   },
   {
@@ -375,8 +360,8 @@ export const GROUPS: readonly Group[] = [
     label: 'Strong against',
     hue: 175,
     help:
-      'The Pokémon has an attack that is super effective against this type. Its second charged move is not counted ' +
-      'in that, which the community phrase list reports as a bug.',
+      'Has a move that is super effective against this type. The community phrase list reports that the second ' +
+      'charged move is not counted.',
     terms: typeTerms('strong', '>'),
   },
   {
@@ -394,16 +379,12 @@ export const GROUPS: readonly Group[] = [
      */
     exhaustive: true,
 
-    help:
-      'A move of this type, in any of the slots. `@` reads a type before it reads a move name, so `@psychic` is the ' +
-      'type and the move of that name wants `@psychi`.',
     terms: typeTerms('move', '@'),
   },
   {
     id: 'generation',
     label: 'Generation',
     hue: 240,
-    help: 'A generation is searched as the dex numbers it spans — the game has no `gen1`.',
 
     /**
      * A generation is not a search term — there is no `gen1` — so each chip is the dex span it covers, which is why
@@ -579,7 +560,7 @@ export const PRESETS: readonly Preset[] = [
   {
     id: 'transfer',
     label: 'Safe to transfer',
-    note: 'Everything worth keeping, excluded.',
+    note: 'Rules out everything worth keeping.',
     exclude: [
       'shiny',
       'lucky',

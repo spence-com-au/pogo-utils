@@ -105,7 +105,7 @@ function coinBagNotices(): Notice[] {
         {
           key: `coin-bag:${release.version}`,
           title: `Coin Bag ${release.version}`,
-          detail: ['Seen ', new Date(release.firstSeen), ' · see the release'],
+          detail: ['Seen ', new Date(release.firstSeen), ' · See the release'],
           href: release.url,
           external: true,
           clear: () => coinBagReleaseStore.acknowledge(),

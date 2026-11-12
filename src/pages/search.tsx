@@ -202,8 +202,8 @@ type Pane = 'builder' | 'advanced';
  * strings, and the raw one is the output above it.
  */
 const PANES: readonly { id: Pane; label: string; said: string }[] = [
-  { id: 'builder', label: 'Builder', said: 'Arrange pills from the catalogue' },
-  { id: 'advanced', label: 'Advanced', said: 'Write the search out yourself, brackets and all' },
+  { id: 'builder', label: 'Builder', said: 'Pick filters from a list' },
+  { id: 'advanced', label: 'Advanced', said: 'Type the search yourself, brackets included' },
 ];
 
 /**
@@ -491,7 +491,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       setSent({
         query,
         kind: 'unheld',
-        message: 'No phone is connected. Connect one with 📱 in the top bar to search on it.',
+        message: 'No phone connected. Connect one with 📱 in the top bar.',
       });
 
       return;
@@ -507,8 +507,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       const found = await searchStorage(
         phone.transport,
         term,
-        (fraction) =>
-          say('busy', `Fetching the OCR model, ${Math.round(fraction * 100)}% — once, then kept in this browser…`),
+        (fraction) => say('busy', `Downloading the OCR model (first time only), ${Math.round(fraction * 100)}%…`),
         (message) => say('busy', `${message}, finding storage…`),
       );
       const counted = found === null ? '' : found === 0 ? ': nothing matched' : `: ${found} Pokémon matched`;
@@ -750,6 +749,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    */
   function renderPill(leaf: Leaf, path: Path) {
     const range = leaf.kind === 'range' ? RANGES_BY_ID.get(leaf.id) : undefined;
+    const press = leaf.negated ? 'ruled out, press to require it' : 'required, press to rule it out';
 
     return (
       <span
@@ -761,7 +761,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
         <button
           type="button"
           class="face"
-          aria-label={`${leafLabel(leaf)} — ${leaf.negated ? 'ruled out' : 'required'}, press to turn it round`}
+          aria-label={`${leafLabel(leaf)} — ${press}`}
           onClick={() =>
             edit((tree) => update(tree, path, (node) => (isGroup(node) ? node : { ...node, negated: !node.negated })))
           }
@@ -835,10 +835,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     <>
       <header class="page">
         <h1 class="sr">Search Strings</h1>
+        {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
+        {/* prettier-ignore */}
         <p class="sub">
-          Build a string for the game's own search box, either way round: lay it out as cards in <em>Builder</em>, where
-          every card has to match and any one pill on a card will do, or write it out yourself in <em>Advanced</em>,
-          brackets and all. Both fill the one query, and the string for the game is always at the top.
+          Build a search string for Pokémon GO's storage screen: pick filters in <em>Builder</em>, or type the search
+          in <em>Advanced</em>. Both edit the same search, and the string to copy is at the top.
         </p>
       </header>
 
@@ -848,7 +849,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             {/* Plain text, not a label: the live region reads the string out, so nothing reaches it by name. */}
             <span class="side">For the game</span>
             <code id="query" ref={queryRef} class={query ? undefined : 'empty'} aria-live="polite">
-              {query || 'Nothing arranged yet'}
+              {query || 'Nothing yet'}
             </code>
             <span class="buttons">
               {/*
@@ -890,8 +891,8 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                 aria-label="Search on the phone"
                 title={
                   phone === null
-                    ? 'Connect a phone with 📱 in the top bar to type this into its Pokémon storage search'
-                    : `Type this into Pokémon storage’s search on ${phone.name}`
+                    ? 'Connect a phone with 📱 in the top bar to search its storage'
+                    : `Search storage on ${phone.name}`
                 }
                 aria-disabled={phone === null}
                 disabled={!query || error !== null || sending}
@@ -907,7 +908,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               {query ? `${characters(query.length)}${before ? `, down from ${before}` : ''}` : ''}
             </span>
             <span class="actions">
-              <label class="toggle" title="Say the same thing in fewer characters">
+              <label class="toggle" title="Write the same search in fewer characters">
                 <input
                   type="checkbox"
                   checked={state.optimise}
@@ -951,13 +952,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             ))}
             {lossy.narrowed && (
               <span class="lossy">
-                {' A dex number matches the species itself, where the name would also have matched a nickname.'}
+                {' A dex number matches only the species, where the name would also match nicknames.'}
               </span>
             )}
             {lossy.widened && (
-              <span class="lossy">
-                {' A shortened name also matches any nickname beginning with it, which the full name would not.'}
-              </span>
+              <span class="lossy">{' A shortened name also matches nicknames that start with it.'}</span>
             )}
           </p>
         </section>
@@ -1006,7 +1005,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             {root.parts.length === 0 ? (
               <p class="empty">Nothing here yet — add a filter to start.</p>
             ) : (
-              <ol class="cards" aria-label="Cards, every one of which has to match">
+              <ol class="cards" aria-label="Cards, all of which must match">
                 {root.parts.map(renderCard)}
               </ol>
             )}
@@ -1015,12 +1014,10 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               + Add a filter
             </button>
 
-            {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
-            {/* prettier-ignore */}
             <p class="help">
-              Every card has to match, and any one pill on a card will do — which is how the game reads a search, so the
-              string above is these cards as they stand. Press a pill to swap <em>required</em> for{' '}
-              <em>ruled out</em>, <kbd>✕</kbd> to take it off, and <em>+ or</em> to give its card another alternative.
+              A Pokémon has to match every card, but only one pill on each. Press a pill to switch it between{' '}
+              <em>required</em> and <em>ruled out</em>, <kbd>✕</kbd> to remove it, or <em>+ or</em> to add an
+              alternative.
             </p>
           </section>
 
@@ -1063,14 +1060,13 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             </div>
 
             <p class="broken" role="alert" hidden={!unsaved}>
-              This browser would not store that change to your favourites. The link in the address bar still carries the
-              search on the cards, so bookmarking it keeps it.
+              This browser could not save your favourites. To keep this search, bookmark the page: its link holds the
+              search.
             </p>
 
             <p class="help">
-              Save the search on the cards with the button beside Copy to load it back here with a press; saving under a
-              name already taken replaces that favourite. Yours are kept in this browser, and travel with a backup from
-              Settings.
+              Save a search with the button beside Copy. Favourites are kept in this browser and included in a backup
+              from Settings.
             </p>
           </section>
         </div>
@@ -1133,15 +1129,14 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             {ticked(typedError ?? '')}
           </p>
 
-          {/* Laid out by hand: Prettier leaves a trailing `{' '}` out of the width it fills to, and so set the first
-              line five characters past 120. */}
+          {/* Laid out by hand: Prettier leaves a trailing `{' '}` out of the width it fills to, and so set a line past
+              120. */}
           {/* prettier-ignore */}
           <p class="help" id="importHelp">
-            <code>&amp;</code> and <code>|</code> are <em>and</em>, <code>,</code> <code>;</code> and{' '}
-            <code>:</code> are <em>or</em>, and <code>!</code> rules out whatever follows — so{' '}
+            <code>&amp;</code> and <code>|</code> mean <em>and</em>; <code>,</code> <code>;</code> and{' '}
+            <code>:</code> mean <em>or</em>; <code>!</code> rules out what follows. So{' '}
             <code>(pikachu&amp;shiny),(pumpkaboo&amp;xxl)</code> matches a shiny Pikachu <em>or</em> an XXL Pumpkaboo.
-            The game takes no brackets, so what you type is multiplied out into cards in the Builder when you pause, each
-            one a clause the game does take.
+            The game has no brackets, so when you stop typing, the search is rewritten as cards in Builder without them.
           </p>
         </div>
       </main>
@@ -1175,8 +1170,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             This replaces the favourite already saved under that name.
           </p>
           <p class="broken" role="alert" hidden={!unsaved}>
-            This browser would not store it. The link in the address bar still carries the query, so bookmarking it
-            keeps the search.
+            This browser could not save it. To keep this search, bookmark the page: its link holds the search.
           </p>
           <div class="buttons">
             <button type="button" class="use" onClick={() => namingRef.current?.close()}>
@@ -1287,11 +1281,10 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             </div>
 
             <p class="help">
-              What you type narrows the chips below, and <kbd>Enter</kbd> adds it to this card as a name. Partial names
-              match, so <code>char</code> finds Charmander and Charizard. Two letters bring up the species that match,
-              and <kbd>↓</kbd> then <kbd>Enter</kbd> takes one. Each species is followed by its family: taking{' '}
-              <em>Charmander (family)</em> writes <code>+charmander</code>, the game's shorthand for a species and the
-              rest of its evolutionary line.
+              Typing filters the chips below, and <kbd>Enter</kbd> adds what you typed as a name. Partial names match,
+              so <code>char</code> finds Charmander and Charizard. After two letters, matching species appear: pick one
+              with <kbd>↓</kbd> and <kbd>Enter</kbd>. <em>Charmander (family)</em> writes <code>+charmander</code>,
+              which also matches the rest of its evolution line.
             </p>
           </section>
 
@@ -1314,7 +1307,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                     );
                   })}
                 </div>
-                <p class="help">{ticked(category.help)}</p>
+                {category.help && <p class="help">{ticked(category.help)}</p>}
               </section>
             ))}
           </div>
@@ -1340,15 +1333,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
             {/* prettier-ignore */}
             <p class="help">
-              A span pill carries its own two ends — boxes to type a number into, or named dropdowns where the game
-              names the values — and an end left empty, or on <em>Any level</em>, leaves that end of the span open,
-              unless opening it would ask for everything. Which is why a dropdown's own lowest and highest levels each
-              sit at one end: <em>never a buddy</em> is picked as the <em>highest</em> a span reaches,{' '}
-              <em>Best Buddy</em> as the <em>lowest</em>, the other way round asking for every Pokémon you own. Three
-              of the ranges are not the numbers they look like: an IV is the appraisal's own bucket, where{' '}
-              <code>0</code> is an IV of 0, <code>1</code> is 1–5, <code>2</code> is 6–10, <code>3</code> is 11–14
-              and <code>4</code> is 15 — so <code>4</code> to <code>4</code> is the perfect one. The Max move levels
-              and the counts of unlocked Max moves start at 1, a Max species having its attack from the first.
+              Leave an end empty, or on <em>Any level</em>, to leave that side open. IVs count in the appraisal's
+              bars: <code>0</code> is an IV of 0, <code>1</code> is 1–5, <code>2</code> is 6–10, <code>3</code> is 11–14
+              and <code>4</code> is 15, so <code>4</code> to <code>4</code> is a perfect IV.
             </p>
           </section>
 
@@ -1386,16 +1373,16 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               </select>
             </MarkedBox>
 
+            {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
+            {/* prettier-ignore */}
             <p class="help">
-              A move name, a type, <code>special</code> or <code>weather</code>, in any slot or in one of them — so{' '}
-              <em>Second charged</em> and <code>crunch</code> write <code>@3crunch</code>. The <code>@</code> and the
-              slot are added for you, the dropdown being what settles the slot, so a phrase pasted here can keep its own
-              and will take that one. Several at once go in comma-separated, a pill apiece. Move names complete as you
-              go, in the game rather than here, so <code>@hydro</code> finds Hydro Pump and Hydro Cannon alike. Three
-              catches: a type is read ahead of a move named the same, so <code>@psychi</code> is how to ask for the move
-              Psychic; <em>Mega extra move</em> answers to a move name alone, not to a type or to those two words; and a
-              move beginning <code>count</code>, <code>dynamax</code> or <code>gigantamax</code> is read as that
-              shortcut phrase rather than as the move, which is a search the game has no spelling for.
+              A move name, a type, <code>special</code> or <code>weather</code>, in the slot you pick:{' '}
+              <em>Second charged</em> and <code>crunch</code> write <code>@3crunch</code>. The <code>@</code> and slot
+              come from the dropdown, replacing any you paste. Separate several with commas. The game completes move
+              names, so <code>@hydro</code> finds Hydro Pump and Hydro Cannon. Three catches: a type wins over a move of
+              the same name, so search <code>@psychi</code> for the move Psychic; <em>Mega extra move</em> takes only
+              move names; and a move starting with <code>count</code>, <code>dynamax</code> or{' '}
+              <code>gigantamax</code> cannot be searched, because the game reads it as that filter.
             </p>
           </section>
 
@@ -1413,23 +1400,21 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             />
 
             <p class="help">
-              A tag by the name you gave it. Only you know what you called yours, so there is no chip for one — the{' '}
-              <em>Tagged</em> chip is <code>#</code>, the game's word for having any tag at all. Tag names complete in
-              the game here too. The <code>#</code> is added for you, and it earns its place: a tag searched without one
-              is an ordinary word, which a tag named after a search phrase then loses to.
+              A tag by its name, which the game completes too. The <code>#</code> is added for you. For any tag at all,
+              use the <em>Tagged</em> chip.
             </p>
           </section>
 
           <p class="help" hidden={shelves.length > 0 || ranges.length > 0}>
-            No filter is called that, so <kbd>Enter</kbd> adds it as a name.
+            No filter matches. Press <kbd>Enter</kbd> to add it as a name.
           </p>
         </div>
       </dialog>
 
       <footer>
         <p>
-          The syntax is Pokémon GO's own, as typed into the search box on the Pokémon storage screen. Everything runs in
-          your browser, and the link updates as you build so an arrangement can be shared or bookmarked.
+          Uses Pokémon GO's own search syntax. Everything runs in your browser, and the link updates as you build, so
+          you can share or bookmark a search.
         </p>
         <p>This site is unofficial.</p>
       </footer>

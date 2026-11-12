@@ -67,7 +67,7 @@ export class Session extends Store {
     try {
       const { data, icons, typeIcons, meta, pvpoke } = await loadBattle(mode.mode === 'gbl' ? mode.league : null);
 
-      this.#set({ kind: 'connecting', message: 'Handing the phone to the battle and waiting for its screen…' });
+      this.#set({ kind: 'connecting', message: 'Starting the battle and waiting for the phone’s screen…' });
 
       run = await lend(
         store,

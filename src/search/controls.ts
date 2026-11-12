@@ -54,7 +54,7 @@ export const unmarked = (mark: string, text: string) => text.replace(mark.starts
 export const marked = (mark: string, text: string) => names(text).map((part) => `${mark}${unmarked(mark, part)}`);
 
 /** What a term chip's tooltip says: the word the game reads, then what pressing it does. */
-export const chipTitle = (term: string) => `${term} — press to add it to this card, again to take it off`;
+export const chipTitle = (term: string) => `${term} — press to add to this card, again to remove`;
 
 /**
  * What a range chip's tooltip says: the shape a span of it is written in, then what pressing the chip does.
@@ -69,7 +69,7 @@ export const chipTitle = (term: string) => `${term} — press to add it to this 
 export const rangeTitle = (range: Range) => {
   const shape = range.prefix === '' && range.suffix === undefined ? 'a dex span' : spanned(range, '{N}');
 
-  return `${shape} — press to add a span to this card, again to take it off`;
+  return `${shape} — press to add a range to this card, again to remove`;
 };
 
 /** Whether two paths name the same node, which is how a span's box knows it is the one being typed in. */

@@ -98,7 +98,7 @@ export function Phone() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        setStatus({ message: `Could not put back the setting a battle kept the phone awake by: ${said(e)}` }),
+        setStatus({ message: `Could not turn off the stay-awake setting a battle left on: ${said(e)}` }),
       );
     } catch (e) {
       // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
@@ -219,8 +219,8 @@ export function Phone() {
             ) : (
               <p class="menu-note">
                 {shown.failed === undefined
-                  ? 'Asking the phone what it is…'
-                  : `Could not ask the phone what it is: ${shown.failed}`}
+                  ? 'Asking the phone for its details…'
+                  : `Could not read the phone’s details: ${shown.failed}`}
               </p>
             )}
 
