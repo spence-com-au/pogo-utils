@@ -2,6 +2,11 @@
   "name": "pogo-utils",
   "type": "module",
   "private": true,
+  "bin": {
+    "battle": "scripts/battle.mts",
+    "inventory": "scripts/inventory.mts",
+    "phone": "scripts/phone.mts"
+  },
   "scripts": {
     "build": "npm-run-all --print-label --serial build:clean build:types build:data build:sprites build:bundle build:ics build:icons build:manifest build:assemble",
     "build:assemble": "node scripts/assemble.mts",
@@ -61,6 +66,7 @@
     "html-validate": "11.18.0",
     "leaflet": "^1.9.4",
     "npm-run-all2": "^9.0.4",
+    "pogo-utils": "link:.",
     "postcss": "8.5.32",
     "preact": "^11.1.1",
     "prettier": "3.9.10",

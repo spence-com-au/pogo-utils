@@ -1,5 +1,5 @@
 /**
- * The look down a detail screen for its moves, which `bin/inventory scan` takes for every Pokémon it writes: a scroll
+ * The look down a detail screen for its moves, which `pnpm inventory scan` takes for every Pokémon it writes: a scroll
  * to where the moves are, their reading off the screen it came to and the scroll back up, held to the reading it was
  * taken for so that another Pokémon's moves are never kept. Here rather than in the script so the suite can drive it
  * against recordings, the script handing in the phone, the overlay and the walk it reaches them by.

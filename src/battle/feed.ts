@@ -1,6 +1,6 @@
 /**
  * `screenrecord` over WebUSB as the `Screen` in `src/tools/battle/screen.mts` watches one, decoded by WebCodecs where
- * `bin/battle` decodes with `ffmpeg`: the H.264 is cut into pictures by `Pictures`, each handed to a `VideoDecoder`
+ * `pnpm battle` decodes with `ffmpeg`: the H.264 is cut into pictures by `Pictures`, each handed to a `VideoDecoder`
  * whole, and each frame it puts out copied into the same `Image` the CLI's readers take. On a Pixel 8 Pro that was a
  * frame 5.4ms (p50) after its picture was submitted, at the 27.5 frames a second the phone sent.
  */

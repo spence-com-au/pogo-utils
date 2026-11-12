@@ -1,6 +1,6 @@
 /**
  * Everything each reader makes of one screenshot, and whether it is a capture a scan could have used. Shared by
- * `bin/inventory parse` and `snap` and by the Inventory page, so that a PNG dropped on the page reads exactly as
+ * `pnpm inventory parse` and `snap` and by the Inventory page, so that a PNG dropped on the page reads exactly as
  * `parse` reads the same file: one function rather than two copies that would drift, the way the CLI's `storage` is one
  * walk for `scan` and `snap --search`.
  */

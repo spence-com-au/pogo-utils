@@ -1,7 +1,7 @@
 /**
  * The Battle page. Shares the colour tokens in theme.css, the tab bar in nav.css and the heading block in chrome.css
  * with the other pages; the form starts a run and the panel below draws it, the phone's screen beside it, as the
- * terminal draws `bin/battle run`.
+ * terminal draws `pnpm battle run`.
  */
 
 /* Scoped to the open page, for the reason integrations.css gives at length: one document loads every page's sheet. */

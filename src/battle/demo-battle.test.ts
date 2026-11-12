@@ -94,8 +94,8 @@ interface Progress {
 }
 
 /**
- * Each frame of `h264` as `ffmpeg` decodes it, with the flags `bin/battle` decodes a recording with, so that each comes
- * out as soon as the picture after it has begun rather than once `ffmpeg` has buffered a few.
+ * Each frame of `h264` as `ffmpeg` decodes it, with the flags `pnpm battle` decodes a recording with, so that each
+ * comes out as soon as the picture after it has begun rather than once `ffmpeg` has buffered a few.
  */
 async function* decode(h264: ReadableStream<Uint8Array>, progress?: Progress): AsyncGenerator<Image> {
   const ffmpeg = spawn('ffmpeg', decodeArgs(SIZE));

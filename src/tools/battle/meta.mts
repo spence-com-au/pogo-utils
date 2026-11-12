@@ -208,7 +208,7 @@ export function movesetsOf(data: GameData, rankings: readonly Ranking[], pvpoke:
 
 /**
  * The meta of the league named, out of PvPoke's game master and the league's rankings, fetched by `download`: cached
- * for a week as the game master is by `bin/battle`, and fetched afresh for each run by a page, whose Worker is handed
+ * for a week as the game master is by `pnpm battle`, and fetched afresh for each run by a page, whose Worker is handed
  * what the page fetched. Null where no ranking fits the league, or where PvPoke cannot be reached and nothing is
  * cached, either of which leaves every move allowed for rather than stopping the run, and is said to `warn`: a run
  * loading the meta of the league it taps says it in its own report, which a line on stderr would write over.

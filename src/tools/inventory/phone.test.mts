@@ -1,5 +1,5 @@
 /**
- * `bin/inventory scan` and `snap` driven as a subprocess, against a phone that is recordings: the script is run as a
+ * `pnpm inventory scan` and `snap` driven as a subprocess, against a phone that is recordings: the script is run as a
  * person runs it, with only the `adb` on its `PATH` replaced. `cli.test.mts` reaches the rest of the script — `parse`
  * and the refusals that come before any phone is opened — and this reaches what needs one: the flag passes, the
  * `--skip` landing, the row a scan writes and the capture a snap leaves, which the script wires together from parts the
@@ -40,7 +40,7 @@ import { afterAll, beforeAll, describe, expect, test, type TestContext } from 'v
 
 const run = promisify(execFile);
 
-const BIN = fileURLToPath(new URL('../../../bin/inventory', import.meta.url));
+const SCRIPT = fileURLToPath(new URL('../../../scripts/inventory.mts', import.meta.url));
 const FIXTURES = new URL('fixtures/', import.meta.url);
 const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;
 
@@ -403,7 +403,7 @@ async function harness(
 
   const inventory = async (...args: string[]): Promise<Ran> => {
     const env = { ...process.env, PATH: `${bin}${delimiter}${process.env['PATH']}`, FAKE_PHONE: url };
-    const pending = run(BIN, [...args, '--config', 'config.json'], { cwd, env });
+    const pending = run(process.execPath, [SCRIPT, ...args, '--config', 'config.json'], { cwd, env });
 
     started.push(pending.child);
 
@@ -639,7 +639,7 @@ const SELECTS: Readonly<Record<string, readonly (readonly [number, number, numbe
 };
 
 /**
- * The game as far as `bin/inventory dex --from 1 --to 3` drives it, over the captures under `fixtures/pokedex/`: the
+ * The game as far as `pnpm inventory dex --from 1 --to 3` drives it, over the captures under `fixtures/pokedex/`: the
  * map, the main menu, a tab's list of regions, Kanto's grid and the first three entries. A tap is placed by which of
  * those is showing and by where it lands, of no more than the screen's controls and `SELECTS` do; a swipe moves along
  * the entries, one past the third going nowhere, which is the end of the Pokédex as the walk knows it, and a drag

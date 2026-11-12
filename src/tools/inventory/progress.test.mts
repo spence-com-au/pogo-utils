@@ -65,7 +65,7 @@ test('progress is narrated until a caller asks for quiet', async () => {
 /**
  * The one line a cold run is waiting on, which prints whether or not progress was asked for. It is reached only past
  * the week's grace, so it never lands on the warm run `--verbose` was added to quieten, and `showProgress(false)` must
- * not take it: that would silence a first `bin/inventory snap` for the minutes it spends on 162 icons.
+ * not take it: that would silence a first `pnpm inventory snap` for the minutes it spends on 162 icons.
  */
 test('`cached` names the download it is about to make, quietly or not', async () => {
   answer = (response) => response.end('{}');

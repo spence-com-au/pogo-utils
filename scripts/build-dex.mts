@@ -1,6 +1,6 @@
 /**
- * Builds `ScreenPower.dex` out of the Java beside it in `src/tools/adb/screen-power/`, which `bin/phone screen-off` and
- * `screen-on` run on the phone: `javac` from the JDK on the path, then D8, Android's own dex compiler, fetched once
+ * Builds `ScreenPower.dex` out of the Java beside it in `src/tools/adb/screen-power/`, which `pnpm phone screen-off`
+ * and `screen-on` run on the phone: `javac` from the JDK on the path, then D8, Android's own dex compiler, fetched once
  * from Google's Maven and held to its hash. The dex is committed, so that neither those commands nor the site's build
  * needs a JDK; `--check` builds it again and fails where it differs from what is committed, which is how CI holds the
  * two together.

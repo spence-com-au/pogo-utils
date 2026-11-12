@@ -1,5 +1,5 @@
 /**
- * The phone over WebUSB, as a `Transport` for the same `Device` `bin/inventory` drives through the `adb` binary. Built
+ * The phone over WebUSB, as a `Transport` for the same `Device` `pnpm inventory` drives through the `adb` binary. Built
  * on [Tango](https://tangoadb.dev/) (`@yume-chan/adb`, MIT), which speaks the ADB protocol from the page itself: the
  * phone is picked through the browser's own device chooser and no `adb` is installed anywhere.
  *

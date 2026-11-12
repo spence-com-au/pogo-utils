@@ -1,5 +1,5 @@
 /**
- * The Battle page: Team Leader training or GO Battle League battles played on the phone, as `bin/battle run` plays
+ * The Battle page: Team Leader training or GO Battle League battles played on the phone, as `pnpm battle run` plays
  * them, from the browser. The phone connected from the phone button is lent to the battle's Worker for the run, which
  * plays it there, where a hidden tab's timers are not held back, and tells the page what it does: how the run stands,
  * the two sides of the battle, what each does and the menus it taps through, drawn as the terminal draws its panel,
@@ -43,7 +43,7 @@ const LABELS: Record<keyof Asked, string> = {
 };
 
 /**
- * The options the form asks for, as `bin/battle run`'s flags would: a leader for Training alone and a party for GO
+ * The options the form asks for, as `pnpm battle run`'s flags would: a leader for Training alone and a party for GO
  * Battle League alone, whatever was typed into the other's field before the mode changed, and a blank party or count
  * as one not given, which is whichever party the screen opens on, and battles until stopped.
  */
@@ -296,9 +296,9 @@ export default function BattlePage() {
       <header class="page">
         <h1 class="sr">Battle</h1>
         <p class="sub">
-          Play Team Leader training or GO Battle League battles on an Android phone, the way <code>bin/battle run</code>{' '}
-          does, in the browser: it watches the screen and taps through each battle and the menus between them, from the
-          map or anywhere between one battle and the next.
+          Play Team Leader training or GO Battle League battles on an Android phone, the way{' '}
+          <code>pnpm battle run</code> does, in the browser: it watches the screen and taps through each battle and the
+          menus between them, from the map or anywhere between one battle and the next.
         </p>
       </header>
 

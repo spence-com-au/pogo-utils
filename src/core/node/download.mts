@@ -17,8 +17,8 @@ import { join, resolve } from 'node:path';
 
 /**
  * The game master as alexelgt's bot dumps it from the game, about once a day: the array of `{ templateId, data }` the
- * templates below are read from, current within a day or so of each season's rebalance of moves. How current matters to
- * `bin/battle`, which judges every shield and throw by the power, energy and move pools in it.
+ * templates below are read from, current within a day or so of each season's rebalance of moves. How current matters
+ * to `pnpm battle`, which judges every shield and throw by the power, energy and move pools in it.
  */
 const GAME_MASTER = 'https://raw.githubusercontent.com/alexelgt/game_masters/master/GAME_MASTER.json';
 

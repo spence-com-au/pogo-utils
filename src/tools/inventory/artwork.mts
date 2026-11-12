@@ -441,7 +441,7 @@ export function ambiguous(data: GameData): { drawn: Drawn[][]; short: Form[][] }
 
 /**
  * The colourings of every form the artwork could settle, each icon fetched and read by `read`, which is where the two
- * callers differ: `download.mts` caches the icons beside the game master for `bin/inventory`, and the Inventory page
+ * callers differ: `download.mts` caches the icons beside the game master for `pnpm inventory`, and the Inventory page
  * fetches them straight from `ICON_BASE`. 361 files of some 24 KB on a real game master, an ordinary and a shiny icon
  * for all but three of its 182 forms, so this is a one-off of under 9 MiB.
  */

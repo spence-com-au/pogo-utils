@@ -44,7 +44,7 @@ export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png'
 
 /**
  * What the demo phone in `src/battle/demo.ts` plays: a Training battle the loop won against `leader` in `league` on a
- * Pixel 8 Pro, which the Battle tab holds a run on the demo phone to. Kept by `bin/battle run --keep-video` from the
+ * Pixel 8 Pro, which the Battle tab holds a run on the demo phone to. Kept by `pnpm battle run --keep-video` from the
  * leader's speech, and re-encoded by `ffmpeg` at a constant `fps` with no B-frames, a key picture every two seconds and
  * `repeat-headers=1`: cut before the Battle tab and its QR code fade in, its result held five seconds as the game holds
  * it until tapped, and the trainer name on the VS screen filled solid.

@@ -129,7 +129,7 @@ test('a Mega is a moveset of its own, told by its stats from the rest of its dex
   expect(movesets.get('Mewtwo')?.chargedMoves).toStrictEqual(['Psystrike', 'Shadow Ball']);
 });
 
-/** PvPoke's files by the name `bin/battle` caches each under, a file not among them answering as a 404. */
+/** PvPoke's files by the name `pnpm battle` caches each under, a file not among them answering as a 404. */
 const served: Record<string, unknown> = {
   'pvpoke-gamemaster.json': PVPOKE,
   'pvpoke-fantasy-1500.json': PVPOKE.rankings,

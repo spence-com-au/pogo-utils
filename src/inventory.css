@@ -1,7 +1,7 @@
 /**
  * The Inventory page. Shares the colour tokens in theme.css, the tab bar in nav.css and the heading block in chrome.css
  * with the other pages; the panels here take a screenshot from a phone or a file and print what each reader makes of
- * it, the way `bin/inventory parse` does.
+ * it, the way `pnpm inventory parse` does.
  */
 
 /* Scoped to the open page, for the reason integrations.css gives at length: one document loads every page's sheet. */

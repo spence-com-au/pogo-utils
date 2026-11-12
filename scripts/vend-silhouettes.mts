@@ -1,5 +1,5 @@
 /**
- * Writes `data/silhouettes.json`, every form's outline that `bin/battle` reads a party card against, for a page to
+ * Writes `data/silhouettes.json`, every form's outline that `pnpm battle` reads a party card against, for a page to
  * fetch once rather than fetching some 1,300 form icons and 40 MB to outline them itself. The forms are the vended game
  * master's, which is the one a page reads, and `assets.test.mts` fails where the two have drifted apart, so a re-vend
  * of the game master that adds a form is followed by this.

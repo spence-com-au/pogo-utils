@@ -25,8 +25,8 @@ import { reads } from '../../core/node/test-cache.mts';
 
 const run = promisify(execFile);
 
-const BIN = fileURLToPath(new URL('../../../bin/inventory', import.meta.url));
-const SOURCE = readFileSync(new URL('../../../scripts/inventory.mts', import.meta.url), 'utf8');
+const SCRIPT = fileURLToPath(new URL('../../../scripts/inventory.mts', import.meta.url));
+const SOURCE = readFileSync(SCRIPT, 'utf8');
 const CAPTURE = fileURLToPath(new URL('fixtures/overworld.png', import.meta.url));
 
 /** One printed line of the OCR dump: a box at a position, then whatever was read out of it. */
@@ -82,11 +82,11 @@ const HONOURED = new Map(
  * read whole, which is what makes the comparison per command rather than a flat set, which would pass a `--serial`
  * offered on the `scan` line alone while `snap` honoured it.
  */
-const ADVERTISED = run(BIN, ['help']).then(
+const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
   ({ stdout }) =>
     new Map(
       stdout
-        .split(/^ {2}bin\/inventory /m)
+        .split(/^ {2}pnpm inventory /m)
         .slice(1)
         .map((chunk) => {
           // A command's own lines are indented past it; one at the margin or two in is the shared options or the prose
@@ -106,15 +106,15 @@ const ADVERTISED = run(BIN, ['help']).then(
  * with a regular expression, and `?.[0]` on a miss makes `console.log(undefined)` print `undefined` and exit 0. So a
  * usage block reworded past that pattern breaks the help text and reports success.
  *
- * On stdout, as `bin/phone` and `bin/battle` print theirs, so that `help | less` or `help > usage.txt` has it to read;
- * the usage beside a refusal goes to stderr with the refusal.
+ * On stdout, as `pnpm phone` and `pnpm battle` print theirs, so that `help | less` or `help > usage.txt` has it to
+ * read; the usage beside a refusal goes to stderr with the refusal.
  */
 test('`help` prints the synopsis and exits 0', async () => {
-  const { stdout, stderr } = await run(BIN, ['help']);
+  const { stdout, stderr } = await run(process.execPath, [SCRIPT, 'help']);
 
-  expect(stdout).toContain('bin/inventory scan');
-  expect(stdout).toContain('bin/inventory snap');
-  expect(stdout).toContain('bin/inventory parse');
+  expect(stdout).toContain('pnpm inventory scan');
+  expect(stdout).toContain('pnpm inventory snap');
+  expect(stdout).toContain('pnpm inventory parse');
   expect(stderr).toBe('');
 });
 
@@ -122,9 +122,9 @@ test('`help` prints the synopsis and exits 0', async () => {
 test.each([[[]], [['scan']], [['parse', 'x.png']]])(
   '`--help` after %j prints the synopsis and exits 0',
   async (args) => {
-    const { stdout, stderr } = await run(BIN, [...args, '--help']);
+    const { stdout, stderr } = await run(process.execPath, [SCRIPT, ...args, '--help']);
 
-    expect(stdout).toContain('bin/inventory scan');
+    expect(stdout).toContain('pnpm inventory scan');
     expect(stderr).toBe('');
   },
 );
@@ -189,13 +189,15 @@ test('a flag its command does not act on is refused, not ignored', async () => {
   const cwd = reads();
 
   try {
-    const failure = await run(BIN, ['parse', '--out', 'x.jsonl', CAPTURE], { cwd }).catch((error: unknown) => error);
+    const failure = await run(process.execPath, [SCRIPT, 'parse', '--out', 'x.jsonl', CAPTURE], { cwd }).catch(
+      (error: unknown) => error,
+    );
 
     expect(failure).toMatchObject({ code: 1 });
     expect((failure as { stderr: string }).stderr).toContain('parse does not act on --out');
 
     // The usage goes with the complaint, since the list the flag was not on is what answers it.
-    expect((failure as { stderr: string }).stderr).toContain('bin/inventory parse');
+    expect((failure as { stderr: string }).stderr).toContain('pnpm inventory parse');
   } finally {
     rmSync(cwd, { recursive: true });
   }
@@ -214,19 +216,19 @@ test('a flag its command does not act on is refused, not ignored', async () => {
  */
 test('an unknown command prints the usage and fails', async () => {
   for (const command of ['scna', 'toString', 'constructor', 'valueOf', 'hasOwnProperty', '__proto__']) {
-    const failure = await run(BIN, [command, '--verbose']).catch((error: unknown) => error);
+    const failure = await run(process.execPath, [SCRIPT, command, '--verbose']).catch((error: unknown) => error);
 
     expect(failure, `\`${command}\` did not fail`).toMatchObject({ code: 1 });
-    expect((failure as { stderr: string }).stderr, `\`${command}\` printed no usage`).toContain('bin/inventory scan');
+    expect((failure as { stderr: string }).stderr, `\`${command}\` printed no usage`).toContain('pnpm inventory scan');
   }
 });
 
 /** `parse` with no file named is the same: the guard on it is a length, and a missing argument must not read as one. */
 test('`parse` with no file prints the usage and fails', async () => {
-  const failure = await run(BIN, ['parse']).catch((error: unknown) => error);
+  const failure = await run(process.execPath, [SCRIPT, 'parse']).catch((error: unknown) => error);
 
   expect(failure).toMatchObject({ code: 1 });
-  expect((failure as { stderr: string }).stderr).toContain('bin/inventory parse');
+  expect((failure as { stderr: string }).stderr).toContain('pnpm inventory parse');
 });
 
 /**
@@ -248,7 +250,9 @@ test('the `--search` term the usage advertises is one the phone can be sent', ()
  * going to be sent, which leaves storage open with the keyboard up and nothing captured.
  */
 test.for(['scan', 'snap'])('`%s` refuses an untypeable `--search`, before it opens the phone', async (command) => {
-  const failure = await run(BIN, [command, '--search', '+burmy (sandy)']).catch((error: unknown) => error);
+  const failure = await run(process.execPath, [SCRIPT, command, '--search', '+burmy (sandy)']).catch(
+    (error: unknown) => error,
+  );
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
@@ -266,7 +270,9 @@ test.for(['scan', 'snap'])('`%s` refuses an untypeable `--search`, before it ope
 test.for(['scan', 'snap'])(
   '`%s` refuses a `--search` longer than the box can be cleared of, before it opens the phone',
   async (command) => {
-    const failure = await run(BIN, [command, '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch((error: unknown) => error);
+    const failure = await run(process.execPath, [SCRIPT, command, '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch(
+      (error: unknown) => error,
+    );
     const { stderr } = failure as { stderr: string };
 
     expect(failure).toMatchObject({ code: 1 });
@@ -281,7 +287,9 @@ test.for(['scan', 'snap'])(
  * Six short of the clear, so `shiny&` and `lucky&` fit it exactly and only `costume&` goes over.
  */
 test('`scan` refuses a `--search` that only a flag pass would overflow, before it opens the phone', async () => {
-  const failure = await run(BIN, ['scan', '--search', 'a'.repeat(CLEAR_KEYS - 6)]).catch((error: unknown) => error);
+  const failure = await run(process.execPath, [SCRIPT, 'scan', '--search', 'a'.repeat(CLEAR_KEYS - 6)]).catch(
+    (error: unknown) => error,
+  );
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
@@ -294,9 +302,9 @@ test('`scan` refuses a `--search` that only a flag pass would overflow, before i
  * is never checked.
  */
 test('`--help` prints the usage even beside a `--search` that would be refused', async () => {
-  const { stdout } = await run(BIN, ['snap', '--help', '--search', '']);
+  const { stdout } = await run(process.execPath, [SCRIPT, 'snap', '--help', '--search', '']);
 
-  expect(stdout).toContain('bin/inventory snap');
+  expect(stdout).toContain('pnpm inventory snap');
 });
 
 /**
@@ -311,7 +319,7 @@ test.for([
   ['snap', 'empty', ''],
   ['snap', 'whitespace-only', '   '],
 ] as const)('`%s` refuses an %s `--search`, before it opens the phone', async ([command, , term]) => {
-  const failure = await run(BIN, [command, '--search', term]).catch((error: unknown) => error);
+  const failure = await run(process.execPath, [SCRIPT, command, '--search', term]).catch((error: unknown) => error);
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
@@ -336,7 +344,7 @@ test.for([
   writeFileSync(join(cwd, 'adb'), `#!/bin/sh\n: > '${ran}'\n`, { mode: 0o755 });
 
   try {
-    const failure = await run(BIN, ['scan', flag, value], {
+    const failure = await run(process.execPath, [SCRIPT, 'scan', flag, value], {
       cwd,
       env: { ...process.env, PATH: `${cwd}:${process.env.PATH}` },
     }).catch((error: unknown) => error);
@@ -358,10 +366,11 @@ test.for([
  */
 test('a run whose working directory is gone fails rather than spins', async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'inventory-cli-'));
-  const failure = await run('sh', ['-c', 'rmdir -- "$1" && shift && exec "$@"', 'sh', cwd, BIN, 'parse', CAPTURE], {
-    cwd,
-    timeout: 30_000,
-  }).catch((error: unknown) => error);
+  const failure = await run(
+    'sh',
+    ['-c', 'rmdir -- "$1" && shift && exec "$@"', 'sh', cwd, process.execPath, SCRIPT, 'parse', CAPTURE],
+    { cwd, timeout: 30_000 },
+  ).catch((error: unknown) => error);
 
   expect(failure, 'the run did not fail by itself, so it was killed spinning').toMatchObject({ code: 1 });
   expect((failure as { stderr: string }).stderr).toContain('ENOENT: process.cwd failed');
@@ -375,8 +384,8 @@ test('a run whose working directory is gone fails rather than spins', async () =
  */
 async function quietAndLoud(cwd: string) {
   const [quiet, loud] = await Promise.allSettled([
-    run(BIN, ['parse', CAPTURE], { cwd }),
-    run(BIN, ['parse', '--verbose', CAPTURE], { cwd }),
+    run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd }),
+    run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd }),
   ]);
 
   if (quiet.status === 'rejected') {
@@ -487,7 +496,7 @@ test('a cached file that will not decode is reported against its own URL, and no
   writeFileSync(index, '<html>502 Bad Gateway</html>');
 
   try {
-    const { stderr } = await run(BIN, ['parse', CAPTURE], { cwd });
+    const { stderr } = await run(process.execPath, [SCRIPT, 'parse', CAPTURE], { cwd });
     const [warning, ...rest] = stderr.split('\n').filter((line) => line.includes('narrowed by its artwork'));
 
     expect(rest, 'the icon index was reported more than once, so the line below is one of several').toStrictEqual([]);
@@ -517,7 +526,7 @@ test('a listing that says it is truncated is refused rather than half read', asy
   writeFileSync(index, JSON.stringify({ tree, truncated: true }));
 
   try {
-    const { stderr } = await run(BIN, ['parse', '--verbose', CAPTURE], { cwd });
+    const { stderr } = await run(process.execPath, [SCRIPT, 'parse', '--verbose', CAPTURE], { cwd });
     const [warning, ...rest] = stderr.split('\n').filter((line) => line.includes('narrowed by its artwork'));
 
     expect(rest, 'the icon index was reported more than once, so the line below is one of several').toStrictEqual([]);

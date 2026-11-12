@@ -1,5 +1,5 @@
 /**
- * The held shell `bin/battle` drives the phone through, against a stand-in `adb` whose `shell` is the computer's own
+ * The held shell `pnpm battle` drives the phone through, against a stand-in `adb` whose `shell` is the computer's own
  * `sh`: what a command prints and how it exits come back as from the phone, and the shell can be made to exit as a
  * dropped connection would.
  */

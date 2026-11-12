@@ -1,5 +1,5 @@
 /**
- * The phone kept awake for a battle, as `bin/battle` keeps it: a screen gone dark mid-battle reads as nothing
+ * The phone kept awake for a battle, as `pnpm battle` keeps it: a screen gone dark mid-battle reads as nothing
  * recognised and ends the run. So `stay_on_while_plugged_in` is read, set, and put back as found on every way out the
  * battle's Worker sees. The one it cannot see is its tab being closed, which ends the Worker with it, mid-run and with
  * the phone still set. So the value found is kept per phone in IndexedDB, before the setting is changed and until it

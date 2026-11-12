@@ -1,6 +1,6 @@
 # Trainer battles
 
-`bin/battle` plays Pokémon GO's trainer battles on an Android phone over `adb`: Team Leader training, or GO Battle
+`pnpm battle` plays Pokémon GO's trainer battles on an Android phone over `adb`: Team Leader training, or GO Battle
 League against other trainers. How to run it is in the [root README](../../../README.md#trainer-battles) and in the
 usage at the top of [`scripts/battle.mts`](../../../scripts/battle.mts). This page is for working on it: how it is put
 together, and the strategy it plays by.
@@ -8,7 +8,7 @@ together, and the strategy it plays by.
 ## How it works
 
 A battle turns every half second, and a screenshot over `adb` takes 0.8–1.9s, so the bot cannot look at the game the way
-`bin/inventory` does. It watches the screen as video instead, decides something about every frame, and acts with taps
+`pnpm inventory` does. It watches the screen as video instead, decides something about every frame, and acts with taps
 and swipes. The menus between battles are slower and change rarely, so those are read off full screenshots.
 
 ```mermaid
@@ -108,7 +108,7 @@ for text and done every few seconds.
   made to keep that move's energy.
 - **Sending them** goes through one `adb shell` held open for the run ([`adbHeld`](../../core/node/adb-cli.mts), over
   the marker protocol in [`held-shell.mts`](../../core/held-shell.mts) that a page's shell over WebUSB shares), not a
-  fresh `adb` process for each tap and swipe as `bin/inventory` uses, and to a touchscreen of the run's own
+  fresh `adb` process for each tap and swipe as `pnpm inventory` uses, and to a touchscreen of the run's own
   ([`touchscreen.mts`](../../core/touchscreen.mts)) rather than through `input`, which starts a Java runtime on the
   phone for every command. The shell makes it a virtual HID device through `/dev/uhid` and writes each touch to it as a
   report with its builtin `print`, a swipe as one command whose moves the phone paces with `read -t`. The phone's own
@@ -161,7 +161,7 @@ for text and done every few seconds.
     its silhouette read and its card's CP, and then by the CP alone where that shows nothing, as a misread silhouette's
     species would. The Pokémon being swapped is the cell tinted pink; the rest of the party is green.
   - **Reading it:** the panel is screenshot mid-hold, found as the pure white over the screen dimmed behind it, and its
-    rows matched as `bin/inventory` matches the detail screen's moves ([`../../core/moves.mts`](../../core/moves.mts)),
+    rows matched as `pnpm inventory` matches the detail screen's moves ([`../../core/moves.mts`](../../core/moves.mts)),
     among the species' own moves first. One its dex number found is that species, its moves matched among its own
     whatever types the panel reads, a type OCR missed leaving them to fit another. Otherwise its types and moves name
     the species, which a nickname hides: the one species whose forms of those types hold every move read. Where they
@@ -315,7 +315,7 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 
 Each reader is tested against committed frames in [`fixtures/`](fixtures/), PNGs and H.264 clips stored with Git LFS,
 from both a Pixel 4 XL and a Pixel 8 Pro. Each threshold in the code is quoted beside the frames it was measured on.
-`run.test.mts` plays whole battles through a scripted phone. New fixtures come from `bin/battle record`. Before a
+`run.test.mts` plays whole battles through a scripted phone. New fixtures come from `pnpm battle record`. Before a
 capture is committed, the account's trainer names and the Nearby Battle QR code must be filled in solid (see
 [`CLAUDE.md`](../../../CLAUDE.md)).
 
