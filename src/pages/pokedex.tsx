@@ -281,7 +281,7 @@ function Detail({
           <dd>{entry.shiny ? 'Available' : entry.released ? 'Not yet' : '—'}</dd>
 
           <dt>In the wild</dt>
-          <dd>{entry.spawns ? 'Spawns' : entry.released ? 'No — only from raids, eggs, research or trades' : '—'}</dd>
+          <dd>{entry.spawns ? 'Spawns' : entry.released ? 'No' : '—'}</dd>
 
           {entry.categories.length > 0 && (
             <>
