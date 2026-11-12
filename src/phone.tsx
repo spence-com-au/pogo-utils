@@ -130,16 +130,11 @@ export function Phone() {
 
   /**
    * Open the panel on `held` and ask it what it is, through a `Device` fetched only now, as `webusb.ts` is: it brings
-   * the PNG decoder with it. Asked at every opening rather than kept, the charge being a part that moves. The demo
-   * phone is not asked, having nothing to say.
+   * the PNG decoder with it. Asked at every opening rather than kept, the charge being a part that moves.
    */
   async function show(held: Held) {
     setStatus(null);
     setPanel({ phone: held });
-
-    if (held.serial === DEMO_SERIAL) {
-      return;
-    }
 
     // Kept only where the panel it was asked for is still open: one closed meanwhile stays closed.
     const answer = (got: { about: About } | { failed: string }) =>
@@ -211,9 +206,7 @@ export function Phone() {
           </div>
 
           <section class="menu-section">
-            {demo ? (
-              <p class="menu-note">Recorded screens, standing in for a phone.</p>
-            ) : shown.about ? (
+            {shown.about ? (
               <dl class="phone-about">
                 {rows(shown.about, shown.phone.serial).map(([term, value]) => (
                   <Fragment key={term}>
