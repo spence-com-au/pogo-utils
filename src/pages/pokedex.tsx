@@ -281,7 +281,7 @@ function Detail({
           <dd>{entry.shiny ? 'Available' : entry.released ? 'Not yet' : '—'}</dd>
 
           <dt>In the wild</dt>
-          <dd>{entry.spawns ? 'Spawns' : entry.released ? 'Never — raids, eggs, research or trades' : '—'}</dd>
+          <dd>{entry.spawns ? 'Spawns' : entry.released ? 'No' : '—'}</dd>
 
           {entry.categories.length > 0 && (
             <>
@@ -791,16 +791,14 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
       <footer>
         <p>
-          Every species, what of it is in the game, which have a shiny, and which of the hunts still want it. The
-          Pokémon tab fills a tile for every species in the game; each of the others redraws the grid as that hunt's
-          dex, filling a tile once some form of the species is in the game — with its shiny out, in the Shiny dex — and
-          off that hunt's list, as the game fills a tile once any form is registered. Anything else is left as an empty
-          tile.
+          Every species: whether it is in the game, whether it has a shiny and which hunts still want it. The Pokémon
+          tab fills every species in the game. The other tabs show each hunt as a dex, filling a species once any form
+          of it is out (its shiny, in the Shiny dex) and off that hunt's list.
         </p>
         <p>
-          Read from the same Pokédex and hunt lists the PGSharp backup is built from, so the two cannot disagree.
-          Pictures are the game's own, from PokeMiners, with PokeAPI's sprite for a species the game has no artwork for.
-          The link updates as you filter, so a view can be shared or bookmarked.
+          Built from the same lists as the PGSharp backup, so the two always agree. Pictures are the game's own, from
+          PokeMiners, or PokeAPI's sprite where the game has none. The link updates as you filter, so you can share or
+          bookmark a view.
         </p>
         <p>This site is unofficial.</p>
       </footer>

@@ -36,7 +36,7 @@ interface Kit {
 export function unreadable(): string | null {
   return window.isSecureContext
     ? null
-    : 'Reading a screenshot needs a secure context too: open this page from localhost or the published site.';
+    : 'Reading a screenshot needs a secure context: open this page from localhost or the published site.';
 }
 
 /**

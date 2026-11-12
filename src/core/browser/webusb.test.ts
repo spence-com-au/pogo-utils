@@ -138,9 +138,7 @@ test('a phone not among those the site was granted fails, naming its serial, and
 
   mocks.usb.getDevices.mockResolvedValue(granted);
 
-  await expect(reconnect('GONE')).rejects.toThrow(
-    /^the phone GONE is not plugged in, or this site may no longer reach it$/,
-  );
+  await expect(reconnect('GONE')).rejects.toThrow(/^the phone GONE is unplugged, or this site has lost access to it$/);
 
   for (const one of granted) {
     expect(one.connect).not.toHaveBeenCalled();

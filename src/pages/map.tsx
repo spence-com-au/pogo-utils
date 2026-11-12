@@ -584,7 +584,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
 
     // Said out loud rather than silently ignored: the link came from somewhere, so landing nowhere needs explaining.
     if (routes.length === 0 && places.length === 0) {
-      setToast(`Nothing here was added for “${name}”`);
+      setToast(`No routes or places for “${name}”`);
 
       return false;
     }
@@ -610,7 +610,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
     mapRef.current?.fitBounds(L.featureGroup(layers).getBounds(), { padding: [24, 24], maxZoom: 16 });
 
     // No popup: one would name a single entry and so contradict the point of selecting all of them. The count says it.
-    setToast(`Selected all ${layers.length} entries added for “${name}”`);
+    setToast(`Selected all ${layers.length} entries for “${name}”`);
 
     return true;
   }
@@ -897,11 +897,9 @@ export default function MapPage({ query: fragment }: { query: string }) {
                 Could not read <code>{GPX_PATHS}</code> — {fatal}.
               </b>
               <br />
-              This page reads the route list and the <code>.gpx</code> files over HTTP from a build of the site. To run
-              it locally, try:
+              This page loads its routes and <code>.gpx</code> files from a build of the site. To try it locally, run:
               <br />
-              <code>pnpm build &amp;&amp; pnpm serve</code> then open the address it prints — or view it via GitHub
-              Pages.
+              <code>pnpm build &amp;&amp; pnpm serve</code> and open the address it prints, or use the published site.
             </>
           )}
 

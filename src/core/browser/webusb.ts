@@ -135,7 +135,7 @@ function usb(): AdbDaemonWebUsbDeviceManager {
     // The global rather than `window`'s, which a Worker has none of.
     throw new Error(
       globalThis.isSecureContext
-        ? 'This browser has no WebUSB. Chrome and Edge do, on a computer or on Android.'
+        ? 'This browser has no WebUSB. Use Chrome or Edge, on a computer or on Android.'
         : 'WebUSB needs a secure context: ' +
             'open this page from localhost or the published site rather than a LAN address.',
     );
@@ -172,7 +172,7 @@ export async function reconnect(serial: string): Promise<Phone> {
   const device = (await usb().getDevices()).find((candidate) => candidate.serial === serial);
 
   if (device === undefined) {
-    throw new Error(`the phone ${serial} is not plugged in, or this site may no longer reach it`);
+    throw new Error(`the phone ${serial} is unplugged, or this site has lost access to it`);
   }
 
   return open(device);
@@ -251,7 +251,7 @@ async function open(device: AdbDaemonWebUsbDevice): Promise<Phone> {
     const shell = adb.subprocess.shellProtocol;
 
     if (shell === undefined) {
-      throw new Error("this phone's adb has no shell protocol, which Android has had since 7");
+      throw new Error("this phone's adb has no shell protocol, so it needs Android 7 or later");
     }
 
     const process = await shell.spawn(command);

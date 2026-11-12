@@ -19,12 +19,12 @@ import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, TERMS_BY_ID } from '.
 const ticks = (text: string) => [...text].filter((character) => character === '`').length;
 
 test('every help sentence closes the backticks it opens', () => {
-  const open = GROUPS.filter((category) => ticks(category.help) % 2 === 1);
+  const open = GROUPS.filter((category) => ticks(category.help ?? '') % 2 === 1);
 
   // Whether any of them quotes at all is the other half: this would pass just as quietly over a table of plain prose.
   expect({
     open: open.map((category) => category.id),
-    quotes: GROUPS.some((category) => ticks(category.help) > 0),
+    quotes: GROUPS.some((category) => ticks(category.help ?? '') > 0),
   }).toEqual({ open: [], quotes: true });
 });
 

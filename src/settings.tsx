@@ -60,7 +60,7 @@ export function Settings() {
       );
 
       if (restored === null) {
-        setStatus('That backup held no saved preferences, so nothing changed.');
+        setStatus('That backup has no saved preferences, so nothing changed.');
         return;
       }
 
@@ -69,7 +69,7 @@ export function Settings() {
       // The one place the copy is explained, said only when it was taken, so the file in Downloads is not a mystery.
       setStatus(
         `Restored ${written} saved preference${written === 1 ? '' : 's'}.` +
-          (rescued ? ' What it replaced was downloaded first.' : ''),
+          (rescued ? ' Your previous preferences were downloaded first.' : ''),
       );
     } catch (e) {
       setStatus(`Could not restore that backup: ${said(e)}`);
@@ -100,12 +100,12 @@ export function Settings() {
           <p class="menu-note">Save this browser’s preferences as a file, or restore one.</p>
 
           <div class="menu-actions">
-            <button type="button" title="Save every preference this browser has stored as a file" onClick={exportPrefs}>
+            <button type="button" title="Download every saved preference as a file" onClick={exportPrefs}>
               Export
             </button>
             <button
               type="button"
-              title="Read a saved file back, replacing the preferences it names and leaving the rest"
+              title="Restore a saved file, replacing only the preferences it holds"
               onClick={() => picker.current?.click()}
             >
               Import
