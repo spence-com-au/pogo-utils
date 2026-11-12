@@ -835,11 +835,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     <>
       <header class="page">
         <h1 class="sr">Search Strings</h1>
-        {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
-        {/* prettier-ignore */}
         <p class="sub">
-          Build a search string for Pokémon GO's storage screen: pick filters in <em>Builder</em>, or type the search
-          in <em>Advanced</em>. Both edit the same search, and the string to copy is at the top.
+          Build a search string for Pokémon GO's storage screen. Pick filters in <em>Builder</em>, or type the search
+          yourself in <em>Advanced</em>. Both edit the same search, and the string to copy is at the top.
         </p>
       </header>
 
