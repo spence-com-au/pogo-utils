@@ -7,28 +7,44 @@
  *
  * The namespace is the allowlist. One list decides both what an export carries and what an import writes, rather than
  * two that can come to disagree — and it is what keeps an export off the keys of the other site on this origin,
- * `localStorage` being keyed by origin and not by path. The file names it once, in `namespace`, and keys each value by
- * what follows it, so a value cannot be written outside the namespace however the file is edited. `KEY_PREFIX` comes
- * from `storage-namespace.ts`, which every key is built from, for the same reason: a sweep spelled here could be
- * shortened to one the keys no longer agree with, and a prefix short enough to reach the neighbouring site is exactly
- * the way this goes wrong.
+ * `localStorage` being keyed by origin and not by path. The file names it once, in `namespace`, and nests each value
+ * under what follows it, split at every colon — `pogo-utils:events:seen` is `values.events.seen` — so a value cannot be
+ * written outside the namespace however the file is edited. `KEY_PREFIX` comes from `storage-namespace.ts`, which every
+ * key is built from, for the same reason: a sweep spelled here could be shortened to one the keys no longer agree with,
+ * and a prefix short enough to reach the neighbouring site is exactly the way this goes wrong.
  *
- * Version 1 files are still read. They carry each key whole at the top level, beside `version`, and readers exported
- * them for as long as that was the only layout: a backup exists to be read back long after it was taken, so a page that
- * stopped reading them would strand the very files it asked people to keep. Only the namespace's own keys are taken
- * from one, which keeps the allowlist holding for a layout that has no `namespace` field to check.
+ * Versions 1 and 2 are still read. Version 1 carries each key whole at the top level, beside `version`, and version 2
+ * each key's name within the namespace whole under `values`, and readers exported each for as long as it was the only
+ * layout: a backup exists to be read back long after it was taken, so a page that stopped reading them would strand the
+ * very files it asked people to keep. Only the namespace's own keys are taken from version 1, which keeps the allowlist
+ * holding for a layout that has no `namespace` field to check.
  */
 
 import { said } from './errors.js';
 import { KEY_PREFIX, NAMESPACE } from './storage-namespace.js';
 
 /**
- * What a file this code writes says it is. `parseBackup` reads this and version 1, and refuses any other rather than
- * read it as best it can: a version is the one signal that a key may have come to mean something different, which is
- * the case a lenient reader gets wrong. Adding a key does not bump it — the version says how to read a file, not what
- * is in it.
+ * What a file this code writes says it is. `parseBackup` reads this and versions 1 and 2, and refuses any other rather
+ * than read it as best it can: a version is the one signal that a key may have come to mean something different, which
+ * is the case a lenient reader gets wrong. Adding a key does not bump it — the version says how to read a file, not
+ * what is in it.
  */
-const VERSION = 2;
+const VERSION = 3;
+
+/**
+ * Where a group in a version 3 file keeps the value stored at its own path. A value that is itself an object needs it,
+ * since bare it would read as a group of keys — `events:seen` and `events:hidden-by-view` are both stored as objects —
+ * and so does a path that holds a value and has keys below it too. Any other value stands bare under its name, which is
+ * most of them and the point of nesting: `"acknowledged": "r9"` under `"coin-bag"`.
+ *
+ * Which makes it a name no key part can have, since it would be read as its group's own value. No key has one, and an
+ * export leaves out a key that does, as it leaves out a value that is not JSON.
+ */
+const MARKER = '$value';
+
+const pathOf = (key: string) => key.slice(KEY_PREFIX.length).split(':');
+
+const keyOf = (path: readonly string[]) => `${KEY_PREFIX}${path.join(':')}`;
 
 /**
  * A backup's date in its name, so successive exports do not land as `… (1).json` and stop saying which is which.
@@ -80,29 +96,86 @@ export function ownedKeys(): string[] {
  * a filter chip still works for the rest of the session; an export that quietly produced an empty backup would be the
  * same silence where it does real harm.
  *
- * Values are keyed in alphabetical order rather than the order storage lists them, which follows when each key was
+ * Every level is in alphabetical order rather than the order storage lists the keys, which follows when each key was
  * first written and differs from one browser to the next. Sorted, two exports of the same preferences are the same
  * file, so a diff between them shows what changed and nothing else, and a reader finds a key where they expect it.
- * Sorted by code unit rather than through `localeCompare`, so the order is one file's and not one locale's.
+ * Sorted by code unit rather than through `localeCompare`, so the order is one file's and not one locale's — and a
+ * level at a time rather than by whole key, which would put `coin-bag-x` ahead of `coin-bag`, `-` sorting before `:`.
  */
 export function writeBackup(): string {
-  const values: Record<string, unknown> = {};
+  const values = groupOf();
 
-  for (const key of ownedKeys().sort()) {
-    const stored = localStorage.getItem(key);
+  for (const path of ownedKeys().map(pathOf).sort(byLevel)) {
+    const stored = localStorage.getItem(keyOf(path));
 
-    if (stored === null) {
+    if (stored === null || path.includes(MARKER)) {
       continue;
     }
 
+    let value: unknown;
+
     try {
-      values[key.slice(KEY_PREFIX.length)] = JSON.parse(stored);
+      value = JSON.parse(stored);
     } catch {
       /* Not JSON, so it cannot be a field of one; it reads as absent from either name. */
+      continue;
     }
+
+    place(values, path, value);
   }
 
   return JSON.stringify({ version: VERSION, namespace: NAMESPACE, values }, null, 2);
+}
+
+/** Paths a level at a time: a path before any below it, and the names within a group in code-unit order. */
+function byLevel(a: readonly string[], b: readonly string[]): number {
+  for (const [index, name] of a.entries()) {
+    const other = b[index];
+
+    if (other === undefined) {
+      return 1;
+    }
+
+    if (name !== other) {
+      return name < other ? -1 : 1;
+    }
+  }
+
+  return a.length - b.length;
+}
+
+/**
+ * Set a value at its path, making the groups above it on the way. Called in `byLevel` order, which places a path
+ * before any below it, so a value is already standing where a later path needs a group, and moves under `$value` to
+ * make room.
+ */
+function place(values: Record<string, unknown>, path: readonly string[], value: unknown) {
+  let group = values;
+
+  for (const name of path.slice(0, -1)) {
+    const standing = group[name];
+    const below = isObject(standing) ? standing : groupOf(standing);
+
+    group[name] = below;
+    group = below;
+  }
+
+  // A key split at its colons has one part at least, the namespace's own key `pogo-utils:` having `""`.
+  group[path.at(-1) as string] = isObject(value) ? groupOf(value) : value;
+}
+
+/**
+ * A group, holding `value` as its own where there is one. Without a prototype, so a key part such as `__proto__` or
+ * `constructor` is a name like any other rather than a property every object already answers.
+ */
+function groupOf(value?: unknown): Record<string, unknown> {
+  const group: Record<string, unknown> = Object.create(null);
+
+  if (value !== undefined) {
+    group[MARKER] = value;
+  }
+
+  return group;
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -115,7 +188,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  * turn away. Separate messages rather than one because they ask different things of a reader: a readable file, a file
  * from this site, or a newer page to read it with.
  *
- * A file carrying no keys is an empty answer rather than a refusal. The version, and in version 2 the namespace, is
+ * A file carrying no keys is an empty answer rather than a refusal. The version, and from version 2 the namespace, is
  * what says a file is ours, so a reader who exported on a first visit has a legitimately empty backup — refusing that
  * would turn the one export nobody can reconstruct into the one that cannot be read back.
  */
@@ -136,26 +209,59 @@ export function parseBackup(text: string): [string, unknown][] {
     case 1:
       return Object.entries(parsed).filter(([field]) => field.startsWith(KEY_PREFIX));
 
-    case 2: {
-      if (parsed.namespace !== NAMESPACE) {
-        const found = JSON.stringify(parsed.namespace) ?? 'absent';
-        throw new Error(`that backup is of namespace ${found}, and this page reads ${JSON.stringify(NAMESPACE)}`);
-      }
+    case 2:
+      return Object.entries(valuesOf(parsed)).map(([name, value]) => [`${KEY_PREFIX}${name}`, value]);
 
-      if (!isObject(parsed.values)) {
-        throw new Error('that file is not a backup: its values are not a JSON object');
-      }
-
-      return Object.entries(parsed.values).map(([name, value]) => [`${KEY_PREFIX}${name}`, value]);
-    }
+    case 3:
+      return keysIn(valuesOf(parsed));
 
     // Quoted through `JSON.stringify` rather than interpolated bare: this came out of a file, and a version reading `1`
     // and one reading `"1"` are a refusal a reader has to be able to tell apart.
     default: {
       const found = JSON.stringify(parsed.version) ?? 'absent';
-      throw new Error(`that backup is version ${found}, and this page reads version 1 or 2`);
+      throw new Error(`that backup is version ${found}, and this page reads version 1, 2 or 3`);
     }
   }
+}
+
+/** A file's values, once its namespace has said the file is this page's. */
+function valuesOf(file: Record<string, unknown>): Record<string, unknown> {
+  if (file.namespace !== NAMESPACE) {
+    const found = JSON.stringify(file.namespace) ?? 'absent';
+    throw new Error(`that backup is of namespace ${found}, and this page reads ${JSON.stringify(NAMESPACE)}`);
+  }
+
+  if (!isObject(file.values)) {
+    throw new Error('that file is not a backup: its values are not a JSON object');
+  }
+
+  return file.values;
+}
+
+/**
+ * The keys a version 3 file nests, each path joined back at the colons an export split it at.
+ *
+ * A name holding a colon, and `$value` standing directly in `values`, are refused rather than read: an export writes
+ * neither, so a file holding one has been edited into something with two readings. A version 2 file relabelled 3 is
+ * the likely one, whose `events:seen` would otherwise read as a group and write the record's fields as keys of their
+ * own. `$value` there would be the namespace's own value, the key `pogo-utils:` — which an export writes as `""`.
+ */
+function keysIn(group: Record<string, unknown>, path: readonly string[] = []): [string, unknown][] {
+  return Object.entries(group).flatMap(([name, node]): [string, unknown][] => {
+    if (name === MARKER) {
+      if (path.length === 0) {
+        throw new Error(`that file is not a backup: its values hold ${JSON.stringify(MARKER)} outside any group`);
+      }
+
+      return [[keyOf(path), node]];
+    }
+
+    if (name.includes(':')) {
+      throw new Error(`that file is not a backup: its name ${JSON.stringify(name)} holds a colon`);
+    }
+
+    return isObject(node) ? keysIn(node, [...path, name]) : [[keyOf([...path, name]), node]];
+  });
 }
 
 /**
