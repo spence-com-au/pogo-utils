@@ -144,7 +144,11 @@ export function Phone() {
             {status.message}
             {status.failed && (
               <>
-                {' '}
+                {/*
+                 * A sentence of its own, after the message's full stop where it has one: this site's errors end bare,
+                 * but Tango's need not — `No input endpoint found.`
+                 */}
+                {/[.!?]$/.test(status.message) ? ' ' : '. '}
                 <a href="https://webadb.com/">WebADB</a> can help find out why.
               </>
             )}
