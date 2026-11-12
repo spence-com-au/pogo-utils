@@ -1,7 +1,7 @@
 /**
  * The `adb` binary as a `Transport`. `adbCli` makes each call a fresh `adb` process, which costs a few tens of
  * milliseconds against animations that take most of a second and means a dropped USB connection fails one call loudly.
- * It is how `pnpm inventory` and `pnpm adb` reach the phone, and how `pnpm battle` keeps the screen awake, puts the
+ * It is how `pnpm inventory` and `pnpm phone` reach the phone, and how `pnpm battle` keeps the screen awake, puts the
  * setting back and reads the screen's size to record. `adbHeld`, which is how `pnpm battle` taps and swipes and what
  * `pnpm inventory scan` makes its touchscreen on, writes its shell commands to one `adb shell` held open, a battle's
  * swipes coming too fast to start a process for each.

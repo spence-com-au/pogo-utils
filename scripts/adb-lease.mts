@@ -20,7 +20,7 @@
  *   node scripts/adb-lease.mts end     as the session ends: let go of its leases
  *
  * A lease is taken by `adb` itself rather than by reading Bash commands as they are run, because every way to the phone
- * runs `adb`: by hand and from `pnpm battle`, `pnpm inventory` and `pnpm adb` by `execFile`, off the PATH, and from
+ * runs `adb`: by hand and from `pnpm battle`, `pnpm inventory` and `pnpm phone` by `execFile`, off the PATH, and from
  * scrcpy, which runs the one `ADB` names, and otherwise the one on the PATH or, in a portable build, its own. No
  * command can be written so as to slip past it, short of naming the real `adb` by its path.
  *

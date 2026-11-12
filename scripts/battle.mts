@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * Plays Pokémon GO's trainer battles on an Android phone over `adb`, watching the screen as H.264 from `screenrecord`
  * rather than screenshot by screenshot — a screenshot takes longer than a turn. Team Leader training is what it is built

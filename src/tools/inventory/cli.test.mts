@@ -106,8 +106,8 @@ const ADVERTISED = run(process.execPath, [SCRIPT, 'help']).then(
  * with a regular expression, and `?.[0]` on a miss makes `console.log(undefined)` print `undefined` and exit 0. So a
  * usage block reworded past that pattern breaks the help text and reports success.
  *
- * On stdout, as `pnpm adb` and `pnpm battle` print theirs, so that `help | less` or `help > usage.txt` has it to read;
- * the usage beside a refusal goes to stderr with the refusal.
+ * On stdout, as `pnpm phone` and `pnpm battle` print theirs, so that `help | less` or `help > usage.txt` has it to
+ * read; the usage beside a refusal goes to stderr with the refusal.
  */
 test('`help` prints the synopsis and exits 0', async () => {
   const { stdout, stderr } = await run(process.execPath, [SCRIPT, 'help']);

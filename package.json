@@ -2,9 +2,12 @@
   "name": "pogo-utils",
   "type": "module",
   "private": true,
+  "bin": {
+    "battle": "scripts/battle.mts",
+    "inventory": "scripts/inventory.mts",
+    "phone": "scripts/phone.mts"
+  },
   "scripts": {
-    "adb": "node scripts/adb.mts",
-    "battle": "node scripts/battle.mts",
     "build": "npm-run-all --print-label --serial build:clean build:types build:data build:sprites build:bundle build:ics build:icons build:manifest build:assemble",
     "build:assemble": "node scripts/assemble.mts",
     "build:bundle": "node scripts/bundle.mts",
@@ -16,7 +19,6 @@
     "build:sprites": "node scripts/build-sprites.mts",
     "build:types": "tsc -b tsconfig.json scripts/tsconfig.json",
     "clean": "rm -rf dist .types",
-    "inventory": "node scripts/inventory.mts",
     "lint": "npm-run-all --continue-on-error --parallel --print-label 'lint:!(fix|dex)'",
     "lint:css": "stylelint '**/*.css'",
     "lint:css:fix": "stylelint --fix '**/*.css'",
@@ -64,6 +66,7 @@
     "html-validate": "11.19.0",
     "leaflet": "^1.9.4",
     "npm-run-all2": "^9.0.4",
+    "pogo-utils": "link:.",
     "postcss": "8.5.32",
     "preact": "^11.2.0",
     "prettier": "3.9.10",

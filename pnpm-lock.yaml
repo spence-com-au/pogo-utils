@@ -74,6 +74,9 @@ importers:
       npm-run-all2:
         specifier: ^9.0.4
         version: 9.0.4
+      pogo-utils:
+        specifier: link:.
+        version: 'link:'
       postcss:
         specifier: 8.5.32
         version: 8.5.32

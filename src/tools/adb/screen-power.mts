@@ -1,6 +1,6 @@
 /**
- * The phone's panel dark or lit, for `pnpm adb screen-off` and `screen-on`, which spares an OLED a long battle's still
- * HUD: `ScreenPower.dex`, built out of the Java beside it, written to the phone through the shell and run by
+ * The phone's panel dark or lit, for `pnpm phone screen-off` and `screen-on`, which spares an OLED a long battle's
+ * still HUD: `ScreenPower.dex`, built out of the Java beside it, written to the phone through the shell and run by
  * `app_process`. The panel goes dark beneath Android rather than the phone going to sleep, so the game, `screenrecord`
  * and the touchscreen carry on as if it were lit: a Master League set on a Pixel 4 XL with Android 13 went 4–1 under
  * scrcpy's `--turn-screen-off`, which makes the same call.

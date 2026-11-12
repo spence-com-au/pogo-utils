@@ -25,8 +25,8 @@
 - **Take turns with the phone.** Sessions share the phone plugged in here, so the `SessionStart` hook in
   `.claude/settings.json` puts `bin/adb` first on the PATH of a session's Bash commands and names it as `ADB`, which
   scrcpy runs in place of the `adb` on the PATH or a portable build's own. So every way to the phone — by hand, from
-  scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm adb` — runs `bin/adb`, which takes the phone's lease or is
-  refused while another session holds it. A subagent shares its session's lease, but two subagents of one session, as
+  scrcpy, and from `pnpm battle`, `pnpm inventory` and `pnpm phone` — runs `bin/adb`, which takes the phone's lease or
+  is refused while another session holds it. A subagent shares its session's lease, but two subagents of one session, as
   forks run side by side, take turns as two sessions do. `bin/adb` runs the first other `adb` on the PATH, so a machine
   whose only `adb` is one bundled with scrcpy needs one there too. The refusal names the holder and says how to wait for
   it or ask it with `SendMessage`; do one of those rather than run the real `adb` by its path, which is the one way past

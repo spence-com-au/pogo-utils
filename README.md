@@ -742,13 +742,13 @@ pnpm battle record --seconds 60 battle.h264
 
 ## Phone's screen
 
-`pnpm adb screen-off` turns the phone's panel off, to spare an OLED the still HUD of a long run of battles, and
-`pnpm adb screen-on` turns it back on; `--serial` picks a phone where more than one is plugged in.
+`pnpm phone screen-off` turns the phone's panel off, to spare an OLED the still HUD of a long run of battles, and
+`pnpm phone screen-on` turns it back on; `--serial` picks a phone where more than one is plugged in.
 
 ```sh
-pnpm adb screen-off
+pnpm phone screen-off
 pnpm battle run --mode gbl --league master
-pnpm adb screen-on
+pnpm phone screen-on
 ```
 
 The panel goes dark beneath Android rather than the phone going to sleep, as scrcpy's `--turn-screen-off` darkens it, so
