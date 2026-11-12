@@ -19,6 +19,7 @@ import type { Phone as Held } from './core/browser/webusb.js';
 import { said } from './errors.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
+import { ticked } from './ticked.js';
 
 /**
  * Whether the address asks for the demo phone: `/?demo#/inventory`, in the address's own query rather than the page's
@@ -239,10 +240,14 @@ export function Phone() {
       {status && (
         <div class="menu-panel phone-note">
           <p role="alert">
-            {status.message}
+            {ticked(status.message)}
             {status.failed && (
               <>
-                {' '}
+                {/*
+                 * A sentence of its own, after the message's full stop where it has one: this site's errors end bare,
+                 * but Tango's need not — `No input endpoint found.`
+                 */}
+                {/[.!?]$/.test(status.message) ? ' ' : '. '}
                 <a href="https://webadb.com/">WebADB</a> can help find out why.
               </>
             )}
