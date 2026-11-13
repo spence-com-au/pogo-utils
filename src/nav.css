@@ -120,32 +120,22 @@
 }
 
 /**
- * The phone control with no phone held: greyed and faded, so the one in colour with a dot reads as connected beside it
- * without either needing a word. An emoji takes no `color`, so a filter is what can grey it.
+ * On the phone control, red while no phone is held and green while one, the demo's included, is: the bar says which
+ * from any tab without opening the panel, the icon itself drawn the same either way.
  */
-.phone-none .phone-icon {
-  filter: grayscale(1);
-  opacity: 0.45;
-}
-
-.phone-none:hover .phone-icon,
-.phone-none:focus-visible .phone-icon {
-  opacity: 0.8;
-}
-
-/**
- * Lit on the phone control while a phone, the demo's included, is held: the bar says so from any tab without opening
- * the panel.
- */
-.phone-held {
+.phone-dot {
   position: absolute;
   top: 11px;
   right: 7px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--start);
+  background: var(--end);
   box-shadow: 0 0 0 2px var(--panel);
+}
+
+.phone-held {
+  background: var(--start);
 }
 
 /** What the last press of the phone control has to say: the chooser to look for, or why it did not connect. */

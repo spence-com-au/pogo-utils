@@ -2,8 +2,8 @@
  * The phone control in the top bar, between the notifications and the settings, on every tab: a phone that, pressed,
  * offers the browser's chooser to connect the Android phone held over WebUSB. With no phone held, connecting is the
  * one thing to do with it, so a press does it rather than opening a panel to press again in; with one held, a press
- * opens a panel saying which phone it is, with a button to let it go. It is greyed out while no phone is held, and in
- * colour with a green dot while one is, so the bar says which from any tab.
+ * opens a panel saying which phone it is, with a button to let it go. Its dot is red while no phone is held and green
+ * while one is, so the bar says which from any tab.
  *
  * The demo phone, which reads recorded screens in place of a phone, is kept out of the way behind `?demo`: with it in
  * the address, a press holds the demo phone rather than offering the chooser, and its panel puts it away.
@@ -186,18 +186,16 @@ export function Phone() {
     <div class="menu phone" ref={root}>
       <button
         type="button"
-        class={phone ? 'menu-toggle' : 'menu-toggle phone-none'}
+        class="menu-toggle"
         aria-expanded={phone ? shown !== null : undefined}
         aria-label={label}
         title={label}
         disabled={connecting}
         onClick={press}
       >
-        <span class="phone-icon" aria-hidden="true">
-          📱
-        </span>
-        {/* A dot rather than a count, there being one phone at most: lit while one is held, so the bar says so. */}
-        {phone && <span class="phone-held" aria-hidden="true" />}
+        <span aria-hidden="true">📱</span>
+        {/* A dot rather than a count, there being one phone at most: green while one is held, red while none is. */}
+        <span class={phone ? 'phone-dot phone-held' : 'phone-dot'} aria-hidden="true" />
       </button>
 
       {shown && (
