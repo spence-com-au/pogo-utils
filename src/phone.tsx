@@ -27,16 +27,6 @@ import { ticked } from './ticked.js';
  */
 const demoAsked = () => new URLSearchParams(location.search).has('demo');
 
-/**
- * What the last press of Connect has to say. `failed` marks a failed connection, the one time it points to WebADB, a
- * shell over the same WebUSB to find out why: kept on the message rather than beside it, so the link cannot outlive the
- * message it explains.
- */
-interface Status {
-  message: string;
-  failed?: boolean;
-}
-
 /** The panel's list: what the phone said of itself, less what it said nothing of, and the serial it is found by. */
 function rows({ maker, model, android, screen, battery }: About, serial: string) {
   return [
@@ -56,7 +46,9 @@ export function Phone() {
   const demo = phone?.serial === DEMO_SERIAL;
 
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<Status | null>(null);
+
+  /** What the last press of Connect has to say, or null with nothing to add. */
+  const [status, setStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
 
   /**
@@ -85,11 +77,12 @@ export function Phone() {
   }, [open, phone]);
 
   /**
-   * Says `news` in the panel, opening it again where it was closed meanwhile: the page is live again once the chooser
-   * has gone, while the phone waits for USB debugging to be allowed, and why it did not connect is worth reading.
+   * Says `message` in the panel, opening it again where it was closed meanwhile: the page is live again once the
+   * chooser has gone, while the phone waits for USB debugging to be allowed, and why it did not connect is worth
+   * reading.
    */
-  function tell(news: Status) {
-    setStatus(news);
+  function tell(message: string) {
+    setStatus(message);
     setOpen(true);
   }
 
@@ -100,7 +93,7 @@ export function Phone() {
    */
   async function connectPhone() {
     setConnecting(true);
-    setStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
+    setStatus('Pick the phone in the browser’s chooser, then allow USB debugging on it…');
 
     try {
       const { connect } = await loadChunk(() => import('./core/browser/webusb.js'));
@@ -118,11 +111,10 @@ export function Phone() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        tell({ message: `Could not put back the setting a battle kept the phone awake by: ${said(e)}` }),
+        tell(`Could not put back the setting a battle kept the phone awake by: ${said(e)}`),
       );
     } catch (e) {
-      // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
-      tell({ message: `Could not connect: ${said(e)}`, failed: 'usb' in navigator });
+      tell(`Could not connect: ${said(e)}`);
     } finally {
       setConnecting(false);
     }
@@ -145,7 +137,7 @@ export function Phone() {
         await phoneStore.hold(demoPhone());
       }
     } catch (e) {
-      tell({ message: `Could not start the demo: ${said(e)}` });
+      tell(`Could not start the demo: ${said(e)}`);
     }
   }
 
@@ -249,17 +241,7 @@ export function Phone() {
              */}
             {status && (
               <p class="menu-status" role="alert">
-                {ticked(status.message)}
-                {status.failed && (
-                  <>
-                    {/*
-                     * A sentence of its own, after the message's full stop where it has one: this site's errors end
-                     * bare, but Tango's need not — `No input endpoint found.`
-                     */}
-                    {/[.!?]$/.test(status.message) ? ' ' : '. '}
-                    <a href="https://webadb.com/">WebADB</a> can help find out why.
-                  </>
-                )}
+                {ticked(status)}
               </p>
             )}
           </section>
