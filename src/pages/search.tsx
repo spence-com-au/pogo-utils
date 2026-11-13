@@ -402,8 +402,16 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     return written(storeFavourites(change(loadFavourites())));
   }
 
+  /**
+   * Showing the hidden presets ends with the last of them shown again, as the toggle is taken away. Left on, it would
+   * draw the next preset hidden dimmed in place, a ✕ that seemed to do nothing.
+   */
   function toggleHidden(id: string) {
-    written(storeHidden(toggled(loadHidden(), id)));
+    const left = toggled(loadHidden(), id);
+
+    if (written(storeHidden(left)) && !PRESETS.some((preset) => left.includes(preset.id))) {
+      setShowHidden(false);
+    }
   }
 
   function written(stored: boolean) {
