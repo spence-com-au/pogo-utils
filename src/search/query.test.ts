@@ -113,6 +113,19 @@ test('a preset written as a query composes that query, with names only where it 
     specialmoves: ['@frustration', '@return', 'smeargle'],
     untagged: [],
     apex: [],
+    legacymovesets: [
+      '@grass knot',
+      '@1acid',
+      '@psybeam',
+      '@quick attack',
+      '@bite',
+      '@roar of time',
+      '@spacial rend',
+      '@bleakwind storm',
+      '@wildbolt storm',
+      '@sandsear storm',
+      '@brick break',
+    ],
   };
   const nameTexts = (node: Node): string[] =>
     isGroup(node) ? node.parts.flatMap(nameTexts) : node.kind === 'name' ? [node.text] : [];
