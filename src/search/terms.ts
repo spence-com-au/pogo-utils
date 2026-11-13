@@ -554,11 +554,13 @@ const EVER_BUDDIED = 1;
  * Starting points, each a plain state the builder loads and the reader then edits — the point is to land mid-way
  * through a query rather than to hand over a finished one.
  *
- * Each earns its place by being tedious or risky to click together. Safe to transfer is a long list of exclusions,
- * every one of which matters, and forgetting any single one of them is how a shiny ends up as candy. Nundo is three
- * spans, each set to 0 in its own pair of boxes, and Special moves rules out two moves and a species, each a name typed
- * by hand. A start a reader could have clicked together out of two chips saves them nothing and costs every reader a
- * button to read past, so the chips carry those.
+ * Each earns its place by being tedious, risky or obscure to click together. Safe to transfer is a long list of
+ * exclusions, every one of which matters, and forgetting any single one of them is how a shiny ends up as candy. Nundo
+ * is three spans, each set to 0 in its own pair of boxes, and Special moves rules out two moves and a species, each a
+ * name typed by hand. No second charged move is a move name nobody would type: the community phrase list has
+ * `move_name_0000` as the default the game gives a Pokémon with no second charged move, so `@3move_name_0000` is the
+ * search for that empty slot. A start a reader could have clicked together out of two chips saves them nothing and
+ * costs every reader a button to read past, so the chips carry those.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -595,6 +597,12 @@ export const PRESETS: readonly Preset[] = [
     label: 'Special moves',
     note: 'Exclusive moves, but not Frustration, Return or Smeargle.',
     query: '@special&!@frustration&!@return&!smeargle',
+  },
+  {
+    id: 'nosecondmove',
+    label: 'No second charged move',
+    note: 'Pokémon still waiting on their second charged move.',
+    query: '@3move_name_0000',
   },
 ];
 
