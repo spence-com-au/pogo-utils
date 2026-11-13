@@ -91,6 +91,8 @@ const COPY_ICON = 'M8 8h12v12H8zM4 16V4h12';
 const DONE_ICON = 'M5 12l5 5L19 7';
 const SAVE_ICON = 'M6 3h12v18l-6-4-6 4z';
 const SEARCH_ICON = 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.9-4.9';
+const EYE_ICON = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z';
+const EYE_OFF_ICON = `${EYE_ICON}M4 4l16 16`;
 
 /**
  * What a chip in the sheet wears in each of its two states — the glyph, and the words a screen reader is given instead
@@ -405,7 +407,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
   /**
    * Showing the hidden presets ends with the last of them shown again, as the toggle is taken away. Left on, it would
-   * draw the next preset hidden dimmed in place, a ✕ that seemed to do nothing.
+   * draw the next preset hidden dimmed in place, a press that seemed to do nothing.
    */
   function toggleHidden(id: string) {
     const left = toggled(loadHidden(), id);
@@ -1063,8 +1065,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                 if ('preset' in entry) {
                   const { preset } = entry;
 
-                  // A preset is the site's rather than the reader's, so its ✕ hides it, to be shown again, where a
-                  // favourite's removes it.
+                  // A preset is the site's rather than the reader's, so it is hidden rather than removed: its button
+                  // is an eye, open while the preset is shown and struck through while it is hidden, where a
+                  // favourite's is a ✕.
                   const action = hidden.includes(preset.id) ? 'Unhide' : 'Hide';
 
                   return (
@@ -1080,7 +1083,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                         aria-label={`${action} ${preset.label}`}
                         onClick={() => toggleHidden(preset.id)}
                       >
-                        {action === 'Hide' ? '✕' : '↩'}
+                        {icon(action === 'Hide' ? EYE_ICON : EYE_OFF_ICON)}
                       </button>
                     </span>
                   );

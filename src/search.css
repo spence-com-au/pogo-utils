@@ -770,6 +770,13 @@ body[data-page='search'] {
     color: var(--accent);
   }
 
+  /* A preset's eye, sized to the ✕ beside a favourite rather than to the output's 18px icons. */
+
+  .presets .saved .drop svg {
+    width: 15px;
+    height: 15px;
+  }
+
   /* A hidden preset, drawn only while the toggle is on, and dimmed as the Events page dims a dismissed event. */
 
   .presets .saved.hidden {
