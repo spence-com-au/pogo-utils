@@ -1,15 +1,23 @@
 /**
- * The saved favourites as storage holds them: what a load trusts, what a save replaces, and the refusal a reader has to
- * be told about. The fragment itself is `query.test.js`'s, so the round trip here is only the one that proves a
+ * The saved favourites as storage holds them: what a load trusts, what a save replaces, the refusal a reader has to be
+ * told about, and the order the panel draws them in beside the presets. The fragment itself is `query.test.js`'s, so the round trip here is only the one that proves a
  * favourite is that fragment and nothing of its own.
  */
 
 import { beforeEach, expect, test } from 'vitest';
 
 import { installFakeStorage, type FakeStorage } from '../testing/storage.js';
-import { FAVOURITES_KEY, loadFavourites, storeFavourites, withFavourite, withoutFavourite } from './favourites.js';
+import {
+  FAVOURITES_KEY,
+  loadFavourites,
+  shelved,
+  storeFavourites,
+  withFavourite,
+  withoutFavourite,
+  type Favourite,
+} from './favourites.js';
 import { compose, fromFragment, presetTree, toFragment } from './query.js';
-import { PRESETS } from './terms.js';
+import { PRESETS, type Preset } from './terms.js';
 
 let storage: FakeStorage;
 
@@ -68,6 +76,23 @@ test('saving under a name already taken replaces that favourite where it stands'
 test('removing a favourite leaves the rest in order', () => {
   expect(withoutFavourite([shiny, lucky], 'Shinies')).toEqual([lucky]);
   expect(withoutFavourite([shiny, lucky], 'Nothing by that name')).toEqual([shiny, lucky]);
+});
+
+test('presets and saved favourites are one list by name, whatever the case of the names', () => {
+  const preset = (label: string): Preset => ({ id: label, label, note: '', exclude: [] });
+  const saved = (label: string): Favourite => ({ label, fragment: '' });
+  const labels = (presets: readonly Preset[], favourites: readonly Favourite[]) =>
+    shelved(presets, favourites).map(({ label }) => label);
+
+  expect(labels([preset('Nundo'), preset('Apex')], [saved('my shinies'), saved('Zygarde cells')])).toEqual([
+    'Apex',
+    'my shinies',
+    'Nundo',
+    'Zygarde cells',
+  ]);
+
+  // A favourite saved under a preset's name sits after that preset rather than taking its place.
+  expect(shelved([preset('Apex')], [saved('Apex')]).map((one) => 'preset' in one)).toEqual([true, false]);
 });
 
 test('a favourite saved from an arrangement composes the string that arrangement did', () => {

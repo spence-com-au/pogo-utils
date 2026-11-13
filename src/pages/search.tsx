@@ -29,6 +29,7 @@ import { usePhone } from '../phone-store.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
 import {
   loadFavourites,
+  shelved,
   storeFavourites,
   withFavourite,
   withoutFavourite,
@@ -1027,19 +1028,24 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               Favourites
             </h2>
             <div class="presets">
-              {PRESETS.map((preset) => (
-                <button key={preset.id} type="button" onClick={() => arrange(presetTree(preset))}>
-                  <span>{preset.label}</span>
-                  <span class="note">{preset.note}</span>
-                </button>
-              ))}
+              {shelved(PRESETS, favourites).map((entry) => {
+                if ('preset' in entry) {
+                  const { preset } = entry;
 
-              {/* A saved search notes the string it composes, which is the one thing about it a name cannot say. */}
-              {favourites.map(({ label, fragment: saved }) => {
+                  return (
+                    <button key={`preset:${preset.id}`} type="button" onClick={() => arrange(presetTree(preset))}>
+                      <span>{preset.label}</span>
+                      <span class="note">{preset.note}</span>
+                    </button>
+                  );
+                }
+
+                // A saved search notes the string it composes, which is the one thing about it a name cannot say.
+                const { label, fragment: saved } = entry.favourite;
                 const { tree } = fromFragment(saved);
 
                 return (
-                  <span key={label} class="saved">
+                  <span key={`saved:${label}`} class="saved">
                     <button type="button" onClick={() => arrange(tree)}>
                       <span>{label}</span>
                       <code class="note">{compose({ tree, optimise: false }).query}</code>
