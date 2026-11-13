@@ -25,6 +25,8 @@
  */
 
 import { GENERATIONS, LAST_DEX } from '../pokemon/generations.js';
+import POKEMON from '../pokemon/pokedex.js';
+import type Pokemon from '../pokemon/pokemon.js';
 
 export interface Term {
   id: string;
@@ -551,6 +553,73 @@ export const bounded = (value: number, range: Range) => Math.min(Math.max(value,
 const EVER_BUDDIED = 1;
 
 /**
+ * Each species with a legacy move, beside that move, as [p337](https://www.p337.info/pokemongo/pages/legacy-moves/)
+ * listed them on 2026-11-13. A legacy move is one not even an Elite TM teaches any more, so only a Pokémon taught it
+ * before then holds it. `@special` finds these and every Elite TM move besides, and the game master records what a
+ * species can learn now rather than what it once could, so the list is kept by hand.
+ *
+ * `@1acid` rather than `@acid`, because the game completes a move's name: `@acid` takes in Acid Spray, which Muk learns
+ * now. `@1` is the fast slot, which holds Acid and never Acid Spray.
+ *
+ * No form is named, the search having no way to ask for one. That costs nothing for Dialga and Palkia, whose Altered
+ * Formes cannot learn Roar of Time or Spacial Rend at all, `data/game-master.json` giving neither move to either. But a
+ * Therian Tornadus, Thundurus or Landorus taught its storm by an Elite TM shows beside the Incarnate ones that are
+ * legacy.
+ */
+const LEGACY_MOVES: readonly (readonly [Pokemon, string])[] = [
+  [POKEMON.PIKACHU, '@grass knot'],
+  [POKEMON.GRIMER, '@1acid'],
+  [POKEMON.MUK, '@1acid'],
+  [POKEMON.KOFFING, '@1acid'],
+  [POKEMON.WEEZING, '@1acid'],
+  [POKEMON.CHANSEY, '@psybeam'],
+  [POKEMON.STARYU, '@quick attack'],
+  [POKEMON.STARMIE, '@quick attack'],
+  [POKEMON.PORYGON, '@quick attack'],
+  [POKEMON.PICHU, '@quick attack'],
+  [POKEMON.SHEDINJA, '@bite'],
+  [POKEMON.DIALGA, '@roar of time'],
+  [POKEMON.PALKIA, '@spacial rend'],
+  [POKEMON.TORNADUS, '@bleakwind storm'],
+  [POKEMON.THUNDURUS, '@wildbolt storm'],
+  [POKEMON.LANDORUS, '@sandsear storm'],
+  [POKEMON.PAWMI, '@brick break'],
+];
+
+/**
+ * The search for every row of `LEGACY_MOVES`.
+ *
+ * *This species and its move, or that species and its move* is not a search the game takes: it reads an AND of ORs,
+ * and spread into one this is 2¹⁷ clauses. A Pokémon is one species, though, so the same search is *one of these
+ * species, and for each, not that species or its move*.
+ *
+ * Neighbours in dex order that share a move share a clause, `!88-110,@1acid` standing for Grimer, Muk, Koffing and
+ * Weezing. Every species between them is already ruled out by the first clause, so a span reaching over them asks
+ * nothing more, and it is what brings the search under the 300 characters `CLEAR_KEYS` clears from the phone's search
+ * box: a clause a species came to 347. Only rows that are neighbours, because a span reaching over a species with
+ * another move would ask that species for this move too.
+ */
+function legacySearch(): string {
+  const rows = LEGACY_MOVES.toSorted(([one], [two]) => one.dex - two.dex);
+  const runs: { from: number; to: number; move: string }[] = [];
+
+  for (const [{ dex }, move] of rows) {
+    const last = runs.at(-1);
+
+    if (last?.move === move) {
+      last.to = dex;
+    } else {
+      runs.push({ from: dex, to: dex, move });
+    }
+  }
+
+  return [
+    rows.map(([{ dex }]) => dex).join(','),
+    ...runs.map(({ from, to, move }) => `!${from === to ? from : `${from}-${to}`},${move}`),
+  ].join('&');
+}
+
+/**
  * Starting points, each a plain state the builder loads and the reader then edits — the point is to land mid-way
  * through a query rather than to hand over a finished one.
  *
@@ -560,8 +629,9 @@ const EVER_BUDDIED = 1;
  * name typed by hand. Untagged is the *Tagged* chip ruled out, a half of it that no label on the page names. Apex is a
  * dex span and three chips that no label on the page puts together, the community phrase list's own
  * `249-250&shadow,purified&research`: `research` is what tells the Apex forms from a Shadow Lugia or Ho-Oh caught in a
- * raid. A start a reader could have clicked together out of two chips they can find by name saves them nothing and
- * costs every reader a button to read past, so the chips carry those.
+ * raid. Legacy movesets is seventeen species each with a move of its own, a list nobody keeps in their head. A start a
+ * reader could have clicked together out of two chips they can find by name saves them nothing and costs every reader
+ * a button to read past, so the chips carry those.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -610,6 +680,12 @@ export const PRESETS: readonly Preset[] = [
     label: 'Apex',
     note: 'Apex Lugia and Ho-Oh, shadow or purified.',
     query: '249-250&shadow,purified&research',
+  },
+  {
+    id: 'legacymovesets',
+    label: 'Legacy movesets',
+    note: 'Moves you can no longer get, even with an Elite TM.',
+    query: legacySearch(),
   },
 ];
 
