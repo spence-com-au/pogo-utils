@@ -484,6 +484,16 @@ test('shortening an already shortened arrangement changes nothing further', () =
   }
 });
 
+test('the phone is sent the string shown with no spaces between the clauses, whatever the toggle', () => {
+  const tree = all(named('charmander'), yes('shiny'));
+
+  // Off, the arrangement as it stands: the phone would type each space and count it towards the box's limit.
+  expect(current(state(tree))).toMatchObject({ query: 'charmander & shiny', tight: 'charmander&shiny' });
+
+  // On, the shortened string, which is tight already.
+  expect(current(shortening(tree))).toMatchObject({ query: '4&shiny', tight: '4&shiny' });
+});
+
 test('the page shows the shortened string only where it is shorter, and says nothing of a rewrite otherwise', () => {
   const tree = all(named('charmander'));
 

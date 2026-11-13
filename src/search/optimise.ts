@@ -549,11 +549,10 @@ export function current(state: State) {
     return { ...plain, was: null, ...untouched };
   }
 
-  const tight = compose(state);
   const { state: shortened, rewrites, lossy } = optimise(state);
   const shorter = compose(shortened);
-  const worth = shorter.query.length > 0 && shorter.query.length < tight.query.length;
-  const shown = worth ? { ...shorter, rewrites, lossy } : { ...tight, ...untouched };
+  const worth = shorter.query.length > 0 && shorter.query.length < plain.tight.length;
+  const shown = worth ? { ...shorter, rewrites, lossy } : { ...plain, query: plain.tight, ...untouched };
 
   return { ...shown, was: shown.query.length < plain.query.length ? plain.query.length : null };
 }

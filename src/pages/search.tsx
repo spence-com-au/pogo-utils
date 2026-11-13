@@ -309,7 +309,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   /** The pause `IDLE` is waiting out in the Advanced box, if one is running. */
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { query, was: before, rewrites, lossy, error, mishandled } = current(state);
+  const { query, tight, was: before, rewrites, lossy, error, mishandled } = current(state);
   const root = cardsOf(state.tree);
 
   /**
@@ -498,6 +498,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       return;
     }
 
+    // The answer is kept against the string shown, which is what `answered` matches it to; the phone is sent it tight.
     const term = query;
     const say = (kind: Sent['kind'], message: string) => setSent({ query: term, kind, message });
 
@@ -507,7 +508,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       const { searchStorage } = await loadChunk(() => import('../inventory/reader.js'));
       const found = await searchStorage(
         phone.transport,
-        term,
+        tight,
         (fraction) => say('busy', `Downloading the OCR model (first time only), ${Math.round(fraction * 100)}%…`),
         (message) => say('busy', `${message}, finding storage…`),
       );
