@@ -111,6 +111,7 @@ test('a preset written as a query composes that query, with names only where it 
   const meant: Record<string, readonly string[]> = {
     nundo: [],
     specialmoves: ['@frustration', '@return', 'smeargle'],
+    untagged: [],
     apex: [],
   };
   const nameTexts = (node: Node): string[] =>
