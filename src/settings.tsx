@@ -138,7 +138,7 @@ export function Settings() {
            * whose contents changed, and the refusal goes unannounced to the reader who most needs it. Empty rather than
            * `hidden`, and `:empty` is what keeps it from costing a gap.
            */}
-          <p class="settings-status" aria-live="polite">
+          <p class="menu-status" aria-live="polite">
             {status}
           </p>
         </section>

@@ -138,13 +138,6 @@
   background: var(--start);
 }
 
-/** What the last press of the phone control has to say: the chooser to look for, or why it did not connect. */
-.phone-note p {
-  margin: 0;
-  padding: 10px 12px;
-  line-height: 1.5;
-}
-
 /** What the phone held says of itself, in the panel a press on it opens: a column of names beside one of values. */
 .phone-about {
   display: grid;
@@ -281,8 +274,8 @@
 }
 
 /**
- * A panel's contents, the settings panel's and the phone's: a section per thing it controls, each a line of explanation
- * and its buttons, and in settings a title and the line that reports what the last press did.
+ * A panel's contents, the settings panel's and the phone's: a section per thing it controls, each a line of
+ * explanation, its buttons and the line that reports what the last press did, and in settings a title.
  */
 .menu-section {
   padding: 10px 12px 12px;
@@ -327,17 +320,21 @@
   cursor: default;
 }
 
-.settings-status {
+/**
+ * What the last press in a panel had to say, under its buttons: what an import restored, or why a phone did not
+ * connect.
+ */
+.menu-status {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.5;
 }
 
 /**
- * Waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line box, so its margin
- * is the whole of what it costs and this takes that away.
+ * The settings panel's waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line
+ * box, so its margin is the whole of what it costs and this takes that away.
  */
-.settings-status:empty {
+.menu-status:empty {
   margin: 0;
 }
 
