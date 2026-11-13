@@ -1127,7 +1127,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
       <footer>
         <p>
-          Event data from{' '}
+          Events from{' '}
           <a href="https://leekduck.com/events/" target="_blank" rel="noopener">
             Leek Duck
           </a>{' '}
@@ -1135,13 +1135,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           <a href="https://github.com/bigfoott/ScrapedDuck" target="_blank" rel="noopener">
             ScrapedDuck
           </a>
-          , updated hourly, plus events added by this site. Times are in your device's timezone.
+          , updated hourly, plus some of our own. Times are in your timezone.{' '}
+          <a href={EVENTS_FEED}>Subscribe in your calendar</a>.
         </p>
-        <p>
-          <a href={EVENTS_FEED}>Subscribe in your calendar</a>, leaving out Spotlight Hours, Raid Hours, Max Mondays and
-          seasons. In Google Calendar, paste the link into <em>Other calendars → From URL</em>.
-        </p>
-        <p>This site is unofficial. Click an event to open its source page.</p>
       </footer>
     </>
   );
