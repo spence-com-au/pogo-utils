@@ -60,20 +60,20 @@ test('a query too wide to write says so and composes nothing', () => {
   expect(compose(state(all(yes('shiny')))).error).toBeNull();
 });
 
-test('the one preset is everything it names, ruled out', () => {
-  const [preset] = PRESETS;
+test('Safe to transfer is everything it names, ruled out', () => {
+  const preset = PRESETS.find(({ id }) => id === 'transfer');
 
-  if (!preset) {
-    throw new Error('`terms.js` carries no presets');
+  if (!preset || !('exclude' in preset)) {
+    throw new Error('`terms.js` carries no Safe to transfer preset of exclusions');
   }
 
-  expect(preset.exclude?.length).toBeGreaterThan(0);
+  expect(preset.exclude.length).toBeGreaterThan(0);
 
   const tree = presetTree(preset);
   const parts = isGroup(tree) ? tree.parts : [];
 
   expect(isGroup(tree) && tree.junction).toBe('all');
-  expect(parts.length).toBe(preset.exclude?.length);
+  expect(parts.length).toBe(preset.exclude.length);
 
   /*
    * Every exclusion writes something: an id naming no term and a span naming no range both answer null here, and
@@ -100,6 +100,17 @@ test('the one preset is everything it names, ruled out', () => {
    * string, which is the one the page says costs a shiny.
    */
   expect(mishandled.map(({ term }) => term)).toEqual(['!buddy1-']);
+});
+
+test('a preset written as a query composes that query', () => {
+  // So the string in `terms.js` is the search the phone is sent, rather than one the reader or the writer reshapes.
+  const written = PRESETS.flatMap((preset) => ('query' in preset ? [preset] : []));
+
+  expect(written.length).toBeGreaterThan(0);
+
+  for (const preset of written) {
+    expect(compose(state(presetTree(preset))).query, preset.label).toBe(preset.query);
+  }
 });
 
 test("the Pokédex's link into this page arrives as the one name it asked for", () => {

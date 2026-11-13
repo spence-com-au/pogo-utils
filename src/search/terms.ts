@@ -83,12 +83,15 @@ export interface Range {
  */
 export type Excluded = string | { range: RangeId; from: number };
 
-export interface Preset {
-  id: string;
-  label: string;
-  note: string;
-  exclude?: readonly Excluded[];
-}
+/**
+ * A starting point: the exclusions `presetTree` builds pill by pill, or a query read the way a typed one is.
+ *
+ * Safe to transfer stays a list because a misspelt word in a query reads as a name pill, and the exclusion it meant
+ * goes missing in silence. A misspelt id writes nothing, which `query.test.js` catches.
+ */
+export type Preset = { id: string; label: string; note: string } & (
+  { exclude: readonly Excluded[] } | { query: string }
+);
 
 /**
  * The eighteen types. Listed in the games' own order rather than alphabetically, which is the order a player has seen
@@ -549,12 +552,13 @@ const EVER_BUDDIED = 1;
 
 /**
  * Starting points, each a plain state the builder loads and the reader then edits — the point is to land mid-way
- * through a query rather than to hand over a finished one. `exclude` is the whole of what one says: `presetTree` reads
- * nothing else, and a field offered here that nothing reads is a field a contributor fills in and watches do nothing.
+ * through a query rather than to hand over a finished one.
  *
- * Only one of these earns its place. Safe to transfer is a long list of exclusions, every one of which matters, and
- * forgetting any single one of them is how a shiny ends up as candy. A start a reader could have clicked together out
- * of two chips saves them nothing and costs every reader a button to read past, so the chips carry those.
+ * Each earns its place by being tedious or risky to click together. Safe to transfer is a long list of exclusions,
+ * every one of which matters, and forgetting any single one of them is how a shiny ends up as candy. Nundo is three
+ * spans, each set to 0 in its own pair of boxes, and Special moves rules out two moves and a species, each a name typed
+ * by hand. A start a reader could have clicked together out of two chips saves them nothing and costs every reader a
+ * button to read past, so the chips carry those.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -579,6 +583,18 @@ export const PRESETS: readonly Preset[] = [
       'xxs',
       'xxl',
     ],
+  },
+  {
+    id: 'nundo',
+    label: 'Nundo',
+    note: 'Attack, defence and HP IVs all 0.',
+    query: '0attack&0defense&0hp',
+  },
+  {
+    id: 'specialmoves',
+    label: 'Special moves',
+    note: 'Exclusive moves, but not Frustration, Return or Smeargle.',
+    query: '@special&!@frustration&!@return&!smeargle',
   },
 ];
 
