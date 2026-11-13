@@ -561,10 +561,11 @@ const EVER_BUDDIED = 1;
  * `@1acid` rather than `@acid`, because the game completes a move's name: `@acid` takes in Acid Spray, which Muk learns
  * now. `@1` is the fast slot, which holds Acid and never Acid Spray.
  *
- * No form is named, the search having no way to ask for one. That costs nothing for Dialga and Palkia, whose Altered
- * Formes cannot learn Roar of Time or Spacial Rend at all, `data/game-master.json` giving neither move to either. But a
- * Therian Tornadus, Thundurus or Landorus taught its storm by an Elite TM shows beside the Incarnate ones that are
- * legacy.
+ * No form is named, the search having no way to ask for one. That costs nothing for Dialga and Palkia: the game master
+ * teaches no form of either Roar of Time or Spacial Rend, by a TM, an Elite TM or a change of form, so every one that
+ * holds it is legacy. `data/game-master.json` lists both on the Origin Formes only because `GRANTED` in
+ * `src/core/node/download.mts` adds what those in storage hold. But a Therian Tornadus, Thundurus or Landorus taught
+ * its storm by an Elite TM shows beside the Incarnate ones that are legacy.
  */
 const LEGACY_MOVES: readonly (readonly [Pokemon, string])[] = [
   [POKEMON.PIKACHU, '@grass knot'],
