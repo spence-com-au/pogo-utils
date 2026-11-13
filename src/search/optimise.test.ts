@@ -526,6 +526,19 @@ test('a reduction to nothing is not taken, a blank box beside cards full of pill
     rewrites: [],
     lossy: EXACT,
   });
+
+  // Untaken, it still leaves out the spaces between the clauses, which are Shorten's to drop either way.
+  const genders = any(...category('gender').terms.map((one) => yes(one.id)));
+  const both = all(everything, genders);
+  const spaced = compose(state(both)).query;
+
+  expect(short(both)).toBe('');
+  expect(current(shortening(both))).toMatchObject({
+    query: spaced.replaceAll(' & ', '&'),
+    was: spaced.length,
+    rewrites: [],
+    lossy: EXACT,
+  });
 });
 
 /**
