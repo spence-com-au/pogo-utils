@@ -8,6 +8,7 @@
  */
 
 import { clausesOf } from './clauses.js';
+import { COMPARISONS, PERCENT } from './ivs.js';
 import { emptyTree, group, isGroup, NESTING, type Leaf, type Node } from './tree.js';
 import { bounded, RANGES_BY_ID, TERMS_BY_ID, type Preset } from './terms.js';
 
@@ -131,6 +132,10 @@ function tokens(node: Node): string[] {
     return [`N${not}${encodeName(node.text)}`];
   }
 
+  if (node.kind === 'iv') {
+    return [`I${not}${node.compare}.${node.percent ?? ''}`];
+  }
+
   return [`R${not}${node.id}.${node.from ?? ''}.${node.to ?? ''}`];
 }
 
@@ -219,6 +224,16 @@ function read(all: readonly string[], at: { index: number }, depth: number): Nod
     return id !== undefined && RANGES_BY_ID.has(id)
       ? { kind: 'range', id, from: bound(from, id), to: bound(to, id), negated }
       : null;
+  }
+
+  if (kind === 'I') {
+    const [id, percent] = body.split('.');
+    const compare = COMPARISONS.find((one) => one.id === id)?.id;
+    const value = Number.parseInt(percent ?? '', 10);
+
+    return compare === undefined
+      ? null
+      : { kind: 'iv', compare, percent: Number.isNaN(value) ? null : bounded(value, PERCENT), negated };
   }
 
   return null;

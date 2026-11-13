@@ -21,6 +21,7 @@
  * path goes stale the moment something before it is taken out.
  */
 
+import { PERCENT, type Comparison } from './ivs.js';
 import { RANGES_BY_ID, TERMS_BY_ID, type Range } from './terms.js';
 
 /**
@@ -38,13 +39,15 @@ export const NESTING = 64;
 export type Junction = 'all' | 'any';
 
 /**
- * One pill. The three kinds are the three things in the catalogue that write differently: a term is a word the table
- * owns, a name is whatever the reader typed, and a range is a span written from its own prefix.
+ * One pill. The four kinds are the four things in the catalogue that write differently: a term is a word the table
+ * owns, a name is whatever the reader typed, a range is a span written from its own prefix, and an IV percentage is
+ * clauses of the game's IV terms, which `ivs.js` works out.
  */
 export type Leaf =
   | { kind: 'term'; id: string; negated: boolean }
   | { kind: 'name'; text: string; negated: boolean }
-  | { kind: 'range'; id: string; from: number | null; to: number | null; negated: boolean };
+  | { kind: 'range'; id: string; from: number | null; to: number | null; negated: boolean }
+  | { kind: 'iv'; compare: Comparison; percent: number | null; negated: boolean };
 
 /** Several nodes, joined. */
 export interface Group {
@@ -117,6 +120,11 @@ function text(leaf: Leaf): string | null {
 
   if (leaf.kind === 'name') {
     return leaf.text.trim() || null;
+  }
+
+  // Clauses rather than one alternative, which `clauses.js` writes in the pill's place before anything reads it.
+  if (leaf.kind === 'iv') {
+    return null;
   }
 
   const range = RANGES_BY_ID.get(leaf.id);
@@ -192,6 +200,10 @@ export function leafLabel(leaf: Leaf): string {
 
   if (leaf.kind === 'name') {
     return leaf.text;
+  }
+
+  if (leaf.kind === 'iv') {
+    return PERCENT.label;
   }
 
   return RANGES_BY_ID.get(leaf.id)?.label ?? leaf.id;

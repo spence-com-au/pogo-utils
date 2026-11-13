@@ -277,6 +277,12 @@ Two shapes the catalogue cannot hold get a box each: the `@` search, where a slo
 priority is what lets one box serve the whole `@` family — a type is read before a move of the same name — and it is
 also the catch, so the move Psychic answers to `@psychi`.
 
+One pill is no phrase at all. The **IV percentage** compares the three IVs' total, as PGSharp prints it, with `>`, `≥`,
+`=`, `≤` or `<`, and the game has no term for that: it sees IVs only in bands, the stars for the total and a bar for
+each IV. So [`src/search/ivs.ts`](src/search/ivs.ts) writes the narrowest clauses of those that never miss a Pokémon the
+comparison holds for, and the card says what else they take. `≥ 90%` is `3*,4*&3-attack&3-defense&3-hp`, which takes
+82–88% too, because 14/14/12 and 14/14/13 show the game the same stars and the same bars.
+
 **Four phrases are a span wearing a word**, which the list calls shortcuts: `mega` is `mega0-`, `count` is `count2-`,
 and `dynamax` and `gigantamax` are those ranges open at the top. Those are read on the way in, so the game's own
 spelling arrives as the pill it stands for, and never written on the way out — a shortcut is exactly the thing the list

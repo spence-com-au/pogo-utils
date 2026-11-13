@@ -1181,6 +1181,15 @@ body[data-page='search'] {
     font-size: 11px;
   }
 
+  /* What an IV percentage's string takes beyond what it asks, under the pills it is about. */
+
+  .card .note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+
   @media (width <= 560px) {
     .output {
       border-radius: 0;
@@ -1225,10 +1234,11 @@ body[data-page='search'] {
      * Two named ends will not sit either side of a label in a phone's column, so they stack. The direction is the
      * whole of the change: `.bounds` already sets `align-items: center`, which centres them across the column once
      * the main axis runs down it, and the dash keeps its place between the two ends it joins. The number boxes are
-     * 54px and go on sitting side by side, which is why this asks for the `select`.
+     * 54px and go on sitting side by side, which is why this asks for the `select`. An IV percentage's `select` is
+     * one sign wide and sits beside its box, so the stacking is a range's alone.
      */
 
-    .pill .bounds:has(select) {
+    .pill[data-kind='range'] .bounds:has(select) {
       flex-direction: column;
     }
 

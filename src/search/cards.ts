@@ -53,8 +53,12 @@ export function asCards(tree: Node): Group | null {
  */
 export const cardsOf = (tree: Node): Group => asCards(tree) ?? emptyTree();
 
-/** Which catalogue entry a pill is, which two pills are compared by: a term or a range by id, a name by its text. */
-const entry = (leaf: Leaf) => (leaf.kind === 'name' ? `name:${leaf.text}` : `${leaf.kind}:${leaf.id}`);
+/**
+ * Which catalogue entry a pill is, which two pills are compared by: a term or a range by id, a name by its text, and
+ * an IV percentage by its kind, there being one chip for it.
+ */
+const entry = (leaf: Leaf) =>
+  leaf.kind === 'name' ? `name:${leaf.text}` : leaf.kind === 'iv' ? leaf.kind : `${leaf.kind}:${leaf.id}`;
 
 /** Whether the card at `at` holds a pill for the same entry as this one. A card past the end holds nothing. */
 export function holds(root: Group, at: number, leaf: Leaf) {

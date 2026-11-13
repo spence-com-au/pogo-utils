@@ -139,6 +139,10 @@ test('an arrangement survives the round trip', () => {
       any(named('pikachu'), named('+charmander')),
       { kind: 'range', id: 'cp', from: 1500, to: null, negated: false },
       any(all(yes('fire'), { kind: 'range', id: 'dex', from: 1, to: 151, negated: true })),
+      any(
+        { kind: 'iv', compare: 'ge', percent: 90, negated: false },
+        { kind: 'iv', compare: 'lt', percent: null, negated: true },
+      ),
     ),
     true,
   );
@@ -219,6 +223,11 @@ test('a bound from a stranger is clamped to the pill that could have produced it
   // A bound that is not a number is the empty box it looks like, which the writer then leaves open.
   expect(shape(fromFragment('q=A1_Rdex..151').tree)).toEqual({ all: ['-151'] });
   expect(shape(fromFragment('q=A1_Rdex.x.y').tree)).toEqual({ all: ['…'] });
+
+  // An IV percentage is held to its box's 0 to 100, and a comparison the table does not carry is no pill at all.
+  expect(first('q=A1_Ige.150')).toEqual({ kind: 'iv', compare: 'ge', percent: 100, negated: false });
+  expect(first('q=A1_I!lt.x')).toEqual({ kind: 'iv', compare: 'lt', percent: null, negated: true });
+  expect(fromFragment('q=A1_Ine.90').tree).toEqual(group('all', []));
 });
 
 test('an arity claiming more parts than there are is a short tree rather than a hang', () => {

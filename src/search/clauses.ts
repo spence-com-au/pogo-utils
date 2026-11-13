@@ -27,6 +27,7 @@
  * normal form and De Morgan is the reader's own doing.
  */
 
+import { ivTree } from './ivs.js';
 import { RANGES_BY_ID, SHORTCUTS, type RangeId } from './terms.js';
 import { group, isGroup, leafText, whole, type Leaf, type Node } from './tree.js';
 
@@ -453,13 +454,20 @@ function mishandling(clauses: readonly (readonly Leaf[])[]): Mishandled[] {
 }
 
 /**
+ * The tree with each IV percentage pill in place as the clauses of IV terms it stands for, so that everything after
+ * this distributes, factors and absorbs those clauses as it would any the reader had placed themselves.
+ */
+const inTerms = (node: Node): Node =>
+  isGroup(node) ? { ...node, parts: node.parts.map(inTerms) } : node.kind === 'iv' ? ivTree(node) : node;
+
+/**
  * The pills of each clause a query comes to, or null where it spreads past `CLAUSES`. Exported for `cards.js`, which
  * lays a tree out as these when it is deeper than a card can draw: the cards are then the clauses the string is
  * written from, and nothing the Builder shows is a rearrangement the string does not make.
  */
 export function spreadOut(node: Node): readonly (readonly Leaf[])[] | null {
   // Factored before it is measured, the point of factoring being to bring the measurement under the cap.
-  const tree = factored(node);
+  const tree = factored(inTerms(node));
 
   if (size(tree) > CLAUSES) {
     return null;

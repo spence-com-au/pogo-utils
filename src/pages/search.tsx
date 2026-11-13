@@ -54,6 +54,7 @@ import {
 } from '../search/controls.js';
 import { added, afterPress, asCards, cardsOf, holds, pillsOf } from '../search/cards.js';
 import { clausesOf } from '../search/clauses.js';
+import { COMPARISONS, ivNote, PERCENT, type IvLeaf } from '../search/ivs.js';
 import {
   isGroup,
   leafLabel,
@@ -244,6 +245,10 @@ function withBound(node: Node, edge: Edge, bound: number | null): Node {
   return edge === 'from' ? { ...node, from: bound } : { ...node, to: bound };
 }
 
+/** An IV percentage pill with its comparison or its percentage changed, anything else handed back as `withBound` does. */
+const withIv = (node: Node, change: Partial<Pick<IvLeaf, 'compare' | 'percent'>>): Node =>
+  node.kind === 'iv' ? { ...node, ...change } : node;
+
 /** The state a link describes, laid out as cards. */
 function arrived(fragment: string): State {
   const state = fromFragment(fragment);
@@ -405,6 +410,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
 
   /** A numeric range from the catalogue, as the pill it will become: its own two boxes, neither filled in yet. */
   const rangeLeaf = (id: string): Leaf => ({ kind: 'range', id, from: null, to: null, negated: false });
+
+  /** The IV percentage, as the pill it will become: at or above, which is how a keeper is looked for, and no number. */
+  const ivLeaf = (): Leaf => ({ kind: 'iv', compare: 'ge', percent: null, negated: false });
 
   /**
    * The sheet opened for a card, or for a new one past the last. The box starts empty so the whole catalogue shows, and
@@ -756,7 +764,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
         key={pathAttribute(path)}
         class={`pill ${leaf.negated ? 'out' : 'in'}`}
         data-kind={leaf.kind}
-        title={leafText(leaf) ?? 'nothing yet'}
+        title={(leaf.kind === 'iv' ? clausesOf(leaf).clauses.join('&') : leafText(leaf)) || 'nothing yet'}
       >
         <button
           type="button"
@@ -780,6 +788,44 @@ export default function SearchPage({ query: fragment }: { query: string }) {
           </span>
         )}
 
+        {leaf.kind === 'iv' && (
+          <span class="bounds">
+            <select
+              value={leaf.compare}
+              aria-label={`${PERCENT.label}, comparison`}
+              onChange={(event) => {
+                const compare = COMPARISONS.find(({ id }) => id === event.currentTarget.value)?.id;
+
+                if (compare) {
+                  edit((tree) => update(tree, path, (node) => withIv(node, { compare })));
+                }
+              }}
+            >
+              {COMPARISONS.map(({ id, sign }) => (
+                <option key={id} value={id}>
+                  {sign}
+                </option>
+              ))}
+            </select>
+            {/* The number box a span's end is, with the same reason to show the reader's own digits while typing. */}
+            <input
+              type="number"
+              min="0"
+              max={String(PERCENT.max)}
+              value={boxText(typedBound, path, 'from', leaf.percent)}
+              aria-label={`${PERCENT.label}, percent`}
+              onInput={(event) => {
+                const { value } = event.currentTarget;
+
+                setTypedBound({ path, edge: 'from', text: value });
+                edit((tree) => update(tree, path, (node) => withIv(node, { percent: readBound(value, PERCENT) })));
+              }}
+              onBlur={() => setTypedBound(null)}
+            />
+            <span class="dash">%</span>
+          </span>
+        )}
+
         <button
           type="button"
           class="drop"
@@ -798,6 +844,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    */
   function renderCard(card: Node, at: number) {
     const pills = pillsOf(card);
+
+    // What an IV percentage takes beyond what it asks, said on its card, the bands being where the string strays.
+    const notes = pills.flatMap((leaf) => (leaf.kind === 'iv' ? [ivNote(leaf)] : [])).filter((note) => note !== null);
 
     return (
       <li key={at} class="card">
@@ -820,6 +869,12 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             + or
           </button>
         </div>
+
+        {notes.map((note) => (
+          <p key={note} class="note">
+            {note}
+          </p>
+        ))}
       </li>
     );
   }
@@ -830,6 +885,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     terms: category.terms.filter((term) => wanted(term.label, term.term)),
   })).filter((category) => category.terms.length > 0);
   const ranges = RANGES.filter((range) => wanted(range.label, spanned(range, '')));
+  const percentage = wanted(PERCENT.label, '%');
 
   return (
     <>
@@ -1309,7 +1365,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               </section>
             ))}
           </div>
-          <section class="panel" aria-labelledby="rangesLabel" hidden={ranges.length === 0}>
+          <section class="panel" aria-labelledby="rangesLabel" hidden={ranges.length === 0 && !percentage}>
             <h2 class="label" id="rangesLabel">
               Ranges
             </h2>
@@ -1327,6 +1383,14 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                   />
                 );
               })}
+              {percentage && (
+                <Chip
+                  label={PERCENT.label}
+                  title={chipTitle('stars and IV bars, from a percentage')}
+                  state={chipState(ivLeaf())}
+                  onPress={() => pressChip(ivLeaf())}
+                />
+              )}
             </div>
             {/* Laid out by hand, for the reason the Advanced pane's help gives. */}
             {/* prettier-ignore */}
@@ -1334,6 +1398,11 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               Leave an end empty, or on <em>Any level</em>, to leave that side open. IVs count in the appraisal's
               bars: <code>0</code> is an IV of 0, <code>1</code> is 1–5, <code>2</code> is 6–10, <code>3</code> is 11–14
               and <code>4</code> is 15, so <code>4</code> to <code>4</code> is a perfect IV.
+            </p>
+            {/* prettier-ignore */}
+            <p class="help">
+              <em>IV percentage</em> compares the three IVs' total, as PGSharp shows it. The game only sees stars and
+              bars, so between them the string also finds some just past your number, and the card says which.
             </p>
           </section>
 
@@ -1403,7 +1472,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             </p>
           </section>
 
-          <p class="help" hidden={shelves.length > 0 || ranges.length > 0}>
+          <p class="help" hidden={shelves.length > 0 || ranges.length > 0 || percentage}>
             No filter matches. Press <kbd>Enter</kbd> to add it as a name.
           </p>
         </div>
