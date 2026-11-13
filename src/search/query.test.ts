@@ -112,6 +112,7 @@ test('a preset written as a query composes that query, with names only where it 
     nundo: [],
     specialmoves: ['@frustration', '@return', 'smeargle'],
     untagged: [],
+    apex: [],
   };
   const nameTexts = (node: Node): string[] =>
     isGroup(node) ? node.parts.flatMap(nameTexts) : node.kind === 'name' ? [node.text] : [];
