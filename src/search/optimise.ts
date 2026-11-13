@@ -537,9 +537,12 @@ const EXACT: Lossy = { narrowed: false, widened: false };
  * cost characters. Empty does not count as shorter: every star rating at once really does reduce to no clause at all,
  * but a blank output box beside cards full of pills reads as a page that has broken rather than as a search for
  * everything.
+ *
+ * Shorter than the string with the toggle off, spaces and all, since that is the one the reader was looking at: the
+ * spaces dropped from between the clauses are characters saved like any other.
  */
 export function current(state: State) {
-  const plain = compose(state);
+  const plain = compose({ ...state, optimise: false });
   const unchanged = { ...plain, was: null, rewrites: [] as readonly [string, string][], lossy: EXACT };
 
   if (!state.optimise) {

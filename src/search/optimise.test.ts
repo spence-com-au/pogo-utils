@@ -28,12 +28,15 @@ const EXACT = { narrowed: false, widened: false };
 
 const state = (tree: Node): State => ({ ...emptyState(), tree });
 
+/** An arrangement with *Shorten* on, which is the only state the page hands the optimiser. */
+const shortening = (tree: Node): State => ({ ...state(tree), optimise: true });
+
 /** The string an arrangement composes to once shortened, which is the only thing the page shows for it. */
-const short = (tree: Node) => compose(optimise(state(tree)).state).query;
+const short = (tree: Node) => compose(optimise(shortening(tree)).state).query;
 
 /** The same, plus what was said about it. */
 const told = (tree: Node) => {
-  const { state: shortened, rewrites, lossy } = optimise(state(tree));
+  const { state: shortened, rewrites, lossy } = optimise(shortening(tree));
 
   return { query: compose(shortened).query, rewrites, lossy };
 };
@@ -493,6 +496,14 @@ test('the page shows the shortened string only where it is shorter, and says not
     was: 'charmander'.length,
     rewrites: [['charmander', '4']],
     lossy: { narrowed: true, widened: false },
+  });
+
+  // Nothing to rewrite still drops the spaces between the clauses, which is shorter than the string the reader saw.
+  expect(current(shortening(all(yes('shiny'), yes('lucky'))))).toMatchObject({
+    query: 'shiny&lucky',
+    was: 'shiny & lucky'.length,
+    rewrites: [],
+    lossy: EXACT,
   });
 
   // No shorter is the string as arranged, with the lossiness of the rewrite that was not taken left behind.

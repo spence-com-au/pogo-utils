@@ -617,7 +617,7 @@ function legacySearch(): string {
   return [
     rows.map(([{ dex }]) => dex).join(','),
     ...runs.map(({ from, to, move }) => `!${from === to ? from : `${from}-${to}`},${move}`),
-  ].join('&');
+  ].join(' & ');
 }
 
 /**
@@ -662,13 +662,13 @@ export const PRESETS: readonly Preset[] = [
     id: 'nundo',
     label: 'Nundo',
     note: 'Attack, defence and HP IVs all 0.',
-    query: '0attack&0defense&0hp',
+    query: '0attack & 0defense & 0hp',
   },
   {
     id: 'specialmoves',
     label: 'Special moves',
     note: 'Exclusive moves, but not Frustration, Return or Smeargle.',
-    query: '@special&!@frustration&!@return&!smeargle',
+    query: '@special & !@frustration & !@return & !smeargle',
   },
   {
     id: 'untagged',
@@ -680,7 +680,7 @@ export const PRESETS: readonly Preset[] = [
     id: 'apex',
     label: 'Apex',
     note: 'Apex Lugia and Ho-Oh, shadow or purified.',
-    query: '249-250&shadow,purified&research',
+    query: '249-250 & shadow,purified & research',
   },
   {
     id: 'legacymovesets',

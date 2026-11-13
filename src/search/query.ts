@@ -40,12 +40,16 @@ export const names = (text: string) =>
  * A string mixing `,` and `&` only means what the cards say it means if a comma binds tighter than an ampersand,
  * which the reference `clauses.js` cites states outright for this search box. So the page does not warn when a string
  * mixes the two: there is nothing to warn about.
+ *
+ * The clauses are spaced apart, `shiny & fire,water`, which puts the gaps where that binding already groups the terms.
+ * The game takes the spaces as nothing, `249-250 & shadow,purified & research` having been typed into it as it stands.
+ * *Shorten* writes them tight, being the toggle that spends no character it can do without.
  */
 export function compose(state: State) {
   const { clauses, error, mishandled } = clausesOf(state.tree);
 
   return {
-    query: clauses.join('&'),
+    query: clauses.join(state.optimise ? '&' : ' & '),
     clauses: clauses.length,
     error,
     mishandled,
