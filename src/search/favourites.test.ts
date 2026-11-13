@@ -1,7 +1,8 @@
 /**
  * The saved favourites and hidden presets as storage holds them: what a load trusts, what a save replaces, the refusal
- * a reader has to be told about, and the order the panel draws them in beside the presets. The fragment itself is `query.test.js`'s, so
- * the round trip here is only the one that proves a favourite is that fragment and nothing of its own.
+ * a reader has to be told about, and the order the panel draws them in beside the presets. The fragment itself is
+ * `query.test.js`'s, so the round trip here is only the one that proves a favourite is that fragment and nothing of its
+ * own.
  */
 
 import { beforeEach, expect, test } from 'vitest';

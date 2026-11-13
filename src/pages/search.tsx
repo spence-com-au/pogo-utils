@@ -290,7 +290,8 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    * The name being typed for the next favourite, and whether the last write of the list was refused. The list itself is
    * not state: it is read from storage on every render and every write, as `release-store.ts` reads its version, so an
    * import from Settings is what the next save builds on rather than something a copy held here would overwrite. The
-   * hidden presets are read the same way. `redraw` is for a removal or a hide, which change nothing else a render reads.
+   * hidden presets are read the same way. `redraw` is for a removal or a hide, which change nothing else a render
+   * reads.
    */
   const [naming, setNaming] = useState('');
   const [unsaved, setUnsaved] = useState(false);
