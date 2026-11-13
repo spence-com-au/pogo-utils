@@ -1,16 +1,16 @@
 /**
- * The phone control in the top bar, between the notifications and the settings, on every tab: a phone that, pressed,
- * offers the browser's chooser to connect the Android phone held over WebUSB. With no phone held, connecting is the
- * one thing to do with it, so a press does it rather than opening a panel to press again in; with one held, a press
- * opens a panel saying which phone it is, with a button to let it go. It is greyed out while no phone is held, and in
- * colour with a green dot while one is, so the bar says which from any tab.
+ * The phone control in the top bar, between the notifications and the settings, on every tab: a phone with a dot, red
+ * while no Android phone is held over WebUSB and green while one is, so the bar says which from any tab. A press opens
+ * a panel. With a phone held, it says which phone it is, with a button to let it go; with none, its button offers the
+ * browser's chooser to connect one. Connecting waits for that button rather than coming with the press, so a press
+ * does the same whether a phone is held or not.
  *
  * The demo phone, which reads recorded screens in place of a phone, is kept out of the way behind `?demo`: with it in
- * the address, a press holds the demo phone rather than offering the chooser, and its panel puts it away.
+ * the address, the panel's button holds the demo phone rather than offering the chooser.
  */
 
 import { Fragment } from 'preact';
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { putBack } from './battle/awake.js';
 import { loadChunk } from './chunks.js';
@@ -45,33 +45,46 @@ export function Phone() {
   const phone = usePhone();
   const demo = phone?.serial === DEMO_SERIAL;
 
-  /**
-   * What the last press has to say, or null once there is nothing to add to the phone held — which closes the note it
-   * shows in. `failed` marks a failed connection, the one time it points to WebADB, a shell over the same WebUSB to
-   * find out why: kept on the message rather than beside it, so the link cannot outlive the message it explains.
-   */
-  const [status, setStatus] = useState<{ message: string; failed?: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+
+  /** What the last press of Connect has to say, or null with nothing to add. */
+  const [status, setStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
 
   /**
-   * The phone whose panel is open, with what it said of itself once it has, or why it could not. Kept with the phone
-   * rather than as a flag, so the panel closes by itself once that phone is unplugged or replaced rather than opening
-   * again over the next.
+   * What a phone said of itself, or why it could not, kept with the phone it was asked of, so the panel never lists one
+   * phone's details under the next one's name.
    */
-  const [panel, setPanel] = useState<{ phone: Held; about?: About; failed?: string } | null>(null);
-  const shown = panel?.phone === phone ? panel : null;
+  const [about, setAbout] = useState<{ phone: Held; about?: About; failed?: string } | null>(null);
+  const known = about?.phone === phone ? about : null;
 
-  // A note waiting to be read closes as a menu would, the connection going on without it, so it cannot sit under the
-  // notifications or settings panel opened meanwhile; the panel closes the same way. The chooser is the browser's own
-  // and modal, so nothing outside it reaches the page to close the note while it is up.
-  useDismiss(
-    status !== null || shown !== null,
-    () => {
-      setStatus(null);
-      setPanel(null);
-    },
-    root,
-  );
+  /** Closes the panel and what the last press said with it, the connection going on without them. */
+  function close() {
+    setOpen(false);
+    setStatus(null);
+  }
+
+  // The chooser is the browser's own and modal, so nothing outside it reaches the page to close the panel while it is
+  // up.
+  useDismiss(open, close, root);
+
+  // Asked at every opening rather than kept, the charge being a part that moves, and again for a phone connected or
+  // taken back from a battle while the panel is open.
+  useEffect(() => {
+    if (open && phone) {
+      void ask(phone);
+    }
+  }, [open, phone]);
+
+  /**
+   * Says `message` in the panel, opening it again where it was closed meanwhile: the page is live again once the
+   * chooser has gone, while the phone waits for USB debugging to be allowed, and why it did not connect is worth
+   * reading.
+   */
+  function tell(message: string) {
+    setStatus(message);
+    setOpen(true);
+  }
 
   /**
    * Offer the browser's chooser and hold whatever is picked. `webusb.ts` is fetched only now: it brings Tango, which
@@ -80,14 +93,14 @@ export function Phone() {
    */
   async function connectPhone() {
     setConnecting(true);
-    setStatus({ message: 'Pick the phone in the browser’s chooser, then allow USB debugging on it…' });
+    setStatus('Pick the phone in the browser’s chooser, then allow USB debugging on it…');
 
     try {
       const { connect } = await loadChunk(() => import('./core/browser/webusb.js'));
       const picked = await connect();
 
-      // The chooser dismissed, or the phone already held picked in it, which keeps whatever phone is already connected
-      // rather than letting it go for nothing.
+      // The chooser dismissed, or a phone picked in it that this page still has claimed, as one disconnected a moment
+      // ago may be.
       if (picked === null) {
         setStatus(null);
         return;
@@ -98,20 +111,19 @@ export function Phone() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        setStatus({ message: `Could not restore the stay-awake setting a battle changed: ${said(e)}` }),
+        tell(`Could not restore the stay-awake setting a battle changed: ${said(e)}`),
       );
     } catch (e) {
-      // Not pointed to WebADB where the browser has no WebUSB at all, which WebADB needs as much as this does.
-      setStatus({ message: `Could not connect: ${said(e)}`, failed: 'usb' in navigator });
+      tell(`Could not connect: ${said(e)}`);
     } finally {
       setConnecting(false);
     }
   }
 
   /**
-   * Hold the demo phone. Never in place of a real one, which may be partway through something: `press` opens the
-   * panel instead while one is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by
-   * taking it back over the demo once the battle ends.
+   * Hold the demo phone. Never in place of a real one, which may be partway through something: Connect is offered only
+   * while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
+   * over the demo once the battle ends.
    */
   async function holdDemo() {
     setStatus(null);
@@ -125,21 +137,19 @@ export function Phone() {
         await phoneStore.hold(demoPhone());
       }
     } catch (e) {
-      setStatus({ message: `Could not start the demo: ${said(e)}` });
+      tell(`Could not start the demo: ${said(e)}`);
     }
   }
 
   /**
-   * Open the panel on `held` and ask it what it is, through a `Device` fetched only now, as `webusb.ts` is: it brings
-   * the PNG decoder with it. Asked at every opening rather than kept, the charge being a part that moves.
+   * Ask `held` what it is, through a `Device` fetched only now, as `webusb.ts` is: it brings the PNG decoder with it.
+   * The answer is kept only while that phone is still the one asked about, so a slow one cannot land on the next.
    */
-  async function show(held: Held) {
-    setStatus(null);
-    setPanel({ phone: held });
+  async function ask(held: Held) {
+    setAbout({ phone: held });
 
-    // Kept only where the panel it was asked for is still open: one closed meanwhile stays closed.
     const answer = (got: { about: About } | { failed: string }) =>
-      setPanel((was) => (was?.phone === held ? { phone: held, ...got } : was));
+      setAbout((was) => (was?.phone === held ? { phone: held, ...got } : was));
 
     try {
       const { Device } = await loadChunk(() => import('./core/adb.mts'));
@@ -155,61 +165,46 @@ export function Phone() {
    * `adb` server on this computer. A phone that throws as it closes was unplugged already, and is gone either way.
    */
   function disconnect() {
-    setPanel(null);
+    setStatus(null);
     void phoneStore
       .release()
       ?.close()
       .catch(() => undefined);
   }
 
-  function press() {
-    if (shown) {
-      setPanel(null);
-    } else if (phone) {
-      void show(phone);
-    } else if (demoAsked()) {
-      void holdDemo();
-    } else {
-      void connectPhone();
-    }
-  }
-
-  const label = demo
-    ? 'Using the demo phone'
-    : phone
-      ? `Connected to ${phone.name}`
-      : demoAsked()
-        ? 'Use the demo phone'
-        : 'Connect a phone';
+  const label = phone === null ? 'No phone connected' : demo ? 'Using the demo phone' : `Connected to ${phone.name}`;
 
   return (
     <div class="menu phone" ref={root}>
       <button
         type="button"
-        class={phone ? 'menu-toggle' : 'menu-toggle phone-none'}
-        aria-expanded={phone ? shown !== null : undefined}
+        class="menu-toggle"
+        aria-expanded={open}
         aria-label={label}
         title={label}
-        disabled={connecting}
-        onClick={press}
+        onClick={() => (open ? close() : setOpen(true))}
       >
-        <span class="phone-icon" aria-hidden="true">
-          📱
-        </span>
-        {/* A dot rather than a count, there being one phone at most: lit while one is held, so the bar says so. */}
-        {phone && <span class="phone-held" aria-hidden="true" />}
+        <span aria-hidden="true">📱</span>
+        {/* A dot rather than a count, there being one phone at most: green while one is held, red while none is. */}
+        <span class={phone ? 'phone-dot phone-held' : 'phone-dot'} aria-hidden="true" />
       </button>
 
-      {shown && (
+      {open && (
         <div class="menu-panel">
           <div class="menu-head">
-            <span>{shown.phone.name}</span>
+            <span>{phone ? phone.name : 'No phone connected'}</span>
           </div>
 
           <section class="menu-section">
-            {shown.about ? (
+            {phone === null ? (
+              <p class="menu-note">
+                {demoAsked()
+                  ? 'Connect the demo phone, which plays back recorded screens in place of a phone.'
+                  : 'Plug in an Android phone with USB debugging on, then connect it.'}
+              </p>
+            ) : known?.about ? (
               <dl class="phone-about">
-                {rows(shown.about, shown.phone.serial).map(([term, value]) => (
+                {rows(known.about, phone.serial).map(([term, value]) => (
                   <Fragment key={term}>
                     <dt>{term}</dt>
                     <dd>{value}</dd>
@@ -218,40 +213,38 @@ export function Phone() {
               </dl>
             ) : (
               <p class="menu-note">
-                {shown.failed === undefined
+                {known?.failed === undefined
                   ? 'Asking the phone for its details…'
-                  : `Could not read the phone’s details: ${shown.failed}`}
+                  : `Could not read the phone’s details: ${known.failed}`}
               </p>
             )}
 
             <div class="menu-actions">
-              <button type="button" onClick={disconnect}>
-                Disconnect
-              </button>
+              {phone ? (
+                <button type="button" onClick={disconnect}>
+                  Disconnect
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={connecting}
+                  onClick={() => void (demoAsked() ? holdDemo() : connectPhone())}
+                >
+                  Connect
+                </button>
+              )}
             </div>
-          </section>
-        </div>
-      )}
 
-      {/*
-       * Added with its message rather than waiting empty: an alert is announced as it arrives, where a `hidden` note
-       * holding a live region would take the region out of the accessibility tree along with it.
-       */}
-      {status && (
-        <div class="menu-panel phone-note">
-          <p role="alert">
-            {ticked(status.message)}
-            {status.failed && (
-              <>
-                {/*
-                 * A sentence of its own, after the message's full stop where it has one: this site's errors end bare,
-                 * but Tango's need not — `No input endpoint found.`
-                 */}
-                {/[.!?]$/.test(status.message) ? ' ' : '. '}
-                <a href="https://webadb.com/">WebADB</a> can help find out why.
-              </>
+            {/*
+             * Added with its message rather than waiting empty: an alert is announced as it arrives, and `tell` can
+             * open the panel with its message already in it, where an empty region would have had no time to wait.
+             */}
+            {status && (
+              <p class="menu-status" role="alert">
+                {ticked(status)}
+              </p>
             )}
-          </p>
+          </section>
         </div>
       )}
     </div>
