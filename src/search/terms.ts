@@ -554,11 +554,13 @@ const EVER_BUDDIED = 1;
  * Starting points, each a plain state the builder loads and the reader then edits — the point is to land mid-way
  * through a query rather than to hand over a finished one.
  *
- * Each earns its place by being tedious or risky to click together. Safe to transfer is a long list of exclusions,
- * every one of which matters, and forgetting any single one of them is how a shiny ends up as candy. Nundo is three
- * spans, each set to 0 in its own pair of boxes, and Special moves rules out two moves and a species, each a name typed
- * by hand. A start a reader could have clicked together out of two chips saves them nothing and costs every reader a
- * button to read past, so the chips carry those.
+ * Each earns its place by being tedious, risky or obscure to click together. Safe to transfer is a long list of
+ * exclusions, every one of which matters, and forgetting any single one of them is how a shiny ends up as candy. Nundo
+ * is three spans, each set to 0 in its own pair of boxes, and Special moves rules out two moves and a species, each a
+ * name typed by hand. Apex is a dex span and three chips that no label on the page puts together, the community phrase
+ * list's own `249-250&shadow,purified&research`: `research` is what tells the Apex forms from a Shadow Lugia or Ho-Oh
+ * caught in a raid. A start a reader could have clicked together out of two chips saves them nothing and costs every
+ * reader a button to read past, so the chips carry those.
  */
 export const PRESETS: readonly Preset[] = [
   {
@@ -595,6 +597,12 @@ export const PRESETS: readonly Preset[] = [
     label: 'Special moves',
     note: 'Exclusive moves, but not Frustration, Return or Smeargle.',
     query: '@special&!@frustration&!@return&!smeargle',
+  },
+  {
+    id: 'apex',
+    label: 'Apex',
+    note: 'Apex Lugia and Ho-Oh, shadow or purified.',
+    query: '249-250&shadow,purified&research',
   },
 ];
 
