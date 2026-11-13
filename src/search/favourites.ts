@@ -1,6 +1,7 @@
 /**
- * The searches a reader has saved on the Search page, beside the presets `terms.js` carries. Stored under `KEY_PREFIX`
- * like every other choice this app keeps, so `src/backup.ts`'s sweep carries them without being told they exist.
+ * The searches a reader has saved on the Search page, and which of the presets `terms.js` carries they have hidden.
+ * Stored under `KEY_PREFIX` like every other choice this app keeps, so `src/backup.ts`'s sweep carries them without
+ * being told they exist.
  *
  * **A favourite is the link fragment, not a tree in a shape of its own.** `toFragment` and `fromFragment` in
  * `query.js` are already the one encoding of an arrangement, and the reader of it already checks every token against
@@ -13,6 +14,12 @@ import { KEY_PREFIX } from '../storage-namespace.js';
 import type { Preset } from './terms.js';
 
 export const FAVOURITES_KEY = `${KEY_PREFIX}search:favourites`;
+
+/**
+ * The presets stored as the *hidden* set, by `id`, rather than as the shown one, as `event-prefs.ts` stores the event
+ * types: a preset added later shows up rather than being left out by a list written before it existed.
+ */
+export const HIDDEN_KEY = `${KEY_PREFIX}search:hidden-presets`;
 
 /** One saved search: what the reader called it, and the arrangement as `toFragment` writes it. */
 export interface Favourite {
@@ -27,19 +34,44 @@ const isFavourite = (value: unknown): value is Favourite => {
 };
 
 /**
- * The saved favourites, oldest first. Storage is a channel anything can write to — an import from a backup someone
- * edited by hand among them — so whatever is not a favourite is dropped rather than trusted, and storage that will not
- * answer reads as nothing saved.
+ * A list as storage holds it. Storage is a channel anything can write to — an import from a backup someone edited by
+ * hand among them — so whatever `keep` refuses is dropped rather than trusted, and storage that will not answer reads
+ * as nothing saved.
  */
-export function loadFavourites(): Favourite[] {
+function load<T>(key: string, keep: (value: unknown) => value is T): T[] {
   try {
-    const stored: unknown = JSON.parse(localStorage.getItem(FAVOURITES_KEY) ?? '[]');
+    const stored: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
 
-    return Array.isArray(stored) ? stored.filter(isFavourite) : [];
+    return Array.isArray(stored) ? stored.filter(keep) : [];
   } catch {
     return [];
   }
 }
+
+/**
+ * Write a list back, answering whether it was written. Not swallowed as `event-prefs.ts` swallows a refusal: a filter
+ * that fails to save still filters for the rest of the session, but a favourite that fails to save is gone at the next
+ * load, which the reader has to be told while they can still copy the link instead. The panel reads both lists from
+ * storage as it draws, so a hide refused would otherwise be a press that does nothing.
+ */
+function store(key: string, list: readonly unknown[]): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The saved favourites, oldest first. */
+export const loadFavourites = (): Favourite[] => load(FAVOURITES_KEY, isFavourite);
+
+export const storeFavourites = (list: readonly Favourite[]): boolean => store(FAVOURITES_KEY, list);
+
+export const loadHidden = (): string[] => load(HIDDEN_KEY, (value) => typeof value === 'string');
+
+export const storeHidden = (ids: readonly string[]): boolean => store(HIDDEN_KEY, ids);
 
 /**
  * The list with `favourite` in it: in place of the one already under its label, so saving under a name again updates
@@ -52,6 +84,10 @@ export const withFavourite = (list: readonly Favourite[], favourite: Favourite):
 
 export const withoutFavourite = (list: readonly Favourite[], label: string): Favourite[] =>
   list.filter((one) => one.label !== label);
+
+/** The hidden presets with `id` hidden if it was shown, or shown again if it was hidden. */
+export const toggled = (hidden: readonly string[], id: string): string[] =>
+  hidden.includes(id) ? hidden.filter((one) => one !== id) : [...hidden, id];
 
 /** One button in the Favourites panel: a preset `terms.js` carries, or a search the reader saved. */
 export type Shelved = { label: string } & ({ preset: Preset } | { favourite: Favourite });
@@ -67,18 +103,3 @@ export const shelved = (presets: readonly Preset[], favourites: readonly Favouri
     ...presets.map((preset) => ({ label: preset.label, preset })),
     ...favourites.map((favourite) => ({ label: favourite.label, favourite })),
   ].toSorted((one, two) => one.label.localeCompare(two.label));
-
-/**
- * Write the list back, answering whether it was written. Not swallowed as `event-prefs.ts` swallows a refusal: a filter
- * that fails to save still filters for the rest of the session, but a favourite that fails to save is gone at the next
- * load, which the reader has to be told while they can still copy the link instead.
- */
-export function storeFavourites(list: readonly Favourite[]): boolean {
-  try {
-    localStorage.setItem(FAVOURITES_KEY, JSON.stringify(list));
-
-    return true;
-  } catch {
-    return false;
-  }
-}

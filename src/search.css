@@ -323,14 +323,16 @@ body[data-page='search'] {
     gap: 10px;
   }
 
-  .output .toggle {
-    display: flex;
+  /* Shorten here, and the toggle under the Favourites that shows the hidden presets. */
+
+  .toggle {
+    display: inline-flex;
     align-items: center;
     gap: 5px;
     cursor: pointer;
   }
 
-  .output .toggle input {
+  .toggle input {
     margin: 0;
     accent-color: var(--accent);
     cursor: pointer;
@@ -710,21 +712,16 @@ body[data-page='search'] {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
     padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
+    border: 0;
+    background: none;
     color: var(--text);
     font: inherit;
     font-size: 12.5px;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
-  }
-
-  .presets button:hover {
-    border-color: var(--accent);
-    background: var(--accent-soft);
   }
 
   .presets button .note {
@@ -744,9 +741,9 @@ body[data-page='search'] {
   }
 
   /**
-   * A saved favourite: the button that loads it and the one that removes it, drawn as one card so the remove button
-   * reads as part of the favourite it removes rather than as a neighbour of its own. The card carries the border and
-   * the hover, and the two buttons inside it carry neither, so nothing divides them.
+   * A preset or a saved favourite: the button that loads it and the one that hides or removes it, drawn as one card so
+   * the second reads as part of the search it acts on rather than as a neighbour of its own. The card carries the
+   * border and the hover, and the two buttons inside it carry neither, so nothing divides them.
    */
 
   .presets .saved {
@@ -762,12 +759,6 @@ body[data-page='search'] {
     background: var(--accent-soft);
   }
 
-  .presets .saved button {
-    min-width: 0;
-    border: 0;
-    background: none;
-  }
-
   .presets .saved .drop {
     justify-content: center;
     padding: 0 8px;
@@ -777,6 +768,19 @@ body[data-page='search'] {
 
   .presets .saved .drop:hover {
     color: var(--accent);
+  }
+
+  /* A hidden preset, drawn only while the toggle is on, and dimmed as the Events page dims a dismissed event. */
+
+  .presets .saved.hidden {
+    border-style: dashed;
+    opacity: 0.6;
+  }
+
+  .presets + .toggle {
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--muted);
   }
 
   .naming {

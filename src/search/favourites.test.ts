@@ -1,6 +1,6 @@
 /**
- * The saved favourites as storage holds them: what a load trusts, what a save replaces, the refusal a reader has to be
- * told about, and the order the panel draws them in beside the presets. The fragment itself is `query.test.js`'s, so
+ * The saved favourites and hidden presets as storage holds them: what a load trusts, what a save replaces, the refusal
+ * a reader has to be told about, and the order the panel draws them in beside the presets. The fragment itself is `query.test.js`'s, so
  * the round trip here is only the one that proves a favourite is that fragment and nothing of its own.
  */
 
@@ -9,9 +9,13 @@ import { beforeEach, expect, test } from 'vitest';
 import { installFakeStorage, type FakeStorage } from '../testing/storage.js';
 import {
   FAVOURITES_KEY,
+  HIDDEN_KEY,
   loadFavourites,
+  loadHidden,
   shelved,
   storeFavourites,
+  storeHidden,
+  toggled,
   withFavourite,
   withoutFavourite,
   type Favourite,
@@ -76,6 +80,29 @@ test('saving under a name already taken replaces that favourite where it stands'
 test('removing a favourite leaves the rest in order', () => {
   expect(withoutFavourite([shiny, lucky], 'Shinies')).toEqual([lucky]);
   expect(withoutFavourite([shiny, lucky], 'Nothing by that name')).toEqual([shiny, lucky]);
+});
+
+test('hidden presets are kept by id beside the favourites, and a refusal says so', () => {
+  expect(loadHidden()).toEqual([]);
+  expect(storeHidden(['nundo', 'apex'])).toBe(true);
+  expect(loadHidden()).toEqual(['nundo', 'apex']);
+  expect(loadFavourites()).toEqual([]);
+  expect(HIDDEN_KEY.startsWith('pogo-utils:')).toBe(true);
+
+  storage.setItem(HIDDEN_KEY, JSON.stringify(['nundo', 7, null, { id: 'apex' }]));
+
+  expect(loadHidden()).toEqual(['nundo']);
+
+  storage.refusesWrites = true;
+
+  expect(storeHidden([])).toBe(false);
+  expect(loadHidden()).toEqual(['nundo']);
+});
+
+test('a preset hidden is shown again by the same press', () => {
+  expect(toggled([], 'nundo')).toEqual(['nundo']);
+  expect(toggled(['apex', 'nundo'], 'nundo')).toEqual(['apex']);
+  expect(toggled(toggled(['apex'], 'nundo'), 'nundo')).toEqual(['apex']);
 });
 
 test('presets and saved favourites are one list by name, whatever the case of the names', () => {

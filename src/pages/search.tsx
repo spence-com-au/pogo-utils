@@ -29,8 +29,11 @@ import { usePhone } from '../phone-store.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
 import {
   loadFavourites,
+  loadHidden,
   shelved,
   storeFavourites,
+  storeHidden,
+  toggled,
   withFavourite,
   withoutFavourite,
   type Favourite,
@@ -286,13 +289,23 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   /**
    * The name being typed for the next favourite, and whether the last write of the list was refused. The list itself is
    * not state: it is read from storage on every render and every write, as `release-store.ts` reads its version, so an
-   * import from Settings is what the next save builds on rather than something a copy held here would overwrite.
-   * `redraw` is for a removal, which changes nothing else a render reads.
+   * import from Settings is what the next save builds on rather than something a copy held here would overwrite. The
+   * hidden presets are read the same way. `redraw` is for a removal or a hide, which change nothing else a render reads.
    */
   const [naming, setNaming] = useState('');
   const [unsaved, setUnsaved] = useState(false);
   const [, redraw] = useState(0);
   const favourites = loadFavourites();
+  const hidden = loadHidden();
+
+  /**
+   * Counted over the presets rather than the stored ids, as the Events page counts its dismissed events: an id whose
+   * preset has since been dropped is nothing the toggle could show again.
+   */
+  const hiddenCount = PRESETS.filter(({ id }) => hidden.includes(id)).length;
+
+  /** Whether the hidden presets are drawn, dimmed, to be shown again. Not stored, as `pane` is not. */
+  const [showHidden, setShowHidden] = useState(false);
 
   const [offered, setOffered] = useState<readonly Offer[]>([]);
   const [active, setActive] = useState(-1);
@@ -386,8 +399,14 @@ export default function SearchPage({ query: fragment }: { query: string }) {
    * whether it did, which is what the naming dialog closes on.
    */
   function changeFavourites(change: (list: readonly Favourite[]) => Favourite[]) {
-    const stored = storeFavourites(change(loadFavourites()));
+    return written(storeFavourites(change(loadFavourites())));
+  }
 
+  function toggleHidden(id: string) {
+    written(storeHidden(toggled(loadHidden(), id)));
+  }
+
+  function written(stored: boolean) {
     setUnsaved(!stored);
     redraw((count) => count + 1);
 
@@ -1028,15 +1047,33 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               Favourites
             </h2>
             <div class="presets">
-              {shelved(PRESETS, favourites).map((entry) => {
+              {shelved(
+                PRESETS.filter(({ id }) => showHidden || !hidden.includes(id)),
+                favourites,
+              ).map((entry) => {
                 if ('preset' in entry) {
                   const { preset } = entry;
 
+                  // A preset is the site's rather than the reader's, so its ✕ hides it, to be shown again, where a
+                  // favourite's removes it.
+                  const action = hidden.includes(preset.id) ? 'Unhide' : 'Hide';
+
                   return (
-                    <button key={`preset:${preset.id}`} type="button" onClick={() => arrange(presetTree(preset))}>
-                      <span>{preset.label}</span>
-                      <span class="note">{preset.note}</span>
-                    </button>
+                    <span key={`preset:${preset.id}`} class={action === 'Hide' ? 'saved' : 'saved hidden'}>
+                      <button type="button" onClick={() => arrange(presetTree(preset))}>
+                        <span>{preset.label}</span>
+                        <span class="note">{preset.note}</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="drop"
+                        title={action}
+                        aria-label={`${action} ${preset.label}`}
+                        onClick={() => toggleHidden(preset.id)}
+                      >
+                        {action === 'Hide' ? '✕' : '↩'}
+                      </button>
+                    </span>
                   );
                 }
 
@@ -1062,6 +1099,17 @@ export default function SearchPage({ query: fragment }: { query: string }) {
                 );
               })}
             </div>
+
+            {hiddenCount > 0 && (
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  checked={showHidden}
+                  onChange={(event) => setShowHidden(event.currentTarget.checked)}
+                />
+                Show {hiddenCount} hidden
+              </label>
+            )}
 
             <p class="broken" role="alert" hidden={!unsaved}>
               This browser could not save your favourites. To keep this search, bookmark the page: its link holds the
