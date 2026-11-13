@@ -42,3 +42,8 @@
   and a pushed LFS object outlives a force-push. Rewrite an edited capture with `encodePng` from `src/core/png.mts`,
   because other tools drop the `Viewport` `tEXt` chunk a stitched capture carries. The map's location needs nothing,
   since the in-game location is spoofed.
+- **Keep the site's text short and plain.** A page says what the reader can do, in everyday words and short sentences,
+  and states each rule once, where it applies: the Builder help says how cards and pills combine, so the Search intro
+  does not. How the code works stays in its comments unless it changes what the reader types or presses, and so does the
+  comments' voice — `either way round`, `brackets and all` and `a pill apiece` read well in a doc comment and trip a
+  reader of the page.

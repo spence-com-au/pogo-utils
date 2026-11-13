@@ -111,7 +111,7 @@ export default function InventoryPage() {
       const reading = await read(next.image, (fraction) =>
         setPhase({
           kind: 'busy',
-          message: `Fetching the OCR model, ${Math.round(fraction * 100)}% — once, then kept in this browser…`,
+          message: `Downloading the OCR model (first time only), ${Math.round(fraction * 100)}%…`,
         }),
       );
 
@@ -174,8 +174,8 @@ export default function InventoryPage() {
       <header class="page">
         <h1 class="sr">Inventory</h1>
         <p class="sub">
-          Read one Pokémon’s detail screen — species, form, CP, HP, level, IVs, size, tags and moves — the way{' '}
-          <code>pnpm inventory parse</code> does, in the browser. Nothing leaves the page.
+          Read a Pokémon’s species, form, CP, HP, level, IVs, size, tags and moves off its detail screen, as{' '}
+          <code>pnpm inventory parse</code> does. Everything runs in your browser.
         </p>
       </header>
 
@@ -192,8 +192,8 @@ export default function InventoryPage() {
           <h2>From a phone</h2>
 
           <p>
-            Connect an Android phone with 📱 in the top bar, open a Pokémon in Pokémon GO with PGSharp’s IV display
-            showing, and take whatever it shows.
+            Connect an Android phone with 📱 in the top bar and open a Pokémon in Pokémon GO, with PGSharp’s IV display
+            on.
           </p>
 
           <div class="actions">
@@ -207,8 +207,8 @@ export default function InventoryPage() {
           <h2>From a file</h2>
 
           <p>
-            Drop a screenshot anywhere here, or pick one — a PNG as <code>adb exec-out screencap -p</code> or{' '}
-            <code>pnpm inventory snap</code> saves it, a scroll capture included.
+            Drop a screenshot anywhere on the page, or pick one. Any PNG from <code>pnpm inventory snap</code> or{' '}
+            <code>adb exec-out screencap -p</code> works, scroll captures included.
           </p>
 
           {unread && <p class="note">{unread}</p>}
@@ -274,7 +274,7 @@ export default function InventoryPage() {
                     Refused: {phase.refused.join('; ')}.
                   </p>
                   <details class="anyway">
-                    <summary>What each reader made of it anyway</summary>
+                    <summary>What was read anyway</summary>
                     <Blocks reading={phase.reading} />
                   </details>
                 </>

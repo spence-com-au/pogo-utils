@@ -218,10 +218,10 @@ test('puts the phone back as found once the page takes it back, where the Worker
 test('fails with why the Worker could not reach the phone, and holds the phone again all the same', async () => {
   const log: string[] = [];
   const { store, start, reconnect, back } = await setUp(log, () =>
-    Promise.reject(new Error('the phone pixel is not plugged in, or this site may no longer reach it')),
+    Promise.reject(new Error('the phone pixel is unplugged, or this site has lost access to it')),
   );
 
-  await expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow(/not plugged in/);
+  await expect(lend(store, PLAY, told().report, start, reconnect)).rejects.toThrow(/unplugged/);
 
   expect(store.phone).toBe(back.connection);
   expect(log).toEqual(['pixel let go', 'worker started', 'worker opened pixel', 'worker ended', 'page opened pixel']);

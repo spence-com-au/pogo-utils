@@ -111,7 +111,7 @@ export function Phone() {
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
       await putBack(picked).catch((e: unknown) =>
-        tell(`Could not put back the setting a battle kept the phone awake by: ${said(e)}`),
+        tell(`Could not restore the stay-awake setting a battle changed: ${said(e)}`),
       );
     } catch (e) {
       tell(`Could not connect: ${said(e)}`);
@@ -214,8 +214,8 @@ export function Phone() {
             ) : (
               <p class="menu-note">
                 {known?.failed === undefined
-                  ? 'Asking the phone what it is…'
-                  : `Could not ask the phone what it is: ${known.failed}`}
+                  ? 'Asking the phone for its details…'
+                  : `Could not read the phone’s details: ${known.failed}`}
               </p>
             )}
 

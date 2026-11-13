@@ -258,7 +258,7 @@ export default function BattlePage() {
   const shown: Fields = demo
     ? { ...fields, mode: 'training', leader: DEMO_BATTLE.leader, league: DEMO_BATTLE.league }
     : fields;
-  const recorded = demo ? 'The demo phone plays the battle it recorded' : undefined;
+  const recorded = demo ? 'The demo phone only plays its recorded battle' : undefined;
 
   const busy = phase.kind === 'connecting' || phase.kind === 'running';
   const field = (name: keyof Fields) => (event: Event) =>
@@ -283,22 +283,22 @@ export default function BattlePage() {
       ? phase.message
       : phase.kind === 'running'
         ? phase.stopping
-          ? 'Stopping, and putting the phone back as it was…'
-          : 'Running. Leave the phone be until it stops.'
+          ? 'Stopping and restoring the phone’s settings…'
+          : 'Running. Leave the phone alone until it stops.'
         : demo
-          ? 'Ready to play on the demo phone: a recorded Training battle, which plays the same whatever is tapped.'
+          ? 'Ready on the demo phone, which replays a recorded Training battle.'
           : phone
             ? `Ready to play on ${phone.name}.`
-            : 'No phone connected: connect one with 📱 in the top bar.';
+            : 'No phone connected. Connect one with 📱 in the top bar.';
 
   return (
     <>
       <header class="page">
         <h1 class="sr">Battle</h1>
         <p class="sub">
-          Play Team Leader training or GO Battle League battles on an Android phone, the way{' '}
-          <code>pnpm battle run</code> does, in the browser: it watches the screen and taps through each battle and the
-          menus between them, from the map or anywhere between one battle and the next.
+          Play Team Leader training or GO Battle League battles on an Android phone from the browser, as{' '}
+          <code>pnpm battle run</code> does. It watches the screen and taps through each battle and the menus between
+          them, starting from the map or anywhere in between.
         </p>
       </header>
 
@@ -354,7 +354,7 @@ export default function BattlePage() {
                   <input
                     type="text"
                     autocomplete="off"
-                    placeholder="the one the screen opens on"
+                    placeholder="the one already selected"
                     value={fields.party}
                     disabled={busy}
                     onInput={field('party')}
