@@ -158,8 +158,25 @@ export interface Written {
  * unquoted both read as `all(=a|=b)`, and the one pill was lifted out of a branch whose own `a&b` went with it.
  */
 function key(node: Node): string {
-  return isGroup(node) ? `${node.junction}(${node.parts.map(key).join('|')})` : JSON.stringify(leafText(node) ?? '');
+  return isGroup(node) ? `${node.junction}(${node.parts.map(key).join('|')})` : JSON.stringify(written(node));
 }
+
+/**
+ * What a pill is told apart by while a tree is spread: the text it writes, or for an IV percentage, which writes
+ * clauses rather than text, its comparison behind a NUL no name the page writes carries. Only `cards.js` hands one
+ * over whole, laying a deep tree out as cards with the pill still one pill; on the way to the string, `inTerms` has
+ * written each out as its clauses already.
+ */
+function atom(leaf: Leaf): string | null {
+  if (leaf.kind !== 'iv') {
+    return leafText(leaf);
+  }
+
+  return leaf.percent === null ? null : `${leaf.negated ? '!' : ''}\u0000iv ${leaf.compare} ${leaf.percent}`;
+}
+
+/** The pill as the game writes it, which is also the text two of them are compared by. Never null in a clause. */
+const written = (leaf: Leaf) => atom(leaf) ?? '';
 
 /** What a part of a junction asks for, as keys: an `all`'s own parts, or the part itself where it is not one. */
 const asks = (node: Node) => new Set((isGroup(node) && node.junction === 'all' ? node.parts : [node]).map(key));
@@ -241,7 +258,7 @@ function factored(node: Node): Node {
  */
 export function size(node: Node): number {
   if (!isGroup(node)) {
-    return leafText(node) === null ? 0 : 1;
+    return atom(node) === null ? 0 : 1;
   }
 
   if (node.parts.length === 0) {
@@ -266,7 +283,7 @@ export function size(node: Node): number {
  */
 function spread(node: Node): Leaf[][] {
   if (!isGroup(node)) {
-    return leafText(node) === null ? [] : [[node]];
+    return atom(node) === null ? [] : [[node]];
   }
 
   // A group with nothing in it is one the reader has just made, and asks nothing until a pill lands in it. Left to the
@@ -283,9 +300,6 @@ function spread(node: Node): Leaf[][] {
     .map(spread)
     .reduce<Leaf[][]>((left, right) => left.flatMap((one) => right.map((two) => [...one, ...two])), [[]]);
 }
-
-/** The pill as the game writes it, which is also the text two of them are compared by. Never null in a clause. */
-const written = (leaf: Leaf) => leafText(leaf) ?? '';
 
 /** The same text the other way round, for the pair that leaves a clause asking nothing. */
 const opposite = (text: string) => (text.startsWith('!') ? text.slice(1) : `!${text}`);
@@ -453,21 +467,39 @@ function mishandling(clauses: readonly (readonly Leaf[])[]): Mishandled[] {
   });
 }
 
+/** Whether a pill is an IV percentage no Pokémon meets, which `ivTree` answers with null. */
+const impossible = (node: Node) => !isGroup(node) && node.kind === 'iv' && ivTree(node) === null;
+
 /**
  * The tree with each IV percentage pill in place as the clauses of IV terms it stands for, so that everything after
- * this distributes, factors and absorbs those clauses as it would any the reader had placed themselves.
+ * this distributes, factors and absorbs those clauses as it would any the reader had placed themselves. Exported for
+ * `optimise.js`, which shortens those clauses as it does any others.
+ *
+ * A pill no Pokémon meets is no alternative, so it leaves an `any` it sits in: `= 90%` beside `shiny` on a card is
+ * `shiny`, where asking nothing would have taken the card with it and the search would come out wider than the cards.
+ * Anywhere else it asks nothing, which is what its note says of it.
  */
-const inTerms = (node: Node): Node =>
-  isGroup(node) ? { ...node, parts: node.parts.map(inTerms) } : node.kind === 'iv' ? ivTree(node) : node;
+export function inTerms(node: Node): Node {
+  if (!isGroup(node)) {
+    return node.kind === 'iv' ? (ivTree(node) ?? group('all')) : node;
+  }
+
+  const parts = node.junction === 'any' ? node.parts.filter((part) => !impossible(part)) : node.parts;
+
+  return { ...node, parts: parts.map(inTerms) };
+}
 
 /**
  * The pills of each clause a query comes to, or null where it spreads past `CLAUSES`. Exported for `cards.js`, which
  * lays a tree out as these when it is deeper than a card can draw: the cards are then the clauses the string is
  * written from, and nothing the Builder shows is a rearrangement the string does not make.
+ *
+ * An IV percentage is spread as one pill here, `atom` standing for it, so a card laid out from a deep link still holds
+ * the pill rather than the terms it is written as.
  */
 export function spreadOut(node: Node): readonly (readonly Leaf[])[] | null {
   // Factored before it is measured, the point of factoring being to bring the measurement under the cap.
-  const tree = factored(inTerms(node));
+  const tree = factored(node);
 
   if (size(tree) > CLAUSES) {
     return null;
@@ -496,7 +528,7 @@ export function spreadOut(node: Node): readonly (readonly Leaf[])[] | null {
  * notes are for.
  */
 export function clausesOf(node: Node): Written {
-  const kept = spreadOut(node);
+  const kept = spreadOut(inTerms(node));
 
   if (kept === null) {
     return {

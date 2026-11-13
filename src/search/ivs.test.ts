@@ -202,3 +202,9 @@ test('a pill with no percentage yet asks nothing', () => {
 test('a pill beside another on its card is one alternative, each of its clauses taking the other too', () => {
   expect(queryOf(any(pill('ge', 90), yes('shiny')))).toBe('3*,4*,shiny&3-attack,shiny&3-defense,shiny&3-hp,shiny');
 });
+
+test('a pill no Pokémon meets leaves its card, and the card keeps its other alternatives', () => {
+  // `= 90%` is no alternative at all, so the card is `shiny` alone rather than a card asking nothing beside `fire`.
+  expect(queryOf(all(any(pill('eq', 90), yes('shiny')), yes('fire')))).toBe('shiny&fire');
+  expect(queryOf(all(any(pill('eq', 90), yes('shiny')), yes('fire')), true)).toBe('shiny&fire');
+});

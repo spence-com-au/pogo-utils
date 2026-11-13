@@ -349,15 +349,19 @@ function clauseOf(box: Box): Group {
 
 /**
  * What an IV percentage pill asks, as the clauses the game reads. A pill with no percentage yet asks nothing, and so
- * does one taking every Pokémon or holding for none: an `all` of no clauses or a clause of no alternatives, which
- * `clauses.js` reads as the search for everything and leaves out of the string.
+ * does one taking every Pokémon: an `all` of no clauses, which `clauses.js` reads as the search for everything.
+ *
+ * Null where no Pokémon meets it, which is no alternative at all rather than a search for everything: `clauses.js`
+ * takes it out of a card it shares with others, where asking nothing would take the whole card with it.
  */
-export function ivTree(leaf: IvLeaf): Node {
+export function ivTree(leaf: IvLeaf): Node | null {
   if (leaf.percent === null) {
     return { kind: 'group', junction: 'all', parts: [] };
   }
 
-  return { kind: 'group', junction: 'all', parts: cut(leaf.compare, leaf.percent, leaf.negated).boxes.map(clauseOf) };
+  const { boxes, none } = cut(leaf.compare, leaf.percent, leaf.negated);
+
+  return none ? null : { kind: 'group', junction: 'all', parts: boxes.map(clauseOf) };
 }
 
 /** What a pill's string comes to beyond what it asks for, in words for its card, or null where it is exact. */

@@ -55,6 +55,15 @@ test('a tree deeper than cards is multiplied out into the clauses its string is 
   expect(written(laid)).toBe(written(tree));
 });
 
+test('an IV percentage in a tree deeper than cards stays one pill, multiplied out like any other', () => {
+  const iv: Leaf = { kind: 'iv', compare: 'ge', percent: 90, negated: false };
+  const tree = any(all(iv, yes('shiny')), yes('lucky'));
+  const laid = cards(tree);
+
+  expect(laid).toEqual(all(any(iv, yes('lucky')), any(yes('shiny'), yes('lucky'))));
+  expect(written(laid)).toBe(written(tree));
+});
+
 test('a root joined with any is one card of alternatives', () => {
   expect(shape(cards(any(yes('shiny'), yes('lucky'))))).toEqual({ all: [{ any: ['shiny', 'lucky'] }] });
 });

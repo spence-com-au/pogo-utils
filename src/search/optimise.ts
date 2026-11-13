@@ -25,7 +25,7 @@
 
 import { nameOf } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
-import { ivTree } from './ivs.js';
+import { inTerms } from './clauses.js';
 import { GROUPS, IDS_BY_TERM, RANGES_BY_ID, SPAN, type Group as Category, type Term } from './terms.js';
 import { isGroup, leafText, whole, type Group, type Leaf, type Node } from './tree.js';
 import { compose, type State } from './query.js';
@@ -430,11 +430,6 @@ function spliced(parts: readonly Node[], taken: readonly Node[], written: readon
 
 /** One node with every reduction that applies to it applied, and to everything inside it first. */
 function short(node: Node, told: Told): Node {
-  // An IV percentage is shortened as the clauses it writes, its stars being terms like any others.
-  if (!isGroup(node) && node.kind === 'iv') {
-    return short(ivTree(node), told);
-  }
-
   if (!isGroup(node)) {
     const name = namePill(node);
 
@@ -527,7 +522,9 @@ function short(node: Node, told: Told): Node {
  */
 export function optimise(state: State) {
   const told: Told = { rewrites: [], lossy: { narrowed: false, widened: false } };
-  const tree = short(state.tree, told);
+
+  // An IV percentage is shortened as the clauses it writes, its stars being terms like any others.
+  const tree = short(inTerms(state.tree), told);
 
   return { state: { ...state, tree }, rewrites: told.rewrites, lossy: told.lossy };
 }
