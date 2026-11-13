@@ -9,6 +9,7 @@
 
 import { clausesOf } from './clauses.js';
 import { COMPARISONS, PERCENT } from './ivs.js';
+import { read as readTyped } from './parse.js';
 import { emptyTree, group, isGroup, NESTING, type Leaf, type Node } from './tree.js';
 import { bounded, RANGES_BY_ID, TERMS_BY_ID, type Preset } from './terms.js';
 
@@ -63,9 +64,12 @@ export const nameFragment = (text: string) =>
   toFragment({ ...emptyState(), tree: group('all', [{ kind: 'name', text, negated: false }]) });
 
 /**
- * The tree a preset describes: everything it names, ruled out, which is the one preset there is. A span's top bound is
- * null because the span has none: `leafText` writes that as the open end the phrase list spells `{phrase}{N}-`, so
- * *ever buddied* is `buddy1-` rather than a ceiling this would have to name and the table already carries.
+ * The tree a preset describes: its query read as the page's box reads a typed one, or everything it excludes, ruled
+ * out. A query that reads as nothing throws, as a missing range does below.
+ *
+ * An excluded span's top bound is null because the span has none: `leafText` writes that as the open end the phrase
+ * list spells `{phrase}{N}-`, so *ever buddied* is `buddy1-` rather than a ceiling this would have to name and the
+ * table already carries.
  *
  * The bottom bound goes through `bounded` like every other span this page builds. A preset is written here rather than
  * by a reader, so the bound is only ever wrong by this repository's own mistake — but an unclamped one would compose a
@@ -77,10 +81,20 @@ export const nameFragment = (text: string) =>
  * that the silent form is unreachable *too*, and this is the one string where an exclusion going missing costs a
  * shiny. `optimise.js` refuses the missing `dex` range the same way.
  */
-export const presetTree = (preset: Preset): Node =>
-  group(
+export const presetTree = (preset: Preset): Node => {
+  if ('query' in preset) {
+    const { tree, error } = readTyped(preset.query);
+
+    if (!tree) {
+      throw new Error(`${preset.label} reads as no search: ${error ?? 'its query is empty'}`);
+    }
+
+    return tree;
+  }
+
+  return group(
     'all',
-    (preset.exclude ?? []).map((one): Leaf => {
+    preset.exclude.map((one): Leaf => {
       if (typeof one === 'string') {
         return { kind: 'term', id: one, negated: true };
       }
@@ -94,6 +108,7 @@ export const presetTree = (preset: Preset): Node =>
       return { kind: 'range', id: one.range, from: bounded(one.from, range), to: null, negated: true };
     }),
   );
+};
 
 /**
  * A name as a token carries it. `encodeURIComponent` leaves `_` and `!` alone and the reader below takes both for its

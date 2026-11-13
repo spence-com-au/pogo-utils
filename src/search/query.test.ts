@@ -60,20 +60,20 @@ test('a query too wide to write says so and composes nothing', () => {
   expect(compose(state(all(yes('shiny')))).error).toBeNull();
 });
 
-test('the one preset is everything it names, ruled out', () => {
-  const [preset] = PRESETS;
+test('Safe to transfer is everything it names, ruled out', () => {
+  const preset = PRESETS.find(({ id }) => id === 'transfer');
 
-  if (!preset) {
-    throw new Error('`terms.js` carries no presets');
+  if (!preset || !('exclude' in preset)) {
+    throw new Error('`terms.js` carries no Safe to transfer preset of exclusions');
   }
 
-  expect(preset.exclude?.length).toBeGreaterThan(0);
+  expect(preset.exclude.length).toBeGreaterThan(0);
 
   const tree = presetTree(preset);
   const parts = isGroup(tree) ? tree.parts : [];
 
   expect(isGroup(tree) && tree.junction).toBe('all');
-  expect(parts.length).toBe(preset.exclude?.length);
+  expect(parts.length).toBe(preset.exclude.length);
 
   /*
    * Every exclusion writes something: an id naming no term and a span naming no range both answer null here, and
@@ -100,6 +100,30 @@ test('the one preset is everything it names, ruled out', () => {
    * string, which is the one the page says costs a shiny.
    */
   expect(mishandled.map(({ term }) => term)).toEqual(['!buddy1-']);
+});
+
+test('a preset written as a query composes that query, with names only where it means them', () => {
+  /*
+   * Composing it back makes the string in `terms.js` the search the phone is sent. It cannot catch a misspelt term,
+   * which reads as a name pill and writes back as typed, so `0atack` would pass that half: the names are pinned too,
+   * and a new query preset fails here until its names are listed.
+   */
+  const meant: Record<string, readonly string[]> = {
+    nundo: [],
+    specialmoves: ['@frustration', '@return', 'smeargle'],
+  };
+  const nameTexts = (node: Node): string[] =>
+    isGroup(node) ? node.parts.flatMap(nameTexts) : node.kind === 'name' ? [node.text] : [];
+  const written = PRESETS.flatMap((preset) => ('query' in preset ? [preset] : []));
+
+  expect(written.map(({ id }) => id)).toEqual(Object.keys(meant));
+
+  for (const preset of written) {
+    const tree = presetTree(preset);
+
+    expect(compose(state(tree)).query, preset.label).toBe(preset.query);
+    expect(nameTexts(tree), preset.label).toEqual(meant[preset.id]);
+  }
 });
 
 test("the Pokédex's link into this page arrives as the one name it asked for", () => {

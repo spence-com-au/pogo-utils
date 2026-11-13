@@ -120,39 +120,22 @@
 }
 
 /**
- * The phone control with no phone held: greyed and faded, so the one in colour with a dot reads as connected beside it
- * without either needing a word. An emoji takes no `color`, so a filter is what can grey it.
+ * On the phone control, red while no phone is held and green while one, the demo's included, is: the bar says which
+ * from any tab without opening the panel, the icon itself drawn the same either way.
  */
-.phone-none .phone-icon {
-  filter: grayscale(1);
-  opacity: 0.45;
-}
-
-.phone-none:hover .phone-icon,
-.phone-none:focus-visible .phone-icon {
-  opacity: 0.8;
-}
-
-/**
- * Lit on the phone control while a phone, the demo's included, is held: the bar says so from any tab without opening
- * the panel.
- */
-.phone-held {
+.phone-dot {
   position: absolute;
   top: 11px;
   right: 7px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--start);
+  background: var(--end);
   box-shadow: 0 0 0 2px var(--panel);
 }
 
-/** What the last press of the phone control has to say: the chooser to look for, or why it did not connect. */
-.phone-note p {
-  margin: 0;
-  padding: 10px 12px;
-  line-height: 1.5;
+.phone-held {
+  background: var(--start);
 }
 
 /** What the phone held says of itself, in the panel a press on it opens: a column of names beside one of values. */
@@ -291,8 +274,8 @@
 }
 
 /**
- * A panel's contents, the settings panel's and the phone's: a section per thing it controls, each a line of explanation
- * and its buttons, and in settings a title and the line that reports what the last press did.
+ * A panel's contents, the settings panel's and the phone's: a section per thing it controls, each a line of
+ * explanation, its buttons and the line that reports what the last press did, and in settings a title.
  */
 .menu-section {
   padding: 10px 12px 12px;
@@ -337,17 +320,21 @@
   cursor: default;
 }
 
-.settings-status {
+/**
+ * What the last press in a panel had to say, under its buttons: what an import restored, or why a phone did not
+ * connect.
+ */
+.menu-status {
   margin: 10px 0 0;
   font-size: 12px;
   line-height: 1.5;
 }
 
 /**
- * Waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line box, so its margin
- * is the whole of what it costs and this takes that away.
+ * The settings panel's waits in the DOM with nothing in it, for the reason the markup gives; an empty block has no line
+ * box, so its margin is the whole of what it costs and this takes that away.
  */
-.settings-status:empty {
+.menu-status:empty {
   margin: 0;
 }
 
