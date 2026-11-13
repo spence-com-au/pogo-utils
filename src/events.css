@@ -54,6 +54,25 @@ body[data-page='events'] {
   }
 
   /**
+   * The numbers after the total are buttons, drawn as links so the line still reads as one run of counts. Pressed, the
+   * dismissed count is showing what it counts and turns bold, staying a link because pressing it again hides them.
+   */
+
+  .count button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--track);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .count button[aria-pressed='true'] {
+    font-weight: 600;
+  }
+
+  /**
    * How many events have arrived since this browser last acknowledged them, and the only control that clears them. Its
    * own line beside the count rather than inside it, because each of the three views writes that line itself and this
    * has to read the same in all of them — a calendar or tracks bar can mark a new event but has no room for a control.

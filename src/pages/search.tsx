@@ -1471,14 +1471,6 @@ export default function SearchPage({ query: fragment }: { query: string }) {
           </p>
         </div>
       </dialog>
-
-      <footer>
-        <p>
-          Uses Pokémon GO's own search syntax. Everything runs in your browser, and the link updates as you build, so
-          you can share or bookmark a search.
-        </p>
-        <p>This site is unofficial.</p>
-      </footer>
     </>
   );
 }

@@ -274,6 +274,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
    */
   const pending = useRef<string | null>(null);
 
+  /** The pinned toolbar, whose height is how far down the window a bucket's heading has to land to be seen. */
+  const toolbar = useRef<HTMLDivElement>(null);
+
   /** What the cards view is drawing under beyond the saved filters, which the top bar's count reads too. */
   const filter = { reveals, search, now, unhidden };
 
@@ -461,6 +464,33 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     }
 
     commit('collapsed');
+  }
+
+  /**
+   * Take the reader to a status bucket from the count that names it, unfolding it if they folded it. The heading lands
+   * under the pinned toolbar by its own top margin, as far below as it sits under the bucket before it, rather than at
+   * the top of the window where the toolbar would cover it. Focus goes with it, so a keyboard carries on from the bucket
+   * rather than from the header it left.
+   */
+  function showGroup(kind: StatusKind) {
+    if (prefs.collapsed.delete(kind)) {
+      commit('collapsed');
+    }
+
+    const heading = document.querySelector<HTMLElement>(`h2.group-${kind}`);
+
+    if (heading === null || toolbar.current === null) {
+      return;
+    }
+
+    const margin = parseFloat(getComputedStyle(heading).marginTop);
+
+    window.scrollBy({ top: heading.getBoundingClientRect().top - toolbar.current.offsetHeight - margin });
+    heading.querySelector('button')?.focus({ preventScroll: true });
+  }
+
+  function toggleReveal(name: keyof Reveals) {
+    setReveals((was) => ({ ...was, [name]: !was[name] }));
   }
 
   /**
@@ -707,22 +737,41 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     // reversing the ended bucket is enough.
     buckets.ended.reverse();
 
-    const parts = [shown ? `${shown} event${shown === 1 ? '' : 's'}` : 'No events to show'];
-
-    if (buckets.active.length) {
-      parts.push(`${buckets.active.length} happening now`);
-    }
-
     // Counted over the feed rather than the stored set, which keeps the ID of every event ever dismissed: one that has
     // since left the feed is nothing "Hidden" could bring back.
     const dismissed = events.filter((ev) => prefs.dismissed.has(ev.eventID)).length;
 
-    if (dismissed) {
-      parts.push(`${dismissed} dismissed`);
-    }
-
     return {
-      count: parts.join(' · '),
+      /**
+       * The numbers after the total are shortcuts to what they count: the running events' bucket, and the dismissed
+       * events by the same reveal as the "Hidden" chip, `aria-pressed` saying which way that is set.
+       */
+      count: (
+        <>
+          {shown ? `${shown} event${shown === 1 ? '' : 's'}` : 'No events to show'}
+          {buckets.active.length > 0 && (
+            <>
+              {' · '}
+              <button type="button" title="Go to these events" onClick={() => showGroup('active')}>
+                {buckets.active.length} happening now
+              </button>
+            </>
+          )}
+          {dismissed > 0 && (
+            <>
+              {' · '}
+              <button
+                type="button"
+                aria-pressed={reveals.showHidden}
+                title={reveals.showHidden ? 'Hide these events' : 'Show these events'}
+                onClick={() => toggleReveal('showHidden')}
+              >
+                {dismissed} dismissed
+              </button>
+            </>
+          )}
+        </>
+      ),
 
       /**
        * Keyed by the bucket, which an anonymous `<>` cannot be — and a bucket is what comes and goes here, only the
@@ -962,7 +1011,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
          * The live region, rather than `<main>`: the count is the one line that answers a search, a filter or a load,
          * where the body under it changes on every keystroke and with the relative times on the minute tick.
          */}
-        <p class="sub" aria-live="polite">
+        <p class="sub count" aria-live="polite">
           {count}
         </p>
 
@@ -990,7 +1039,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       </header>
 
       {/* Pinned as one, so the chevron opens the filters wherever the reader has scrolled to. */}
-      <div class="toolbar">
+      <div class="toolbar" ref={toolbar}>
         <section class="controls">
           <div class="viewtoggle" role="group" aria-label="View">
             {(
@@ -1114,7 +1163,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 class={reveals[name] ? 'chip' : 'chip off'}
                 aria-pressed={reveals[name]}
                 hidden={cardsOnly && view !== 'cards'}
-                onClick={() => setReveals((was) => ({ ...was, [name]: !was[name] }))}
+                onClick={() => toggleReveal(name)}
               >
                 {label}
               </button>
