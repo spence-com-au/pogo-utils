@@ -466,7 +466,7 @@ const RANGE_TABLE = [
   { id: 'maxmove', prefix: 'maxmove', label: 'Max Attack level', min: 1, max: 3, sparse: true },
   { id: 'maxguard', prefix: 'maxguard', label: 'Max Guard level', min: 1, max: 3, sparse: true },
   { id: 'maxspirit', prefix: 'maxspirit', label: 'Max Spirit level', min: 1, max: 3, sparse: true },
-  { id: 'count', prefix: 'count', label: 'Copies you have', min: 1, max: 99999 },
+  { id: 'count', prefix: 'count', label: 'How many you have', min: 1, max: 99999 },
   { id: 'countcandy', prefix: 'countcandy', label: 'Candy', max: 99999 },
   { id: 'countcandyxl', prefix: 'countcandyxl', label: 'Candy XL', max: 99999 },
   { id: 'age', prefix: 'age', label: 'Age', max: 99999 },
