@@ -149,8 +149,8 @@
     "heading": "Event",
     "link": "https://leekduck.com/events/into-the-wild-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-09-into-the-wild-2026/into-the-wild-2026.jpg",
-    "start": "2026-11-09T10:00:00.000",
-    "end": "2026-11-13T20:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-14T22:33:58.294Z"
   },
   {
@@ -501,8 +501,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/zacian-crowned-sword-zamazenta-crowned-shield-in-5-star-raid-battles-november-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/zacian-and-zamazenta-2.jpg",
-    "start": "2026-11-09T10:00:00.000",
-    "end": "2026-11-13T20:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-11-09T22:39:30.355Z"
   }
 ]
