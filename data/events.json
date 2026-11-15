@@ -121,17 +121,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "gowa-global-meetup-karlsruhe-2026",
-    "name": "Pokémon GO Wild Area: Global Meetup — Karlsruhe",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/gowa-global-europe-2026",
-    "image": "https://lh3.googleusercontent.com/44ggmV081gROwILff_vc2fROBHVCfBGTlRPQ8EtwxMt0ePAkWpirNJMtFk0C3qzHyx7zQqfFAbzKsziiRTTz67bHWdZyRKJN1d7b9Z50Q0M",
-    "start": "2026-11-14T09:00:00.000Z",
-    "end": "2026-11-14T19:00:00.000Z",
-    "added": "2026-10-29T06:01:29.808Z"
-  },
-  {
     "eventID": "gowa-global-meetup-stockholm-2026",
     "name": "Pokémon GO Wild Area: Global Meetup — Stockholm",
     "eventType": "regional-event",
