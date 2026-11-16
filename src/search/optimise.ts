@@ -533,22 +533,26 @@ const EXACT: Lossy = { narrowed: false, widened: false };
  * The string the page is showing, which is the string the Copy button writes — one answer rather than two compositions
  * that could disagree about which of them the reader is looking at.
  *
- * The optimiser is offered the state and its answer taken only where it is genuinely shorter, so the toggle can never
- * cost characters. Empty does not count as shorter: every star rating at once really does reduce to no clause at all,
- * but a blank output box beside cards full of pills reads as a page that has broken rather than as a search for
- * everything.
+ * The optimiser is offered the state and its answer taken only where it is genuinely shorter than the arrangement
+ * written tight, so the toggle can never cost characters and a rewrite that strays is never taken for the spaces alone.
+ * Empty does not count as shorter: every star rating at once really does reduce to no clause at all, but a blank output
+ * box beside cards full of pills reads as a page that has broken rather than as a search for everything.
+ *
+ * Whichever of the two is shown is tight, and what it was is the string with the toggle off, spaces and all, since that
+ * is the one the reader was looking at.
  */
 export function current(state: State) {
-  const plain = compose(state);
-  const unchanged = { ...plain, was: null, rewrites: [] as readonly [string, string][], lossy: EXACT };
+  const plain = compose({ ...state, optimise: false });
+  const untouched = { rewrites: [] as readonly [string, string][], lossy: EXACT };
 
   if (!state.optimise) {
-    return unchanged;
+    return { ...plain, was: null, ...untouched };
   }
 
   const { state: shortened, rewrites, lossy } = optimise(state);
   const shorter = compose(shortened);
-  const worth = shorter.query.length > 0 && shorter.query.length < plain.query.length;
+  const worth = shorter.query.length > 0 && shorter.query.length < plain.tight.length;
+  const shown = worth ? { ...shorter, rewrites, lossy } : { ...plain, query: plain.tight, ...untouched };
 
-  return worth ? { ...shorter, was: plain.query.length, rewrites, lossy } : unchanged;
+  return { ...shown, was: shown.query.length < plain.query.length ? plain.query.length : null };
 }

@@ -289,16 +289,17 @@ string, beside the span the game reads instead of it.
 The game takes no brackets. What it does take is clauses separated by `&`, each a list of alternatives separated by `,`,
 `:` or `;`, each alternative a term or a term behind a `!` — and that shape is conjunctive normal form, which every
 boolean expression has one of. So [`src/search/clauses.ts`](src/search/clauses.ts) distributes whatever has been
-arranged into that form, and [`src/search/query.ts`](src/search/query.ts) joins the result with `&`. A shiny Pikachu or
-an XXL Pumpkaboo — two `all` groups inside an `any`, which the earlier fixed builder could not say at all — leaves as
-`pikachu,pumpkaboo&pikachu,xxl&shiny,pumpkaboo&shiny,xxl`, and not one of those four clauses is a search anybody would
-have thought to write.
+arranged into that form, and [`src/search/query.ts`](src/search/query.ts) joins the result with `&` and a space either
+side of it, which _Shorten_ leaves out. A shiny Pikachu or an XXL Pumpkaboo — two `all` groups inside an `any`, which
+the earlier fixed builder could not say at all — leaves as
+`pikachu,pumpkaboo & pikachu,xxl & shiny,pumpkaboo & shiny,xxl`, and not one of those four clauses is a search anybody
+would have thought to write.
 
 One reduction happens before the distribution rather than after it, because it decides whether an arrangement can be
 written at all. A pill every part of an `any` asks for is lifted out of it: `any(all(s, a), all(s, b))` is
 `all(s, any(a, b))`, which is the same search said as a sum where it was said as a product. _A shiny Fire, or a shiny
 Water, or a shiny Grass_ is a natural thing to place, and it spreads to two to the power of however many types are named
-— 64 clauses at six, past the cap at ten — where the answer is `shiny&fire,water,…` and `shiny` is in every clause.
+— 64 clauses at six, past the cap at ten — where the answer is `shiny & fire,water,…` and `shiny` is in every clause.
 Dropping those clauses afterwards cannot help, the cap being reached while they are built.
 
 Three costs are worth knowing. An `any` **multiplies** where an `all` adds, so a few groups with nothing in common buy a

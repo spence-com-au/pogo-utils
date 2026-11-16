@@ -28,12 +28,15 @@ const EXACT = { narrowed: false, widened: false };
 
 const state = (tree: Node): State => ({ ...emptyState(), tree });
 
+/** An arrangement with *Shorten* on, which is the only state the page hands the optimiser. */
+const shortening = (tree: Node): State => ({ ...state(tree), optimise: true });
+
 /** The string an arrangement composes to once shortened, which is the only thing the page shows for it. */
-const short = (tree: Node) => compose(optimise(state(tree)).state).query;
+const short = (tree: Node) => compose(optimise(shortening(tree)).state).query;
 
 /** The same, plus what was said about it. */
 const told = (tree: Node) => {
-  const { state: shortened, rewrites, lossy } = optimise(state(tree));
+  const { state: shortened, rewrites, lossy } = optimise(shortening(tree));
 
   return { query: compose(shortened).query, rewrites, lossy };
 };
@@ -481,6 +484,16 @@ test('shortening an already shortened arrangement changes nothing further', () =
   }
 });
 
+test('the phone is sent the string shown with no spaces between the clauses, whatever the toggle', () => {
+  const tree = all(named('charmander'), yes('shiny'));
+
+  // Off, the arrangement as it stands: the phone would type each space and count it towards the box's limit.
+  expect(current(state(tree))).toMatchObject({ query: 'charmander & shiny', tight: 'charmander&shiny' });
+
+  // On, the shortened string, which is tight already.
+  expect(current(shortening(tree))).toMatchObject({ query: '4&shiny', tight: '4&shiny' });
+});
+
 test('the page shows the shortened string only where it is shorter, and says nothing of a rewrite otherwise', () => {
   const tree = all(named('charmander'));
 
@@ -493,6 +506,14 @@ test('the page shows the shortened string only where it is shorter, and says not
     was: 'charmander'.length,
     rewrites: [['charmander', '4']],
     lossy: { narrowed: true, widened: false },
+  });
+
+  // Nothing to rewrite still drops the spaces between the clauses, which is shorter than the string the reader saw.
+  expect(current(shortening(all(yes('shiny'), yes('lucky'))))).toMatchObject({
+    query: 'shiny&lucky',
+    was: 'shiny & lucky'.length,
+    rewrites: [],
+    lossy: EXACT,
   });
 
   // No shorter is the string as arranged, with the lossiness of the rewrite that was not taken left behind.
@@ -512,6 +533,19 @@ test('a reduction to nothing is not taken, a blank box beside cards full of pill
   expect(current({ ...state(everything), optimise: true })).toMatchObject({
     query: compose(state(everything)).query,
     was: null,
+    rewrites: [],
+    lossy: EXACT,
+  });
+
+  // Untaken, it still leaves out the spaces between the clauses, which are Shorten's to drop either way.
+  const genders = any(...category('gender').terms.map((one) => yes(one.id)));
+  const both = all(everything, genders);
+  const spaced = compose(state(both)).query;
+
+  expect(short(both)).toBe('');
+  expect(current(shortening(both))).toMatchObject({
+    query: spaced.replaceAll(' & ', '&'),
+    was: spaced.length,
     rewrites: [],
     lossy: EXACT,
   });

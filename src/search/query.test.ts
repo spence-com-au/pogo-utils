@@ -24,14 +24,18 @@ test('the clauses of the tree, joined, are the string', () => {
   // One `&` between clauses and nothing else: the game's search is a conjunction, and an arrangement in this form is
   // a list of its terms.
   expect(compose(state(all(yes('shiny')))).query).toBe('shiny');
-  expect(compose(state(all(yes('shiny'), yes('lucky')))).query).toBe('shiny&lucky');
-  expect(compose(state(all(yes('shiny'), any(yes('fire'), yes('water'))))).query).toBe('shiny&fire,water');
+  expect(compose(state(all(yes('shiny'), yes('lucky')))).query).toBe('shiny & lucky');
+  expect(compose(state(all(yes('shiny'), any(yes('fire'), yes('water'))))).query).toBe('shiny & fire,water');
 
   const spread = compose(state(any(all(named('pikachu'), yes('shiny')), all(named('pumpkaboo'), yes('xxl')))));
 
   // A shiny Pikachu or an XXL Pumpkaboo, as the four clauses the game will take for it.
-  expect(spread.query).toBe('pikachu,pumpkaboo&pikachu,xxl&shiny,pumpkaboo&shiny,xxl');
+  expect(spread.query).toBe('pikachu,pumpkaboo & pikachu,xxl & shiny,pumpkaboo & shiny,xxl');
   expect(spread.clauses).toBe(4);
+});
+
+test('Shorten writes the clauses with no spaces between them', () => {
+  expect(compose(state(all(yes('shiny'), any(yes('fire'), yes('water'))), true)).query).toBe('shiny&fire,water');
 });
 
 test('no cards at all compose nothing', () => {
@@ -46,8 +50,8 @@ test('a comma binds tighter than an ampersand, which is the one thing the string
    * here instead: an `any` nested in the root composes one clause of alternatives, and that is only the search the
    * cards drew if the comma binds first.
    */
-  expect(compose(state(all(yes('shiny'), any(yes('fire'), yes('water'))))).query).toBe('shiny&fire,water');
-  expect(compose(state(all(yes('shiny'), yes('lucky')))).query).toBe('shiny&lucky');
+  expect(compose(state(all(yes('shiny'), any(yes('fire'), yes('water'))))).query).toBe('shiny & fire,water');
+  expect(compose(state(all(yes('shiny'), yes('lucky')))).query).toBe('shiny & lucky');
   expect(compose(state(any(yes('fire'), yes('water')))).query).toBe('fire,water');
 });
 
@@ -83,7 +87,7 @@ test('Safe to transfer is everything it names, ruled out', () => {
 
   const { query, mishandled } = compose(state(tree));
 
-  expect(query.split('&').every((clause) => clause.startsWith('!'))).toBe(true);
+  expect(query.split(' & ').every((clause) => clause.startsWith('!'))).toBe(true);
 
   /*
    * Which buddy span it is matters: `buddy0-` would rule out the whole of storage, and `buddy2-` would offer the ones
@@ -91,7 +95,7 @@ test('Safe to transfer is everything it names, ruled out', () => {
    * with no ceiling, and the phrase list reads `buddy1-` as "all pokemon you've previously buddied" — so it is matched
    * as a whole clause rather than as a substring, which `!buddy1-4` would satisfy while meaning something else.
    */
-  expect(query.split('&')).toContain('!buddy1-');
+  expect(query.split(' & ')).toContain('!buddy1-');
 
   /*
    * And the caveat that clause carries, pinned here rather than only where the pattern is: `clauses.test.js` drives
