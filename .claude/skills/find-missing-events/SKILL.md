@@ -97,7 +97,10 @@ a GO Battle League rotation note, a season, a global event the feed simply names
 has the event under other wording, which is a match the script declined to assert rather than a gap.
 
 **It is an announced regional or in-person event that nothing here names.** Report these. A campus event, a mall tour, a
-partnership with a venue or an airline, a city-specific celebration.
+partnership with a venue or an airline, a city-specific celebration. The one exception is the Pokémon 30th Anniversary
+Mall Exploration (`apac-mall-exploration-2026`): its ten venue windows were carried once and then removed by the
+maintainer as not interesting enough to list. Nothing links the article now, so it stays in the discovery list. Reject
+it on sight rather than proposing it again.
 
 A date the parser failed to read would be filtered out silently, so the counts at the end of the report are printed for
 a reason: before concluding that a specific event you suspected is genuinely absent, check it is not sitting in them.
