@@ -131,8 +131,8 @@ the trap in that example: the start often omits the year, which you take from th
 
 Say what you found and what you are proposing, then wait. Date extraction from prose is the step most likely to be
 wrong, and a misread date is much cheaper to catch in a proposal than in a commit. Give, for each proposed event, the
-article it came from and the exact JSON entry you would insert, and say plainly which unmatched articles you rejected
-and why — that is how the maintainer checks your triage rather than just your parsing.
+article it came from, the exact JSON entry you would insert and the waypoint beside it, and say plainly which unmatched
+articles you rejected and why — that is how the maintainer checks your triage rather than just your parsing.
 
 **Lead with anything already published that is now wrong.** A missing event is an omission the maintainer can add
 whenever they read your report; an entry whose dates an article has since changed is actively telling calendar
@@ -169,6 +169,36 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
   (`PokéXciting! — Kuala Lumpur`). The article body usually states it plainly as a heading above the dates.
 - **Where one article announces several events, each gets its own entry**, with a `link` that may be shared.
 
+### Giving each event a waypoint
+
+Propose a waypoint beside each entry: a `<wpt>` whose `<pgr:event>` names the new `eventID`, which is what the Events
+page links through to and what a trainer teleports to. When the event ends the daily prune cuts the `<pgr:event>` and
+keeps the waypoint, so it stays on the map as a place of its own.
+
+```xml
+<wpt lat="3.157968" lon="101.711205">
+  <name>Petronas Twin Towers</name>
+  <extensions>
+    <pgr:city>Kuala Lumpur</pgr:city>
+    <pgr:country>Malaysia</pgr:country>
+    <pgr:event>pokemon-run-30-kuala-lumpur-2026</pgr:event>
+  </extensions>
+</wpt>
+```
+
+- **Put it at the venue the article names**, such as `KLCC Plaza Petronas` or `GBK (Gelora Bung Karno), Jakarta`. Look
+  the venue up with OpenStreetMap's Nominatim (`https://nominatim.openstreetmap.org/search?format=jsonv2&q=<venue>`)
+  rather than estimating it, and give the coordinates to six decimal places along with the result they came from, so the
+  maintainer can check the spot.
+- **An event that runs across a whole city or country has no venue**, so its waypoint is the city the article names, or
+  failing that the capital. Pokémon Center BANGKOK's nationwide Timed Research takes `Bangkok`.
+- **A venue still "to be announced" gets no waypoint.** Say so in the report and file an issue to add the waypoint once
+  the venue is announced, rather than guessing one.
+- **It goes in the country's file**, `data/<Country>.gpx`, in the format the README's
+  [File format](../../../README.md#file-format) section sets out: among that file's waypoints sorted by `<name>`, and
+  with a `<pgr:city>` unless the name is the city itself. A country with no file yet also needs a row in
+  `src/countries.ts`, and `pnpm lint` only reads a new file once it is staged.
+
 ### Choosing between a floating time and a UTC instant
 
 This distinction is load-bearing: it decides what a subscriber's calendar shows, and the wrong one shifts an event by
@@ -199,13 +229,16 @@ Once the proposal is approved:
 
 1. **Insert each entry in `start` order.** The file is sorted by `start` ascending and nothing enforces it, so keep it
    that way by hand — including after correcting an existing entry's dates, which can move it.
-2. **Run `npx prettier --write data/events.json`.** `pnpm lint` checks this file's formatting and will fail on it
+2. **Add each waypoint to its country's file**, and add a new file and the `src/countries.ts` row it needs.
+3. **Run `npx prettier --write data/events.json`.** `pnpm lint` checks this file's formatting and will fail on it
    otherwise.
-3. **Run `pnpm lint`** to confirm nothing else broke. It reads this file's `eventID`s and dates too, so an `end` that is
-   a date with no time, which would fail the daily prune for every entry, is refused here rather than after the merge.
-4. **Commit `data/events.json` alone and land it through a pull request.** The entry is the whole of the change, so
-   stage that one path rather than the tree. `master` rejects a direct push, so branch and open the pull request the way
-   the repository's `CLAUDE.md` says every change lands, rather than from a copy of its rules here that would drift.
+4. **Stage the GPX files and run `pnpm lint`** to confirm nothing else broke. It reads the `eventID`s and dates in
+   `data/events.json` too, so an `end` that is a date with no time, which would fail the daily prune for every entry, is
+   refused here rather than after the merge.
+5. **Commit the entries and their waypoints together and land them through a pull request.** A `<pgr:event>` naming an
+   ID `data/events.json` lacks fails the lint, so the two cannot land apart. Stage those paths rather than the tree.
+   `master` rejects a direct push, so branch and open the pull request the way the repository's `CLAUDE.md` says every
+   change lands, rather than from a copy of its rules here that would drift.
 
 **Do not run `pnpm vend:events`.** It rewrites `data/events-feed.json` from the live mirror, which the Vend workflow
 refreshes hourly anyway — so running it now sweeps unrelated feed drift into a commit that should carry one entry.
