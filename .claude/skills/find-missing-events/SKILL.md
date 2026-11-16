@@ -96,12 +96,11 @@ a GO Battle League rotation note, a season, a global event the feed simply names
 `data/events.json`. Check the candidate list first: a score near 1.00 usually means the feed or the local file already
 has the event under other wording, which is a match the script declined to assert rather than a gap.
 
-**It is the Pokémon 30th Anniversary Mall Exploration** (`apac-mall-exploration-2026`). Its ten venue windows were
-carried once and removed by the maintainer as not interesting enough to list. So the article sits in the discovery list
-with nothing linking it, and is rejected there on sight rather than proposed again.
-
 **It is an announced regional or in-person event that nothing here names.** Report these. A campus event, a mall tour, a
-partnership with a venue or an airline, a city-specific celebration.
+partnership with a venue or an airline, a city-specific celebration. The one exception is the Pokémon 30th Anniversary
+Mall Exploration (`apac-mall-exploration-2026`): its ten venue windows were carried once and then removed by the
+maintainer as not interesting enough to list. Nothing links the article now, so it stays in the discovery list. Reject
+it on sight rather than proposing it again.
 
 A date the parser failed to read would be filtered out silently, so the counts at the end of the report are printed for
 a reason: before concluding that a specific event you suspected is genuinely absent, check it is not sitting in them.
