@@ -176,22 +176,22 @@ page links through to and what a trainer teleports to. When the event ends the d
 keeps the waypoint, so it stays on the map as a place of its own.
 
 ```xml
-<wpt lat="3.157968" lon="101.711205">
-  <name>Petronas Twin Towers</name>
+<wpt lat="12.345678" lon="98.765432">
+  <name>Harbourside Plaza</name>
   <extensions>
-    <pgr:city>Kuala Lumpur</pgr:city>
-    <pgr:country>Malaysia</pgr:country>
-    <pgr:event>pokemon-run-30-kuala-lumpur-2026</pgr:event>
+    <pgr:city>Port Ellery</pgr:city>
+    <pgr:country>Exampleland</pgr:country>
+    <pgr:event>harbour-festival-port-ellery-2027</pgr:event>
   </extensions>
 </wpt>
 ```
 
-- **Put it at the venue the article names**, such as `KLCC Plaza Petronas` or `GBK (Gelora Bung Karno), Jakarta`. Look
-  the venue up with OpenStreetMap's Nominatim (`https://nominatim.openstreetmap.org/search?format=jsonv2&q=<venue>`)
-  rather than estimating it, and give the coordinates to six decimal places along with the result they came from, so the
-  maintainer can check the spot.
+- **Put it at the venue the article names**, such as `Harbourside Plaza` or
+  `the outdoor plaza in front of Port Ellery Central`. Look the venue up with OpenStreetMap's Nominatim
+  (`https://nominatim.openstreetmap.org/search?format=jsonv2&q=<venue>`) rather than estimating it, and give the
+  coordinates to six decimal places along with the result they came from, so the maintainer can check the spot.
 - **An event that runs across a whole city or country has no venue**, so its waypoint is the city the article names, or
-  failing that the capital. Pokémon Center BANGKOK's nationwide Timed Research takes `Bangkok`.
+  failing that the capital. A store opening's Timed Research open across Exampleland takes its capital, `Port Ellery`.
 - **A venue still "to be announced" gets no waypoint.** Say so in the report and file an issue to add the waypoint once
   the venue is announced, rather than guessing one.
 - **It goes in the country's file**, `data/<Country>.gpx`, in the format the README's
