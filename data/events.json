@@ -55,28 +55,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "mall-exploration-klcc-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — Ombak KLCC, Malaysia",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-10-01T00:00:00.000",
-    "end": "2026-12-31T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-mall-of-asia-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM Mall of Asia, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-10-01T00:00:00.000",
-    "end": "2027-01-31T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "european-space-agency-2026",
     "name": "Pokémon GO × European Space Agency",
     "eventType": "regional-event",
@@ -85,28 +63,6 @@
     "image": "https://lh3.googleusercontent.com/7CITEYsKb4CAwdYOln7q7h5K6U1cIVu2cnWRbDZtixs10PkfYfHzPn5Iz9wwbMFE3bosgBEiKnZlEZJZmGiyl-YqYRKHlIL8d7VAzR4DjA",
     "start": "2026-10-04T00:00:00.000",
     "end": "2027-04-30T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-changi-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — Changi Airport, Singapore",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-11-07T00:00:00.000",
-    "end": "2027-02-28T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-jewel-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — Jewel, Singapore",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-11-07T00:00:00.000",
-    "end": "2027-01-31T23:59:59.000",
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -132,17 +88,6 @@
     "added": "2026-10-29T06:01:29.808Z"
   },
   {
-    "eventID": "mall-exploration-southmall-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM Southmall, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-11-20T00:00:00.000",
-    "end": "2026-11-30T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "pokemon-run-30-kuala-lumpur-2026",
     "name": "Pokémon RUN 30 — KLCC Plaza Petronas, Malaysia",
     "eventType": "regional-event",
@@ -165,17 +110,6 @@
     "added": "2026-10-29T06:01:29.808Z"
   },
   {
-    "eventID": "mall-exploration-north-edsa-2026",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM North EDSA, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2026-12-10T00:00:00.000",
-    "end": "2027-01-03T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "pokemon-run-30-jakarta-2026",
     "name": "Pokémon RUN 30 — GBK, Jakarta, Indonesia",
     "eventType": "regional-event",
@@ -195,17 +129,6 @@
     "image": "https://lh3.googleusercontent.com/c7e36ASB48bmKd_kOL4e61NU9Y3EPaXd0xmQJldeDAa9zn-W9CSwx6Taf_ENgLcx8K7RE3yP62zaLqwkUSACC6GUcEua_kus5gsm_xoljQ",
     "start": "2027-01-09T00:00:00.000",
     "end": "2027-01-10T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-marikina-2027",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM Marikina, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2027-01-15T00:00:00.000",
-    "end": "2027-01-31T23:59:59.000",
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -231,17 +154,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "mall-exploration-seaside-cebu-2027",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM Seaside Cebu, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2027-02-05T00:00:00.000",
-    "end": "2027-02-14T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "30th-anniversary-bangkok-2027",
     "name": "PokéXciting! — Bangkok",
     "eventType": "regional-event",
@@ -250,28 +162,6 @@
     "image": "https://lh3.googleusercontent.com/JeRu4g5duzaVNIBOkkkNArX1ciAZ1n4QaB699nrXh4wuKXgs8UV16dsizwt0Ci9q15ksRq9150vamFJK2ulbT7Gt552-2UdFy86eLUA4Ag",
     "start": "2027-02-13T03:00:00.000Z",
     "end": "2027-02-14T15:00:00.000Z",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-davao-2027",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM Davao, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2027-02-20T00:00:00.000",
-    "end": "2027-03-07T23:59:59.000",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "mall-exploration-cdo-downtown-2027",
-    "name": "Pokémon 30th Anniversary Mall Exploration — SM CDO Downtown, Philippines",
-    "eventType": "regional-event",
-    "heading": "Regional Event",
-    "link": "https://pokemongo.com/en/news/apac-mall-exploration-2026",
-    "image": "https://lh3.googleusercontent.com/dFl-bn3on9Th9YzRT-Bs14neMfLhAsomPudR7lZ0l1j-1WERlgWfMrgd-pG9Kk5sVl1L9u3viOCWpGnVSlaLwwBcDrCayaXwSkC-eex8Qg",
-    "start": "2027-03-13T00:00:00.000",
-    "end": "2027-03-28T23:59:59.000",
     "added": "2026-10-12T00:00:00.000Z"
   }
 ]
