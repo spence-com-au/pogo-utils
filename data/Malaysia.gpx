@@ -9,4 +9,13 @@
       <pgr:country>Malaysia</pgr:country>
     </extensions>
   </wpt>
+
+  <wpt lat="3.157968" lon="101.711205">
+    <name>Petronas Twin Towers</name>
+    <extensions>
+      <pgr:city>Kuala Lumpur</pgr:city>
+      <pgr:country>Malaysia</pgr:country>
+      <pgr:event>pokemon-run-30-kuala-lumpur-2026</pgr:event>
+    </extensions>
+  </wpt>
 </gpx>

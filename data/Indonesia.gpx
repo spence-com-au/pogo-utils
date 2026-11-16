@@ -3,6 +3,15 @@
      xmlns:pgr="https://spence.com.au/pogo-utils/gpx/1"
      version="1.1"
      creator="https://github.com/spence-com-au/pogo-utils">
+  <wpt lat="-6.218649" lon="106.803626">
+    <name>Gelora Bung Karno</name>
+    <extensions>
+      <pgr:city>Jakarta</pgr:city>
+      <pgr:country>Indonesia</pgr:country>
+      <pgr:event>pokemon-run-30-jakarta-2026</pgr:event>
+    </extensions>
+  </wpt>
+
   <wpt lat="-6.090942" lon="106.743883">
     <name>Jakarta</name>
     <extensions>

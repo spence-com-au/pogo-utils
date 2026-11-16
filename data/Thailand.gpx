@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:pgr="https://spence.com.au/pogo-utils/gpx/1"
+     version="1.1"
+     creator="https://github.com/spence-com-au/pogo-utils">
+  <wpt lat="13.752494" lon="100.493509">
+    <name>Bangkok</name>
+    <extensions>
+      <pgr:country>Thailand</pgr:country>
+      <pgr:event>pokemon-center-bangkok-2026</pgr:event>
+    </extensions>
+  </wpt>
+
+  <wpt lat="13.746722" lon="100.540142">
+    <name>CentralWorld</name>
+    <extensions>
+      <pgr:city>Bangkok</pgr:city>
+      <pgr:country>Thailand</pgr:country>
+      <pgr:event>pokemon-run-30-bangkok-2027</pgr:event>
+    </extensions>
+  </wpt>
+</gpx>
