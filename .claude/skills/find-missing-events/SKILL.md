@@ -175,8 +175,8 @@ An entry takes this shape, and only `name`, `start` and `end` are yours to judge
 ### Giving each event a waypoint
 
 Propose a waypoint beside each entry: a `<wpt>` whose `<pgr:event>` names the new `eventID`, which is what the Events
-page links through to and what a trainer teleports to. When the event ends the daily prune cuts the `<pgr:event>` and
-keeps the waypoint, so it stays on the map as a place of its own.
+page links through to and what a trainer teleports to. Mark the `<pgr:event>` `temporary="true"`, so the daily prune
+removes the waypoint when the event ends, and its file too if that leaves the file empty.
 
 ```xml
 <wpt lat="12.345678" lon="98.765432">
@@ -184,7 +184,7 @@ keeps the waypoint, so it stays on the map as a place of its own.
   <extensions>
     <pgr:city>Port Ellery</pgr:city>
     <pgr:country>Exampleland</pgr:country>
-    <pgr:event>harbour-festival-port-ellery-2027</pgr:event>
+    <pgr:event temporary="true">harbour-festival-port-ellery-2027</pgr:event>
   </extensions>
 </wpt>
 ```
@@ -196,10 +196,14 @@ keeps the waypoint, so it stays on the map as a place of its own.
 - **An event that runs across a whole city or country has no venue**, so its waypoint is the city the article names, or
   failing that the capital.
 - **A venue still "to be announced" gets no waypoint.** Say so in the report rather than guessing one.
+- **Leave `temporary` off only for a place worth keeping after the event**, such as a landmark the map has a reason to
+  hold anyway, and say in the report which waypoints those are and why. Without the marker the prune removes only the
+  `<pgr:event>`, and the waypoint stays on the map for good.
 - **It goes in the country's file**, `data/<Country>.gpx`, in the format the README's
   [File format](../../../README.md#file-format) section sets out: among that file's waypoints sorted by `<name>`, and
-  with a `<pgr:city>` unless the name is the city itself. A country with no file yet also needs a row in
-  `src/countries.ts`, and `pnpm lint` only reads a new file once it is staged.
+  with a `<pgr:city>` unless the name is the city itself. A country with no file yet needs a row in `src/countries.ts`
+  unless it already has one, left there when the prune deleted its last file, and `pnpm lint` only reads a new file once
+  it is staged.
 
 ### Choosing between a floating time and a UTC instant
 
