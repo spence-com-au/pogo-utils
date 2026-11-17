@@ -38,6 +38,7 @@ const COUNTRIES: Record<string, Country> = {
   'England': { code: 'GB-ENG', continent: 'Europe' },
   'France': { code: 'FR', continent: 'Europe' },
   'Germany': { code: 'DE', continent: 'Europe' },
+  'Hong Kong': { code: 'HK', continent: 'Asia' },
   'India': { code: 'IN', continent: 'Asia' },
   'Indonesia': { code: 'ID', continent: 'Asia' },
   'Japan': { code: 'JP', continent: 'Asia' },
@@ -52,6 +53,7 @@ const COUNTRIES: Record<string, Country> = {
   'South Korea': { code: 'KR', continent: 'Asia' },
   'Spain': { code: 'ES', continent: 'Europe' },
   'Taiwan': { code: 'TW', continent: 'Asia' },
+  'Thailand': { code: 'TH', continent: 'Asia' },
   'United Arab Emirates': { code: 'AE', continent: 'Asia' },
   'United States': { code: 'US', continent: 'North America' },
 };

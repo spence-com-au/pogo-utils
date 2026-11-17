@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:pgr="https://spence.com.au/pogo-utils/gpx/1"
+     version="1.1"
+     creator="https://github.com/spence-com-au/pogo-utils">
+  <wpt lat="22.426246" lon="114.211275">
+    <name>Hong Kong Science Park</name>
+    <extensions>
+      <pgr:city>Sha Tin</pgr:city>
+      <pgr:country>Hong Kong</pgr:country>
+      <pgr:event>pokemon-run-30-hong-kong-2027</pgr:event>
+    </extensions>
+  </wpt>
+</gpx>
