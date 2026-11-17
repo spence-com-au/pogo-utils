@@ -7,7 +7,7 @@
     <name>Bangkok</name>
     <extensions>
       <pgr:country>Thailand</pgr:country>
-      <pgr:event>pokemon-center-bangkok-2026</pgr:event>
+      <pgr:event temporary="true">pokemon-center-bangkok-2026</pgr:event>
     </extensions>
   </wpt>
 
@@ -16,7 +16,7 @@
     <extensions>
       <pgr:city>Bangkok</pgr:city>
       <pgr:country>Thailand</pgr:country>
-      <pgr:event>pokemon-run-30-bangkok-2027</pgr:event>
+      <pgr:event temporary="true">pokemon-run-30-bangkok-2027</pgr:event>
     </extensions>
   </wpt>
 </gpx>

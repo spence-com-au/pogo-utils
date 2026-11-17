@@ -15,7 +15,7 @@
     <extensions>
       <pgr:city>Kuala Lumpur</pgr:city>
       <pgr:country>Malaysia</pgr:country>
-      <pgr:event>pokemon-run-30-kuala-lumpur-2026</pgr:event>
+      <pgr:event temporary="true">pokemon-run-30-kuala-lumpur-2026</pgr:event>
     </extensions>
   </wpt>
 </gpx>
