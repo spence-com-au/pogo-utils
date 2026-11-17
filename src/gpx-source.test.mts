@@ -136,6 +136,71 @@ test('a bare carriage return counts as the line terminator XML says it is', () =
   expect(cutAll(before)).toBe(gpx('  <wpt>\r    <name>A</name>\n  </wpt>'));
 });
 
+/** A multi-line `<wpt>` named `name`, its reference to `a-2026` marked `temporary` where `attributes` says so. */
+const waypoint = (name: string, attributes = ' temporary="true"') =>
+  [
+    '  <wpt lat="0" lon="0">',
+    `    <name>${name}</name>`,
+    '    <extensions>',
+    `      <pgr:event${attributes}>a-2026</pgr:event>`,
+    '    </extensions>',
+    '  </wpt>',
+  ].join('\n');
+
+/** `contents` with every entry a temporary reference sits in cut, which is what the pruner does when `a-2026` ends. */
+const cutEntries = (contents: string) =>
+  cutElements(
+    contents,
+    eventRefs(parseGpx(contents)).flatMap(({ entry, temporary }) => (temporary && entry ? [entry] : [])),
+  );
+
+test('a reference knows the entry it is in, and whether it is temporary', () => {
+  const refs = eventRefs(
+    parseGpx(
+      gpx([waypoint('A'), waypoint('B', ''), '  <metadata><pgr:event>a-2026</pgr:event></metadata>'].join('\n')),
+    ),
+  );
+
+  expect(refs.map(({ entry, temporary }) => [entry?.localName, temporary])).toEqual([
+    ['wpt', true],
+    ['wpt', false],
+    [undefined, false],
+  ]);
+});
+
+test('an entry is cut whole, with the blank line that set it apart', () => {
+  // Between two neighbours the blank line before it goes, which leaves the one after it parting the two that remain.
+  // First or last, the one blank line it has goes, so none is left against `<gpx>` or `</gpx>`.
+  const [a, b, c] = [waypoint('A', ''), waypoint('B'), waypoint('C', '')];
+
+  expect(cutEntries(gpx([a, '', b, '', c].join('\n')))).toBe(gpx([a, '', c].join('\n')));
+  expect(cutEntries(gpx([b, '', a].join('\n')))).toBe(gpx(a));
+  expect(cutEntries(gpx([a, '', b].join('\n')))).toBe(gpx(a));
+});
+
+test('neighbouring entries cut together leave no blank line between those left', () => {
+  // Cut one at a time, each would claim the blank line between the two and leave the one beyond them stranded.
+  const [a, b, c] = [waypoint('A', ''), waypoint('B'), waypoint('C')];
+
+  expect(cutEntries(gpx([a, '', b, '', c].join('\n')))).toBe(gpx(a));
+  expect(cutEntries(gpx([b, '', c, '', a].join('\n')))).toBe(gpx(a));
+});
+
+test('a CRLF file loses the whole blank line, carriage return and all', () => {
+  const crlf = (text: string) => text.replaceAll('\n', '\r\n');
+  const [a, b] = [waypoint('A', ''), waypoint('B')];
+
+  expect(cutEntries(crlf(gpx([a, '', b].join('\n'))))).toBe(crlf(gpx(a)));
+});
+
+test('an entry holding a comment is refused rather than cut around', () => {
+  // Its extent is found by stepping over its children, and a comment is none, so the end tag is not where the walk
+  // stops — the same refusal as the comment inside a reference.
+  const before = gpx(waypoint('A').replace('<extensions>', '<!-- note --><extensions>'));
+
+  expect(() => cutEntries(before)).toThrow(/not by its own end tag/);
+});
+
 test('a position that does not hold a start tag is refused rather than cut at', () => {
   // The guard behind the one above, reached directly: nothing the corpus contains makes the parser and `startOfLine`
   // disagree today, so this hands `cutElements` an element from a *different* document to stand in for that. Without
@@ -172,10 +237,22 @@ test('cutting every reference in the corpus removes whole lines and touches noth
      * cases above are what cover the forms it is not.
      */
     expect(after.length, fileName).toBe(before.length - refs.length);
-    expect(after, fileName).toEqual(before.filter((line) => !line.includes('<pgr:event>')));
+    expect(after, fileName).toEqual(before.filter((line) => !line.includes('<pgr:event')));
   }
 
   // Only that the corpus was read: the Prune workflow deletes these references as their events end, so a count of them
   // is not something `master` can be held to. The cases above are what pin a cut when none is left in `data/`.
   expect(sources.length).toBeGreaterThan(0);
+});
+
+test('cutting every temporary entry in the corpus leaves well-formed files with no stray blank line', () => {
+  for (const { fileName, contents } of gpxSources()) {
+    const entries = eventRefs(parseGpx(contents)).filter(({ entry, temporary }) => temporary && entry);
+    const after = cutEntries(contents);
+
+    expect(eventRefs(parseGpx(after)).length, fileName).toBe(eventRefs(parseGpx(contents)).length - entries.length);
+
+    // Blank lines part neighbouring entries and nothing else, so none is doubled and none is left against the root.
+    expect(after, fileName).not.toMatch(/\n[ \t]*\n[ \t]*\n|creator="[^"]*">\n[ \t]*\n|\n[ \t]*\n<\/gpx>/);
+  }
 });

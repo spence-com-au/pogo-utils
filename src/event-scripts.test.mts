@@ -14,7 +14,7 @@
  */
 
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -126,6 +126,47 @@ test('prune drops an ended event from the list and every reference to it from th
   expect(read(directory, 'data/events.json')).toBe(json([event('live-2999')]));
   expect(read(directory, 'data/one.gpx')).toBe(waypoint('live-2999'));
   expect(read(directory, 'data/two.gpx')).toBe(waypoint('live-2999'));
+});
+
+/** A named waypoint whose one reference is to `id`, marked `temporary="true"`. */
+const temporary = (name: string, id: string) =>
+  [
+    '  <wpt lat="0" lon="0">',
+    `    <name>${name}</name>`,
+    '    <extensions>',
+    `      <pgr:event temporary="true">${id}</pgr:event>`,
+    '    </extensions>',
+    '  </wpt>',
+  ].join('\n');
+
+test('prune drops a temporary entry whole, and deletes a file it leaves with none', async () => {
+  const live = temporary('Stays', 'live-2999');
+  const directory = repository({
+    'data/events.json': json([ended('over-2020'), event('live-2999')]),
+    'data/events-feed.json': json([]),
+    'data/one.gpx': gpx([temporary('Goes', 'over-2020'), '', live].join('\n')),
+    'data/two.gpx': gpx(temporary('Goes too', 'over-2020')),
+  });
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: directory, encoding: 'utf8' });
+
+  // Committed, as the workflow's checkout is, so a deletion is something the index can differ from.
+  git('-c', 'user.name=test', '-c', 'user.email=test@example.com', 'commit', '--quiet', '--message', 'fixture');
+
+  const { code, stdout } = await run(directory, [PRUNE]);
+
+  expect(code).toBe(0);
+  expect(stdout).toContain('data/two.gpx: deleted');
+  expect(read(directory, 'data/one.gpx')).toBe(gpx(live));
+  expect(existsSync(join(directory, 'data/two.gpx'))).toBe(false);
+
+  // Gone from the index too, which is what `gpxSources` lists: the workflow's `pnpm lint:xml` runs before the commit,
+  // and a file deleted only from the tree is one it lists and then fails to read.
+  expect(git('ls-files', '*.gpx')).toBe('data/one.gpx\n');
+
+  // The Prune workflow commits through this pathspec, so the deletion has to be one it stages.
+  git('add', '--', 'data/events.json', '*.gpx');
+
+  expect(git('diff', '--cached', '--name-status')).toContain('D\tdata/two.gpx');
 });
 
 test('prune writes nothing when the only ended event is one the vended list also carries', async () => {

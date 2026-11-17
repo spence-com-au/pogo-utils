@@ -7,9 +7,9 @@
 
 import { byCodeUnit } from './event-feed.ts';
 import { MIN_TRKPTS, PGR_FIELDS, PGR_NS } from './gpx-dialect.ts';
-import { eventRefs, parseGpx } from './gpx-source.mts';
+import { elementChildren, entryElements, eventRefs, parseGpx } from './gpx-source.mts';
 import type { RouteCounts } from './types.js';
-import { Node, type Document, type Element } from '@xmldom/xmldom';
+import type { Document, Element } from '@xmldom/xmldom';
 import { validateXML } from 'xmllint-wasm';
 
 /** One GPX file, as `gpxSources` reads it. */
@@ -29,9 +29,6 @@ export type EntryPass = {
    * that just validated it.
    */
   eventIndex: Map<string, RouteCounts>;
-
-  // Which countries the files actually name, for the reverse check on COUNTRIES.
-  usedCountries: Set<string>;
 };
 
 /**
@@ -60,20 +57,12 @@ const VARIANTS = new Set(['short', 'long']);
 const PGR_EXPECTED = [...PGR_FIELDS].join(', ').replace(/, (?=[^,]*$)/, ' or ');
 
 /**
- * The element children of `el`, in document order. `childNodes` carries the whitespace between tags too, so the text
- * nodes are filtered out.
- */
-const elementChildren = (el: Element): Element[] =>
-  Array.from(el.childNodes).filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE);
-
-/**
  * Every way `sources` falls short of what the viewer reads, which the schema cannot say: the `pgr` extension fields,
  * a country and an event it knows, a name on every entry and points enough on every track.
  */
 export function entryProblems(sources: readonly GpxSource[], { eventIds, countries }: Tables): EntryPass {
   const problems: string[] = [];
   const eventIndex = new Map<string, RouteCounts>();
-  const usedCountries = new Set<string>();
   let entryCount = 0;
 
   // Report against the file, at the element's own line where there is one, matching the schema pass's `file:line:`
@@ -100,24 +89,36 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
      * refuses, failing every Pages deploy until the file is edited by hand. It also reaches a `<pgr:event>` outside a
      * `<trk>` or `<wpt>`, which the walk never visits and the pruner would still cut.
      */
-    for (const { element, eventID } of eventRefs(doc)) {
+    for (const { element, entry, eventID, temporary } of eventRefs(doc)) {
       if (eventID && !eventIds.has(eventID)) {
         report(fileName, element, `<${element.tagName}> is "${eventID}" — not an eventID in data/events.json`);
       }
-    }
 
-    const tracks = Array.from(doc.getElementsByTagName('trk')).map((trk) => ({
-      trk,
-      points: trk.getElementsByTagName('trkpt').length,
-    }));
+      /**
+       * The marker read the way `eventRefs` reads it, so anything but `temporary="true"` keeps the entry for good —
+       * which a misspelt attribute would do without a word, the reference going and the waypoint staying on the map.
+       * One outside an entry's `<extensions>` has no entry for the pruner to remove.
+       */
+      for (const { name, value } of Array.from(element.attributes)) {
+        if (name.startsWith('xmlns')) {
+          continue;
+        }
+
+        if (name !== 'temporary' || value !== 'true') {
+          report(fileName, element, `<${element.tagName}> has ${name}="${value}" — expected only temporary="true"`);
+        }
+      }
+
+      if (temporary && !entry) {
+        report(fileName, element, `<${element.tagName}> is temporary outside the <extensions> of a <trk> or <wpt>`);
+      }
+    }
 
     /**
      * A `<trk>` and a `<wpt>` are the two things the viewer turns into entries, and each must name its country. An
-     * emptied `<trk>` (no `<trkpt>`) is what a cleared track looks like on export; `eachTrack` skips it, so its `pgr`
-     * fields are not required and nothing is checked for it here.
+     * emptied `<trk>` is no entry, so its `pgr` fields are not required and nothing is checked for it here.
      */
-    const kept = tracks.filter(({ points }) => points > 0);
-    const entries = [...kept.map(({ trk }) => trk), ...Array.from(doc.getElementsByTagName('wpt'))];
+    const entries = entryElements(doc);
 
     /**
      * A `<trk>` that kept a single point is a track there is no line to draw between, and `gpxEntries` throws on it,
@@ -125,7 +126,9 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
      * so — `trkpt` is `minOccurs="0"` — so without this the file passed every check, went into both generated indexes
      * and broke the Routes page when someone opened it.
      */
-    for (const { trk, points } of kept) {
+    for (const trk of entries.filter((entry) => entry.localName === 'trk')) {
+      const points = trk.getElementsByTagName('trkpt').length;
+
       if (points < MIN_TRKPTS) {
         report(fileName, trk, `<trk> has ${points} <trkpt> — expected at least ${MIN_TRKPTS}`);
       }
@@ -172,10 +175,6 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
           eventId = text;
         }
 
-        if (name === 'country' && text) {
-          usedCountries.add(text);
-        }
-
         if (!text) {
           report(fileName, field, `<${field.tagName}> is empty`);
         } else if (name === 'variant' && !VARIANTS.has(text)) {
@@ -220,16 +219,8 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
     }
   }
 
-  return { problems, entryCount, eventIndex, usedCountries };
+  return { problems, entryCount, eventIndex };
 }
-
-/**
- * The other direction of the COUNTRIES check: an entry in that table no file names. Nothing reaches it except through a
- * `<pgr:country>` read out of a file, so such an entry is unreachable — a leftover from a route since removed, or one
- * added for a route that never arrived. Either way the table says it is the countries in use.
- */
-export const unusedCountries = (countries: Readonly<Record<string, unknown>>, used: ReadonlySet<string>) =>
-  Object.keys(countries).filter((country) => !used.has(country));
 
 /**
  * `eventIndex` as data/entries-by-event.json holds it. Keys are sorted so that two runs over the same repository

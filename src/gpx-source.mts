@@ -10,12 +10,16 @@
  */
 
 import { PGR_NS } from './gpx-dialect.ts';
-import { DOMParser, type Document, type Element } from '@xmldom/xmldom';
+import { DOMParser, Node, type Document, type Element } from '@xmldom/xmldom';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-/** A `<pgr:event>` and the `eventID` it names. */
-export type EventRef = { element: Element; eventID: string };
+/**
+ * A `<pgr:event>`, the `eventID` it names and the `<trk>` or `<wpt>` whose `<extensions>` holds it, if one does.
+ * `temporary` is `temporary="true"` on the element, which says the entry is there only for the event and goes when the
+ * event does, where without it the entry stands on its own and loses only the reference.
+ */
+export type EventRef = { element: Element; entry: Element | undefined; eventID: string; temporary: boolean };
 
 /**
  * Every GPX file in the repository, with its contents. `git ls-files` rather than a walk of `data/`, so an untracked
@@ -50,26 +54,120 @@ export function parseGpx(contents: string) {
  * validator can refuse, so it is one the pruner has to find.
  */
 export function eventRefs(doc: Document): EventRef[] {
-  return Array.from(doc.getElementsByTagNameNS(PGR_NS, 'event')).map((element) => ({
-    element,
-    eventID: element.textContent?.trim() ?? '',
-  }));
+  return Array.from(doc.getElementsByTagNameNS(PGR_NS, 'event')).map((element) => {
+    const extensions = element.parentNode;
+    const entry = extensions?.localName === 'extensions' ? extensions.parentNode : null;
+
+    return {
+      element,
+      entry: entry && ENTRY_NAMES.has(entry.localName ?? '') ? (entry as Element) : undefined,
+      eventID: element.textContent?.trim() ?? '',
+      temporary: element.getAttribute('temporary') === 'true',
+    };
+  });
+}
+
+const ENTRY_NAMES = new Set(['trk', 'wpt']);
+
+/**
+ * The `<trk>`s and `<wpt>`s in `doc` the viewer turns into entries. A `<trk>` with no `<trkpt>` is what a cleared track
+ * looks like on export, and the viewer skips it, so it is no entry. The validator refuses a file with none, and the
+ * pruner deletes a file it would leave with none rather than write one the validator refuses.
+ */
+export function entryElements(doc: Document) {
+  const tracks = Array.from(doc.getElementsByTagName('trk')).filter((trk) => trk.getElementsByTagName('trkpt').length);
+
+  return [...tracks, ...Array.from(doc.getElementsByTagName('wpt'))];
 }
 
 /**
+ * The element children of `el`, in document order. `childNodes` carries the whitespace between tags too, so the text
+ * nodes are filtered out.
+ */
+export const elementChildren = (el: Element): Element[] =>
+  Array.from(el.childNodes).filter((node): node is Element => node.nodeType === Node.ELEMENT_NODE);
+
+/**
  * `contents` with every element of `elements` cut out, each taking the whitespace that indented it where it had a line
- * to itself.
+ * to itself, and one blank line beside it where one set it apart from its neighbours.
  *
  * Spliced out of the source text rather than written back through `XMLSerializer`, which does not round-trip a file
  * here: it collapses the newline between the two `xmlns` attributes every `<gpx>` root in `data/` carries, so taking
  * one line out of one file would reformat all of them.
  *
- * Applied back to front, so cutting the earlier of two elements cannot move the offsets of the later.
+ * Spans that touch, or that only blank lines part, are merged before the blank line beside them is taken: two
+ * neighbouring entries cut one at a time would each claim the blank line between them, and leave the one beyond. Then
+ * applied back to front, so cutting the earlier of two cannot move the offsets of the later.
  */
 export function cutElements(contents: string, elements: readonly Element[]) {
-  const spans = elements.map((element) => spanOf(contents, element)).sort(([a], [b]) => b - a);
+  const spans = elements.map((element) => spanOf(contents, element)).sort(([a], [b]) => a - b);
+  const merged: [number, number][] = [];
 
-  return spans.reduce((text, [from, to]) => text.slice(0, from) + text.slice(to), contents);
+  for (const [from, to] of spans) {
+    const last = merged.at(-1);
+
+    if (last && from <= pastBlankLines(contents, last[1])) {
+      last[1] = Math.max(last[1], to);
+    } else {
+      merged.push([from, to]);
+    }
+  }
+
+  return merged
+    .map((span) => withBlankLine(contents, span))
+    .reverse()
+    .reduce((text, [from, to]) => text.slice(0, from) + text.slice(to), contents);
+}
+
+/** A line of nothing but spaces and tabs, matched where `lastIndex` puts it. */
+const BLANK_LINE = /[ \t]*(?:\r\n|[\n\r])/y;
+
+/**
+ * A blank line at the end of the text, after the terminator of the line before it: `\r(?!\n)` keeps the `\r` of a CRLF
+ * from reading as that terminator and the `\n` after it as a blank line.
+ */
+const BLANK_LINE_BEFORE = /(?<=^|\r\n|\n|\r(?!\n))[ \t]*(?:\r\n|[\n\r])$/;
+
+/** Whether `at` is the first offset of a line, as against inside one or between the two halves of a CRLF. */
+const startsLine = (contents: string, at: number) =>
+  at === 0 || contents[at - 1] === '\n' || (contents[at - 1] === '\r' && contents[at] !== '\n');
+
+/** The offset past any blank lines from `at`, or `at` itself where it is not the start of a line. */
+function pastBlankLines(contents: string, at: number) {
+  let offset = at;
+
+  while (startsLine(contents, offset)) {
+    BLANK_LINE.lastIndex = offset;
+
+    if (!BLANK_LINE.test(contents)) {
+      break;
+    }
+
+    offset = BLANK_LINE.lastIndex;
+  }
+
+  return offset;
+}
+
+/**
+ * A span of whole lines widened by the blank line before it, or failing one the blank line after — so a block that had
+ * a blank line on both sides keeps one, and one at either end of its parent leaves none against the tag beside it. A
+ * span within a line has no blank line of its own and is returned as it is.
+ */
+function withBlankLine(contents: string, [from, to]: [number, number]): [number, number] {
+  if (!startsLine(contents, from) || !startsLine(contents, to)) {
+    return [from, to];
+  }
+
+  const before = BLANK_LINE_BEFORE.exec(contents.slice(0, from));
+
+  if (before) {
+    return [from - before[0].length, to];
+  }
+
+  BLANK_LINE.lastIndex = to;
+
+  return BLANK_LINE.test(contents) ? [from, BLANK_LINE.lastIndex] : [from, to];
 }
 
 /**
@@ -79,6 +177,13 @@ export function cutElements(contents: string, elements: readonly Element[]) {
  * whatever followed, the result can still be well-formed XML, and this is committed to `master` unattended.
  */
 function spanOf(contents: string, element: Element): [number, number] {
+  const start = startOf(contents, element);
+
+  return wholeLine(contents, start, endOf(contents, element, start));
+}
+
+/** The offset of `element`'s start tag in `contents`, refused unless the start tag is really there. */
+function startOf(contents: string, element: Element) {
   const { lineNumber, columnNumber, tagName } = element;
 
   // Truthiness rather than a null test, which is what narrows away the `undefined` xmldom also types these as. Both
@@ -99,7 +204,7 @@ function spanOf(contents: string, element: Element): [number, number] {
     throw new Error(`<${tagName}> is not at ${lineNumber}:${columnNumber} where the parser put it — refusing to cut`);
   }
 
-  return wholeLine(contents, start, endOf(contents, tagName, start));
+  return start;
 }
 
 /**
@@ -125,17 +230,20 @@ function startOfLine(contents: string, lineNumber: number) {
 }
 
 /**
- * The offset just past `tagName`'s own end tag, given the `start` of its start tag.
+ * The offset just past `element`'s own end tag, given the `start` of its start tag.
  *
  * Found from the element's own extent rather than by searching for the literal `</tagName>`, which `indexOf` would
  * answer with the first occurrence anywhere after `start`. Whitespace is legal before the `>` of an end tag
  * (production 42), so `</pgr:event >` is this element's end and the literal is not, and a comment child may carry the
  * literal itself. Either way the span runs past the element and the result can still be well-formed.
  *
- * A `<` cannot appear in text or in an attribute value, so the first one after the start tag opens this element's end
- * tag, a child element, a comment or CDATA. Only the end tag is an extent this can read; the rest throw.
+ * A `<` cannot appear in text or in an attribute value, so the first one after the start tag, or after a child's end,
+ * opens this element's end tag, its next child element, a comment or CDATA. A child element is stepped over by its own
+ * extent, found the same way and only where it starts at the offset the parser gave it. Nothing else is an extent this
+ * can read, and the rest throw.
  */
-function endOf(contents: string, tagName: string, start: number) {
+function endOf(contents: string, element: Element, start: number): number {
+  const { tagName } = element;
   const startTagEnd = contents.indexOf('>', start);
 
   if (startTagEnd === -1) {
@@ -147,7 +255,18 @@ function endOf(contents: string, tagName: string, start: number) {
     return startTagEnd + 1;
   }
 
-  const close = contents.indexOf('<', startTagEnd + 1);
+  let close = contents.indexOf('<', startTagEnd + 1);
+
+  for (const child of elementChildren(element)) {
+    const childStart = startOf(contents, child);
+
+    if (close !== childStart) {
+      break;
+    }
+
+    close = contents.indexOf('<', endOf(contents, child, childStart));
+  }
+
   const endTag = close === -1 ? null : /^<\/([^\s/>]+)[ \t\r\n]*>/.exec(contents.slice(close));
 
   if (endTag === null || endTag[1] !== tagName) {

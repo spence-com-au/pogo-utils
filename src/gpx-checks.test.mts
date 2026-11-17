@@ -6,7 +6,7 @@
  * Written out rather than read from `data/`, which holds only files that pass.
  */
 
-import { entriesByEvent, entryProblems, schemaProblems, unusedCountries } from './gpx-checks.mts';
+import { entriesByEvent, entryProblems, schemaProblems } from './gpx-checks.mts';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
@@ -98,11 +98,10 @@ test('a field in another namespace is not a pgr field, even under the pgr: prefi
   const lookalike = (name: string, text: string) =>
     `<pgr:${name} xmlns:pgr="http://spence.com.au/pogo-utils/gpx/1">${text}</pgr:${name}>`;
   const body = wpt(`<name>Here</name>${ext(lookalike('country', 'Australia') + lookalike('event', 'gone'))}`);
-  const { problems, eventIndex, usedCountries } = entryProblems([{ fileName: 't.gpx', contents: gpx(body) }], TABLES);
+  const { problems, eventIndex } = entryProblems([{ fileName: 't.gpx', contents: gpx(body) }], TABLES);
 
   expect(problems).toEqual(['t.gpx:4: <wpt> has no <pgr:country>']);
   expect(eventIndex.size).toBe(0);
-  expect(usedCountries.size).toBe(0);
 });
 
 test('a <pgr:event> names an event data/events.json has, wherever in the file it is', () => {
@@ -112,6 +111,32 @@ test('a <pgr:event> names an event data/events.json has, wherever in the file it
       `<metadata>${ext('<pgr:event>gone</pgr:event>')}</metadata>${wpt('<name>Here</name>' + ext(AUSTRALIA))}`,
     ),
   ).toEqual(['t.gpx:4: <pgr:event> is "gone" — not an eventID in data/events.json']);
+});
+
+test('a <pgr:event> carries no attribute but temporary="true", and only in an entry', () => {
+  const tagged = (attributes: string) => ext(`${AUSTRALIA}<pgr:event ${attributes}>an-event</pgr:event>`);
+
+  expect(problemsIn(wpt(`<name>Here</name>${tagged('temporary="true"')}`))).toEqual([]);
+
+  // Either slip keeps the entry for good, the pruner taking `temporary="true"` exactly and nothing else.
+  expect(problemsIn(wpt(`<name>Here</name>${tagged('temporary="yes"')}`))).toEqual([
+    't.gpx:4: <pgr:event> has temporary="yes" — expected only temporary="true"',
+  ]);
+  expect(problemsIn(wpt(`<name>Here</name>${tagged('temprary="true"')}`))).toEqual([
+    't.gpx:4: <pgr:event> has temprary="true" — expected only temporary="true"',
+  ]);
+
+  // A namespace declaration is no attribute of the reference's own.
+  const declared = `<pgr:event xmlns:pgr="https://spence.com.au/pogo-utils/gpx/1">an-event</pgr:event>`;
+
+  expect(problemsIn(wpt(`<name>Here</name>${ext(AUSTRALIA + declared)}`))).toEqual([]);
+
+  expect(
+    problemsIn(
+      `<metadata>${ext('<pgr:event temporary="true">an-event</pgr:event>')}</metadata>` +
+        wpt('<name>Here</name>' + ext(AUSTRALIA)),
+    ),
+  ).toEqual(['t.gpx:4: <pgr:event> is temporary outside the <extensions> of a <trk> or <wpt>']);
 });
 
 test('a track needs two points to draw, and an emptied one is skipped rather than checked', () => {
@@ -145,13 +170,4 @@ test('the event index counts routes and waypoints apart, in sorted order', () =>
   ]);
 
   expect(Object.keys(JSON.parse(entriesByEvent(index)))).toEqual(['a', 'b']);
-});
-
-test('a country no file names is unused', () => {
-  const { usedCountries } = entryProblems(
-    [{ fileName: 't.gpx', contents: gpx(wpt(`<name>Here</name>${ext(AUSTRALIA)}`)) }],
-    TABLES,
-  );
-
-  expect(unusedCountries(TABLES.countries, usedCountries)).toEqual(['Japan']);
 });
