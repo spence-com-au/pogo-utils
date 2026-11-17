@@ -194,9 +194,8 @@ keeps the waypoint, so it stays on the map as a place of its own.
   (`https://nominatim.openstreetmap.org/search?format=jsonv2&q=<venue>`) rather than estimating it, and give the
   coordinates to six decimal places along with the result they came from, so the maintainer can check the spot.
 - **An event that runs across a whole city or country has no venue**, so its waypoint is the city the article names, or
-  failing that the capital. A store opening's Timed Research open across Exampleland takes its capital, `Port Ellery`.
-- **A venue still "to be announced" gets no waypoint.** Say so in the report and file an issue to add the waypoint once
-  the venue is announced, rather than guessing one.
+  failing that the capital.
+- **A venue still "to be announced" gets no waypoint.** Say so in the report rather than guessing one.
 - **It goes in the country's file**, `data/<Country>.gpx`, in the format the README's
   [File format](../../../README.md#file-format) section sets out: among that file's waypoints sorted by `<name>`, and
   with a `<pgr:city>` unless the name is the city itself. A country with no file yet also needs a row in
