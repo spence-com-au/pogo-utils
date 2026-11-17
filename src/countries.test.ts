@@ -1,5 +1,5 @@
 /**
- * The country table, whose row *set* `validate-gpx.mts` already checks in both directions. What nothing checks is the
+ * The country table, whose row *set* `validate-gpx.mts` already checks against the files. What nothing checks is the
  * two fields on each row, and both fail silently: the flag is derived from the code, so one that is not alpha-2 draws
  * the wrong flag or none, and a continent is validated nowhere — the sidebar files an unknown one under "Other", so a
  * `Euorpe` is a country that vanishes from its own continent on a page that renders perfectly.

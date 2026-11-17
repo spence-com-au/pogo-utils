@@ -124,8 +124,11 @@ GPX 1.1 has no element for a locality, a country, a short/long variant or an eve
 namespace declared on `<gpx>`. `<pgr:city>` is the locality the place sits in, including its region — it is absent when
 the name is itself the place (`Melbourne`, `Boston, MA`). `<pgr:variant>` is `short`/`long`, and only for routes that
 come as a pair. `<pgr:event>` names the event the entry was added for, by the `eventID` it has in
-[`data/events.json`](data/events.json), and is absent for a place that stands on its own. `<name>` and `<pgr:country>`
-are required; the viewer names any file missing either instead of guessing from the file name.
+[`data/events.json`](data/events.json), and is absent for a place that stands on its own. `<pgr:event temporary="true">`
+says the entry is there only for the event, a stop on a tour or a venue for the day, so the
+[Prune workflow](.github/workflows/prune.yaml) removes the entry when the event ends rather than only the reference.
+`<name>` and `<pgr:country>` are required; the viewer names any file missing either instead of guessing from the file
+name.
 
 The Routes page's Copy button hands over the one entry it sits beside, written back out as a GPX file of its own rather
 than the country file it was read from.
@@ -188,10 +191,12 @@ by the time it landed, and a browser that had seen past that would never mark th
 [`data/events.json`](data/events.json), this repository's own list, is not replaced wholesale but pruned: the
 [Prune workflow](.github/workflows/prune.yaml) runs [`scripts/prune-events.mts`](scripts/prune-events.mts) daily, which
 removes every event that has ended everywhere — a naive end once it has passed at UTC−12 — along with any `<pgr:event>`
-naming one. An event with no announced end is kept, and so is one the feed also carries: that entry overrides the feed's
-rather than being the only copy of it, so removing it would uncover upstream's, which by then is usually the same event
-without its dates. The run re-checks the files with `pnpm lint:xml` before it commits, a reference left behind being one
-the build would refuse on every deploy after it.
+naming one, and the whole entry where that `<pgr:event>` is `temporary="true"`. A file left with no entry is deleted,
+though its country stays in [`src/countries.ts`](src/countries.ts) for the next event there. An event with no announced
+end is kept, and so is one the feed also carries: that entry overrides the feed's rather than being the only copy of it,
+so removing it would uncover upstream's, which by then is usually the same event without its dates. The run re-checks
+the files with `pnpm lint:xml` before it commits, a reference left behind being one the build would refuse on every
+deploy after it.
 
 ```sh
 pnpm prune:events

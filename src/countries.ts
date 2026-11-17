@@ -2,8 +2,8 @@
  * Every country a GPX file names, each with the continent it groups under in the sidebar and the ISO 3166-1 alpha-2
  * code its flag is drawn from. One table, so a country's continent and code cannot drift out of step.
  *
- * Exactly those countries and no others: `validate-gpx.mts` checks both directions, so adding a country ahead of its
- * first route fails the lint as surely as forgetting to add it at all.
+ * `validate-gpx.mts` refuses a file naming a country missing here, but not a row no file names: the prune deletes a file
+ * whose every entry was there for an event that has ended, and the row waits for the next event in that country.
  *
  * The code is required, a country with no entry here being unflaggable and a PGSharp backup erroring rather than
  * importing it. The continent only groups the sidebar, which falls back to "Other" without one.
@@ -18,7 +18,7 @@
  * Both fields are `string` and the table is keyed by `string`, rather than naming the codes, continents and countries
  * this one happens to hold. A country is a data change and lands on `master` on its own, so a type that enumerated the
  * rows would turn every such edit into a type edit as well — and the row set is already checked, better than a type
- * could: validate-gpx.mts reads it against the files in both directions. What the shape does buy is the row itself. A
+ * could: validate-gpx.mts reads every country the files name against it. What the shape does buy is the row itself. A
  * misspelled `continent` is a type error where inference simply gave that country a field of its own and let the
  * sidebar file it under "Other".
  */

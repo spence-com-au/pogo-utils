@@ -1,8 +1,8 @@
 /**
  * Checks the GPX files in the repository are in order: well-formed and really GPX 1.1 against `resources/gpx.xsd`,
- * with `pgr` extension fields the viewer reads and a country it knows, nothing in `src/countries.ts` the files never
- * name, every entry naming itself and every track carrying points enough to draw. `data/events.json`, which the files
- * are checked against, is held to an `eventID` of its own and dates every reader takes.
+ * with `pgr` extension fields the viewer reads and a country it knows, every entry naming itself and every track
+ * carrying points enough to draw. `data/events.json`, which the files are checked against, is held to an `eventID` of
+ * its own and dates every reader takes.
  *
  * `--write` adds the two files that tell the pages what the repository holds, each derived from the same pass that
  * just checked the files. Neither is in version control, so the flag is which caller wants them rather than a mode:
@@ -18,7 +18,7 @@ import { LOCAL_EVENTS } from '../src/event-feed.ts';
 import { ENTRIES_BY_EVENT, GPX_PATHS } from '../src/generated.ts';
 import { gpxSources } from '../src/gpx-source.mts';
 import type { FeedEvent } from '../src/types.js';
-import { entriesByEvent, entryProblems, schemaProblems, unusedCountries } from '../src/gpx-checks.mts';
+import { entriesByEvent, entryProblems, schemaProblems } from '../src/gpx-checks.mts';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 // `--write` generates the two indexes beside the checks rather than instead of them: what it writes is what passed.
@@ -55,16 +55,6 @@ problems.push(...entries.problems);
 
 if (entries.problems.length === 0) {
   console.log(`${entries.entryCount} entries carry the pgr fields the viewer needs.`);
-}
-
-const unused = unusedCountries(COUNTRIES, entries.usedCountries);
-
-for (const country of unused) {
-  problems.push(`src/countries.ts: "${country}" is in COUNTRIES but no file names it — remove it, or add its route`);
-}
-
-if (unused.length === 0) {
-  console.log(`src/countries.ts lists exactly the ${Object.keys(COUNTRIES).length} countries in use.`);
 }
 
 /**

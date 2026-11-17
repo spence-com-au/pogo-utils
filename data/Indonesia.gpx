@@ -8,7 +8,7 @@
     <extensions>
       <pgr:city>Jakarta</pgr:city>
       <pgr:country>Indonesia</pgr:country>
-      <pgr:event>pokemon-run-30-jakarta-2026</pgr:event>
+      <pgr:event temporary="true">pokemon-run-30-jakarta-2026</pgr:event>
     </extensions>
   </wpt>
 

@@ -8,7 +8,7 @@
     <extensions>
       <pgr:city>Sha Tin</pgr:city>
       <pgr:country>Hong Kong</pgr:country>
-      <pgr:event>pokemon-run-30-hong-kong-2027</pgr:event>
+      <pgr:event temporary="true">pokemon-run-30-hong-kong-2027</pgr:event>
     </extensions>
   </wpt>
 </gpx>
