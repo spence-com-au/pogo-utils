@@ -47,7 +47,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@resvg/resvg-js": "^2.6.2",
-    "@stylistic/eslint-plugin": "5.10.0",
+    "@stylistic/eslint-plugin": "6.0.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^24.19.2",
     "@types/tz-lookup": "^6.1.2",
