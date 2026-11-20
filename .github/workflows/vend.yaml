@@ -54,7 +54,7 @@ jobs:
           # commit the app's rather than the default token's.
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
       - run: 'pnpm vend:events'
@@ -97,7 +97,7 @@ jobs:
           ref: 'master'
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
       - run: 'pnpm vend:pgsharp'
@@ -137,7 +137,7 @@ jobs:
           ref: 'master'
           token: '${{ steps.token.outputs.token }}'
 
-      - uses: 'pnpm/setup@v3.1.2'
+      - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
       - run: 'pnpm vend:coin-bag'
