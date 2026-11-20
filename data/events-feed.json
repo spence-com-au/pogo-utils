@@ -88,17 +88,6 @@
     "added": "2026-11-10T04:18:09.675Z"
   },
   {
-    "eventID": "gbl-twilight-trails_great-league_ultra-league-mega-edition_2026-go-laic-cup",
-    "name": "Great League, Ultra League: Mega Edition, and 2026 GO LAIC Cup | Twilight Trails",
-    "eventType": "go-battle-league",
-    "heading": "GO Battle League",
-    "link": "https://leekduck.com/events/gbl-twilight-trails_great-league_ultra-league-mega-edition_2026-go-laic-cup/",
-    "image": "https://cdn.leekduck.com/assets/img/events/gobattle-greatleague-key.jpg",
-    "start": "2026-11-10T21:00:00.000Z",
-    "end": "2026-11-17T21:00:00.000Z",
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "gbl-twilight-trails_master-league_mega-catch-cup-great-league-edition",
     "name": "Master League and Mega Catch Cup: Great League Edition | Twilight Trails",
     "eventType": "go-battle-league",
@@ -130,17 +119,6 @@
     "start": "2026-11-03T10:00:00.000",
     "end": "2026-12-01T10:00:00.000",
     "added": "2026-10-22T13:29:09.732Z"
-  },
-  {
-    "eventID": "go-wild-area-gigantamax-machamp-power-up-timed-research",
-    "name": "GO Wild Area: Gigantamax Machamp Power Up! Timed Research",
-    "eventType": "timed-research",
-    "heading": "Timed Research",
-    "link": "https://leekduck.com/events/go-wild-area-gigantamax-machamp-power-up-timed-research/",
-    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2025/2025-05-25-gigantamax-machamp-max-battle-day-may-2025/gigantamax-machamp-max-battles.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-11-06T02:47:25.943Z"
   },
   {
     "eventID": "hatch-day-december-2026",
@@ -196,17 +174,6 @@
     "start": "2027-01-23T14:00:00.000",
     "end": "2027-01-23T17:00:00.000",
     "added": "2026-11-10T04:18:09.675Z"
-  },
-  {
-    "eventID": "max-mondays-2026-11-16",
-    "name": "[Canceled] Max Monday",
-    "eventType": "max-mondays",
-    "heading": "Max Mondays",
-    "link": "https://leekduck.com/events/max-mondays-2026-11-16/",
-    "image": "https://cdn.leekduck.com/assets/img/events/max-battles-kanto.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-19T22:36:12.344Z"
   },
   {
     "eventID": "max-mondays-2026-11-23",
@@ -281,8 +248,8 @@
     "heading": "Event",
     "link": "https://leekduck.com/events/minior-showers-leonids-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/minior-showers-2026.jpg",
-    "start": "2026-11-14T17:00:00.000",
-    "end": "2026-11-19T23:59:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -352,6 +319,17 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
+    "eventID": "pokemon-latin-america-international-championships-2027-timed-research-twitch-drops",
+    "name": "Twitch Drops for 2027 Pokémon Latin America International Championships",
+    "eventType": "twitch-drops",
+    "heading": "Twitch Drops",
+    "link": "https://leekduck.com/events/pokemon-latin-america-international-championships-2027-timed-research-twitch-drops/",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-20-pokemon-latin-america-international-championships-2027-timed-research-twitch-drops/2027-laic-go-drops.jpg",
+    "start": "2026-11-20T12:00:00.000Z",
+    "end": "2026-11-22T23:00:00.000Z",
+    "added": "2026-11-20T13:30:27.724Z"
+  },
+  {
     "eventID": "pokemon-x-adidas-2026",
     "name": "adidas × Pokémon Timed Research",
     "eventType": "research",
@@ -369,8 +347,8 @@
     "heading": "Pokémon Spotlight Hour",
     "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-19/",
     "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": "2026-11-19T18:00:00.000",
-    "end": "2026-11-19T19:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-28T19:48:47.378Z"
   },
   {
@@ -405,17 +383,6 @@
     "start": "2027-02-13T14:00:00.000",
     "end": "2027-02-13T17:00:00.000",
     "added": "2026-11-10T04:18:09.675Z"
-  },
-  {
-    "eventID": "raidhour20261118",
-    "name": "Cresselia and Darkrai Raid Hour",
-    "eventType": "raid-hour",
-    "heading": "Raid Hour",
-    "link": "https://leekduck.com/events/raidhour20261118/",
-    "image": "https://cdn.leekduck.com/assets/img/events/raidhour.jpg",
-    "start": "2026-11-18T18:00:00.000",
-    "end": "2026-11-18T19:00:00.000",
-    "added": "2026-10-19T22:36:12.344Z"
   },
   {
     "eventID": "raidhour20261125",
