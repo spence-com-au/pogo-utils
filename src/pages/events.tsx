@@ -265,6 +265,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
    */
   const [onlyNew, setOnlyNew] = useState(false);
 
+  /** Whether the reader has narrowed the cards to the dismissed events, by pressing the summary's count of them. */
+  const [onlyDismissed, setOnlyDismissed] = useState(false);
+
   /** The first-of-month the calendar view is showing, or the current month until the reader steps off it. */
   const [calMonth, setCalMonth] = useState<Date | null>(null);
 
@@ -282,11 +285,19 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /**
    * Whether an event survives the type-filter, dismissal and search-term filters of the view that is open, and the new
-   * events filter while that is on. `newlyVisible` is not built on this, so narrowing the page does not change the
-   * count the reader pressed to narrow it, nor the top bar's.
+   * and dismissed events filters while they are on. `newlyVisible` is not built on this, so narrowing the page does not
+   * change the count the reader pressed to narrow it, nor the top bar's. Narrowed to the dismissed events, the page lets
+   * them through whichever way the "Hidden" chip is set.
    */
   const isVisible = (ev: ParsedEvent) =>
-    admits(ev, prefs, hiddenFor(prefs, view), filter) && (!filteringNew || isNew(ev));
+    admits(
+      ev,
+      prefs,
+      hiddenFor(prefs, view),
+      filteringDismissed ? { ...filter, reveals: { ...reveals, showHidden: true } } : filter,
+    ) &&
+    (!filteringNew || isNew(ev)) &&
+    (!filteringDismissed || prefs.dismissed.has(ev.eventID));
 
   /** Whether the reader has revealed the status bucket this event falls in. */
   const isRevealed = (ev: ParsedEvent) => isRevealedIn(ev, filter);
@@ -334,8 +345,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       showUndated: was.showUndated || kind === 'tbd',
     }));
 
-    // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to.
+    // Arriving acknowledges the event, so the new events filter would hide the very card the link was followed to, as
+    // the dismissed events filter would one still showing.
     setOnlyNew(false);
+    setOnlyDismissed(false);
 
     // Arriving on the event is reading it, as opening its card is. A notification's link relies on this to take itself
     // off the list, and a shared link would otherwise leave the card marking an event the reader is looking at as new.
@@ -548,6 +561,22 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     }
   }, [newly]);
 
+  // Counted over the feed rather than the stored set, which keeps the ID of every event ever dismissed: one that has
+  // since left the feed is nothing "Hidden" could bring back.
+  const dismissedCount = events.filter((ev) => prefs.dismissed.has(ev.eventID)).length;
+
+  /**
+   * In force on the cards alone, the only view whose summary carries the count that turns it off, and for the same
+   * reason as `filteringNew` only while that count is there to press.
+   */
+  const filteringDismissed = onlyDismissed && view === 'cards' && dismissedCount > 0;
+
+  useEffect(() => {
+    if (dismissedCount === 0) {
+      setOnlyDismissed(false);
+    }
+  }, [dismissedCount]);
+
   /**
    * One card. The overlay link covers it, so every other control has to be a sibling of that link.
    *
@@ -737,14 +766,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     // reversing the ended bucket is enough.
     buckets.ended.reverse();
 
-    // Counted over the feed rather than the stored set, which keeps the ID of every event ever dismissed: one that has
-    // since left the feed is nothing "Hidden" could bring back.
-    const dismissed = events.filter((ev) => prefs.dismissed.has(ev.eventID)).length;
-
     return {
       /**
-       * The numbers after the total are shortcuts to what they count: the running events' bucket, and the dismissed
-       * events by the same reveal as the "Hidden" chip, `aria-pressed` saying which way that is set.
+       * The numbers after the total are shortcuts to what they count: the running events' bucket, and a toggle
+       * narrowing the cards to the dismissed events, `aria-pressed` saying which way it is set.
        */
       count: (
         <>
@@ -757,16 +782,16 @@ export default function EventsPage({ query: fragment }: { query: string }) {
               </button>
             </>
           )}
-          {dismissed > 0 && (
+          {dismissedCount > 0 && (
             <>
               {' · '}
               <button
                 type="button"
-                aria-pressed={reveals.showHidden}
-                title={reveals.showHidden ? 'Hide these events' : 'Show these events'}
-                onClick={() => toggleReveal('showHidden')}
+                aria-pressed={filteringDismissed}
+                title={filteringDismissed ? 'Show every event' : 'Show only these events'}
+                onClick={() => setOnlyDismissed(!filteringDismissed)}
               >
-                {dismissed} dismissed
+                {dismissedCount} dismissed
               </button>
             </>
           )}
