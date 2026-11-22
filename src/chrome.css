@@ -97,3 +97,40 @@ footer a {
   opacity: 0.5;
   cursor: default;
 }
+
+/**
+ * A dialog that asks one thing: Search's name for a favourite, or the Events page's "Reset filters?". The box has no
+ * padding and its one child carries it, so a click anywhere inside lands on that child and only one on the backdrop
+ * reaches the dialog, which is how each page tells the two apart. A page keeps only its own parts in its sheet: a
+ * field, a line of text, and its buttons, which Search shares with the other buttons on its page.
+ */
+
+.ask {
+  width: min(360px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-lift);
+}
+
+.ask::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.ask > * {
+  padding: 16px;
+}
+
+.ask h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.ask .buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}

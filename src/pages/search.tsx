@@ -1212,7 +1212,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
        */}
       <dialog
         ref={namingRef}
-        class="naming"
+        class="ask naming"
         aria-labelledby="namingLabel"
         onClick={(event) => {
           if (event.target === event.currentTarget) {

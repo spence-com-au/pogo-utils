@@ -1246,7 +1246,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
        */}
       <dialog
         ref={confirmReset}
-        class="confirm-reset"
+        class="ask confirm-reset"
         aria-labelledby="confirmResetLabel"
         onClick={(event) => {
           if (event.target === event.currentTarget) {
@@ -1254,15 +1254,17 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           }
         }}
       >
-        <h2 id="confirmResetLabel">Reset filters?</h2>
-        <p>This shows the usual event types again, turns off Ended, Undated and Hidden, and clears the search.</p>
-        <div class="buttons">
-          <button type="button" autofocus onClick={() => confirmReset.current?.close()}>
-            Cancel
-          </button>
-          <button type="button" class="confirm" onClick={resetFilters}>
-            Reset
-          </button>
+        <div>
+          <h2 id="confirmResetLabel">Reset filters?</h2>
+          <p>This shows the usual event types again, turns off Ended, Undated and Hidden, and clears the search.</p>
+          <div class="buttons">
+            <button type="button" autofocus onClick={() => confirmReset.current?.close()}>
+              Cancel
+            </button>
+            <button type="button" class="confirm" onClick={resetFilters}>
+              Reset
+            </button>
+          </div>
         </div>
       </dialog>
 

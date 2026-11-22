@@ -289,38 +289,12 @@ body[data-page='events'] {
     cursor: default;
   }
 
-  /** The question "Reset filters" asks first, drawn as Search's naming dialog is: Cancel outlined, Reset filled. */
-
-  .confirm-reset {
-    width: min(360px, calc(100vw - 32px));
-    padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: var(--panel);
-    color: var(--text);
-    box-shadow: var(--shadow-lift);
-  }
-
-  .confirm-reset::backdrop {
-    background: rgb(0 0 0 / 45%);
-  }
-
-  .confirm-reset h2 {
-    margin: 0 0 8px;
-    font-size: 16px;
-  }
+  /** The question "Reset filters" asks first, in the shared `.ask` box: Cancel outlined, Reset filled. */
 
   .confirm-reset p {
     margin: 0;
     font-size: 13px;
     color: var(--muted);
-  }
-
-  .confirm-reset .buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 14px;
   }
 
   .confirm-reset button {
