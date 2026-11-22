@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { DEFAULT_HIDDEN, hiddenFor, KEYS, loadPrefs, persist, RECURRING, type Prefs } from './event-prefs.js';
+import {
+  DEFAULT_HIDDEN,
+  hiddenFor,
+  KEYS,
+  loadPrefs,
+  persist,
+  RECURRING,
+  resetTypeFilters,
+  typeFiltersAtDefault,
+  type Prefs,
+} from './event-prefs.js';
 import RECURRING_TYPES from './recurring-types.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
@@ -594,4 +604,39 @@ test('hiddenFor leaves a stored empty set empty', () => {
   });
 
   expect(hiddenFor(prefs, 'cards')).toEqual(new Set());
+});
+
+/**
+ * A reset written and read back is a first visit's type filters, per-view sets and all, while the dismissals beside
+ * them survive. Read back through storage rather than off the object, so a name `resetTypeFilters` forgot to answer
+ * would come back from the reload as it was.
+ */
+test('resetTypeFilters writes back a first visit, keeping dismissals', () => {
+  store('hiddenTypes', ['event']);
+  store('hiddenByView', { cards: ['raid-hour'] });
+  store('filterScope', 'view');
+  store('dismissed', ['some-event']);
+
+  const prefs = loadPrefs();
+
+  expect(typeFiltersAtDefault(prefs)).toBe(false);
+
+  for (const name of resetTypeFilters(prefs)) {
+    persist(prefs, name);
+  }
+
+  const reloaded = loadPrefs();
+
+  expect(reloaded.hiddenTypes).toEqual(new Set(DEFAULT_HIDDEN));
+  expect(reloaded.hiddenByView).toEqual({});
+  expect(reloaded.filterScope).toBe('global');
+  expect(reloaded.dismissed).toEqual(new Set(['some-event']));
+  expect(typeFiltersAtDefault(reloaded)).toBe(true);
+});
+
+/** Per-view sets under the global scope are out of force, so they leave nothing to reset. */
+test('typeFiltersAtDefault ignores per-view sets under the global scope', () => {
+  store('hiddenByView', { cards: ['raid-hour'] });
+
+  expect(typeFiltersAtDefault(loadPrefs())).toBe(true);
 });

@@ -254,10 +254,39 @@ body[data-page='events'] {
 
   .scope {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     font-size: 12px;
     color: var(--muted);
+  }
+
+  /**
+   * At the far end of the scope row, in the quiet pill `.newly` uses, so it reads as housekeeping beside the chips.
+   * Unbroken, so on a phone it wraps to a line of its own rather than squeezing the segments beside it.
+   */
+
+  .scope .reset {
+    margin-left: auto;
+    white-space: nowrap;
+    padding: 2px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .scope .reset:hover:not(:disabled),
+  .scope .reset:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .scope .reset:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 
   /**

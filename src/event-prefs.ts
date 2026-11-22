@@ -457,3 +457,24 @@ export function hiddenFor(prefs: Prefs, view: string) {
 
   return (prefs.hiddenByView[view] ??= new Set(prefs.hiddenTypes));
 }
+
+/**
+ * Whether the type filters in force are a first visit's. Per-view sets left over under the global scope are not in
+ * force, so they leave nothing for the reader to see reset.
+ */
+export function typeFiltersAtDefault(prefs: Prefs) {
+  return (
+    prefs.filterScope === 'global' &&
+    prefs.hiddenTypes.size === DEFAULT_HIDDEN.length &&
+    DEFAULT_HIDDEN.every((type) => prefs.hiddenTypes.has(type))
+  );
+}
+
+/** Put the type filters back to a first visit's, per-view sets and all, answering the names to persist. */
+export function resetTypeFilters(prefs: Prefs) {
+  prefs.hiddenTypes = new Set(DEFAULT_HIDDEN);
+  prefs.hiddenByView = Object.create(null);
+  prefs.filterScope = 'global';
+
+  return ['hiddenTypes', 'hiddenByView', 'filterScope'] as const;
+}

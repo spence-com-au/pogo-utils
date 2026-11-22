@@ -14,7 +14,7 @@ import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { byCodeUnit, routeSummary } from '../event-feed.js';
-import { hiddenFor, type Prefs } from '../event-prefs.js';
+import { hiddenFor, resetTypeFilters, typeFiltersAtDefault, type Prefs } from '../event-prefs.js';
 import {
   addDays,
   continuations,
@@ -576,6 +576,28 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       setOnlyDismissed(false);
     }
   }, [dismissedCount]);
+
+  /** Whether every filter is as a first visit has it, when there is nothing for "Reset filters" to do. */
+  const filtersAtDefault =
+    typeFiltersAtDefault(prefs) &&
+    !Object.values(reveals).some(Boolean) &&
+    search === '' &&
+    unhidden === undefined &&
+    !filteringNew &&
+    !filteringDismissed;
+
+  /** Put every filter back as a first visit has it. Dismissals stay, being choices about events rather than filters. */
+  function resetFilters() {
+    for (const name of resetTypeFilters(prefs)) {
+      commit(name);
+    }
+
+    setReveals(NOTHING_REVEALED);
+    setSearch('');
+    setUnhidden(undefined);
+    setOnlyNew(false);
+    setOnlyDismissed(false);
+  }
 
   /**
    * One card. The overlay link covers it, so every other control has to be a sibling of that link.
@@ -1155,6 +1177,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 </button>
               ))}
             </div>
+            <button type="button" class="reset" disabled={filtersAtDefault} onClick={resetFilters}>
+              Reset filters
+            </button>
           </div>
 
           {/*
