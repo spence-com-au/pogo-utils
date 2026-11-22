@@ -577,6 +577,9 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     }
   }, [dismissedCount]);
 
+  const searchBox = useRef<HTMLInputElement>(null);
+  const confirmReset = useRef<HTMLDialogElement>(null);
+
   /** Whether every filter is as a first visit has it, when there is nothing for "Reset filters" to do. */
   const filtersAtDefault =
     typeFiltersAtDefault(prefs) &&
@@ -597,6 +600,11 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     setUnhidden(undefined);
     setOnlyNew(false);
     setOnlyDismissed(false);
+
+    // Closing hands the focus back to "Reset filters", which then disables itself and drops it; the box the reset has
+    // just emptied is where to start again.
+    confirmReset.current?.close();
+    searchBox.current?.focus();
   }
 
   /**
@@ -1110,6 +1118,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
           <input
             type="search"
+            ref={searchBox}
             placeholder="Search events…"
             autocomplete="off"
             value={search}
@@ -1177,7 +1186,12 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 </button>
               ))}
             </div>
-            <button type="button" class="reset" disabled={filtersAtDefault} onClick={resetFilters}>
+            <button
+              type="button"
+              class="reset"
+              disabled={filtersAtDefault}
+              onClick={() => confirmReset.current?.showModal()}
+            >
               Reset filters
             </button>
           </div>
@@ -1223,6 +1237,34 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       </div>
 
       <main>{failed === null && drawn.body}</main>
+
+      {/*
+       * Asked first, since a reset throws away type filters the reader may have set up over many visits. A modal
+       * <dialog> brings the focus trap and Escape, as Search's naming one does; Cancel takes the focus, so a stray
+       * Enter keeps the filters. A click on the backdrop lands on the dialog itself, which is how it is told from one
+       * inside.
+       */}
+      <dialog
+        ref={confirmReset}
+        class="confirm-reset"
+        aria-labelledby="confirmResetLabel"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            confirmReset.current?.close();
+          }
+        }}
+      >
+        <h2 id="confirmResetLabel">Reset filters?</h2>
+        <p>This shows the usual event types again, turns off Ended, Undated and Hidden, and clears the search.</p>
+        <div class="buttons">
+          <button type="button" autofocus onClick={() => confirmReset.current?.close()}>
+            Cancel
+          </button>
+          <button type="button" class="confirm" onClick={resetFilters}>
+            Reset
+          </button>
+        </div>
+      </dialog>
 
       <footer>
         <p>

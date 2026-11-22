@@ -289,6 +289,66 @@ body[data-page='events'] {
     cursor: default;
   }
 
+  /** The question "Reset filters" asks first, drawn as Search's naming dialog is: Cancel outlined, Reset filled. */
+
+  .confirm-reset {
+    width: min(360px, calc(100vw - 32px));
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .confirm-reset::backdrop {
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .confirm-reset h2 {
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+
+  .confirm-reset p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .confirm-reset .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .confirm-reset button {
+    padding: 9px 18px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .confirm-reset button.confirm {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .confirm-reset button:hover {
+    filter: brightness(1.05);
+  }
+
+  .confirm-reset button:focus-visible {
+    outline: 2px solid var(--track);
+    outline-offset: 1px;
+  }
+
   /**
    * The panel's chip row is made of these. A type chip wears its own type's colour — a tinted fill and a matching
    * border — which makes that row the legend for the three colour-coded views below it: the chip carries the same
