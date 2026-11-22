@@ -54,9 +54,8 @@ body[data-page='events'] {
   }
 
   /**
-   * The numbers after the total are buttons drawn as plain text, so the line still reads as one run of counts; `color`
-   * has to be asked for because a button does not inherit it. Pressed, the dismissed count is showing what it counts and
-   * turns bold.
+   * The dismissed count is a button drawn as plain text, so the line still reads as one run of counts; `color` has to be
+   * asked for because a button does not inherit it. Pressed, it is showing what it counts and turns bold.
    */
 
   .count button {

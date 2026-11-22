@@ -277,9 +277,6 @@ export default function EventsPage({ query: fragment }: { query: string }) {
    */
   const pending = useRef<string | null>(null);
 
-  /** The pinned toolbar, whose height is how far down the window a bucket's heading has to land to be seen. */
-  const toolbar = useRef<HTMLDivElement>(null);
-
   /** What the cards view is drawing under beyond the saved filters, which the top bar's count reads too. */
   const filter = { reveals, search, now, unhidden };
 
@@ -477,29 +474,6 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     }
 
     commit('collapsed');
-  }
-
-  /**
-   * Take the reader to a status bucket from the count that names it, unfolding it if they folded it. The heading lands
-   * under the pinned toolbar by its own top margin, as far below as it sits under the bucket before it, rather than at
-   * the top of the window where the toolbar would cover it. Focus goes with it, so a keyboard carries on from the bucket
-   * rather than from the header it left.
-   */
-  function showGroup(kind: StatusKind) {
-    if (prefs.collapsed.delete(kind)) {
-      commit('collapsed');
-    }
-
-    const heading = document.querySelector<HTMLElement>(`h2.group-${kind}`);
-
-    if (heading === null || toolbar.current === null) {
-      return;
-    }
-
-    const margin = parseFloat(getComputedStyle(heading).marginTop);
-
-    window.scrollBy({ top: heading.getBoundingClientRect().top - toolbar.current.offsetHeight - margin });
-    heading.querySelector('button')?.focus({ preventScroll: true });
   }
 
   function toggleReveal(name: keyof Reveals) {
@@ -768,8 +742,8 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
     return {
       /**
-       * The numbers after the total are shortcuts to what they count: the running events' bucket, and a toggle
-       * narrowing the cards to the dismissed events, `aria-pressed` saying which way it is set.
+       * The dismissed count is a toggle narrowing the cards to the dismissed events, `aria-pressed` saying which way it
+       * is set.
        */
       count: (
         <>
@@ -777,9 +751,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
           {buckets.active.length > 0 && (
             <>
               {' · '}
-              <button type="button" title="Go to these events" onClick={() => showGroup('active')}>
-                {buckets.active.length} happening now
-              </button>
+              {buckets.active.length} happening now
             </>
           )}
           {dismissedCount > 0 && (
@@ -1064,7 +1036,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
       </header>
 
       {/* Pinned as one, so the chevron opens the filters wherever the reader has scrolled to. */}
-      <div class="toolbar" ref={toolbar}>
+      <div class="toolbar">
         <section class="controls">
           <div class="viewtoggle" role="group" aria-label="View">
             {(
