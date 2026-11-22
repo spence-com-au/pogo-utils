@@ -1,10 +1,10 @@
 /**
  * The rows the converter makes of a made-up PGSharp export, read against the real game master so the species, forms and
- * types are the game's own. The export is `fixtures/snapshot.json`, a dozen Pokémon chosen for the fields that are
- * worth a test rather than a real account: a form named off the suffix, a shadow and a purified, a Dynamax and a
- * Gigantamax, a costume stated by enum alone, a size the game recorded and one derived from the height, a species the
- * game master does not know, and an egg that is left out. The move table is made up here, the loader that reads the real
- * one living in the scan script.
+ * types are the game's own. The export is `fixtures/snapshot.json`, eleven entries — ten Pokémon and an egg — chosen
+ * for the fields that are worth a test rather than a real account: a form named off the suffix, a costume named off a
+ * form and one stated by enum alone, a costume on a species with no ordinary form, a shadow and a purified, a Dynamax
+ * and a Gigantamax, a size the game recorded and one derived from the height, a species the game master does not know,
+ * and the egg, which is left out. The move table is made up here, the loader that reads the real one in the scan script.
  */
 
 import { type GameData, type Move } from '../../core/game-master.mts';
@@ -25,9 +25,10 @@ const MOVES = new Map<number, Move>([
 
 const rows = rowsOf(SNAPSHOT, DATA, MOVES);
 const byDex = (dex: number) => rows.find((row) => row.raw.pokemonId === dex);
+const byForm = (formName: string) => rows.find((row) => row.raw.formName === formName);
 
 test('an egg is left out and the rest are numbered from 1 in order', () => {
-  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   expect(rows.some((row) => row.raw.pokemonId === 1)).toBe(false);
 });
 
@@ -94,6 +95,20 @@ test('size is the recorded enum, or the height band where the game recorded none
 
   // Size 0 (unrecorded) at 0.8 m falls in Charmander's XL band of [0.75, 0.9].
   expect(byDex(4)?.size).toBe('XL');
+});
+
+test('a costume named by a form is written under costume, with the base form kept, not under form', () => {
+  expect(byForm('PikachuGofest2026CapRed')).toMatchObject({
+    species: 'Pikachu',
+    form: null,
+    costume: ['Gofest 2026 Cap Red'],
+    types: ['Electric'],
+  });
+});
+
+test('a costume on a species with no ordinary form keeps the base its name points at', () => {
+  // Sinistea has no null form, only Antique and Phony; the A Halloween costume sits on Antique, not the shorter Phony.
+  expect(byDex(854)).toMatchObject({ species: 'Sinistea', form: 'Antique', costume: ['A Halloween 2026 01'] });
 });
 
 test('a costume stated by enum alone is left unnamed, not guessed', () => {

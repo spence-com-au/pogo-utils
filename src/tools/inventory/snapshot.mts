@@ -137,27 +137,74 @@ const squash = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]/g
 /** A suffix the export spells for the ordinary form, which the game master gives a null `form`. */
 const ORDINARY = new Set(['', 'normal', 'unset']);
 
+/** What `formName` resolved to: the Pokédex form, the costume worn over it, and a note where a form went unmatched. */
+interface Resolved {
+  form: Form | null;
+  costume: string | null;
+  note: string | null;
+}
+
 /**
- * The game master form the export's `formName` names, or null where the species is not in the game master. The species
- * prefix is dropped — `UnownR` to `R`, `MarowakAlola` to `Alola` — and what is left is matched against the dex's forms
- * with the spaces and case squashed out; `Unset` and `Normal`, and anything left unmatched, fall back to the ordinary
- * form. Megas are left out, as the walk leaves them out: a Pokémon sits in storage as its base form.
+ * The plainest form among a dex's that is not a costume: the ordinary form where there is one, the shortest-named
+ * otherwise. Sinistea and Polteageist have no ordinary form, only `Antique` and `Phony`, and their costumes are named
+ * for the base they sit on — `A Halloween 2026 01`, `P Halloween 2026 01` — so where a costume is given its base is the
+ * form whose name shares its first letter.
  */
-function formOf(data: GameData, mon: Mon): Form | null {
+function baseForm(candidates: readonly Form[], costume: string | null): Form | null {
+  const plain = candidates.filter((form) => !form.costume);
+  const ordinary = plain.find((form) => form.form === null);
+
+  if (ordinary) {
+    return ordinary;
+  }
+
+  const letter = costume === null ? null : squash(costume).charAt(0);
+  const shared = letter === null ? undefined : plain.find((form) => squash(form.form ?? '').charAt(0) === letter);
+
+  return shared ?? [...plain].sort((a, b) => (a.form?.length ?? 0) - (b.form?.length ?? 0))[0] ?? null;
+}
+
+/**
+ * The form and costume the export's `formName` names. The species prefix is dropped — `UnownR` to `R`, `MarowakAlola`
+ * to `Alola` — and what is left is matched against the dex's forms with the spaces and case squashed out.
+ *
+ * A costume is a form in the game master but not in the Pokédex, so it is written under `costume` and `form` is left
+ * the base form, as the walk writes it: `PikachuGofest2026CapRed` is `form: null, costume: ['Gofest 2026 Cap Red']`.
+ * The base is the plainest form that is not a costume — the shortest-named, the ordinary form where there is one and a
+ * costume's base where there is not, as the walk's own `identify` settles on with costumes sorted last.
+ *
+ * `Unset` and `Normal` are the export's ordinary form; a suffix that matches nothing and is neither is a form the game
+ * master does not have, noted rather than filed silently under the base. Megas are left out, as the walk leaves them
+ * out: a Pokémon sits in storage as its base form.
+ */
+function resolveForm(data: GameData, mon: Mon): Resolved {
   const candidates = data.forms.filter((form) => form.dex === mon.pokemonId);
 
   if (candidates.length === 0) {
-    return null;
+    return { form: null, costume: null, note: `species ${mon.pokemonId} is not in the game master` };
   }
 
   const species = squash(candidates[0]?.species ?? '');
   const spelt = squash(mon.pokemonDisplay?.formName ?? '');
   const suffix = spelt.startsWith(species) ? spelt.slice(species.length) : spelt;
 
-  const exact = candidates.find((form) => squash(form.form ?? '') === suffix);
-  const ordinary = candidates.find((form) => form.form === null);
+  const match = candidates.find((form) => squash(form.form ?? '') === suffix);
 
-  return exact ?? (ORDINARY.has(suffix) ? (ordinary ?? candidates[0] ?? null) : (ordinary ?? candidates[0] ?? null));
+  if (match?.costume) {
+    return { form: baseForm(candidates, match.form), costume: match.form, note: null };
+  }
+
+  if (match) {
+    return { form: match, costume: null, note: null };
+  }
+
+  return ORDINARY.has(suffix)
+    ? { form: baseForm(candidates, null), costume: null, note: null }
+    : {
+        form: baseForm(candidates, null),
+        costume: null,
+        note: `form ${mon.pokemonDisplay?.formName ?? ''} is not in the game master`,
+      };
 }
 
 /** The size badge the game draws: its own `size` enum, or the height band for the Pokémon caught before it recorded one. */
@@ -226,14 +273,11 @@ function rowOf(
   tags: ReadonlyMap<string, string>,
 ): Row {
   const display = mon.pokemonDisplay;
-  const form = formOf(data, mon);
-  const notes: string[] = [];
+  const { form, costume: worn, note } = resolveForm(data, mon);
 
-  if (form === null) {
-    notes.push(`species ${mon.pokemonId} is not in the game master`);
-  }
-
-  const costumed = (display?.costume ?? 0) !== 0;
+  // A costume the export names by its own enum rather than a form has no name in the game master, so it is left unnamed
+  // rather than guessed: null where one is worn, the empty list where none is. A form-named costume (`worn`) is exact.
+  const costume = worn !== null ? [worn] : (display?.costume ?? 0) !== 0 ? null : [];
 
   return {
     index,
@@ -249,9 +293,7 @@ function rowOf(
       return name === undefined ? [] : [name];
     }),
 
-    // The costume enum is kept in `raw`, but the game master has no name for it, so a costume the export states by enum
-    // alone is left unnamed rather than guessed: null where one is worn, the empty list where none is.
-    costume: costumed ? null : [],
+    costume,
     shiny: display?.shiny ?? false,
     lucky: mon.isLucky,
     size: sizeOf(form, mon),
@@ -266,7 +308,7 @@ function rowOf(
     weight: mon.weightKg,
     height: mon.heightM,
     types: form?.types ?? [],
-    notes,
+    notes: note === null ? [] : [note],
     raw: {
       id: mon.id,
       pokemonId: mon.pokemonId,
