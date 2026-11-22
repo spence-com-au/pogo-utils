@@ -72,8 +72,8 @@
     "heading": "Max Battles",
     "link": "https://leekduck.com/events/eternamax-eternatus-max-battles-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-16-dynamax-trails-2026/dynamax-trails-2026.jpg",
-    "start": "2026-11-21T11:00:00.000",
-    "end": "2026-11-21T14:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-28T19:48:47.378Z"
   },
   {
@@ -242,17 +242,6 @@
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
-    "eventID": "minior-showers-leonids-2026",
-    "name": "Minior Showers: Leonids 2026",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/minior-showers-leonids-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/minior-showers-2026.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
     "eventID": "minior-showers-perseids-2027",
     "name": "Minior Showers: Perseids 2027",
     "eventType": "event",
@@ -281,8 +270,8 @@
     "heading": "Community Day",
     "link": "https://leekduck.com/events/november-communityday2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-21-november-communityday2026/pawniard-november-cd-2026.jpg",
-    "start": "2026-11-21T14:00:00.000",
-    "end": "2026-11-21T17:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-12T00:00:00.000Z"
   },
   {
@@ -339,17 +328,6 @@
     "start": "2026-09-25T10:00:00.000",
     "end": "2027-01-15T20:00:00.000",
     "added": "2026-10-12T00:00:00.000Z"
-  },
-  {
-    "eventID": "pokemonspotlighthour2026-11-19",
-    "name": "Grookey, Scorbunny, and Sobble Spotlight Hour",
-    "eventType": "pokemon-spotlight-hour",
-    "heading": "Pokémon Spotlight Hour",
-    "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-19/",
-    "image": "https://cdn.leekduck.com/assets/img/events/pokemonspotlighthour.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-28T19:48:47.378Z"
   },
   {
     "eventID": "pokemonspotlighthour2026-11-26",
