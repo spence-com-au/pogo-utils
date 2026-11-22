@@ -19,6 +19,7 @@ import { type Gender } from './badges.mts';
 import { type Max } from './detail.mts';
 import { type Form, type GameData, type IVs, type Move, type Size } from '../../core/game-master.mts';
 import { type Moves } from '../../core/moves.mts';
+import { fold } from '../../core/ocr.mts';
 
 /** A Pokémon's `pokemonDisplay`, the enums the game draws it by. Null on an egg, which carries none. */
 export interface Display {
@@ -131,8 +132,12 @@ export interface Row {
   raw: Raw;
 }
 
-/** Drop the spaces, case and punctuation two form names differ by, so `AdventureHat2020` meets `Adventure Hat 2020`. */
-const squash = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+/**
+ * Drop everything two form names differ by but the letters and digits: the spaces, case, punctuation and the accents
+ * `fold` folds, so `AdventureHat2020` meets `Adventure Hat 2020` and the export's ASCII `Flabebe` meets the game
+ * master's `Flabébé`, whose prefix would otherwise never strip.
+ */
+const squash = (text: string): string => fold(text).replace(/[^a-z0-9]/g, '');
 
 /** A suffix the export spells for the ordinary form, which the game master gives a null `form`. */
 const ORDINARY = new Set(['', 'normal', 'unset']);

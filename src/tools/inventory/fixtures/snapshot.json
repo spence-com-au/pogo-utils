@@ -275,6 +275,36 @@
       }
     },
     {
+      "id": "1000000000000000012",
+      "pokemonId": 669,
+      "nickname": "",
+      "cp": 300,
+      "cpMultiplier": 0.5974,
+      "individualAttack": 11,
+      "individualDefense": 12,
+      "individualStamina": 13,
+      "maxStamina": 70,
+      "move1": 219,
+      "move2": 35,
+      "move3": 0,
+      "weightKg": 0.1,
+      "heightM": 0.1,
+      "size": 3,
+      "favorite": false,
+      "isLucky": false,
+      "isEgg": false,
+      "pokemonTagIds": [],
+      "pokemonDisplay": {
+        "form": 4000,
+        "formName": "FlabebeBlue",
+        "costume": 0,
+        "gender": 2,
+        "shiny": false,
+        "alignment": 0,
+        "breadModeEnum": 0
+      }
+    },
+    {
       "id": "1000000000000000008",
       "pokemonId": 9999,
       "nickname": "",

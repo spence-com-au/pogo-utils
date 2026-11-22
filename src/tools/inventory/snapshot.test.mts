@@ -1,10 +1,11 @@
 /**
  * The rows the converter makes of a made-up PGSharp export, read against the real game master so the species, forms and
- * types are the game's own. The export is `fixtures/snapshot.json`, eleven entries — ten Pokémon and an egg — chosen
- * for the fields that are worth a test rather than a real account: a form named off the suffix, a costume named off a
- * form and one stated by enum alone, a costume on a species with no ordinary form, a shadow and a purified, a Dynamax
- * and a Gigantamax, a size the game recorded and one derived from the height, a species the game master does not know,
- * and the egg, which is left out. The move table is made up here, the loader that reads the real one in the scan script.
+ * types are the game's own. The export is `fixtures/snapshot.json`, twelve entries — eleven Pokémon and an egg —
+ * chosen for the fields that are worth a test rather than a real account: a form named off the suffix, an accented
+ * species whose ASCII enum must fold to meet it, a costume named off a form and one stated by enum alone, a costume on
+ * a species with no ordinary form, a shadow and a purified, a Dynamax and a Gigantamax, a size the game recorded and
+ * one derived from the height, a species the game master does not know, and the egg, which is left out. The move table
+ * is made up here, the loader that reads the real one living in the scan script.
  */
 
 import { type GameData, type Move } from '../../core/game-master.mts';
@@ -28,7 +29,7 @@ const byDex = (dex: number) => rows.find((row) => row.raw.pokemonId === dex);
 const byForm = (formName: string) => rows.find((row) => row.raw.formName === formName);
 
 test('an egg is left out and the rest are numbered from 1 in order', () => {
-  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   expect(rows.some((row) => row.raw.pokemonId === 1)).toBe(false);
 });
 
@@ -70,6 +71,10 @@ test('a form is named off the suffix, past the species prefix', () => {
     lucky: true,
     levels: [25],
   });
+});
+
+test('an accented species folds to meet the export ASCII enum, resolving the form with no false note', () => {
+  expect(byDex(669)).toMatchObject({ species: 'Flabébé', form: 'Blue', notes: [] });
 });
 
 test('Normal and Unset fall back to the ordinary form', () => {
