@@ -46,7 +46,9 @@ export function adbCli(serial?: string): Transport {
 /**
  * One file off the phone, through `exec-out` so its bytes arrive whole: `adb shell cat` runs the file through a
  * terminal that turns each `\n` into `\r\n` and can mangle a byte over 127, where `exec-out` is the raw stream
- * `screencap` reads pixels through. A file the phone does not have fails with `cat`'s own message on stderr.
+ * `screencap` reads pixels through. The raw `exec:` service carries no exit status and folds stderr into the stream, so
+ * a file the phone does not have is not an error here — `cat`'s `No such file` comes back as the contents, which the
+ * caller has to tell from a real one.
  */
 export function readFile(path: string, serial?: string): Promise<Buffer> {
   return run(['exec-out', 'cat', path], serial);

@@ -167,9 +167,15 @@ class Phone {
     const [command, ...rest] = args;
 
     if (command === 'exec-out' && rest[0] === 'cat') {
-      return this.export.length > 0
-        ? { status: 0, out: this.export }
-        : { status: 1, out: new TextEncoder().encode(`cat: ${rest[1]}: No such file or directory\n`) };
+      // `exec-out` exits 0 even for a file the phone does not have, folding `cat`'s error into stdout, as the real one
+      // does: the raw `exec:` service carries no exit status back.
+      return {
+        status: 0,
+        out:
+          this.export.length > 0
+            ? this.export
+            : new TextEncoder().encode(`cat: ${rest[1]}: No such file or directory\n`),
+      };
     }
 
     if (command === 'exec-out') {

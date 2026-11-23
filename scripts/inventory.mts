@@ -100,7 +100,7 @@ import {
 } from '../src/tools/inventory/report.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
+import { parseSnapshot, rowsOf, type Snapshot } from '../src/tools/inventory/snapshot.mts';
 import { scrollFrames, scrollUp, settled } from '../src/tools/inventory/scroll.mts';
 import { offsetBetween, stitch } from '../src/tools/inventory/stitch.mts';
 import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
@@ -345,18 +345,26 @@ const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
  * written nothing. The game master's load follows the pull, so a cold-cache run with no network fails before it writes.
  */
 async function scan() {
-  let text: string;
+  // So that an unplugged, unauthorised or offline phone is named as that rather than reported as a missing export: it
+  // is the one thing the read below cannot tell apart, `exec-out` failing the same way for a phone it cannot reach.
+  await new Device(adbCli(options.serial)).check();
 
+  let snapshot: Snapshot;
+
+  // `adb exec-out` runs over adbd's raw `exec:` service, which carries no exit status back and folds stderr into
+  // stdout, so `cat` on a file the phone does not have exits 0 with `No such file` as the file's contents. A missing
+  // export is caught here, where the parse fails on that, rather than written out as a row; the phone itself is already
+  // ruled out above, so the export is what is left.
   try {
-    text = new TextDecoder().decode(await readFile(PGSTATS, options.serial));
+    const text = new TextDecoder().decode(await readFile(PGSTATS, options.serial));
+
+    snapshot = parseSnapshot(text);
   } catch (error) {
-    throw new Error(
-      `could not read ${PGSTATS} off the phone: ${said(error)}; switch PGSharp's inventory export on and run it first`,
-      { cause: error },
-    );
+    throw new Error(`could not read ${PGSTATS} off the phone; switch PGSharp's inventory export on and run it first`, {
+      cause: error,
+    });
   }
 
-  const snapshot = parseSnapshot(text);
   const data = await loadGameData(CACHE, options.refresh);
   const rows = rowsOf(snapshot, data);
 

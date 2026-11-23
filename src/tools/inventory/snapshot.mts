@@ -380,11 +380,13 @@ export function rowsOf(snapshot: Snapshot, data: GameData): Row[] {
 /**
  * The export's text as a `Snapshot`, with its 64-bit IDs kept exact. A Pokémon's `id` and the IDs it names its tags by
  * are whole numbers past what a double holds, which `JSON.parse` rounds to the nearest it can — enough to break the
- * match between a Pokémon and its tag. Every run of sixteen digits or more standing as a value is quoted to a string
- * first, so those IDs arrive as the strings `Mon` and `Tag` declare and the numbers the converter reads, none of them
- * that long, are left as they are. A sixteen-digit run inside a string would have to sit between a `,`, `[` or `:` and
- * a `,`, `]` or `}` to be caught, which no name or nickname in the export does.
+ * match between a Pokémon and its tag. The reviver is handed each value's exact source text in `context.source`, which
+ * the pinned runtime gives it, so a number of sixteen digits or more is kept as the string `Mon` and `Tag` declare it
+ * and every shorter number is left as it is. Only a real JSON number is read this way — a digit run inside a string is
+ * a string value, never a number, so it is never touched.
  */
 export function parseSnapshot(text: string): Snapshot {
-  return JSON.parse(text.replace(/([:[,]\s*)(-?\d{16,})(?=\s*[,}\]])/g, '$1"$2"')) as Snapshot;
+  return JSON.parse(text, (_key, value, context?: { source: string }) =>
+    typeof value === 'number' && context !== undefined && /^-?\d{16,}$/.test(context.source) ? context.source : value,
+  ) as Snapshot;
 }
