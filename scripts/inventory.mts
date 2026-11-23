@@ -57,7 +57,7 @@ import { useEngine } from '../src/core/ocr.mts';
 import { encodePng } from '../src/core/png.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
+import { parseSnapshot, PGSTATS, rowsOf } from '../src/tools/inventory/snapshot.mts';
 import { touchscreen } from '../src/core/touchscreen.mts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -149,8 +149,6 @@ const config = {
   ...(options.config === undefined ? DEFAULTS : configWith(JSON.parse(readFileSync(options.config, 'utf8')))),
   ...(options.user === undefined ? {} : { user: count('user', options.user, 0) }),
 };
-
-const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
 
 /**
  * The whole box as `inventory.jsonl`, read off PGSharp's export rather than the screen: every Pokémon the game has in

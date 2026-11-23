@@ -26,11 +26,14 @@ import {
   toFragment,
   type State,
 } from '../pokedex/state.js';
+import { ownedSpecies } from '../pokedex/owned.js';
 import { said } from '../errors.js';
 import { fetchOk } from '../fetch-ok.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
 import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
+import { inventoryStore, useInventory, type Inventory } from '../inventory-store.js';
+import { usePhone } from '../phone-store.js';
 import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
@@ -331,6 +334,60 @@ function Detail({
   );
 }
 
+/**
+ * The control that reads the reader's Pokémon off the connected phone and says how many of the filtered grid are
+ * theirs. What it reads is per-reader and off the phone, so it is never in the fragment: a shared link carries the
+ * filters a view was narrowed by, not whose collection happened to mark it.
+ */
+function Mine({
+  phone,
+  inventory,
+  held,
+  total,
+}: {
+  phone: ReturnType<typeof usePhone>;
+  inventory: Inventory;
+  held: number | null;
+  total: number;
+}) {
+  if (inventory.state === 'reading') {
+    return (
+      <p class="mine" aria-live="polite">
+        Reading your Pokémon…
+      </p>
+    );
+  }
+
+  if (inventory.state === 'read') {
+    return (
+      <p class="mine" aria-live="polite">
+        <span class="figure">
+          {held} / {total}
+        </span>{' '}
+        yours
+        {phone !== null && (
+          <button type="button" onClick={() => inventoryStore.read(phone)}>
+            Refresh
+          </button>
+        )}
+      </p>
+    );
+  }
+
+  return (
+    <p class="mine">
+      {inventory.state === 'failed' && <span class="error">{inventory.reason}</span>}
+      {phone === null ? (
+        <span class="hint">Connect a phone (📱) to mark what you own.</span>
+      ) : (
+        <button type="button" onClick={() => inventoryStore.read(phone)}>
+          {inventory.state === 'failed' ? 'Try again' : 'Show what I own'}
+        </button>
+      )}
+    </p>
+  );
+}
+
 export default function PokedexPage({ query: fragment }: { query: string }) {
   const [state, setState] = useState<State>(() => fromFragment(fragment));
 
@@ -346,6 +403,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   /** Each tile's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
   const tiles = useRef(new Map<number, HTMLButtonElement>());
 
+  /** The phone the document holds and what its PGSharp export says the reader owns, for marking the grid and forms. */
+  const phone = usePhone();
+  const inventory = useInventory(phone);
+
   /**
    * The entries the filters leave, in dex order — what the grid shows and what the dialog's arrows step through.
    *
@@ -355,6 +416,10 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
    */
   const visible = ENTRIES.filter((entry) => matches(entry, state));
   const shown = new Set(visible.map((entry) => entry.dex));
+
+  /** The dex numbers the reader owns, and how many of the filtered grid are among them — null until a read lands. */
+  const ownedDex = inventory.state === 'read' ? ownedSpecies(inventory.rows) : new Set<number>();
+  const mineHeld = inventory.state === 'read' ? visible.filter((entry) => ownedDex.has(entry.dex)).length : null;
 
   const open = state.open === null ? null : (ENTRIES.find((entry) => entry.dex === state.open) ?? null);
   const at = open === null ? -1 : visible.findIndex((entry) => entry.dex === open.dex);
@@ -468,19 +533,23 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             </li>
           ))}
         </ul>
+        <Mine phone={phone} inventory={inventory} held={mineHeld} total={visible.length} />
       </header>
 
       <main class="dex">
         <ul class="grid">
           {ENTRIES.map((entry) => {
             const filled = registered(entry, state.mode);
+            const owned = ownedDex.has(entry.dex);
+            const missing = filled ? '' : ', not registered';
+            const yours = owned ? ', in your collection' : '';
 
             return (
               <li key={entry.dex} hidden={!shown.has(entry.dex)}>
                 <button
                   type="button"
                   class="tile"
-                  aria-label={`${tileNumber(entry.dex)} ${entry.name}${filled ? '' : ', not registered'}`}
+                  aria-label={`${tileNumber(entry.dex)} ${entry.name}${missing}${yours}`}
                   ref={(node) => {
                     if (node === null) {
                       tiles.current.delete(entry.dex);
@@ -496,6 +565,11 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                    * species and whether the slot is filled, which the picture says to the eye.
                    */}
                   {filled && <Sprite src={spriteOf(entry.dex, state.mode === 'shiny', icons)} size={112} />}
+                  {owned && (
+                    <span class="caught" aria-hidden="true">
+                      ✓
+                    </span>
+                  )}
                   <span class="num">{tileNumber(entry.dex)}</span>
                 </button>
               </li>

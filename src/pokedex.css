@@ -184,6 +184,49 @@ body[data-page='pokedex'] {
     content: '';
   }
 
+  /**
+   * What the reader owns, read off the phone: a line under the mode counts. Outside the fragment, because a shared link
+   * carries the filters a view was narrowed by rather than whose collection happened to mark it.
+   */
+  .dexhead .mine {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 0 22px 14px;
+    color: var(--go-deep);
+    font-size: 15px;
+  }
+
+  .dexhead .mine .figure {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dexhead .mine button {
+    padding: 4px 14px;
+    border: 2px solid var(--tile-edge);
+    border-radius: 999px;
+    background: var(--tile);
+    color: var(--go-deep);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .dexhead .mine button:hover {
+    background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
+  }
+
+  /* The failure reason stands out from the line, and the connect-a-phone hint steps back from it. */
+  .dexhead .mine .error {
+    font-weight: 600;
+  }
+
+  .dexhead .mine .hint {
+    color: var(--muted);
+  }
+
   .dexhead .stats {
     display: grid;
     grid-auto-columns: 1fr;
@@ -262,6 +305,7 @@ body[data-page='pokedex'] {
     color: var(--number);
     font: inherit;
     cursor: pointer;
+    position: relative;
 
     /**
      * Room kept below a tile scrolled into view — by the keyboard, by the entry's arrows or by the focus coming back
@@ -313,6 +357,24 @@ body[data-page='pokedex'] {
     font-size: 20px;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /* The caught tick over a tile's far top corner: the PGSharp export says the reader owns this species. */
+  .tile .caught {
+    position: absolute;
+    inset-block-start: 6px;
+    inset-inline-end: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--go);
+    color: var(--on-go);
+    font-size: 14px;
+    font-weight: 700;
     line-height: 1;
   }
 

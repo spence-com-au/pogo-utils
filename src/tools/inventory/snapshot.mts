@@ -21,6 +21,10 @@ import { BANDS, type Form, type GameData, type IVs, type Size } from '../../core
 import { type Moves } from '../../core/moves.mts';
 import { fold } from '../../core/ocr.mts';
 
+/** Where PGSharp writes the export on the phone once its inventory export is switched on: the file `scan` and the web
+ * pages read off the phone with `Device.read`. */
+export const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
+
 /** A Pokémon's `pokemonDisplay`, the enums the game draws it by. Null on an egg, which carries none. */
 export interface Display {
   form: number;

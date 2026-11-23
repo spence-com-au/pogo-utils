@@ -6,16 +6,18 @@
  * It answers the game's side of that walk rather than a script of it: a tap on a detail screen leaves it for storage,
  * a term typed is a search, and the screenshot after Enter shows its result — after which the next screenshot is the
  * detail screen again. So the Search page finds storage from the detail screen the phone starts on, however many
- * searches a reader runs.
+ * searches a reader runs. A read of PGSharp's export answers a made-up one, which the Pokédex marks owned species
+ * against.
  *
  * Asked what it is, it answers as the Pixel 8 Pro the recordings were taken on, so the phone button's panel reads as
  * a real phone's: its properties as that phone lists them, a charge made up for it, and the size its recordings were
  * drawn at as its screen.
  */
 
-import { DEMO_DETAIL, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
+import { DEMO_DETAIL, DEMO_SEARCHED, DEMO_STATS, DEMO_STORAGE } from '../../generated.ts';
 import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
+import { PGSTATS } from './snapshot.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 
 const PROPS = [
@@ -58,6 +60,12 @@ export function demoTransport(read: (path: string) => Promise<Uint8Array>): Tran
 
       if (command === 'getprop') {
         return Promise.resolve(encode(PROPS.join('\n')));
+      }
+
+      // The PGSharp export the Pokédex reads: the made-up one, served straight rather than through `screenOf`, which is
+      // for the detail and storage captures it crops to their viewport.
+      if (command === 'cat' && action === PGSTATS) {
+        return read(DEMO_STATS);
       }
 
       if (command === 'wm') {
