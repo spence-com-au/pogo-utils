@@ -29,7 +29,6 @@ import './map.css';
 import './search.css';
 import './pokedex.css';
 import './integrations.css';
-import './inventory.css';
 import './battle.css';
 
 import { byId } from './dom.js';
