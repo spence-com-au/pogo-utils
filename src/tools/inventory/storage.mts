@@ -10,7 +10,7 @@ import { CP_LABEL, isDetail, parseDetail, readLines, SKY } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
 import { crop, difference, luminance, median, rgb, type Image } from '../../core/png.mts';
-import { SCROLL_STRIP } from './stitch.mts';
+import { SCROLL_STRIP } from './scroll.mts';
 
 /**
  * A button only a dialog over a detail screen carries: `CANCEL` on the power-up sheet, `YES` on the evolve prompt. The
@@ -35,9 +35,9 @@ const POWER_UP_TITLE = /^POWER UP:/;
 
 /**
  * The luminance between a detail screen's white panel and the same panel under a dialog's scrim, as `scrimmed` takes
- * it: measured over every screen committed, the margin's median is 224 or brighter at both heights on each detail
- * screen and storage, scrolled or not, where the scrim the game drew over a Dynamax Sableye
- * (`dialog/sableye-mega-level.png`) brings its foot down to 95 and the map reads 86 at the name's height.
+ * it: across the detail screens and storage committed, the margin's median is 224 or brighter at both heights, scrolled
+ * or not, where the scrim the game drew over a Dynamax Sableye (`dialog/sableye-mega-level.png`) brings its foot down to
+ * 95 and the map reads 86 at the name's height.
  */
 const PANEL_LIT = 160;
 
@@ -118,8 +118,8 @@ const MENU_BUTTON = { left: -0.05, top: -0.01, width: 0.1, height: 0.06 };
 /**
  * How much of `MENU_BUTTON` may change, by over 32 in a channel, with the map still showing. Between `pokedex/map.png`,
  * the map #1058's run was left on and another from that session, three places that share nothing but the button, no
- * more than 0.17 did, the scenery behind its corners; from any of them to every other 1440x3040 capture committed, a
- * menu, a pop-up, an entry, a detail screen or a dialog, 0.61 or more did.
+ * more than 0.17 did, the scenery behind its corners; from any of them to every other 1440x3040 capture, a menu, a
+ * pop-up, an entry, a detail screen or a dialog, 0.61 or more did.
  */
 const BUTTON_KEPT = 0.4;
 
@@ -279,57 +279,20 @@ export function storage(
   /**
    * The lines below the search box that read as `CP_LABEL`, which is how a grid is told from the suggestions panel
    * drawn over it: the panel carries no `CP` but in a Recent search that begins with one, which is what `isSuggestions`
-   * is for (`storage/recent-cp.png`, #829). These alone, without the numbers `tileLabel` takes besides, since the panel
-   * has numbers too: a count under each Recommended chip, and `362`, `631`, `405` and `296` at one height are a row of
-   * labels to `tileLabel` (`storage/suggestions.png`, #816). Every grid committed has a `CP` that reads, the two whose
-   * first row misread among them.
+   * is for (`storage/recent-cp.png`, #829). The `CP` alone tells them apart, not a bare number, since the panel has
+   * numbers too: a count under each Recommended chip, and `362`, `631`, `405` and `296` at one height
+   * (`storage/suggestions.png`, #816). Every grid committed has a `CP` that reads, the two whose first row misread
+   * among them.
    */
   const cpLabels = (lines: readonly Line[]) =>
     lines.filter((l) => l.top > (searchBox?.[1] ?? 0) && fold(l.text).search(CP_LABEL) === 0);
 
   /**
-   * The first Pokémon's CP label in a grid, and only in a grid: on the suggestions panel it finds a row in the counts,
-   * which is why `cpLabels` is what tells the two apart.
-   *
-   * A label is one that reads as `CP_LABEL`, or one that ends in a CP-sized number where another line bears it out:
-   * one ending in a number at the same height, or one reading as `CP_LABEL` further down. Whichever is higher up. The
-   * numbers are for a first row whose `CP`s all misread, which would otherwise leave the first label that does read a
-   * row down, and the walk begun from the fourth Pokémon. The sparkles a shiny tile carries against its `CP` read as
-   * `on 376`, `£ 546` and `seo` across a row of three shiny Magnemite, where the row beneath read `cP 578`
-   * (`storage/sparkles.png`); and as `yor 37`, `7°` and `£ agi` across three shiny Spheal, only one of them ending in a
-   * number, where the row beneath read `cp 434` (`storage/spheal.png`, #798).
-   *
-   * A number alone is not enough, since a nickname can end in one, and so can a search among the Recent suggestions.
-   * Two at one height are a row of labels, and the `96%` under each tile ends in its `%` rather than a digit. One above
-   * a `CP` label is no nickname of that label's row or any after it, each sitting beneath its own row's labels, and
-   * could be one only of a row whose labels all failed, where the first label to read is a row down anyway; nor is it a
-   * suggestion, `search` closing the panel before a grid is read. Nor a number after a `/`, which is a count rather
-   * than a CP: the tabs' `12800 / 12825` and `12/12` sit at one height too, and nothing keeps them out where no search
-   * has found the box yet. The term in the box can end in a number too, `shiny&363`, which the box keeps out: only
-   * below it is a tile.
-   */
-  const tileLabel = (lines: readonly Line[]) => {
-    const below = lines.filter((l) => l.top > (searchBox?.[1] ?? 0));
-    const numbered = below.filter((l) => /(?<![\d/]\s*)\d{2,5}$/.test(l.text.trim()));
-    const labelled = cpLabels(lines);
-    const level = (a: Line, b: Line) => Math.abs(a.top - b.top) < Math.min(a.height, b.height) / 2;
-
-    return below
-      .filter(
-        (l) =>
-          labelled.includes(l) ||
-          (numbered.includes(l) &&
-            (numbered.some((n) => n !== l && level(n, l)) || labelled.some((c) => c.top > l.top))),
-      )
-      .reduce<Line | undefined>((first, l) => (first && first.top <= l.top ? first : l), undefined);
-  };
-
-  /**
    * How many Pokémon a search matched, off the game's own counter beside the magnifier in the POKEMON tab — `(1)`, or
    * `(0)` where it found nothing — or null where the counter did not read.
    *
-   * This is what separates the two halves `tileLabel` cannot. A grid whose first CP label misread and a search that
-   * matched nothing both leave no label, and the counter says which: measured on a shiny Ho-Oh the search matched, the
+   * The counter is read where a label cannot say which happened: a grid whose first CP label misread and a search that
+   * matched nothing both leave no label, and the counter tells them apart. Measured on a shiny Ho-Oh the search found, the
    * tile read as `2738,` with its `CP` lost entirely while the counter beside it read `(1)`. The label is small grey
    * text over a pale tile where the counter is the header's own, which is why one reads and the other does not.
    *
@@ -347,16 +310,6 @@ export function storage(
     }
 
     return null;
-  };
-
-  /**
-   * Whether a search matched any Pokémon: the counter `matches` reads where it read, and `tileLabel` in its place only
-   * where it did not, a label lost to a shiny tile's sparkles being no sign that the search matched nothing.
-   */
-  const matched = (lines: readonly Line[]): boolean => {
-    const found = matches(lines);
-
-    return found !== 0 && (found !== null || tileLabel(lines) !== undefined);
   };
 
   /**
@@ -426,8 +379,8 @@ export function storage(
     // panel over it. An empty search matches everything, so a screen with no `CP` on it is that panel and can be
     // nothing else, and so is one whose headings read: a Recent search can begin with a `CP` of its own, as `cp-1500`
     // does. Each covers the other's gap, the headings being the ones PGSharp's toolbar sits over. Getting this wrong is
-    // expensive rather than merely unhelpful: `firstTile` then taps the panel, and a tap on a Recent chip quietly opens
-    // whatever was searched for last.
+    // expensive rather than merely unhelpful: the panel's own counts would be read as the grid's, and the search would
+    // answer with a count that is not its own.
     if (term === '' && (cpLabels(lines).length === 0 || isSuggestions(lines))) {
       await device.key(KEY.BACK);
       await sleep(config.waits.search);
@@ -442,21 +395,5 @@ export function storage(
     return lines;
   };
 
-  /**
-   * Where the first Pokémon in a grid is, to be tapped.
-   *
-   * The row comes from the grid and the column from the configuration, which is not a compromise but the right split.
-   * How far down the first row sits depends on whether a search is showing, so it has to be read; which column is
-   * first does not, since the grid is three even columns and 0.18 of the width lands in the leftmost of them on both
-   * phones tried. Taking the column from the label as well would open the *second* Pokémon whenever the first one's CP
-   * failed to OCR — in an `xxl` grid of five, the top row's only legible label was the middle tile's, so the walk began
-   * one along and marked four. One short is the hardest kind of wrong to notice.
-   */
-  const firstTile = (grid: readonly Line[]): Point => {
-    const label = tileLabel(grid);
-
-    return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
-  };
-
-  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, matched, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, matches };
 }

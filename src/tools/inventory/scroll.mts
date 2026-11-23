@@ -27,11 +27,24 @@ const PANEL: Stillness = { by: 8, share: 0.02 };
 
 /**
  * How long one drag of a scroll takes, in milliseconds. Slow, so that the content follows the finger rather than
- * flinging on past where it stopped and out of `offsetBetween`'s reach. Measured with a `scrollStep` on a Pixel 4 XL's
- * 1440x3040, where the step is 836 pixels and the reach 1254: at `input swipe`'s own 300 the panel went on to 1484 and
- * 1697, at 1000 it moved 966 to 1032, and at 2000 it moved 847, margin this already has bought at a second a Pokémon.
+ * flinging on past where it stopped. Measured on a Pixel 4 XL's 1440x3040, where one drag of the band is 836 pixels: at
+ * `input swipe`'s own 300 the panel went on to 1484 and 1697, at 1000 it moved 966 to 1032, and at 2000 it moved 847,
+ * margin this already has bought at a second a Pokémon.
  */
 export const SCROLL_DRAG_MS = 1000;
+
+/**
+ * The column every scroll of a detail screen is dragged down, as a fraction of the screen's width: the panel's empty
+ * left margin, which scrolls exactly as its middle does and holds no control at all.
+ *
+ * **A drag the phone drops arrives as a tap where it started.** Down the middle, that is the POWER UP or EVOLVE row on
+ * most screens and on a scrolled panel, and a walk of 130 Pokémon opened the power-up dialog four times — one tap on
+ * its own button from spending stardust, and an evolve prompt has a YES. Measured on the committed captures, at 1008
+ * and 1440 wide alike, the panel's edge is at 0.026 of the width and every button, card and move row starts at 0.07 or
+ * later; this sits between the two, at the 62 of 1440 a Pixel 4 XL was walked with. Not the right margin, which looks
+ * the same but does not scroll at all.
+ */
+export const SCROLL_STRIP = 0.043;
 
 /**
  * A screenshot of a screen that has stopped moving, which is what a fixed wait after a swipe can only guess at. The

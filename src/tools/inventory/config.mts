@@ -4,7 +4,6 @@
  */
 
 import { launchable } from '../../core/adb.mts';
-import { SCREEN_BAND, type Band } from './stitch.mts';
 
 export type Point = [number, number];
 
@@ -36,9 +35,6 @@ export interface Config {
     /** The search box at the top of storage. */
     search: Point;
 
-    /** The first Pokémon in the storage grid. */
-    firstTile: Point;
-
     /** The close button at the foot of the detail screen, which a Pokédex entry and its grid have in the same place. */
     closeDetail: Point;
 
@@ -55,13 +51,6 @@ export interface Config {
     menu: number;
     search: number;
   };
-
-  /**
-   * The band of the screen that scrolls, which a scroll capture lines its frames up inside. Everything outside it is
-   * furniture that stays put — the status bar, PGSharp's overlay, the game's floating buttons — and lining frames up
-   * over those finds the shift that keeps *them* still, which is none. `SCREEN_BAND` says where it was measured.
-   */
-  scrollBand: Band;
 }
 
 export const DEFAULTS: Config = {
@@ -70,7 +59,6 @@ export const DEFAULTS: Config = {
     mainMenu: [0.5, 0.91],
     pokemonButton: [0.25, 0.82],
     search: [0.5, 0.155],
-    firstTile: [0.18, 0.27],
     closeDetail: [0.5, 0.93],
     pokedexButton: [0.25, 0.6],
   },
@@ -81,7 +69,6 @@ export const DEFAULTS: Config = {
     ],
   },
   waits: { launch: 30000, tap: 900, swipe: 1100, scroll: 800, menu: 800, search: 1500 },
-  scrollBand: SCREEN_BAND,
 };
 
 /** Whether `value` names an Android user, which is a whole number: 0, 10, 11 and on. */
@@ -106,6 +93,5 @@ export function configWith(overrides: Partial<Record<keyof Config, object | stri
     taps: { ...DEFAULTS.taps, ...(overrides.taps as Partial<Config['taps']>) },
     swipes: { ...DEFAULTS.swipes, ...(overrides.swipes as Partial<Config['swipes']>) },
     waits: { ...DEFAULTS.waits, ...(overrides.waits as Partial<Config['waits']>) },
-    scrollBand: { ...DEFAULTS.scrollBand, ...(overrides.scrollBand as Partial<Band>) },
   };
 }

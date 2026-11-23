@@ -18,7 +18,7 @@ test('one tap changed leaves the rest of the taps, and every other group, as the
   expect({ ...config, taps: DEFAULTS.taps }).toEqual(DEFAULTS);
 });
 
-test.for(['swipes', 'waits', 'scrollBand'] as const)('one setting in `%s` is laid over the rest of it', (group) => {
+test.for(['swipes', 'waits'] as const)('one setting in `%s` is laid over the rest of it', (group) => {
   const [field] = Object.keys(DEFAULTS[group]);
   const changed = { [field as string]: 'changed' };
 
