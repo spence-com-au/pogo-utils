@@ -116,8 +116,14 @@ test('a costume on a species with no ordinary form keeps the base its name point
   expect(byDex(854)).toMatchObject({ species: 'Sinistea', form: 'Antique', costume: ['A Halloween 2026 01'] });
 });
 
-test('a costume stated by enum alone is left unnamed, not guessed', () => {
-  expect(byDex(700)?.costume).toBeNull();
+test('a costume stated by enum alone lists the dex candidates, not null', () => {
+  // Sylveon's costume is an enum the game master has no name for, so the row carries every costume the dex could wear
+  // (minus the ones that are forms, which `formName` would have named), as the walk does — not null, which is "nothing
+  // answered", and not the empty list, which is "wears none".
+  const sylveon = [...new Set(DATA.costumes.filter((costume) => costume.dex === 700).map((costume) => costume.name))];
+
+  expect(sylveon.length).toBeGreaterThan(0);
+  expect(byDex(700)?.costume).toEqual(sylveon);
   expect(byDex(25)?.costume).toEqual([]);
 });
 

@@ -269,6 +269,25 @@ function movesOf(moves: ReadonlyMap<number, Move>, mon: Mon): Moves {
   return { fast: (mon.move1 ? moves.get(mon.move1)?.name : null) ?? null, charged };
 }
 
+/**
+ * The costumes a dex could be wearing when the export gives one only by its enum, which has no name of its own: the
+ * game master's costumes for the dex, minus the ones that are costume forms, since `formName` would have named those.
+ * Null where that leaves nothing, the schema's "nothing answered" — not the empty list, which says a costume was worn
+ * and none of them fit.
+ */
+function enumCostumes(data: GameData, dex: number | null): string[] | null {
+  if (dex === null) {
+    return null;
+  }
+
+  const forms = new Set(data.forms.filter((form) => form.dex === dex && form.costume).map((form) => form.form));
+  const names = [
+    ...new Set(data.costumes.filter((costume) => costume.dex === dex && !forms.has(costume.name)).map((c) => c.name)),
+  ];
+
+  return names.length > 0 ? names : null;
+}
+
 /** The row for one stored Pokémon. */
 function rowOf(
   mon: Mon,
@@ -280,9 +299,9 @@ function rowOf(
   const display = mon.pokemonDisplay;
   const { form, costume: worn, note } = resolveForm(data, mon);
 
-  // A costume the export names by its own enum rather than a form has no name in the game master, so it is left unnamed
-  // rather than guessed: null where one is worn, the empty list where none is. A form-named costume (`worn`) is exact.
-  const costume = worn !== null ? [worn] : (display?.costume ?? 0) !== 0 ? null : [];
+  // A form-named costume (`worn`) is exact, one named only by an enum is every costume the dex could be wearing, as the
+  // walk lists it, and the empty list is a Pokémon wearing none.
+  const costume = worn !== null ? [worn] : (display?.costume ?? 0) !== 0 ? enumCostumes(data, form?.dex ?? null) : [];
 
   return {
     index,
