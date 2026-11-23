@@ -363,7 +363,7 @@ async function scan() {
   try {
     text = new TextDecoder().decode(await device.read(PGSTATS));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = said(error);
 
     throw new Error(
       `could not read the export off the phone: ${reason} — switch PGSharp's inventory export on if it is off`,
