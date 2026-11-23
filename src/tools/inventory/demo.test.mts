@@ -1,10 +1,10 @@
 /**
  * The demo phone driven as the pages drive it — through a `Device`, and for a search through the very walk to storage
  * the Search page runs — over the recordings the site publishes for it and under real OCR, so what passes here is what
- * a reader with no phone sees: a different Pokémon at every read, and a search that finds storage from one of them.
+ * a reader with no phone sees: the one detail screen at every read, and a search that finds storage from it.
  */
 
-import { DEMO_DETAILS } from '../../generated.ts';
+import { DEMO_DETAIL } from '../../generated.ts';
 import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
@@ -34,17 +34,13 @@ const same = (a: Image, b: Image) =>
 
 afterAll(useTestEngine());
 
-test('each screenshot is the next detail screen, one screen rather than the stitch, and round again', async () => {
+test('every screenshot is the one detail screen, one screen rather than the stitch', async () => {
   const device = new Device(demoTransport(read));
-  const shown: Image[] = [];
+  const first = await device.screenshot();
+  const again = await device.screenshot();
 
-  for (let at = 0; at <= DEMO_DETAILS.length; at++) {
-    shown.push(await device.screenshot());
-  }
-
-  expect(shown.map((image, at) => same(image, screenAt(DEMO_DETAILS[at % DEMO_DETAILS.length] as string)))).toEqual(
-    shown.map(() => true),
-  );
+  expect(same(first, screenAt(DEMO_DETAIL))).toBe(true);
+  expect(same(again, screenAt(DEMO_DETAIL))).toBe(true);
 });
 
 test('a search walks from a detail screen to storage, answers its count, and leaves a detail screen', async () => {
@@ -57,7 +53,7 @@ test('a search walks from a detail screen to storage, answers its count, and lea
 
   // The counter `storage/searched.png` shows beside the magnifier.
   expect(matches(lines)).toBe(3464);
-  expect(same(await device.screenshot(), screenAt(DEMO_DETAILS[2] as string))).toBe(true);
+  expect(same(await device.screenshot(), screenAt(DEMO_DETAIL))).toBe(true);
 });
 
 test('asked what it is, it answers as the Pixel 8 Pro its recordings were taken on', async () => {

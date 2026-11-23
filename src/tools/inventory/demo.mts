@@ -4,16 +4,16 @@
  * can drive it under Node, through the same `Device` and walk to storage the pages drive it through.
  *
  * It answers the game's side of that walk rather than a script of it: a tap on a detail screen leaves it for storage,
- * a term typed is a search, and the screenshot after Enter shows its result — after which the next screenshot is a
- * detail screen again, the next in turn, as though the reader had opened another Pokémon. So the Search page finds
- * storage from wherever the last read left the phone, however many searches a reader runs.
+ * a term typed is a search, and the screenshot after Enter shows its result — after which the next screenshot is the
+ * detail screen again. So the Search page finds storage from the detail screen the phone starts on, however many
+ * searches a reader runs.
  *
  * Asked what it is, it answers as the Pixel 8 Pro the recordings were taken on, so the phone button's panel reads as
  * a real phone's: its properties as that phone lists them, a charge made up for it, and the size its recordings were
  * drawn at as its screen.
  */
 
-import { DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
+import { DEMO_DETAIL, DEMO_SEARCHED, DEMO_STORAGE } from '../../generated.ts';
 import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
@@ -29,7 +29,6 @@ const encode = (text: string) => new TextEncoder().encode(text);
 /** `read` answers a recording's bytes by its path in the repository, which is where the site publishes it too. */
 export function demoTransport(read: (path: string) => Promise<Uint8Array>): Transport {
   const screens = new Map<string, Promise<Uint8Array>>();
-  let next = 0;
 
   /** Which storage screen is showing, or null where a detail screen is. */
   let storage: string | null = null;
@@ -91,7 +90,7 @@ export function demoTransport(read: (path: string) => Promise<Uint8Array>): Tran
     },
 
     screencap: () => {
-      const path = storage ?? (DEMO_DETAILS[next++ % DEMO_DETAILS.length] as string);
+      const path = storage ?? DEMO_DETAIL;
 
       if (entered) {
         storage = null;

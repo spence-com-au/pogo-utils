@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_BATTLE, DEMO_DETAIL, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from './served-types.mts';
 
 /**
@@ -26,7 +26,7 @@ export const PUBLISHED = [
 
   // What the demo phone shows, out of the corpus for the same reason. These are in Git LFS, which a checkout leaves as
   // pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to.
-  ...DEMO_DETAILS,
+  DEMO_DETAIL,
   DEMO_STORAGE,
   DEMO_SEARCHED,
   DEMO_BATTLE.clip,
