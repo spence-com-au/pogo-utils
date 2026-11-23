@@ -4,10 +4,11 @@
  * a reader with no phone sees: the one detail screen at every read, and a search that finds storage from it.
  */
 
-import { DEMO_DETAIL } from '../../generated.ts';
+import { DEMO_DETAIL, DEMO_STATS } from '../../generated.ts';
 import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
+import { PGSTATS } from './snapshot.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, screenIn, type Image } from '../../core/png.mts';
 import { storage } from './storage.mts';
@@ -33,6 +34,12 @@ const same = (a: Image, b: Image) =>
   a.width === b.width && a.height === b.height && Buffer.compare(a.data, b.data) === 0;
 
 afterAll(useTestEngine());
+
+test("a read of PGSharp's export answers the made-up snapshot the Pokédex marks against", async () => {
+  const device = new Device(demoTransport(read));
+
+  expect(new TextDecoder().decode(await device.read(PGSTATS))).toBe(readFileSync(new URL(DEMO_STATS, ROOT), 'utf8'));
+});
 
 test('every screenshot is the one detail screen, one screen rather than the stitch', async () => {
   const device = new Device(demoTransport(read));

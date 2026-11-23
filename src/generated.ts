@@ -28,11 +28,13 @@ export const GAME_MASTER = 'data/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
- * What the demo phone in `src/tools/inventory/demo.mts` shows: a detail screen the Search page walks to storage from,
- * and storage before and after a search. A fixture rather than a copy of one, so covering a trainer name on it covers
- * it on the site too.
+ * What the demo phone in `src/tools/inventory/demo.mts` serves: a detail screen the Search page walks to storage from,
+ * storage before and after a search, and a made-up PGSharp export the Pokédex marks owned species against. The
+ * captures are the corpus's own rather than copies, so covering a trainer name on one covers it on the site too; the
+ * export is invented and holds no account.
  */
 export const DEMO_DETAIL = 'src/tools/inventory/fixtures/deoxys-attack.png';
+export const DEMO_STATS = 'src/tools/inventory/fixtures/snapshot.json';
 export const DEMO_STORAGE = 'src/tools/inventory/fixtures/storage/grid.png';
 export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png';
 

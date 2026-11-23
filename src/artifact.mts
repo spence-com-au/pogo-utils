@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { DEMO_BATTLE, DEMO_DETAIL, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_BATTLE, DEMO_DETAIL, DEMO_SEARCHED, DEMO_STATS, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from './served-types.mts';
 
 /**
@@ -24,11 +24,13 @@ export const PUBLISHED = [
   // throws rather than copying a path twice, and the directory is what the pages fetch them under.
   'data',
 
-  // What the demo phone shows, out of the corpus for the same reason. These are in Git LFS, which a checkout leaves as
-  // pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to.
+  // What the demo phone shows, out of the corpus for the same reason. The captures are in Git LFS, which a checkout
+  // leaves as pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to; the made-up
+  // export beside them is plain JSON.
   DEMO_DETAIL,
   DEMO_STORAGE,
   DEMO_SEARCHED,
+  DEMO_STATS,
   DEMO_BATTLE.clip,
 ];
 
