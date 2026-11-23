@@ -35,7 +35,6 @@
     "serve": "node scripts/serve.mts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:default": "vitest run --project default",
     "vend:coin-bag": "node scripts/vend-coin-bag.mts",
     "vend:events": "node scripts/vend-feed.mts",
     "vend:game-master": "node scripts/vend-game-master.mts",

@@ -29,12 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 'default'
-            project: 'default'
+          - name: 'Tesseract CLI'
 
           # The pages read with tesseract.js, not the CLI's Tesseract, so the suite is read with it too.
-          - name: 'default (wasm)'
-            project: 'default'
+          - name: 'tesseract.js'
             ocr: 'wasm'
     steps:
       - uses: 'actions/checkout@v7.0.1'
@@ -53,4 +51,4 @@ jobs:
       - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
-      - run: 'pnpm test:${{ matrix.project }}'
+      - run: 'pnpm test'
