@@ -55,7 +55,7 @@ afterEach(() => {
 async function load() {
   vi.resetModules();
 
-  return import('./search.js');
+  return import('./phone.js');
 }
 
 test('a search the phone cannot be sent is refused before the phone, engine or network is touched', async () => {
