@@ -361,34 +361,6 @@ export function storage(
   };
 
   /**
-   * How many Pokémon storage holds, off the `12800 / 12825` under the POKÉMON tab of a grid nothing was searched for,
-   * or null where it did not read. A searched grid has the `(N)` `matches` reads in its place.
-   *
-   * The EGGS tab beside it carries a count of the same shape, `12 / 12`, which OCR may hand over first or on the same
-   * line, so the count taken is the one out of the most room: storage holds at least 300 where an incubator-full of
-   * eggs is a dozen.
-   */
-  const stored = (lines: readonly Line[]): number | null => {
-    let best: { held: number; room: number } | null = null;
-
-    for (const line of lines) {
-      if (line.top >= (searchBox?.[1] ?? Infinity)) {
-        continue;
-      }
-
-      for (const [, held, room] of line.text.matchAll(/(\d+)\s*\/\s*(\d+)/g)) {
-        const count = { held: Number(held), room: Number(room) };
-
-        if (count.held <= count.room && count.room > (best?.room ?? -1)) {
-          best = count;
-        }
-      }
-    }
-
-    return best?.held ?? null;
-  };
-
-  /**
    * Gets to the storage grid from wherever the game is: the map, a detail screen, or the grid already. Brought to the
    * front once per run rather than before every search, the one `adb` call a run that searches more than once saves by
    * doing it the once.
@@ -487,5 +459,5 @@ export function storage(
     return label ? [at(config.taps.firstTile)[0], label.top + label.height * 2.5] : at(config.taps.firstTile);
   };
 
-  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, matched, stored, firstTile };
+  return { at, tap, swipe, dismiss, closeDetail, search, tileLabel, matches, matched, firstTile };
 }

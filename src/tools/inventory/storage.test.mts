@@ -372,18 +372,6 @@ test('a screen Back leaves that is not storage is walked back to storage from', 
 });
 
 test.for([
-  ['the tabs on lines of their own', [word(1, '12800 / 12825', 40, 10, 20, 8), word(2, '12/12', 70, 10, 10, 8)]],
-  ['the eggs read first', [word(1, '12/12', 70, 10, 10, 8), word(2, '12800/12825', 40, 10, 20, 8)]],
-  ['both tabs on one line', [word(1, '12800 / 12825   12/12', 40, 10, 40, 8)]],
-] as const)('an unsearched grid answers how many storage holds, given %s', async ([, counts]) => {
-  const { sent, device } = phone(DEFAULTS.package);
-  reads(sent, [...counts, word(3, 'SEARCH', 40, 30, 20, 10), word(4, 'CP415', 10, 50, 20, 8)].join('\n'));
-  const { search, stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
-
-  expect(stored(await search(''))).toBe(12800);
-});
-
-test.for([
   ['a counter of some and a label', '(12)', true, true],
   ['a counter of some and no label, as sparkles leave a shiny tile', '(12)', false, true],
   ['a counter of none, whatever reads as a label', '(0)', true, false],
@@ -405,13 +393,6 @@ test.for([
     expect(matched(await search('shiny'))).toBe(is);
   },
 );
-
-test('a grid whose storage count did not read answers null', () => {
-  const { device } = phone(DEFAULTS.package);
-  const { stored } = storage(device, CONFIG, DATA, SCREEN, () => {});
-
-  expect(stored([])).toBeNull();
-});
 
 /**
  * Each grid searched under real OCR, and the tops of the CP labels in its first row and its second: the first tile's
