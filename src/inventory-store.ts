@@ -38,10 +38,11 @@ export class InventoryStore extends Store {
 
   /**
    * Reads PGSharp's export off `phone` and parses it to rows, fetching the game master once to resolve them against. A
-   * read already under way is left to finish rather than started again, and one overtaken before it returns is dropped.
+   * read already under way for the same phone is left to finish rather than started again; a newly held phone's read
+   * supersedes it, and the one it overtakes is dropped rather than landing over what replaced it.
    */
   async read(phone: Phone): Promise<void> {
-    if (this.inventory.state === 'reading') {
+    if (this.inventory.state === 'reading' && this.phone === phone) {
       return;
     }
 
