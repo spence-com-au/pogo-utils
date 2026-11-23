@@ -3,10 +3,8 @@
  * while no Android phone is held over WebUSB and green while one is, so the bar says which from any tab. A press opens
  * a panel. With a phone held, it says which phone it is, with a button to let it go; with none, its button offers the
  * browser's chooser to connect one. Connecting waits for that button rather than coming with the press, so a press
- * does the same whether a phone is held or not.
- *
- * The demo phone, which reads recorded screens in place of a phone, is kept out of the way behind `?demo`: with it in
- * the address, the panel's button holds the demo phone rather than offering the chooser.
+ * does the same whether a phone is held or not. With none held, a link under the button holds the demo phone, which
+ * reads recorded screens in place of a phone, the browser's chooser listing USB devices alone.
  */
 
 import { Fragment } from 'preact';
@@ -20,12 +18,6 @@ import { said } from './errors.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
 import { ticked } from './ticked.js';
-
-/**
- * Whether the address asks for the demo phone: `/?demo#/inventory`, in the address's own query rather than the page's
- * in the fragment, which tab switches and the pages' own `replaceQuery` rewrite out from under it.
- */
-const demoAsked = () => new URLSearchParams(location.search).has('demo');
 
 /** The panel's list: what the phone said of itself, less what it said nothing of, and the serial it is found by. */
 function rows({ maker, model, android, screen, battery }: About, serial: string) {
@@ -121,7 +113,7 @@ export function Phone() {
   }
 
   /**
-   * Hold the demo phone. Never in place of a real one, which may be partway through something: Connect is offered only
+   * Hold the demo phone. Never in place of a real one, which may be partway through something: the link is offered only
    * while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
    * over the demo once the battle ends.
    */
@@ -197,11 +189,7 @@ export function Phone() {
 
           <section class="menu-section">
             {phone === null ? (
-              <p class="menu-note">
-                {demoAsked()
-                  ? 'Connect the demo phone, which plays back recorded screens in place of a phone.'
-                  : 'Plug in an Android phone with USB debugging on, then connect it.'}
-              </p>
+              <p class="menu-note">Plug in an Android phone with USB debugging on, then connect it.</p>
             ) : known?.about ? (
               <dl class="phone-about">
                 {rows(known.about, phone.serial).map(([term, value]) => (
@@ -225,15 +213,21 @@ export function Phone() {
                   Disconnect
                 </button>
               ) : (
-                <button
-                  type="button"
-                  disabled={connecting}
-                  onClick={() => void (demoAsked() ? holdDemo() : connectPhone())}
-                >
+                <button type="button" disabled={connecting} onClick={() => void connectPhone()}>
                   Connect
                 </button>
               )}
             </div>
+
+            {phone === null && (
+              <p class="menu-note phone-demo">
+                No phone?{' '}
+                <button type="button" disabled={connecting} onClick={() => void holdDemo()}>
+                  Try the demo phone
+                </button>
+                .
+              </p>
+            )}
 
             {/*
              * Added with its message rather than waiting empty: an alert is announced as it arrives, and `tell` can

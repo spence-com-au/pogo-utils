@@ -320,6 +320,26 @@
   cursor: default;
 }
 
+/** The phone panel's way to the demo phone, under Connect: a link in a line of its own, quieter than the button. */
+.phone-demo {
+  margin: 10px 0 0;
+}
+
+.phone-demo button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--track);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.phone-demo button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /**
  * What the last press in a panel had to say, under its buttons: what an import restored, or why a phone did not
  * connect.
