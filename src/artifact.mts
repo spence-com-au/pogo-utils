@@ -33,7 +33,7 @@ export const PUBLISHED = [
 ];
 
 /**
- * What the Inventory page's OCR runs on, copied out of `node_modules` rather than fetched from tesseract.js's CDN
+ * What the pages' OCR runs on, copied out of `node_modules` rather than fetched from tesseract.js's CDN
  * default, so the version the build was tested with is the one served: its worker script, and the three LSTM-only
  * cores the worker picks between by what the browser's WebAssembly supports — relaxed SIMD, SIMD, or neither. Each is
  * some 4 MB with the WebAssembly inlined, and a browser fetches the one it runs. A missing file fails the copy.

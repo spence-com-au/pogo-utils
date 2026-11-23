@@ -56,7 +56,7 @@ export function once<Args extends unknown[], Value>(
 }
 
 /**
- * The vended game master, fetched once for every page that reads the screen against it: the Inventory page's reads and
- * the battle tool's.
+ * The vended game master, fetched once for every page that reads the screen against it: the Search page's reads and the
+ * battle tool's.
  */
 export const gameData = once(async (): Promise<GameData> => (await fetchOk(GAME_MASTER)).json() as Promise<GameData>);

@@ -76,8 +76,8 @@ test('`screenIn` crops to a recorded `Viewport`, and leaves anything else alone'
 });
 
 /**
- * A `tEXt` chunk round-trips, which is what `snap` records a stitch's `Viewport` in: a stitch is as many frames tall as
- * the screen took, so the height the phone drew is the one thing the file cannot say with its own `IHDR`.
+ * A `tEXt` chunk round-trips, which is what a scroll capture records a stitch's `Viewport` in: a stitch is as many
+ * frames tall as the screen took, so the height the phone drew is the one thing the file cannot say with its own `IHDR`.
  *
  * Asserted against `decodePng`'s own reading rather than by looking for the bytes, because what a caller depends on is
  * the keyword coming back — and the bytes are checked anyway, the chunk's CRC being verified like every other.

@@ -8,7 +8,7 @@
  * zlib is [fflate](https://github.com/101arrowz/fflate)'s rather than `node:zlib`'s: a browser has no CRC at all, and
  * only an asynchronous `DecompressionStream` for the rest, where every reader here decodes synchronously.
  * `createImageBitmap` is no way round it either — it drops the `tEXt` chunk a stitch records its `Viewport` in, and
- * answers colour-managed pixels where `src/tools/inventory/artwork.mts` picks a form by its colour.
+ * answers colour-managed pixels where a reader matching by colour needs the raw ones.
  */
 
 import { unzlibSync, zlibSync } from 'fflate';
@@ -449,8 +449,8 @@ export function crop(image: Image, left: number, top: number, width: number, hei
  */
 export const screenIn = (image: Image): Image => {
   // Matched whole rather than split and converted, `Number('')` being 0 and not `NaN`: a `Viewport` of `4x` reads as a
-  // screen four wide and none tall, which `crop` answers as an empty image. A pattern says what `snap` writes and
-  // nothing else, so every way of being damaged lands in the branch that hands the capture back whole.
+  // screen four wide and none tall, which `crop` answers as an empty image. A pattern says what a scroll capture writes
+  // and nothing else, so every way of being damaged lands in the branch that hands the capture back whole.
   const stated = /^(\d+)x(\d+)$/.exec(image.text?.Viewport ?? '');
 
   return stated ? crop(image, 0, 0, Number(stated[1]), Number(stated[2])) : image;

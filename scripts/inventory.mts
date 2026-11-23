@@ -95,9 +95,9 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
  * belongs: `parse --out inventory.jsonl` wrote nothing and said nothing about it. Stated once here, so the rejection
  * below and the usage block above cannot drift apart without a test noticing.
  *
- * `--config` is on `snap` and `dex`, which drive the phone out of it, reading `taps`, `swipes`, `waits` and
- * `scrollBand`, and on `parse`, which reaches `overlay` alone and only through `report`; the fields are named so the
- * claim can be grepped for. `scan` reads the whole account from PGSharp's export in one pull, so it takes none of the
+ * `--config` is on `dex` alone, which drives the phone out of it, reading `taps`, `swipes`, `waits` and `scrollBand`;
+ * the fields are named so the claim can be grepped for. `scan` reads the whole account from PGSharp's export in one
+ * pull, so it takes none of the
  * walk's flags — only where to write and which phone to read.
  */
 const HONOURED: Record<string, readonly string[]> = {
@@ -140,7 +140,7 @@ function count(option: string, value: string | undefined, fallback: number): num
   return n;
 }
 
-// The CLI reads with the Tesseract on `PATH`; the Inventory page installs the WebAssembly build in its place.
+// The CLI reads with the Tesseract on `PATH`; the pages install the WebAssembly build in its place.
 useEngine(tesseractCli);
 
 // Read here rather than in `configWith`, `config.mts` being shared with the browser, which has no file to read.

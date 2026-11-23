@@ -213,9 +213,9 @@ async function onlyInstall(device: Device, config: Pick<Config, 'package'>) {
 /**
  * Getting about storage on the phone: to the grid, a search typed into it, and where the first tile of what it left is.
  *
- * Shared by `snap --search`, the Pokédex walk and the Search page rather than written once each, because they have to
- * agree about what a grid is and which tile is its first. A second copy would drift, and the way it would show is a
- * capture pinned off the *second* Pokémon the search matched — a screenshot of the wrong Pokémon looks just like one
+ * Shared by the Pokédex walk and the Search page rather than written once each, because they have to agree about what a
+ * grid is and which tile is its first. A second copy would drift, and the way it would show is a capture pinned off the
+ * *second* Pokémon the search matched — a screenshot of the wrong Pokémon looks just like one
  * of the right Pokémon.
  *
  * Taps are sized against a screenshot rather than `Config`, every position in it being a fraction of the screen so that

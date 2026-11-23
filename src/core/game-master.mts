@@ -9,7 +9,7 @@
  * alternative to report rather than one to pick.
  *
  * The tables and the arithmetic over them, which a browser runs as readily as Node. Where the tables come from is
- * `node/download.mts` for the CLIs and the vended `data/game-master.json` for the corpus and the Inventory page.
+ * `node/download.mts` for the CLIs and the vended `data/game-master.json` for the corpus and the pages.
  */
 
 import { fold } from './ocr.mts';

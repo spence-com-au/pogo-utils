@@ -1,6 +1,6 @@
 /**
  * What the battle tool reads the screen against, loaded in a page as `scripts/battle.mts` loads it from `.cache`: the
- * game master the Inventory page reads, the type icons and PvPoke's meta fetched as they are upstream, and the
+ * game master the pages read, the type icons and PvPoke's meta fetched as they are upstream, and the
  * silhouettes the site publishes rather than the 40 MB of icons they are outlined from.
  */
 

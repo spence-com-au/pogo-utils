@@ -17,9 +17,9 @@ export const POKEMON_TYPES = 'data/pokemon-types.json';
 export const EVENTS_FEED = 'events.ics';
 
 /**
- * The Inventory page's two fetches, which the build has to publish where the page asks for them: the game master that
+ * The pages' two fetches, which the build has to publish where the pages ask for them: the game master that
  * `scripts/vend-game-master.mts` writes and `scripts/build-sprites.mts` also reads, and the directory
- * `scripts/assemble.mts` copies Tesseract.js's worker and cores into. The page's copy was only ever a `fetch` string,
+ * `scripts/assemble.mts` copies Tesseract.js's worker and cores into. A page's copy was only ever a `fetch` string,
  * which no build or lint step reads, so a path moved under it was a 404 at runtime behind a green build.
  *
  * `TESSERACT_VENDOR` ends in a slash because Tesseract.js takes it as a `corePath` it appends a file name to.

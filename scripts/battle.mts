@@ -185,7 +185,7 @@ if (command === 'run') {
 
   // OCR in long-lived tesseract.js workers rather than a `tesseract` started for each read, which spent most of its
   // 100ms of CPU loading the model: a worker reads a battle's band for about 30ms. Two, so a banner read never waits on
-  // the names and moves, the one other read a battle can have under way. The model is the Inventory page's, cached for
+  // the names and moves, the one other read a battle can have under way. The model is the one the pages read with, cached for
   // a week beside the game master and checked as it is read off disk, so a copy cut short fails here and is fetched
   // again next run rather than failing the first read mid-run.
   const tessdata = join(CACHE, 'tessdata');

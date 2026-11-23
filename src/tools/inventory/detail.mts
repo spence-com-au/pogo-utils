@@ -91,7 +91,7 @@ export async function readLines(image: Image): Promise<Line[]> {
  * It admits 35 captures, 24 reading the CP exactly off the line; `wholeCp` recovers seven more and four are left to
  * the arithmetic. The two go together: the label says which line, the band says the whole number.
  *
- * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the Inventory page reads with answers
+ * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the pages read with answers
  * `cP48 7` off `unown-b.png`, where the CLI's `cP48/` leaves `wholeCp` to find the 487.
  *
  * And it may carry a `/`, which is how the CLI reads the large font's thin 7 more often than not: `cp/56` for a 756,
@@ -155,7 +155,7 @@ export function readingsOf(read: string, longest: number): string[] {
 
 /**
  * A CP line with the rest of its number put back, where Tesseract ended the line part way through it and read the
- * remainder as a line of its own. The WebAssembly build the Inventory page reads with does this on
+ * remainder as a line of its own. The WebAssembly build the pages read with does this on
  * `deoxys-defense.png`, `ce15` beside `69` with no gap between them, and the label alone would answer 15 — which
  * `wholeCp` then rescues into a 156 the screen does not print. Joined only where the second line is digits and nothing
  * else, sits on the same row and starts within half a line-height of where the first ends, so a word beside the CP is
@@ -959,7 +959,7 @@ const CP_ACROSS = 0.5;
  *
  * `readTreated` is the one reader, for `wholeCp` and `cpsIn` alike, so a treatment added or reordered answers to both.
  * Both the order and that rule are `wholeCp`'s: `cpsIn` unions what the three read, so what bounds a wrong number
- * there is `identify` refusing a candidate the arithmetic cannot reproduce.
+ * there is a later check refusing a candidate the arithmetic cannot reproduce.
  *
  * Brightness is here for `growlithe-nickname.png`, which neither of the others reaches: at pad 0.35 its band reads `38`
  * plain and near-white and `738` brightened. `castform-sunny.png` is the same at 0.35, `99` against a brightened

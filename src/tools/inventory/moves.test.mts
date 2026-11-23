@@ -2,8 +2,8 @@
  * Whether a screen the scan scrolled to holds the moves or stops above them, and the stardust to power up that the
  * plain screen can stop above too, read off real captures. One Necrozma twice: `moves/necrozma-cut-off.png` is the
  * screen a live scan read its moves from, one step down, with the fusion panel leaving the `GYMS & RAIDS` tab at its
- * foot and both moves below it; the corpus's `necrozma.png` is a stitch of the same Pokémon from `snap`, cut off above
- * the catch details, where both moves are. Two more of the corpus stand for every other Pokémon: `pikachu.png` a stitch
+ * foot and both moves below it; the corpus's `necrozma.png` is a stitch of the same Pokémon, cut off above the catch
+ * details, where both moves are. Two more of the corpus stand for every other Pokémon: `pikachu.png` a stitch
  * with the moves whole, and `no-pgsharp.png` a screen that was never scrolled, ending halfway through its charged move.
  */
 

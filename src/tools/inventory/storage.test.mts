@@ -477,7 +477,7 @@ test('the map is walked to storage by the main menu, and the Pokémon button tap
 });
 
 /**
- * The map as the Inventory page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
+ * The map as the Search page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
  * reads a `yes` into the rooftops of `overworld.png` (#935). The phone answers every screenshot with the map, as it
  * would were it to drop every tap, so the menu never opens: the walk taps its button again each time the map is left
  * as it was (#1073) and stops once out of tries, having pressed no Back.

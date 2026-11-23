@@ -109,7 +109,7 @@ function emptied(): Uint8Array {
 }
 
 /**
- * The game as far as a scan or a snap drives it: storage, a Pokémon's detail screen and the moves below it. `storage`
+ * The game as far as a walk drives it: storage, a Pokémon's detail screen and the moves below it. `storage`
  * says which Pokémon a search holds, in the order the grid lists them, so that what a scan opens and what a swipe leads
  * to are the test's to give.
  */
