@@ -10,7 +10,7 @@
  */
 
 import { type GameData } from '../../core/game-master.mts';
-import { rowsOf, type Snapshot } from './snapshot.mts';
+import { parseSnapshot, rowsOf, type Snapshot } from './snapshot.mts';
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
@@ -153,4 +153,23 @@ test('the raw game IDs are kept beside the row', () => {
     cpMultiplier: 0.667934,
     additionalCpMultiplier: 0,
   });
+});
+
+test('parseSnapshot keeps the 64-bit ids exact and leaves shorter numbers as numbers', () => {
+  // Written as text with bare 19-digit numbers, which a JS number literal could not hold without rounding.
+  const text =
+    '{"pokemons":[{"id":3533574831663761643,"cp":764,"creationTimeMs":1607999501342,' +
+    '"pokemonTagIds":[5651286867452610075,4072350120649042737]}],' +
+    '"tags":[{"id":"5651286867452610075","name":"Perfect"}]}';
+
+  const snapshot = parseSnapshot(text);
+  const mon = snapshot.pokemons[0];
+
+  expect(mon?.id).toBe('3533574831663761643');
+  expect(mon?.pokemonTagIds).toEqual(['5651286867452610075', '4072350120649042737']);
+  // The tag id the export already wrote as a string is untouched, so the Pokémon still matches it.
+  expect(mon?.pokemonTagIds[0]).toBe(snapshot.tags[0]?.id);
+  // CP and a 13-digit timestamp are short enough that nothing quotes them.
+  expect(mon?.cp).toBe(764);
+  expect((mon as unknown as { creationTimeMs: number }).creationTimeMs).toBe(1_607_999_501_342);
 });

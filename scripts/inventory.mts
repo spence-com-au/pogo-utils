@@ -1,31 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * Walks every Pokémon in storage on an Android phone over `adb` and writes what it finds as JSON Lines, one object per
- * Pokémon: species, form, costume, shiny, lucky, size, Dynamax or Gigantamax, CP, HP, level, IVs and moves. Pokémon GO
- * has no export, so this reads the screen the way a person would — open the first Pokémon, read it, swipe to the next —
- * with Tesseract doing the reading. Each line is added as its Pokémon is read, so a run cut short keeps the ones before.
+ * `scan` writes every Pokémon in storage as JSON Lines, one object per Pokémon: species, form, costume, shiny, lucky,
+ * size, Dynamax or Gigantamax, CP, HP, level, IVs and moves, with the raw game IDs each was derived from beside it. It
+ * reads them off PGSharp's export rather than the screen — the whole account, decoded, which PGSharp writes to a file
+ * on the phone once its inventory export is switched on in its own settings — so a box that took the walk a day comes
+ * over in the time it takes to pull and parse. `snap`, `parse` and `dex` still read the screen with Tesseract: `snap`
+ * and `parse` for fixing a misread, `dex` for the Pokédex, which the export does not carry.
  *
- * Each field comes from wherever it can be got most reliably. The CP, HP, name, weight, height, types, gender, size
- * badge, favourite star, tag chips and the Dynamax or Gigantamax row are read off the detail screen, and the moves off
- * the same screen scrolled down. The level and the three IVs come off PGSharp's own overlay, which is why the scanner
- * needs PGSharp rather than the stock client — nothing else gives the IVs without walking the appraisal dialogue every
- * time. The form is worked out rather than read, HP being fixed by base stamina, the stamina IV and the level; see
- * `src/core/game-master.mts`. Shadow and purified are worked out too, from the stardust a power-up costs at that
- * level. Shiny and costume say nothing on the screen at all, so each is a search pass instead, whose matches the full
- * pass recognises by name, HP, weight, height and IVs together. A pass for shadow or purified outranks the screen where
- * it is asked for. Lucky has a pass too, and a caption under the name besides, which marks the row whatever the pass
- * made of it. The costume is named rather than said yes to: a Pikachu's off its artwork, against captures labelled by
- * hand and the game's own icons (`inventory/costume.mts`), with every costume it could be where the artwork does not
- * settle which, and any other species' as every costume it has once the pass has found it.
- *
- * `--search TERM` scans only what storage's own search matches, the flag passes too: each searches `shiny&TERM` and the
- * like, the game reading a `,` inside a clause as or and the `&` between clauses as and.
- *
- * `--skip N` resumes a scan whose `--out` already holds rows 1 to N, and appends to it. It swipes N Pokémon on blind,
- * then finds row N by its HP, weight, height and IVs and starts just past it, since a swipe can go nowhere and a skip
- * that trusted every one of them would land short by each it dropped. It refuses an `--out` without a row N to find,
- * and stops rather than write where it cannot find it.
+ * The export is `/sdcard/Download/PGSharp/PGSStats.json`, pulled in one `adb exec-out cat` and turned into rows by
+ * `src/tools/inventory/snapshot.mts`: the species is the number the game gives it, the form is named off the export's
+ * own form name, the level is the exact CP multiplier, and shininess, luckiness, size, shadow, purified, Dynamax,
+ * Gigantamax, the moves and the tags come straight off it. Everything the walk used to work out from the screen — the
+ * IVs off PGSharp's overlay, the form from the HP, shadow from the stardust a power-up costs — the export states
+ * outright.
  *
  * A scroll capture drags the screen up until it stops moving and stitches the frames into one tall image, which is how
  * a screen longer than the phone is seen whole. The stitch is **not** given to the other readers, and that is a limit
@@ -43,25 +31,18 @@
  * is scrolled at all; one that fails leaves a capture already saved under its name as it was. `--search` is what lets a
  * capture name the Pokémon it wants rather than take a screen set up by hand.
  *
- * Automating input breaks Niantic's terms of service. This only reads, and moves at a person's pace, but the risk to
- * the account is the user's to weigh.
+ * PGSharp is a modified client, and reading the game's data out of it — like driving the phone for the others — breaks
+ * Niantic's terms of service. These only read, but the risk to the account is the user's to weigh.
  *
- * Usage, from the repository root, with the phone plugged in, USB debugging on and Pokémon GO in English:
+ * Usage, from the repository root, with the phone plugged in and USB debugging on; `snap`, `parse` and `dex` also want
+ * Pokémon GO open and in English:
  *
  *   pnpm inventory scan [OPTIONS]
- *     Walk every Pokémon in storage and write one line of JSON for each.
+ *     Pull PGSharp's inventory export off the phone and write one line of JSON for each stored Pokémon. Switch the
+ *     export on in PGSharp's settings first.
  *
- *     --out FILE          write to FILE rather than inventory.jsonl, replacing what it held
- *     --search TERM       scan only what storage's own search matches
- *     --limit N           stop after N Pokémon
- *     --skip N            resume a scan whose --out already holds rows 1 to N, adding to it
- *     --flags LIST        the search passes to run, of shiny, lucky, costume, shadow and purified
- *                         (shiny,lucky,costume when not given)
- *     --tags LIST         the tags to recognise on the chips under the HP, as 'Trade to 0xNULL,…'
- *     --no-moves          leave the moves unread
- *     --scroll            read the moves off a stitched scroll capture of the whole screen
- *     --keep-screens DIR  save each screen read to DIR
- *     also the shared --config, --serial, --user, --refresh and --verbose
+ *     --out FILE   write to FILE rather than inventory.jsonl, replacing what it held
+ *     also the shared --serial and --refresh
  *
  *   pnpm inventory snap [OPTIONS] [NAME]
  *     Save the screen as .cache/inventory/snaps/NAME.png, named for the time when NAME is not given, and print what
@@ -96,26 +77,19 @@
  */
 
 import { said } from '../src/errors.ts';
-import { adbCli, adbHeld } from '../src/core/node/adb-cli.mts';
+import { adbCli, adbHeld, readFile } from '../src/core/node/adb-cli.mts';
 import { Device, type Transport } from '../src/core/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
-import { bestOf, faultsOf } from '../src/tools/inventory/attempts.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
-import { parseDetail, readLines } from '../src/tools/inventory/detail.mts';
 import { wardrobeFor, type Wardrobe } from '../src/tools/inventory/costume.mts';
 import { CACHE, cachedIcon, loadGameData } from '../src/core/node/download.mts';
 import { type Form, type GameData } from '../src/core/game-master.mts';
-import { clearable, identify } from '../src/tools/inventory/identify.mts';
-import { lookForMoves } from '../src/tools/inventory/look.mts';
 import { tesseractCli } from '../src/core/node/ocr-cli.mts';
 import { useEngine, type Line } from '../src/core/ocr.mts';
-import { findOverlay, ivsOf, readOverlay } from '../src/tools/inventory/overlay.mts';
-import { flagPasses } from '../src/tools/inventory/passes.mts';
 import { decodePng, encodePng, type Image } from '../src/core/png.mts';
 import { showProgress } from '../src/tools/inventory/progress.mts';
 import {
   answer,
-  artworkIn,
   dumped,
   NO_BOX,
   NO_OVERLAY,
@@ -126,36 +100,14 @@ import {
 } from '../src/tools/inventory/report.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { rowOf } from '../src/tools/inventory/row.mts';
-import {
-  count,
-  keyOf,
-  land,
-  landmarkOf,
-  landmarksBefore,
-  OverlayBoxes,
-  parseFlags,
-  reachOf,
-  shortfall,
-  walk as stepThrough,
-  type Flag,
-  type Landmark,
-  type Reading,
-} from '../src/tools/inventory/scan.mts';
+import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
 import { scrollFrames, scrollUp, settled } from '../src/tools/inventory/scroll.mts';
 import { offsetBetween, stitch } from '../src/tools/inventory/stitch.mts';
-import { dialogOpen, storage, unsearchable } from '../src/tools/inventory/storage.mts';
+import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
 import { touchscreen } from '../src/core/touchscreen.mts';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs, styleText } from 'node:util';
-
-/**
- * How long a swipe from one Pokémon to the next takes, in milliseconds: `input swipe`'s own, which is what
- * `config.swipes.next` and `config.waits.swipe` were measured with, and so what the touchscreen is given too.
- */
-const NEXT_MS = 300;
 
 /**
  * How far down the panel may be left after a snap has dragged it back, as a fraction of the screen's height, under
@@ -165,26 +117,10 @@ const NEXT_MS = 300;
  */
 const SCROLL_BACK_FLOOR = 0.012;
 
-/**
- * Size is not among these: the detail screen wears a gold badge saying `XXL` or `XXS`, so it is read off the screen the
- * scan is already looking at rather than bought with a search of its own. Checked against the game's own `xxl` search,
- * which marked the same Applin — 5/2/15 at 0.33m — that the badge does.
- */
-const DEFAULT_FLAGS: Flag[] = ['shiny', 'lucky', 'costume'];
-
-/** How many times one detail screen is read before its reading is taken as final. */
-const READ_ATTEMPTS = 3;
-
 const { values: options, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     'out': { type: 'string', default: 'inventory.jsonl' },
-    'limit': { type: 'string' },
-    'skip': { type: 'string' },
-    'flags': { type: 'string' },
-    'tags': { type: 'string' },
-    'no-moves': { type: 'boolean', default: false },
-    'scroll': { type: 'boolean', default: false },
     'keep-screens': { type: 'string' },
     'search': { type: 'string' },
     'from': { type: 'string' },
@@ -215,28 +151,13 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
  * belongs: `parse --out inventory.jsonl` wrote nothing and said nothing about it. Stated once here, so the rejection
  * below and the usage block above cannot drift apart without a test noticing.
  *
- * `--config` is on all four but splits two ways: `scan`, `snap` and `dex` drive the phone out of it, reading `taps`,
- * `swipes`, `waits` and `scrollBand`, where `parse` reaches `overlay` alone and only through `report`. The fields are
- * named so the claim can be grepped for. `--serial` and `--user` are on every command but `parse`, which opens no
- * device. `--scroll` is the scan's alone, a `snap` taking a scroll capture every time.
+ * `--config` is on `snap` and `dex`, which drive the phone out of it, reading `taps`, `swipes`, `waits` and
+ * `scrollBand`, and on `parse`, which reaches `overlay` alone and only through `report`; the fields are named so the
+ * claim can be grepped for. `scan` reads the whole account from PGSharp's export in one pull, so it takes none of the
+ * walk's flags — only where to write and which phone to read.
  */
 const HONOURED: Record<string, readonly string[]> = {
-  scan: [
-    'out',
-    'search',
-    'limit',
-    'skip',
-    'flags',
-    'tags',
-    'no-moves',
-    'scroll',
-    'keep-screens',
-    'config',
-    'serial',
-    'user',
-    'refresh',
-    'verbose',
-  ],
+  scan: ['out', 'serial', 'refresh'],
   snap: ['search', 'verbose', 'refresh', 'config', 'serial', 'user'],
   parse: ['verbose', 'refresh', 'config'],
   dex: ['out', 'from', 'to', 'keep-screens', 'config', 'serial', 'user', 'refresh', 'verbose'],
@@ -244,9 +165,8 @@ const HONOURED: Record<string, readonly string[]> = {
 
 /**
  * The flags actually typed, which `options` cannot answer: `parseArgs` fills in every flag carrying a `default`, so
- * `out`, `no-moves`, `scroll`, `refresh` and `verbose` are in it whether or not anyone asked for them. `argv` is the
- * only place that still knows the difference, and taking the name up to the `=` is what makes `--out=x` read the same
- * as `--out x`.
+ * `out`, `refresh` and `verbose` are in it whether or not anyone asked for them. `argv` is the only place that still
+ * knows the difference, and taking the name up to the `=` is what makes `--out=x` read the same as `--out x`.
  */
 const passed = process.argv.slice(2).flatMap((arg) => /^--([a-z-]+)/.exec(arg)?.[1] ?? []);
 
@@ -267,22 +187,16 @@ if (ignored.length > 0) {
  * Why `--search` cannot be used, or null where it can or was not given. Asked before the phone is opened: a term `type`
  * will not send, or one longer than the box can be cleared of, is one the phone would be driven to storage and into the
  * search box for before anything said so.
- *
- * Asked of every string the command will type, not the term alone: a scan's flag passes type `costume&TERM`, up to nine
- * characters more, and a term that fits the clear while that does not leaves the rest prepended to the next search —
- * whose own `🔍(N)` then vouches for the narrower set it found.
  */
-function refusedSearch(term: string | undefined, passes: readonly Flag[]): string | null {
+function refusedSearch(term: string | undefined): string | null {
   if (term === undefined) {
     return null;
   }
 
-  for (const pass of [null, ...passes]) {
-    const unsent = unsearchable(pass === null ? term : `${pass}&${term}`);
+  const unsent = unsearchable(term);
 
-    if (unsent !== null) {
-      return pass === null ? `--search ${unsent}` : `--search, as the ${pass} pass types it, ${unsent}`;
-    }
+  if (unsent !== null) {
+    return `--search ${unsent}`;
   }
 
   // The one term `unsearchable` passes and `--search` cannot use: `typeable` is `*`-quantified, so both `''` and a run
@@ -298,11 +212,23 @@ function refusedSearch(term: string | undefined, passes: readonly Flag[]): strin
   return null;
 }
 
-// Parsed for `scan` alone, the one command `HONOURED` lets `--flags` reach, so that `help --flags x` prints the usage.
-const flags = command === 'scan' && options.flags !== undefined ? parseFlags(options.flags) : DEFAULT_FLAGS;
+/** A flag's whole-number value, or `fallback` where it was not given; refused where it is not a whole number. */
+function count(option: string, value: string | undefined, fallback: number): number {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const n = Number(value);
+
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(`--${option} takes a whole number, not ${value}`);
+  }
+
+  return n;
+}
 
 // Only for a command that searches: `help` has no list to have filtered `--search` out, and prints the usage regardless.
-const refused = honoured?.includes('search') ? refusedSearch(options.search, command === 'scan' ? flags : []) : null;
+const refused = honoured?.includes('search') ? refusedSearch(options.search) : null;
 
 if (refused !== null) {
   console.error(`${command}: ${refused}`);
@@ -410,335 +336,32 @@ async function report(image: Image, data: GameData, icons: ReadonlyMap<Form, Col
   return read;
 }
 
-/**
- * The rows a scan covers, read ahead of the phone so that a typo fails before anything is driven — or leased, the
- * caller opening the scan's held shell only once this has returned: `adb shell` takes the phone's lease the moment it
- * starts, which a run refused for its flags has no business taking from another session.
- */
-function scanRange() {
-  const limit = count('limit', options.limit, Infinity);
-  const skip = count('skip', options.skip, 0);
-
-  // The rows a skip has to land just past, read before the phone is driven, since a skip with nothing to check its
-  // landing against is one that lands short by every swipe it dropped and says nothing: the rows written next repeat
-  // the last ones under numbers that have moved on.
-  let behind: Landmark[] = [];
-
-  if (skip > 0) {
-    try {
-      behind = landmarksBefore(readFileSync(options.out, 'utf8'), skip);
-    } catch (error) {
-      const why = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'it does not exist' : said(error);
-      throw new Error(`--skip ${skip} checks where it lands against row ${skip} of ${options.out}, but ${why}`, {
-        cause: error,
-      });
-    }
-  }
-
-  return { limit, skip, behind };
-}
+const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
 
 /**
- * `held` is the shell the touchscreen is made on, which the caller closes once the scan is over, however it ends.
+ * The whole box as `inventory.jsonl`, read off PGSharp's export rather than the screen: every Pokémon the game has in
+ * hand, decoded, pulled in one `exec-out cat` and turned into the rows the walk used to read one detail screen at a
+ * time. The export is switched on in PGSharp's own settings, and a phone without it there fails naming it, having
+ * written nothing. The game master's load follows the pull, so a cold-cache run with no network fails before it writes.
  */
-async function scan(held: Transport, { limit, skip, behind }: ReturnType<typeof scanRange>) {
-  const out = options.out;
-  const term = options.search;
+async function scan() {
+  let text: string;
 
-  const device = new Device(adbCli(options.serial));
-  await device.check();
-  const data = await loadGameData(CACHE, options.refresh);
-  const icons = await iconsFor(data);
-
-  // The chips under the HP say which tags a Pokémon carries, so this is a vocabulary rather than a list to search for:
-  // the names are the user's own, and only something to match against can say that `Shiny SJ` is the `Shiny` chip with
-  // its `✦` read as letters. Storage's own TAGS tab is where they come from.
-  const tags = (options.tags ?? '')
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
-
-  const screens = options['keep-screens'];
-  const shot = await device.screenshot();
-  const { tap, swipe, dismiss, closeDetail, search, matches, matched, stored, firstTile } = storage(
-    device,
-    config,
-    data,
-    shot,
-  );
-
-  // The swipe from one Pokémon to the next on a touchscreen of the scan's own, the one `pnpm battle` drives the field
-  // with. `input swipe` went nowhere 3 to 5 times in 40 on a Pixel 4 XL with Android 13, at every wait and height
-  // `--config` offers, and nothing a walk reads can tell a dropped swipe from the end of storage: the same Pokémon is
-  // on the screen either way, and two of one species differ by less of the panel than a still screen does from itself
-  // — Unown B and Unown ! by 0.48%, against 0.54%. Where the phone will not have it, `input swipe` it is, with the
-  // game's counts below for `walk` to tell its drops from the end by, and to catch a pass they still cut short.
-  const touch = await touchscreen(held).catch((error: unknown) => {
-    const reason = said(error);
-    console.error(`${reason}; swiping with \`input swipe\` instead, which can drop a swipe and cut a pass short`);
-
-    return null;
-  });
-
-  const drag = async ([from, to]: [Point, Point], wait: number) => {
-    if (touch) {
-      await touch.swipe(from, to, NEXT_MS);
-      await sleep(wait);
-    } else {
-      await swipe([from, to], wait);
-    }
-  };
-
-  const boxes = new OverlayBoxes(config.overlay ?? null, findOverlay, readOverlay);
-
-  if (screens) {
-    mkdirSync(screens, { recursive: true });
-  }
-
-  // `carry` for the one artifact that needs it: a stitch, whose own height is not the height the phone drew.
-  const keep = (name: string, image: Image, carry: Readonly<Record<string, string>> = {}) => {
-    if (screens) {
-      writeFileSync(join(screens, `${name}.png`), encodePng(image, carry));
-    }
-  };
-
-  const overlayOf = async (image: Image, sweep: boolean) => {
-    const known = boxes.box;
-    const overlay = await boxes.overlayOn(image, sweep);
-
-    if (!known && boxes.box) {
-      console.error(`  found PGSharp's overlay at ${JSON.stringify(boxes.box)}`);
-    }
-
-    return overlay;
-  };
-
-  /**
-   * One detail screen: the game's own text, and PGSharp's overlay over it. A screen still settling reads as a Pokémon
-   * with no HP at all, or as one whose overlay has not been drawn yet, so both are worth another look rather than one
-   * — a single bad read costs a whole member of a flag pass, and a member missed there is a Pokémon the full pass will
-   * never learn was in the search. An `xxl` pass over a search the game said held five marked four, and the one it
-   * dropped was the only one of them the full pass went on to read.
-   *
-   * A note `identify` raised is worth another look as well, and it is the only one of them that says the screen read
-   * *whole* and wrongly: a CP the settled form and level do not derive, a level shortlist no HP can be, a form the
-   * overlay names that no species has. Only the notes a second read could clear count (`clearable`): `unseparated` is
-   * reported and not chased, those forms sharing every number the screen prints, so what would settle them is a field
-   * the game never drew. `screens.test.mts` pins that split.
-   *
-   * `could also be …` is counted with the rest, but only on a reading that has IVs: with none the search narrows on
-   * types alone and 21 of the game master's 1,024 species answer it for ever, so counting those would read every
-   * Deoxys, Dialga and Lycanroc three times on every pass for an answer no further look can change. It is kept because
-   * the case it is for is a nickname, which sends the search across every species, and a Pokémon the numbers cannot
-   * then separate is exactly the one worth looking at twice.
-   *
-   * What the stricter test costs if the last attempt is the one taken is a row rather than a note, which is why the
-   * reading kept is `bestOf`'s and not this loop's: a stricter test reads again what a looser one would have accepted,
-   * a second look can come back worse, and one whose HP goes unread has no key at all — three of those in a row stop
-   * the pass. That decision sits there so `attempts.test.mts` can assert it, which `phone.test.mts` cannot: a scan
-   * driven against recordings shows what it wrote and not how many looks it took to get there.
-   */
-  const readDetail = async (): Promise<Reading> => {
-    let latest: Image | null = null;
-    let lost: number | null = null;
-
-    // Minus `latest`, which is this function's to answer rather than an attempt's: an attempt only knows its own.
-    const best = await bestOf<Omit<Reading, 'latest'>>(
-      READ_ATTEMPTS,
-      ({ faults }) => faults,
-      async (attempt) => {
-        // Give the screen time to move on before looking again, which `settled` does not: it waits for the screen to
-        // stop moving, and an overlay PGSharp has not drawn yet is a still screen.
-        if (attempt > 0) {
-          await sleep(config.waits.swipe);
-        }
-
-        const image = await settled(device);
-        latest = image;
-        const lines = await readLines(image);
-        const detail = await parseDetail(lines, data, image);
-
-        // A dialog a dropped drag opened, which the swipe to this Pokémon did nothing over, or one the game raised on
-        // its own. Closed here, so the next attempt reads the screen beneath it, and this one counted as unread however
-        // much of it did read: the HP above `New Mega Level available!` reads, and a row keyed by it would carry the
-        // Max, moves, shadow and purified the dialog hides as blanks that look like answers.
-        const covered = dialogOpen(lines, image);
-
-        if (covered) {
-          await dismiss();
-        }
-
-        // Only a detail screen is worth a sweep, and on a retry only where the attempt before it lost a field. Sweeps
-        // that find nothing are rationed over the whole run, so one granted on every attempt buys three tries of the
-        // same `findOverlay` on one Pokémon where the ration was five tries spread over five — and `findOverlay` is
-        // what varies by phone, its own docblock measuring it at nine of twelve captures from one and none from
-        // another.
-        const overlay = detail.hp === null || covered ? null : await overlayOf(image, lost === null || lost > 0);
-        const key = covered ? null : keyOf(detail, overlay);
-        const id = identify(data, detail, overlay, artworkIn(image, boxes.box, icons));
-
-        // The key above the other two, not beside them: a reading with no key is the one `walk` counts as a miss and
-        // writes `detail screen not read`, so it must lose to any reading that got the HP however much else that one
-        // lost. The overlay's clause is the conditional one, since where no box has been found at all there is nothing
-        // to wait for; a form that fits is the surest of the three, the name, the types, the HP and the IVs agreeing
-        // being what a half-read screen cannot fake.
-        const keyless = Number(key === null);
-        const fields = Number(overlay === null && boxes.box !== null) + Number(id.form === null);
-
-        // Notes only where the overlay read, because the ones raised without IVs are the ones no further read can
-        // clear: with `iv === null` the search narrows on types alone, and 21 of the game master's 1,024 species then
-        // answer `could also be …` for ever. Counting those would read every one of them three times on every pass.
-        // `clearable` is the same argument applied to one note more: `unseparated` is reported, never chased.
-        const notes = overlay === null ? 0 : clearable(id);
-
-        lost = keyless + fields;
-
-        return { detail, overlay, id, key, image, faults: faultsOf(keyless, fields, notes) };
-      },
+  try {
+    text = new TextDecoder().decode(await readFile(PGSTATS, options.serial));
+  } catch (error) {
+    throw new Error(
+      `could not read ${PGSTATS} off the phone: ${said(error)}; switch PGSharp's inventory export on and run it first`,
+      { cause: error },
     );
-
-    // The freshest screenshot, not the winning attempt's: `bestOf` hands back the whole of whichever reading ranked
-    // best, and an earlier one's screen has been swiped against since.
-    return { ...best, latest: latest ?? best.image };
-  };
-
-  /**
-   * Opens the first Pokémon the grid shows and reads it, answering a reading with no key when there is none — a search
-   * that matched nothing — or when it would not read.
-   */
-  const openFirst = async (lines: readonly Line[]) => {
-    await tap(firstTile(lines), config.waits.swipe);
-
-    // Through `readDetail` for its retry: the tile opens with an animation that outlasts one wait, and a screen read
-    // while it is still running is indistinguishable from a grid with nothing in it.
-    return readDetail();
-  };
-
-  const [grab, drop] = config.swipes.next;
-  const next = () => drag([grab, drop], config.waits.swipe);
-  const back = () => drag([drop, grab], config.waits.swipe);
-
-  const looking = {
-    device,
-    config,
-    data,
-    dismiss,
-    scroll: options.scroll,
-    screen: shot,
-    overlayOf,
-    keep,
-    read: readDetail,
-    next,
-  };
-
-  /**
-   * Each Pokémon from the one open, `first` being that one's reading where `openFirst` has already made it, of `total`
-   * the game counts, which is how a swipe that went nowhere is told from the end. Answers how many it visited, for
-   * `shortfall` to hold against that count.
-   */
-  const walk = async (
-    visit: (reading: Reading, index: number) => Promise<void>,
-    total: number | null,
-    max: number,
-    from = 0,
-    first?: Reading,
-  ) => {
-    let visited = 0;
-
-    if (from > 0) {
-      // Blind and at half the wait, which is quick and drops swipes: a skip of 136 landed 9 short. `land` is what makes
-      // up for them, finding the rows already written and stepping on past them.
-      for (let i = 0; i < from; i++) {
-        await drag([grab, drop], config.waits.swipe / 2);
-      }
-
-      const reach = reachOf(from);
-      let off: number;
-
-      try {
-        off = await land({ read: readDetail, next, back }, behind, (r) => landmarkOf(r.detail, r.overlay), reach);
-      } catch (error) {
-        throw new Error(`--skip ${from} could not find where to start: ${said(error)}`, { cause: error });
-      }
-
-      if (off > 0) {
-        console.error(`  the skip landed ${off} short of row ${from + 1}, so it stepped on past row ${from}`);
-      }
-    }
-
-    const tallied = async (reading: Reading, index: number) => {
-      visited++;
-      await visit(reading, index);
-    };
-
-    await stepThrough({ read: readDetail, next, back }, tallied, max, from, from === 0 ? first : undefined, total);
-    await closeDetail();
-
-    return visited;
-  };
-
-  // The flag passes come first, so that the full pass can write each row complete as it goes.
-  const marked = await flagPasses(flags, term, { search, openFirst, walk, matches, matched });
-
-  const grid = await search(term ?? '');
-  const opened = await openFirst(grid);
-
-  if (opened.key === null) {
-    const empty = term === undefined ? 'storage looks empty' : `--search ${JSON.stringify(term)} matched nothing`;
-
-    throw new Error(`${empty}, or the first Pokémon did not open; try \`pnpm inventory snap\` to see why`);
   }
 
-  // Emptied of an earlier scan's rows, a skip adding to them instead. Only once the full pass has a first Pokémon open,
-  // so that a run which cannot start leaves the earlier scan where it was.
-  if (skip === 0) {
-    writeFileSync(out, '');
-  }
+  const snapshot = parseSnapshot(text);
+  const data = await loadGameData(CACHE, options.refresh);
+  const rows = rowsOf(snapshot, data);
 
-  let written = 0;
-  const started = Date.now();
-
-  // Read off the grid before the walk leaves it, both to tell a dropped swipe from the end and to check the pass after.
-  const counted = term === undefined ? stored(grid) : matches(grid);
-
-  const walked = await walk(
-    async (reading, index) => {
-      const name = String(index + 1).padStart(5, '0');
-      keep(`${name}-detail`, reading.image);
-
-      const row = await rowOf(reading, index, {
-        data,
-        icons,
-        marked,
-        tags,
-        boxes,
-        wardrobe: wardrobeOn(data),
-        look: options['no-moves'] ? null : (form) => lookForMoves(looking, reading, name, form),
-      });
-
-      appendFileSync(out, `${JSON.stringify(row)}\n`);
-      written++;
-
-      const each = (Date.now() - started) / written / 1000;
-      const ivText = row.iv ? ivsOf(row.iv) : '?';
-      console.error(
-        `#${index + 1} ${row.species ?? '?'} CP ${row.cp ?? '?'} ${ivText} L${row.levels.join(' / ') || '?'}` +
-          ` (${each.toFixed(1)}s each)${row.notes.length > 0 ? ` — ${row.notes.join('; ')}` : ''}`,
-      );
-    },
-    counted,
-    limit,
-    skip,
-    opened,
-  );
-
-  console.error(`Wrote ${written} Pokémon to ${out}`);
-
-  const short = shortfall('the full pass', walked, counted, skip, limit);
-
-  if (short) {
-    throw new Error(`${short}; \`--skip ${skip + walked}\` carries on from the next one`);
-  }
+  writeFileSync(options.out, rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length > 0 ? '\n' : ''));
+  console.error(`Wrote ${rows.length} Pokémon to ${options.out}`);
 }
 
 /**
@@ -1074,17 +697,7 @@ async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
 
 // Last, so that everything above is initialised before anything runs.
 if (command === 'scan') {
-  const range = scanRange();
-
-  // Held open for the scan's touchscreen, which goes with it, and so closed however the scan ends: open, it would keep
-  // the process waiting on it after the last row.
-  const held = adbHeld(options.serial);
-
-  try {
-    await scan(held, range);
-  } finally {
-    held.close();
-  }
+  await scan();
 } else if (command === 'dex') {
   const range = dexRange();
   const held = adbHeld(options.serial);

@@ -376,3 +376,15 @@ export function rowsOf(snapshot: Snapshot, data: GameData): Row[] {
 
   return rows;
 }
+
+/**
+ * The export's text as a `Snapshot`, with its 64-bit IDs kept exact. A Pokémon's `id` and the IDs it names its tags by
+ * are whole numbers past what a double holds, which `JSON.parse` rounds to the nearest it can — enough to break the
+ * match between a Pokémon and its tag. Every run of sixteen digits or more standing as a value is quoted to a string
+ * first, so those IDs arrive as the strings `Mon` and `Tag` declare and the numbers the converter reads, none of them
+ * that long, are left as they are. A sixteen-digit run inside a string would have to sit between a `,`, `[` or `:` and
+ * a `,`, `]` or `}` to be caught, which no name or nickname in the export does.
+ */
+export function parseSnapshot(text: string): Snapshot {
+  return JSON.parse(text.replace(/([:[,]\s*)(-?\d{16,})(?=\s*[,}\]])/g, '$1"$2"')) as Snapshot;
+}

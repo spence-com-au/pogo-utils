@@ -1,9 +1,9 @@
 /**
- * `pnpm inventory scan` and `snap` driven as a subprocess, against a phone that is recordings: the script is run as a
- * person runs it, with only the `adb` on its `PATH` replaced. `cli.test.mts` reaches the rest of the script — `parse`
- * and the refusals that come before any phone is opened — and this reaches what needs one: the flag passes, the
- * `--skip` landing, the row a scan writes and the capture a snap leaves, which the script wires together from parts the
- * other suites test one at a time.
+ * `pnpm inventory scan`, `snap` and `dex` driven as a subprocess, against a phone that is recordings: the script is run
+ * as a person runs it, with only the `adb` on its `PATH` replaced. `cli.test.mts` reaches the rest of the script —
+ * `parse` and the refusals that come before any phone is opened — and this reaches what needs one: the row a scan
+ * writes off the export it pulls, the capture a snap leaves and the walk a dex makes, which the script wires together
+ * from parts the other suites test one at a time.
  *
  * The phone is `Phone`, three panels answering the taps, swipes and keys as the game does — a tap on storage opens the
  * first Pokémon, a swipe sideways moves to the next, a swipe up scrolls to the moves — over the captures committed
@@ -12,7 +12,7 @@
  * models, and of where a tap lands no more than whether it is below the box: a script tapping the wrong tile fails
  * nothing here, that being the readers' own tests to say.
  *
- * A held shell is the one thing it refuses, there being no `/dev/uhid` on a recording: `scan` swipes with
+ * A held shell is the one thing it refuses, there being no `/dev/uhid` on a recording: a walk swipes with
  * `input swipe` instead, which it says, and which is what a phone that will not have the touchscreen gets.
  *
  * Each of these reads a screen or several under Tesseract, a second or two apiece, so they run side by side and are
@@ -63,7 +63,6 @@ interface Pokemon {
 }
 
 const ELGYEM: Pokemon = { detail: 'moves/elgyem-detail.png', moves: 'moves/elgyem-moves.png' };
-const ROGGENROLA: Pokemon = { detail: 'moves/roggenrola-detail.png' };
 
 /** What a tap on a tile opens where the game opens nothing readable: storage again, as a tap it dropped does. */
 const NOTHING: Pokemon = { detail: SEARCHED };
@@ -124,6 +123,9 @@ class Phone {
   /** The panel showing, which a test reads for where the script left the phone. */
   panel: Panel;
 
+  /** What `exec-out cat` answers with: PGSharp's export, which the scan reads instead of walking the screen. */
+  export: Uint8Array = new Uint8Array();
+
   readonly #storage: (term: string) => readonly Pokemon[];
   #term = '';
   #open = 0;
@@ -163,6 +165,12 @@ class Phone {
   answer(args: readonly string[]): { status: number; out: Uint8Array } {
     const text = (out: string) => ({ status: 0, out: new TextEncoder().encode(out) });
     const [command, ...rest] = args;
+
+    if (command === 'exec-out' && rest[0] === 'cat') {
+      return this.export.length > 0
+        ? { status: 0, out: this.export }
+        : { status: 1, out: new TextEncoder().encode(`cat: ${rest[1]}: No such file or directory\n`) };
+    }
 
     if (command === 'exec-out') {
       return { status: 0, out: this.screen() };
@@ -403,7 +411,10 @@ async function harness(
 
   const inventory = async (...args: string[]): Promise<Ran> => {
     const env = { ...process.env, PATH: `${bin}${delimiter}${process.env['PATH']}`, FAKE_PHONE: url };
-    const pending = run(process.execPath, [SCRIPT, ...args, '--config', 'config.json'], { cwd, env });
+
+    // `scan` reads the export in one pull and takes no `--config`; the walk commands lay their taps over `DEFAULTS`.
+    const config = args[0] === 'scan' ? [] : ['--config', 'config.json'];
+    const pending = run(process.execPath, [SCRIPT, ...args, ...config], { cwd, env });
 
     started.push(pending.child);
 
@@ -502,102 +513,93 @@ const rowsIn = (cwd: string) =>
     .map((line) => JSON.parse(line) as Record<string, unknown>);
 
 describe.concurrent('scan', () => {
-  test('writes the Pokémon it reads as a row, each flag as its pass left it', { timeout: SLOW }, async (context) => {
-    // A search that matched nothing, one that matched and opened what would not read, and the full pass's own.
-    const phone = new Phone('storage', (term) => (term === 'shiny' ? [] : term === 'lucky' ? [NOTHING] : [ELGYEM]));
-    const { cwd, inventory } = await harness(context, phone, ['Elgyem']);
-    const { code, stderr } = await inventory(
-      'scan',
-      '--flags',
-      'shiny,lucky',
-      '--limit',
-      '1',
-      '--keep-screens',
-      'screens',
-    );
-
-    expect(code, stderr).toBe(0);
-    expect(stderr).toContain('swiping with `input swipe` instead');
-    expect(stderr).toContain('shiny: 0\n');
-    expect(stderr).toContain('lucky: the first Pokémon would not read, so this field is left null');
-    expect(stderr).toContain('#1 Elgyem CP 295 11/13/8 L8');
-    expect(stderr).toContain('Wrote 1 Pokémon to inventory.jsonl');
-
-    const [row, ...rest] = rowsIn(cwd);
-
-    expect(rest).toStrictEqual([]);
-
-    // Every column a row is written with, in the order it is: the file is what other tools read.
-    expect(Object.keys(row ?? {}).join(' ')).toBe(
-      'index species nickname dex form gender favourite tags costume shiny lucky size shadow ' +
-        'purified max cp hp levels iv moves weight height types notes',
-    );
-
-    // What each reader made of the two screens, worked out and assembled. Where a pass ran and found nothing the field
-    // is `false`; where it could not read the first Pokémon it holds it is null, which says nothing either way, as it
-    // does for the costume pass that was never asked for.
-    expect(row).toMatchObject({
-      index: 1,
-      species: 'Elgyem',
-      dex: 605,
-      form: null,
-      cp: 295,
-      hp: 57,
-      levels: [8],
-      iv: { attack: 11, defense: 13, stamina: 8 },
-      moves: { fast: 'Astonish', charged: ['Dark Pulse'] },
-      weight: 7.6,
-      height: 0.46,
-      types: ['Psychic'],
-      shiny: false,
-      lucky: null,
-      costume: null,
-    });
-
-    // The detail screen it read the row off, and the one it scrolled down to for the moves, and the panel put back.
-    expect(existsSync(join(cwd, 'screens', '00001-detail.png'))).toBe(true);
-    expect(existsSync(join(cwd, 'screens', '00001-moves.png'))).toBe(true);
-    expect(phone.swipes).toStrictEqual(['up', 'down', 'left']);
-    expect(phone.panel, 'the detail screen was left open').toBe('storage');
-  });
-
   test(
-    'resumes a file with `--skip`, landing on the row after the last one it holds',
+    "reads PGSharp's export off the phone and writes a row for each stored Pokémon",
     { timeout: SLOW },
     async (context) => {
-      const phone = new Phone('storage', () => [ELGYEM, ROGGENROLA]);
-      const { cwd, inventory } = await harness(context, phone, ['Elgyem', 'Roggenrola']);
+      const phone = new Phone('storage', () => []);
 
-      // The one row of an earlier run, as much of it as the landing checks the screen against.
-      const earlier = { index: 1, hp: 57, weight: 7.6, height: 0.46, iv: { attack: 11, defense: 13, stamina: 8 } };
+      // One Elgyem and an egg, written with bare strings for the 64-bit ids so the parse keeps them exact. The moves are
+      // left at 0: the seeded game master numbers its moves from 1000, so a real move number would not resolve here, and
+      // `snapshot.test.mts` holds the number-to-name mapping against the whole game master instead.
+      phone.export = new TextEncoder().encode(
+        JSON.stringify({
+          tags: [{ id: '111', name: 'Keepers' }],
+          pokemons: [
+            {
+              id: '5550000000000000001',
+              pokemonId: 605,
+              nickname: '',
+              cp: 295,
+              cpMultiplier: 0.5974,
+              additionalCpMultiplier: 0,
+              individualAttack: 11,
+              individualDefense: 13,
+              individualStamina: 8,
+              maxStamina: 57,
+              move1: 0,
+              move2: 0,
+              move3: 0,
+              weightKg: 7.6,
+              heightM: 0.46,
+              size: 3,
+              favorite: false,
+              isLucky: false,
+              isEgg: false,
+              pokemonTagIds: ['111'],
+              pokemonDisplay: {
+                form: 0,
+                formName: 'ElgyemNormal',
+                costume: 0,
+                gender: 1,
+                shiny: false,
+                alignment: 0,
+                breadModeEnum: 0,
+              },
+            },
+            { id: '5550000000000000002', isEgg: true, pokemonDisplay: null },
+          ],
+        }),
+      );
 
-      writeFileSync(join(cwd, 'inventory.jsonl'), `${JSON.stringify(earlier)}\n`);
+      const { cwd, inventory } = await harness(context, phone, ['Elgyem']);
+      const { code, stderr } = await inventory('scan');
 
-      const { code, stderr } = await inventory('scan', '--flags', '', '--skip', '1', '--limit', '1', '--no-moves');
-
-      expect(code).toBe(0);
+      expect(code, stderr).toBe(0);
       expect(stderr).toContain('Wrote 1 Pokémon to inventory.jsonl');
 
-      // Appended to rather than written over, under the number it is in storage.
       const rows = rowsIn(cwd);
 
-      expect(rows[0]).toStrictEqual(earlier);
-      expect(rows.slice(1).map((row) => [row['index'], row['species']])).toStrictEqual([[2, 'Roggenrola']]);
+      // The egg is left out, the one Pokémon comes over with its fields resolved against the game master the run
+      // loaded, and the raw game IDs are kept beside it.
+      expect(rows.length).toBe(1);
+      expect(rows[0]).toMatchObject({
+        index: 1,
+        species: 'Elgyem',
+        dex: 605,
+        cp: 295,
+        levels: [20],
+        iv: { attack: 11, defense: 13, stamina: 8 },
+        weight: 7.6,
+        height: 0.46,
+        tags: ['Keepers'],
+        raw: { pokemonId: 605, id: '5550000000000000001' },
+      });
 
-      // One blind swipe on, then back past where it should have landed to find the row it checks against, and on again
-      // over it to the next, where the walk begins.
-      expect(phone.swipes.slice(0, 5)).toStrictEqual(['left', 'right', 'right', 'right', 'left']);
+      // It reads the export off the phone and walks nothing.
+      expect(phone.swipes).toStrictEqual([]);
     },
   );
 
-  test('refuses a `--skip` with no row to land against, before it drives the phone', async (context) => {
-    const phone = new Phone('storage', () => [ELGYEM]);
-    const { inventory } = await harness(context, phone, ['Elgyem']);
-    const { code, stderr } = await inventory('scan', '--skip', '3');
+  test('fails naming the export where the phone does not have it', async (context) => {
+    // The export left unset, so `exec-out cat` answers as it does for a file that is not there.
+    const phone = new Phone('storage', () => []);
+    const { inventory } = await harness(context, phone, []);
+    const { code, stderr } = await inventory('scan');
 
     expect(code).toBe(1);
-    expect(stderr).toContain('--skip 3 checks where it lands against row 3 of inventory.jsonl, but it does not exist');
-    expect(phone.calls).toStrictEqual([]);
+    expect(stderr).toContain('/sdcard/Download/PGSharp/PGSStats.json');
+    expect(stderr).toContain("switch PGSharp's inventory export on");
   });
 });
 
