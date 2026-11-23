@@ -35,8 +35,11 @@ function rows({ maker, model, android, screen, battery }: About, serial: string)
  * Whether a phone this site was allowed before is plugged in, which the browser says without asking, checked while the
  * panel is open. The chooser offers ADB phones alone, so every device the site was allowed is one. A phone plugged in
  * but never picked is not seen, and a browser with no WebUSB has none to see.
+ *
+ * Checked again as each connect attempt ends, as well as on plugging and unplugging: a phone the chooser allows while
+ * it is plugged in already fires no `connect`, and is there to retry once an attempt on it fails.
  */
-function usePluggedIn(open: boolean) {
+function usePluggedIn(open: boolean, connecting: boolean) {
   const [plugged, setPlugged] = useState(false);
 
   useEffect(() => {
@@ -58,7 +61,7 @@ function usePluggedIn(open: boolean) {
       navigator.usb.removeEventListener('connect', check);
       navigator.usb.removeEventListener('disconnect', check);
     };
-  }, [open]);
+  }, [open, connecting]);
 
   return plugged;
 }
@@ -70,11 +73,11 @@ export function Phone() {
   const demo = phone?.serial === DEMO_SERIAL;
 
   const [open, setOpen] = useState(false);
-  const plugged = usePluggedIn(open);
 
   /** What the last press of Connect has to say, or null with nothing to add. */
   const [status, setStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const plugged = usePluggedIn(open, connecting);
 
   /**
    * What a phone said of itself, or why it could not, kept with the phone it was asked of, so the panel never lists one
