@@ -76,6 +76,18 @@ test('a read that cannot reach the export keeps the reason and offers the export
   expect(mocks.parseSnapshot).not.toHaveBeenCalled();
 });
 
+test('a corrupt export or a failed game master fails without the export-off hint', async () => {
+  mocks.gameData.mockResolvedValue({});
+  mocks.parseSnapshot.mockImplementation(() => {
+    throw new Error('Unexpected token');
+  });
+
+  const store = new InventoryStore();
+  await store.read(phone(async () => bytes('not json')).phone);
+
+  expect(store.inventory).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+});
+
 test('a read already under way is left to finish rather than started again', async () => {
   mocks.parseSnapshot.mockReturnValue({});
   mocks.gameData.mockResolvedValue({});

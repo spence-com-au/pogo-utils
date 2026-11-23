@@ -218,6 +218,15 @@ body[data-page='pokedex'] {
     background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
   }
 
+  /* The failure reason stands out from the line, and the connect-a-phone hint steps back from it. */
+  .dexhead .mine .error {
+    font-weight: 600;
+  }
+
+  .dexhead .mine .hint {
+    color: var(--muted);
+  }
+
   .dexhead .stats {
     display: grid;
     grid-auto-columns: 1fr;

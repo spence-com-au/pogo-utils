@@ -20,11 +20,31 @@ export type Inventory =
   | { state: 'failed'; reason: string };
 
 /**
- * Why a read failed, the underlying reason leading and the export hint only offered: a slow link or a read too big fail
- * the same way a missing export does, so the hint is not asserted.
+ * Why a read off the phone failed, the reason leading and the export hint only offered: a slow link or a read too big
+ * fail the same way a missing export does, so the hint is not asserted.
  */
-const failure = (error: unknown) =>
+const unread = (error: unknown) =>
   `could not read the export off the phone: ${said(error)} — switch PGSharp's inventory export on if it is off`;
+
+/**
+ * The export off `phone` parsed to rows, or why it could not be. Only the read itself carries the export hint: a corrupt
+ * export or a failed game-master fetch reads fine and fails after, a different cause than there being nothing to read.
+ */
+async function readRows(phone: Phone): Promise<{ rows: readonly Row[] } | { reason: string }> {
+  let text: string;
+
+  try {
+    text = new TextDecoder().decode(await new Device(phone.transport).read(PGSTATS));
+  } catch (error) {
+    return { reason: unread(error) };
+  }
+
+  try {
+    return { rows: rowsOf(parseSnapshot(text), await gameData()) };
+  } catch (error) {
+    return { reason: `could not read the inventory: ${said(error)}` };
+  }
+}
 
 /** A class rather than module state so a test can start from nothing; the document has the one instance below. */
 export class InventoryStore extends Store {
@@ -52,21 +72,16 @@ export class InventoryStore extends Store {
     this.inventory = { state: 'reading' };
     this.emit();
 
-    try {
-      const text = new TextDecoder().decode(await new Device(phone.transport).read(PGSTATS));
-      const rows = rowsOf(parseSnapshot(text), await gameData());
+    const result = await readRows(phone);
 
-      if (this.#token !== token) {
-        return;
-      }
+    if (this.#token !== token) {
+      return;
+    }
 
-      this.inventory = { state: 'read', rows };
-    } catch (error) {
-      if (this.#token !== token) {
-        return;
-      }
-
-      this.inventory = { state: 'failed', reason: failure(error) };
+    if ('rows' in result) {
+      this.inventory = { state: 'read', rows: result.rows };
+    } else {
+      this.inventory = { state: 'failed', reason: result.reason };
     }
 
     this.emit();
