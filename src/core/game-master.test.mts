@@ -52,7 +52,7 @@ test('the vended game master is the shape the readers are asserted against', () 
     moves: DATA.moves.length,
     types: DATA.types.length,
     cpm: DATA.cpm.length,
-  }).toStrictEqual({ forms: 1473, species: 1024, megas: 63, moves: 348, types: 18, cpm: 101 });
+  }).toStrictEqual({ forms: 1473, species: 1024, megas: 64, moves: 350, types: 18, cpm: 101 });
 });
 
 /**

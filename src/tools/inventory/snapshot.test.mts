@@ -9,7 +9,7 @@
  * one living in the scan script.
  */
 
-import { type GameData, type Move } from '../../core/game-master.mts';
+import { type GameData } from '../../core/game-master.mts';
 import { rowsOf, type Snapshot } from './snapshot.mts';
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
@@ -18,14 +18,7 @@ const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', i
 
 const SNAPSHOT = JSON.parse(readFileSync(new URL('./fixtures/snapshot.json', import.meta.url), 'utf8')) as Snapshot;
 
-const MOVES = new Map<number, Move>([
-  [219, { name: 'Quick Attack', fast: true }],
-  [35, { name: 'Discharge', fast: false }],
-  [247, { name: 'Shadow Ball', fast: false }],
-  [323, { name: 'Return', fast: false }],
-]);
-
-const rows = rowsOf(SNAPSHOT, DATA, MOVES);
+const rows = rowsOf(SNAPSHOT, DATA);
 const byDex = (dex: number) => rows.find((row) => row.raw.pokemonId === dex);
 const byForm = (formName: string) => rows.find((row) => row.raw.formName === formName);
 
@@ -88,8 +81,9 @@ test('Normal and Unset fall back to the ordinary form', () => {
   expect(byDex(700)).toMatchObject({ species: 'Sylveon', form: null });
 });
 
-test('a second charged move is kept and a move the table does not know is left out', () => {
-  expect(byDex(105)?.moves).toEqual({ fast: 'Quick Attack', charged: ['Discharge', 'Shadow Ball'] });
+test('moves resolve through the real game master, a second charged move kept and an unknown number left out', () => {
+  // 219 is Quick Attack, 35 Discharge, 247 Focus Blast — the real numbers, which a made-up table could not vouch for.
+  expect(byDex(105)?.moves).toEqual({ fast: 'Quick Attack', charged: ['Discharge', 'Focus Blast'] });
   expect(byDex(9999)?.moves).toEqual({ fast: 'Quick Attack', charged: [] });
 });
 

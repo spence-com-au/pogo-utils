@@ -17,7 +17,7 @@
 
 import { type Gender } from './badges.mts';
 import { type Max } from './detail.mts';
-import { BANDS, type Form, type GameData, type IVs, type Move, type Size } from '../../core/game-master.mts';
+import { BANDS, type Form, type GameData, type IVs, type Size } from '../../core/game-master.mts';
 import { type Moves } from '../../core/moves.mts';
 import { fold } from '../../core/ocr.mts';
 
@@ -270,15 +270,15 @@ function genderOf(code: number): Gender | null {
   return code === 1 ? 'male' : code === 2 ? 'female' : code === 3 ? 'genderunknown' : null;
 }
 
-/** The fast move and the charged moves, by name, a move the table does not know left out. */
-function movesOf(moves: ReadonlyMap<number, Move>, mon: Mon): Moves {
+/** The fast move and the charged moves, by name, a move the game master does not number left out. */
+function movesOf(moveNumbers: GameData['moveNumbers'], mon: Mon): Moves {
   const charged = [mon.move2, mon.move3].flatMap((id) => {
-    const name = id ? moves.get(id)?.name : undefined;
+    const name = id ? moveNumbers[id] : undefined;
 
     return name === undefined ? [] : [name];
   });
 
-  return { fast: (mon.move1 ? moves.get(mon.move1)?.name : null) ?? null, charged };
+  return { fast: (mon.move1 ? moveNumbers[mon.move1] : undefined) ?? null, charged };
 }
 
 /**
@@ -301,13 +301,7 @@ function enumCostumes(data: GameData, dex: number | null): string[] | null {
 }
 
 /** The row for one stored Pokémon. */
-function rowOf(
-  mon: Mon,
-  index: number,
-  data: GameData,
-  moves: ReadonlyMap<number, Move>,
-  tags: ReadonlyMap<string, string>,
-): Row {
+function rowOf(mon: Mon, index: number, data: GameData, tags: ReadonlyMap<string, string>): Row {
   const display = mon.pokemonDisplay;
   const { form, costume: worn, note } = resolveForm(data, mon);
 
@@ -340,7 +334,7 @@ function rowOf(
     hp: mon.maxStamina,
     levels: levelsOf(data, mon.cpMultiplier + mon.additionalCpMultiplier),
     iv: { attack: mon.individualAttack, defense: mon.individualDefense, stamina: mon.individualStamina },
-    moves: movesOf(moves, mon),
+    moves: movesOf(data.moveNumbers, mon),
     weight: mon.weightKg,
     height: mon.heightM,
     types: form?.types ?? [],
@@ -368,7 +362,7 @@ function rowOf(
  * Every stored Pokémon in the export as a row, in the order the export lists them, numbered from 1. Eggs are left out:
  * they are not Pokémon in storage, and the export gives them no `pokemonDisplay` to read.
  */
-export function rowsOf(snapshot: Snapshot, data: GameData, moves: ReadonlyMap<number, Move>): Row[] {
+export function rowsOf(snapshot: Snapshot, data: GameData): Row[] {
   const tags = new Map(snapshot.tags.map((tag) => [tag.id, tag.name]));
   const rows: Row[] = [];
 
@@ -377,7 +371,7 @@ export function rowsOf(snapshot: Snapshot, data: GameData, moves: ReadonlyMap<nu
       continue;
     }
 
-    rows.push(rowOf(mon, rows.length + 1, data, moves, tags));
+    rows.push(rowOf(mon, rows.length + 1, data, tags));
   }
 
   return rows;

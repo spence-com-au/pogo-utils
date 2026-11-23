@@ -287,6 +287,9 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
   const moves: Move[] = [];
   const byId = new Map<string, Move>();
 
+  // The name against the number the game gives the move, which the export names a Pokémon's moves by.
+  const moveNumbers: GameData['moveNumbers'] = {};
+
   // Each charged move by the animation it plays, the first-numbered where several share one: what names a mega move.
   const animations = new Map<string, Move>();
 
@@ -305,6 +308,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
 
     moves.push(move);
     byId.set(id, move);
+    moveNumbers[Number(match[1])] = move.name;
 
     if (!fast && animation !== undefined && !animations.has(animation)) {
       animations.set(animation, move);
@@ -590,6 +594,7 @@ export async function loadGameData(cacheDir: string, refresh = false): Promise<G
     forms: forms.sort((a, b) => a.dex - b.dex),
     costumes: costumed.sort((a, b) => a.dex - b.dex || a.icon.localeCompare(b.icon)),
     moves,
+    moveNumbers,
     species: [...new Set(forms.map((f) => f.species))],
     types: [...new Set(forms.flatMap((f) => f.types))],
     megas: megas.sort((a, b) => a.dex - b.dex),
