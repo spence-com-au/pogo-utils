@@ -11,8 +11,8 @@
  * This is a pure function of the export, the game master and a move table: the loader that reaches the phone and reads
  * the raw game master lives apart, in the scan script, so the suite can hold the conversion to a made-up export without
  * a phone or a 23 MB game master. The export's 64-bit IDs — a Pokémon's own and the IDs it names its tags by — arrive
- * as strings, `JSON.parse` losing the low digits of a number that large, so keeping them exact is the loader's job and
- * the strings are this function's contract.
+ * as strings, `JSON.parse` losing the low digits of a number that large, so `parseSnapshot` below keeps them exact as
+ * strings, and taking them as strings is this function's contract.
  */
 
 import { type Gender } from './badges.mts';

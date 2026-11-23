@@ -1,7 +1,8 @@
 /**
  * The phone's screen taken as it settles and as it scrolls: a screenshot of a screen that has stopped moving, every
- * frame of a detail screen dragged down to its foot, and the drag back up by what was measured. `pnpm inventory scan`
- * takes these for the moves and `snap` for the whole screen, reaching the phone only through a `Device`.
+ * frame of a detail screen dragged down to its foot, and the drag back up by what was measured. `snap` takes all
+ * three to read a detail screen's moves, `dex` the settle shot alone for each Pokédex entry, both reaching the phone
+ * only through a `Device`.
  */
 
 import { type Device } from '../../core/adb.mts';
