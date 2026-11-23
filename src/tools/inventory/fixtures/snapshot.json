@@ -1,7 +1,13 @@
 {
   "tags": [
-    { "id": "555000000000000001", "name": "Keepers" },
-    { "id": "555000000000000002", "name": "Trade" }
+    {
+      "id": "555000000000000001",
+      "name": "Keepers"
+    },
+    {
+      "id": "555000000000000002",
+      "name": "Trade"
+    }
   ],
   "pokemons": [
     {
@@ -10,6 +16,7 @@
       "nickname": "",
       "cp": 764,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 1,
       "individualDefense": 2,
       "individualStamina": 3,
@@ -40,6 +47,7 @@
       "nickname": "",
       "cp": 1203,
       "cpMultiplier": 0.667934,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 15,
       "individualDefense": 15,
       "individualStamina": 15,
@@ -70,6 +78,7 @@
       "nickname": "",
       "cp": 421,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 10,
       "individualDefense": 10,
       "individualStamina": 10,
@@ -100,6 +109,7 @@
       "nickname": "Sparky",
       "cp": 2100,
       "cpMultiplier": 0.667934,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 14,
       "individualDefense": 12,
       "individualStamina": 13,
@@ -130,6 +140,7 @@
       "nickname": "",
       "cp": 540,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 5,
       "individualDefense": 6,
       "individualStamina": 7,
@@ -160,6 +171,7 @@
       "nickname": "",
       "cp": 3100,
       "cpMultiplier": 0.7317,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 13,
       "individualDefense": 14,
       "individualStamina": 15,
@@ -190,6 +202,7 @@
       "nickname": "",
       "cp": 1800,
       "cpMultiplier": 0.667934,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 0,
       "individualDefense": 0,
       "individualStamina": 0,
@@ -220,6 +233,7 @@
       "nickname": "",
       "cp": 700,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 8,
       "individualDefense": 9,
       "individualStamina": 10,
@@ -250,6 +264,7 @@
       "nickname": "",
       "cp": 620,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 4,
       "individualDefense": 5,
       "individualStamina": 6,
@@ -280,6 +295,7 @@
       "nickname": "",
       "cp": 300,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 11,
       "individualDefense": 12,
       "individualStamina": 13,
@@ -310,6 +326,7 @@
       "nickname": "",
       "cp": 100,
       "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 0,
       "individualDefense": 0,
       "individualStamina": 0,
@@ -335,11 +352,43 @@
       }
     },
     {
+      "id": "1000000000000000013",
+      "pokemonId": 149,
+      "nickname": "",
+      "cp": 3792,
+      "cpMultiplier": 0.5974,
+      "additionalCpMultiplier": 0.2429,
+      "individualAttack": 15,
+      "individualDefense": 15,
+      "individualStamina": 15,
+      "maxStamina": 180,
+      "move1": 219,
+      "move2": 35,
+      "move3": 0,
+      "weightKg": 210.0,
+      "heightM": 2.2,
+      "size": 3,
+      "favorite": false,
+      "isLucky": false,
+      "isEgg": false,
+      "pokemonTagIds": [],
+      "pokemonDisplay": {
+        "form": 0,
+        "formName": "DragoniteNormal",
+        "costume": 0,
+        "gender": 1,
+        "shiny": false,
+        "alignment": 0,
+        "breadModeEnum": 0
+      }
+    },
+    {
       "id": "1000000000000000009",
       "pokemonId": 1,
       "nickname": "",
       "cp": 0,
       "cpMultiplier": 0.0,
+      "additionalCpMultiplier": 0.0,
       "individualAttack": 0,
       "individualDefense": 0,
       "individualStamina": 0,

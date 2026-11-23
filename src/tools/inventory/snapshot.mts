@@ -48,7 +48,16 @@ export interface Mon {
 
   nickname: string;
   cp: number;
+
+  /**
+   * The CP multiplier the Pokémon's level sits at, and the remainder the game adds to it: a best buddy's boost and
+   * whatever else the export splits off, 0 for most. The level is the two together — the export stores a Pokémon the
+   * user has tagged `Level 50` at `cpMultiplier` 0.597 (level 20 on its own) with the rest in `additionalCpMultiplier`,
+   * and its CP comes out right only on the sum.
+   */
   cpMultiplier: number;
+  additionalCpMultiplier: number;
+
   individualAttack: number;
   individualDefense: number;
   individualStamina: number;
@@ -101,6 +110,7 @@ export interface Raw {
   move2: number;
   move3: number;
   cpMultiplier: number;
+  additionalCpMultiplier: number;
 }
 
 /** The row for one stored Pokémon, the schema `pnpm inventory scan` has always written, with `raw` added. */
@@ -236,7 +246,11 @@ function sizeOf(form: Form | null, mon: Mon): Size | null {
   return band === -1 ? null : (bands[band] ?? null);
 }
 
-/** The level the CP multiplier puts the Pokémon at: the nearest the game master has, which for any real CPM is exact. */
+/**
+ * The level a CP multiplier puts the Pokémon at: the nearest the game master has, which for any real CPM is exact. The
+ * caller passes the whole multiplier — `cpMultiplier` plus `additionalCpMultiplier` — since the game stores a boosted
+ * Pokémon's base and boost apart and the level is the two together.
+ */
 function levelsOf(data: GameData, multiplier: number): number[] {
   let nearest: number | null = null;
   let closest = Infinity;
@@ -326,7 +340,7 @@ function rowOf(
     max: display?.breadModeEnum === 1 ? 'dynamax' : display?.breadModeEnum === 2 ? 'gigantamax' : null,
     cp: mon.cp,
     hp: mon.maxStamina,
-    levels: levelsOf(data, mon.cpMultiplier),
+    levels: levelsOf(data, mon.cpMultiplier + mon.additionalCpMultiplier),
     iv: { attack: mon.individualAttack, defense: mon.individualDefense, stamina: mon.individualStamina },
     moves: movesOf(moves, mon),
     weight: mon.weightKg,
@@ -347,6 +361,7 @@ function rowOf(
       move2: mon.move2,
       move3: mon.move3,
       cpMultiplier: mon.cpMultiplier,
+      additionalCpMultiplier: mon.additionalCpMultiplier,
     },
   };
 }

@@ -1,11 +1,12 @@
 /**
  * The rows the converter makes of a made-up PGSharp export, read against the real game master so the species, forms and
- * types are the game's own. The export is `fixtures/snapshot.json`, twelve entries — eleven Pokémon and an egg —
+ * types are the game's own. The export is `fixtures/snapshot.json`, thirteen entries — twelve Pokémon and an egg —
  * chosen for the fields that are worth a test rather than a real account: a form named off the suffix, an accented
  * species whose ASCII enum must fold to meet it, a costume named off a form and one stated by enum alone, a costume on
- * a species with no ordinary form, a shadow and a purified, a Dynamax and a Gigantamax, a size the game recorded and
- * one derived from the height, a species the game master does not know, and the egg, which is left out. The move table
- * is made up here, the loader that reads the real one living in the scan script.
+ * a species with no ordinary form, a shadow and a purified, a Dynamax and a Gigantamax, a best buddy whose level is its
+ * base multiplier and its boost together, a size the game recorded and one derived from the height, a species the game
+ * master does not know, and the egg, which is left out. The move table is made up here, the loader that reads the real
+ * one living in the scan script.
  */
 
 import { type GameData, type Move } from '../../core/game-master.mts';
@@ -29,7 +30,7 @@ const byDex = (dex: number) => rows.find((row) => row.raw.pokemonId === dex);
 const byForm = (formName: string) => rows.find((row) => row.raw.formName === formName);
 
 test('an egg is left out and the rest are numbered from 1 in order', () => {
-  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  expect(rows.map((row) => row.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   expect(rows.some((row) => row.raw.pokemonId === 1)).toBe(false);
 });
 
@@ -75,6 +76,11 @@ test('a form is named off the suffix, past the species prefix', () => {
 
 test('an accented species folds to meet the export ASCII enum, resolving the form with no false note', () => {
   expect(byDex(669)).toMatchObject({ species: 'Flabébé', form: 'Blue', notes: [] });
+});
+
+test("a best buddy's level is its base multiplier and boost together, not the base alone", () => {
+  // Dragonite's cpMultiplier (0.5974) is level 20 on its own; its additionalCpMultiplier (0.2429) carries it to 50.
+  expect(byDex(149)).toMatchObject({ species: 'Dragonite', levels: [50] });
 });
 
 test('Normal and Unset fall back to the ordinary form', () => {
@@ -151,5 +157,6 @@ test('the raw game IDs are kept beside the row', () => {
     move2: 35,
     move3: 247,
     cpMultiplier: 0.667934,
+    additionalCpMultiplier: 0,
   });
 });
