@@ -644,9 +644,10 @@ the same [`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the ga
 storage opened from the map or a detail screen, the string typed into the box, and the game's own count of what matched
 reported back. The OCR it finds its way with is fetched on the first press rather than with the page.
 
-With no phone to hand, `?demo` in the address (`/?demo#/inventory`) makes **Connect** in 📱's panel hold a demo phone
-instead, which answers from recorded screens rather than an account, so each tab can be tried without one;
-**Disconnect** puts it away. It is kept out of the standard bar, being for trying the site rather than using it.
+With no phone to hand, **Try the demo phone** beside **Connect** in 📱's panel holds a demo phone instead, which answers
+from recorded screens rather than an account, so each tab can be tried without one; **Disconnect** puts it away. It is
+offered only while no phone the site was allowed is plugged in, and the browser's chooser cannot list it, offering USB
+devices alone.
 
 The readers run in the browser unchanged. [`png.mts`](src/core/png.mts) decodes with
 [fflate](https://github.com/101arrowz/fflate) rather than `node:zlib`, keeping both the `Viewport` chunk a stitch

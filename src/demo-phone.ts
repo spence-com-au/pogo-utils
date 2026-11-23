@@ -3,7 +3,7 @@
  * connected over WebUSB, so the Inventory and Search pages run their real readers against it and know nothing of the
  * difference. Its screen is `demoTransport`'s, the recordings fetched as each is first shown.
  *
- * Fetched by the phone button only once the demo is asked for, behind `?demo`.
+ * Fetched by the phone panel only once its Try the demo phone button is pressed.
  */
 
 import { fetchBytes } from './core/browser/fetch.js';

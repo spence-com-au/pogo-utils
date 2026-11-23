@@ -3,10 +3,8 @@
  * while no Android phone is held over WebUSB and green while one is, so the bar says which from any tab. A press opens
  * a panel. With a phone held, it says which phone it is, with a button to let it go; with none, its button offers the
  * browser's chooser to connect one. Connecting waits for that button rather than coming with the press, so a press
- * does the same whether a phone is held or not.
- *
- * The demo phone, which reads recorded screens in place of a phone, is kept out of the way behind `?demo`: with it in
- * the address, the panel's button holds the demo phone rather than offering the chooser.
+ * does the same whether a phone is held or not. With none held or plugged in, a second button holds the demo phone,
+ * which reads recorded screens in place of a phone, the browser's chooser listing USB devices alone.
  */
 
 import { Fragment } from 'preact';
@@ -21,12 +19,6 @@ import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
 import { ticked } from './ticked.js';
 
-/**
- * Whether the address asks for the demo phone: `/?demo#/inventory`, in the address's own query rather than the page's
- * in the fragment, which tab switches and the pages' own `replaceQuery` rewrite out from under it.
- */
-const demoAsked = () => new URLSearchParams(location.search).has('demo');
-
 /** The panel's list: what the phone said of itself, less what it said nothing of, and the serial it is found by. */
 function rows({ maker, model, android, screen, battery }: About, serial: string) {
   return [
@@ -37,6 +29,41 @@ function rows({ maker, model, android, screen, battery }: About, serial: string)
     ['Battery', battery === undefined ? undefined : `${battery}%`],
     ['Serial', serial],
   ].filter((row): row is [string, string] => row[1] !== undefined);
+}
+
+/**
+ * Whether a phone this site was allowed before is plugged in, which the browser says without asking, checked while the
+ * panel is open. The chooser offers ADB phones alone, so every device the site was allowed is one. A phone plugged in
+ * but never picked is not seen, and a browser with no WebUSB has none to see.
+ *
+ * Checked again as each connect attempt ends, as well as on plugging and unplugging: a phone the chooser allows while
+ * it is plugged in already fires no `connect`, and is there to retry once an attempt on it fails.
+ */
+function usePluggedIn(open: boolean, connecting: boolean) {
+  const [plugged, setPlugged] = useState(false);
+
+  useEffect(() => {
+    if (!open || !('usb' in navigator)) {
+      return;
+    }
+
+    const check = () =>
+      void navigator.usb.getDevices().then(
+        (devices) => setPlugged(devices.length > 0),
+        () => setPlugged(false),
+      );
+
+    check();
+    navigator.usb.addEventListener('connect', check);
+    navigator.usb.addEventListener('disconnect', check);
+
+    return () => {
+      navigator.usb.removeEventListener('connect', check);
+      navigator.usb.removeEventListener('disconnect', check);
+    };
+  }, [open, connecting]);
+
+  return plugged;
 }
 
 export function Phone() {
@@ -50,6 +77,7 @@ export function Phone() {
   /** What the last press of Connect has to say, or null with nothing to add. */
   const [status, setStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const plugged = usePluggedIn(open, connecting);
 
   /**
    * What a phone said of itself, or why it could not, kept with the phone it was asked of, so the panel never lists one
@@ -121,8 +149,8 @@ export function Phone() {
   }
 
   /**
-   * Hold the demo phone. Never in place of a real one, which may be partway through something: Connect is offered only
-   * while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
+   * Hold the demo phone. Never in place of a real one, which may be partway through something: its button is offered
+   * only while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
    * over the demo once the battle ends.
    */
   async function holdDemo() {
@@ -197,11 +225,7 @@ export function Phone() {
 
           <section class="menu-section">
             {phone === null ? (
-              <p class="menu-note">
-                {demoAsked()
-                  ? 'Connect the demo phone, which plays back recorded screens in place of a phone.'
-                  : 'Plug in an Android phone with USB debugging on, then connect it.'}
-              </p>
+              <p class="menu-note">Plug in an Android phone with USB debugging on, then connect it.</p>
             ) : known?.about ? (
               <dl class="phone-about">
                 {rows(known.about, phone.serial).map(([term, value]) => (
@@ -225,13 +249,16 @@ export function Phone() {
                   Disconnect
                 </button>
               ) : (
-                <button
-                  type="button"
-                  disabled={connecting}
-                  onClick={() => void (demoAsked() ? holdDemo() : connectPhone())}
-                >
-                  Connect
-                </button>
+                <>
+                  <button type="button" disabled={connecting} onClick={() => void connectPhone()}>
+                    Connect
+                  </button>
+                  {!plugged && (
+                    <button type="button" disabled={connecting} onClick={() => void holdDemo()}>
+                      Try the demo phone
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
