@@ -92,11 +92,11 @@ const USAGE = readFileSync(new URL(import.meta.url), 'utf8')
 
 /**
  * Which flags each command acts on. `parseArgs` takes one flat set of options, so nothing else says where a flag
- * belongs: `parse --out inventory.jsonl` wrote nothing and said nothing about it. Stated once here, so the rejection
- * below and the usage block above cannot drift apart without a test noticing.
+ * belongs: `scan --keep-screens DIR` would read the export and say nothing about a flag it does not act on. Stated once
+ * here, so the rejection below and the usage block above cannot drift apart without a test noticing.
  *
- * `--config` is on `dex` alone, which drives the phone out of it, reading `taps`, `swipes`, `waits` and `scrollBand`;
- * the fields are named so the claim can be grepped for. `scan` reads the whole account from PGSharp's export in one
+ * `--config` is on `dex` alone, which drives the phone out of it, reading `taps`, `swipes` and `waits`; the fields are
+ * named so the claim can be grepped for. `scan` reads the whole account from PGSharp's export in one
  * pull, so it takes none of the
  * walk's flags — only where to write and which phone to read.
  */

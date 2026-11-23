@@ -12,15 +12,14 @@ body:
       label: 'Page'
       description:
         'The tab it happened on, `Pokémon inventory` for a `pnpm inventory` command, `Trainer battles` for a `pnpm
-        battle` command, or `Repository tooling` for CI, a hook or a script such as `bin/adb`. The Inventory and Battle
-        tabs on the site are `Inventory` and `Battle`.'
+        battle` command, or `Repository tooling` for CI, a hook or a script such as `bin/adb`. The Battle tab on the
+        site is `Battle`.'
       options:
         - 'Events'
         - 'Map'
         - 'Search'
         - 'Pokédex'
         - 'Integrations'
-        - 'Inventory'
         - 'Battle'
         - 'The whole site'
         - 'Pokémon inventory'

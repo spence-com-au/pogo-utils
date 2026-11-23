@@ -106,7 +106,7 @@ const foldCp = (text: string) => text.split('/').map(fold).join('/');
 
 /**
  * The line carrying the CP's label, which is what decides whether the CP is read off a line or swept for. Exported so
- * `screens.test.mts` can say which of the two a capture's candidates came from without a second copy of the rule.
+ * a capture's candidates can be told which of the two they came from without a second copy of the rule.
  */
 export const cpLabelOf = (lines: readonly Line[], image: Image): Line | undefined =>
   lines.find((l) => l.top < image.height / 4 && CP_LABEL.test(foldCp(l.text)));
@@ -144,7 +144,7 @@ export function cpOn(text: string, longest: number): string | null {
  * slash the stray. Nothing on the screen says which a third read will be, so where `wholeCp` does not settle it
  * `parseDetail` offers every reading as a candidate and leaves the choice to the arithmetic. That is five captures of
  * the corpus, four of them offering the CP their screen prints beside a stray and `castform-snowy.png`'s `ce/4 : 7`
- * offering only 747 and 47 for 746. The one place those figures live; `screens.test.mts` pins them capture by capture.
+ * offering only 747 and 47 for 746. The one place those figures live.
  */
 export function readingsOf(read: string, longest: number): string[] {
   const [first = '', ...rest] = read.split('/');
@@ -405,8 +405,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
  * Unanchored and so unreliable, which is why these are candidates rather than an answer: a candidate is kept only
  * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 15 captures that reach it,
  * 12 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and two
- * read nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
- * capture, so they fail there rather than going stale.
+ * read nothing. The one place those figures live, the callers pointing here.
  */
 async function cpsIn(image: Image): Promise<number[]> {
   const band = crop(
@@ -489,8 +488,7 @@ async function wholeCp(image: Image, line: Line, read: string, longest: number):
  * of the candidates `parseDetail` offers, where accepting it here would also accept a band that lost the thin 7 the
  * way the line did.
  *
- * Exported because nothing else states what it takes: `screens.test.mts` asserts the CP each capture ends with, which
- * this rule arrives at from any of several band readings. `detail.test.mts` pins the rule itself.
+ * Exported because nothing else states what it takes; `detail.test.mts` pins the rule itself.
  */
 export function rescue(text: string, read: string, longest: number): string | null {
   const more = (digits: string) =>
@@ -948,7 +946,7 @@ const CP_PADS = [0.35, 0.6];
  * A floor rather than a pad of its own, so 0.6 reaches across exactly as it always did and only 0.35 is widened. That
  * is measured rather than tidy: at a whole line height across both pads `smoliv.png`, whose `340` is whole on its line,
  * reads `P3400` at 0.6 and is rescued into a CP it does not have. So this is a fit to one capture with a failure on
- * either side, the same kind `CP_BRIGHTNESS` is, and the CP map in `screens.test.mts` is what would fail.
+ * either side, the same kind `CP_BRIGHTNESS` is.
  */
 const CP_ACROSS = 0.5;
 
@@ -996,7 +994,7 @@ const readTreated = (band: Image): Promise<string>[] =>
  * 120 is not the middle of a window. Swept in fives over that band the digit comes back at 100, 105, 110, 120, 125 and
  * 130 and is lost at 115 and from 135 up — a jagged region with a failure five units below the value chosen, which is a
  * fit to OCR's noise rather than to the artwork. A Tesseract bump or a retaken capture can flip the single read this
- * treatment exists for, and the CP map in `screens.test.mts` is what would fail.
+ * treatment exists for.
  *
  * Its own number rather than `overlay.mts`'s private `OVERLAY_BRIGHTNESS`, also 120, which is set low enough to hold
  * the overlay's colour-coded IV percentage — a glyph this band has none of, where this floor answers to the artwork.

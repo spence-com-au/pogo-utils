@@ -512,9 +512,8 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   }
 
   /**
-   * The string typed into storage on the phone, the way `snap --search` types it: from wherever the game is, to the
-   * grid and into its box. The OCR it reads its way there with is fetched only now, so a reader with no phone never
-   * downloads it.
+   * The string typed into storage on the phone: from wherever the game is, to the grid and into its box. The OCR it
+   * reads its way there with is fetched only now, so a reader with no phone never downloads it.
    */
   async function sendToPhone() {
     // Said where the answer to a search goes, so a reader pressing the greyed-out button learns why it did nothing.

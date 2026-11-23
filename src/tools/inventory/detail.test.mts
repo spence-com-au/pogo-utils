@@ -1,9 +1,8 @@
 /**
- * The pieces of the detail reader that the corpus cannot isolate, asserted on their own: chiefly what `rescue` takes
- * off a treated CP band and what it turns down — the rule every pass of `wholeCp` is run through.
- * `screens.test.mts` states the CP each capture ends with, and this rule against three different band readings can all
- * arrive at the same one. The rest (`pills`, `figureIn`, `joined`, `nameLineOf`, `cpOn` and `readingsOf`) are held to
- * their contracts below.
+ * The pieces of the detail reader asserted on their own: chiefly what `rescue` takes off a treated CP band and what it
+ * turns down — the rule every pass of `wholeCp` is run through, which three different band readings of one capture can
+ * all arrive at the same CP from. The rest (`pills`, `figureIn`, `joined`, `nameLineOf`, `cpOn` and `readingsOf`) are
+ * held to their contracts below.
  *
  * The readings quoted in the `rescue` tests are dumped off the real loop over every fixture, except in the one that
  * constructs its inputs: that one is a claim about the rule's whole domain rather than about a capture.

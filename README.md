@@ -607,8 +607,8 @@ with the CLI's own model, `eng.traineddata` from `tessdata_fast` 4.1.0 — what 
 once from that tag and kept in the browser.
 
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, and the game master — the
-vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the
-23 MB it is made from. The screenshot and the count it reads stay in memory.
+vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23
+MB it is made from. The screenshot and the count it reads stay in memory.
 
 The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs the `default` project
 under the CLI and again as `default (wasm)` with `INVENTORY_OCR=wasm`, handed the CLI's own model off disk so it reaches

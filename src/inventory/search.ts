@@ -1,8 +1,8 @@
 /**
  * The Search page's walk to Pokémon storage on the phone: a term typed into the game's search box, and the count the
- * game's own counter answers with. It is the same `storage` the CLI's `scan` is built on, run here over the browser's
- * WebAssembly Tesseract and the vended game master rather than the Node ones, so the page cannot answer differently from
- * the CLI for any reason but the engine.
+ * game's own counter answers with. It runs `storage` over the browser's WebAssembly Tesseract and the vended game
+ * master rather than the Node ones the CLI installs, so the page reads the screen no differently for any reason but the
+ * engine.
  *
  * **Nothing read leaves the page.** What is fetched is the model and the game master, neither carrying anything about
  * the screen; the screenshot and the count stay in memory here, and leave only as the message the page shows.
