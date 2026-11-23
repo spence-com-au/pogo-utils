@@ -155,23 +155,25 @@ test('the raw game IDs are kept beside the row', () => {
   });
 });
 
-test('parseSnapshot keeps the 64-bit ids exact and leaves shorter numbers as numbers', () => {
-  // Written as text with bare 19-digit numbers, which a JS number literal could not hold without rounding.
+test('parseSnapshot keeps the ids as strings whatever their length and leaves other numbers alone', () => {
+  // Bare numbers in the text — a 19-digit id past what a double holds, and a short tag id, which has to become a string
+  // in `pokemonTagIds` to meet the string-keyed tag even though it fits a number.
   const text =
     '{"pokemons":[{"id":3533574831663761643,"cp":764,"creationTimeMs":1607999501342,' +
-    '"pokemonTagIds":[5651286867452610075,4072350120649042737]}],' +
-    '"tags":[{"id":"5651286867452610075","name":"Perfect"}]}';
+    '"pokemonTagIds":[5651286867452610075,123]}],' +
+    '"tags":[{"id":"5651286867452610075","name":"Perfect"},{"id":"123","name":"Short"}]}';
 
   const snapshot = parseSnapshot(text);
   const mon = snapshot.pokemons[0];
+  const byId = new Map(snapshot.tags.map((tag) => [tag.id, tag.name]));
 
   expect(mon?.id).toBe('3533574831663761643');
-  expect(mon?.pokemonTagIds).toEqual(['5651286867452610075', '4072350120649042737']);
+  expect(mon?.pokemonTagIds).toEqual(['5651286867452610075', '123']);
 
-  // The tag id the export already wrote as a string is untouched, so the Pokémon still matches it.
-  expect(mon?.pokemonTagIds[0]).toBe(snapshot.tags[0]?.id);
+  // Both the long tag id and the short one meet their tag through the string-keyed map.
+  expect(mon?.pokemonTagIds.map((id) => byId.get(id))).toEqual(['Perfect', 'Short']);
 
-  // CP and a 13-digit timestamp are short enough that nothing quotes them.
+  // CP and a 13-digit timestamp are not id fields, so they stay numbers.
   expect(mon?.cp).toBe(764);
   expect((mon as unknown as { creationTimeMs: number }).creationTimeMs).toBe(1_607_999_501_342);
 });

@@ -123,7 +123,7 @@ class Phone {
   /** The panel showing, which a test reads for where the script left the phone. */
   panel: Panel;
 
-  /** What `exec-out cat` answers with: PGSharp's export, which the scan reads instead of walking the screen. */
+  /** What `shell cat` answers with: PGSharp's export, which the scan reads instead of walking the screen. */
   export: Uint8Array = new Uint8Array();
 
   readonly #storage: (term: string) => readonly Pokemon[];
@@ -594,7 +594,7 @@ describe.concurrent('scan', () => {
   );
 
   test('fails naming the export where the phone does not have it', async (context) => {
-    // The export left unset, so `exec-out cat` answers as it does for a file that is not there.
+    // The export left unset, so `shell cat` answers as it does for a file that is not there.
     const phone = new Phone('storage', () => []);
     const { inventory } = await harness(context, phone, []);
     const { code, stderr } = await inventory('scan');

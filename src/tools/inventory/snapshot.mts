@@ -378,15 +378,24 @@ export function rowsOf(snapshot: Snapshot, data: GameData): Row[] {
 }
 
 /**
- * The export's text as a `Snapshot`, with its 64-bit IDs kept exact. A Pokémon's `id` and the IDs it names its tags by
- * are whole numbers past what a double holds, which `JSON.parse` rounds to the nearest it can — enough to break the
- * match between a Pokémon and its tag. The reviver is handed each value's exact source text in `context.source`, which
- * the pinned runtime gives it, so a number of sixteen digits or more is kept as the string `Mon` and `Tag` declare it
- * and every shorter number is left as it is. Only a real JSON number is read this way — a digit run inside a string is
- * a string value, never a number, so it is never touched.
+ * The export's text as a `Snapshot`, with its IDs kept as the strings `Mon` and `Tag` declare. A Pokémon's `id` and the
+ * IDs it names its tags by are 64-bit, past what a double holds, which `JSON.parse` rounds to the nearest it can —
+ * enough to break the match between a Pokémon and its tag. So an `id` and a `pokemonTagIds` entry are read back as
+ * strings whatever their length, since a short one looked up in a `Map` of strings would miss its tag just the same,
+ * and any other number too long for a double is taken from its exact source text, which the reviver is handed in
+ * `context.source` on the pinned runtime. Only a real JSON number is read this way; a digit run inside a string is a
+ * string value, never a number, so it is never touched.
  */
 export function parseSnapshot(text: string): Snapshot {
-  return JSON.parse(text, (_key, value, context?: { source: string }) =>
-    typeof value === 'number' && context !== undefined && /^-?\d{16,}$/.test(context.source) ? context.source : value,
-  ) as Snapshot;
+  return JSON.parse(text, (key, value, context?: { source: string }) => {
+    if (key === 'pokemonTagIds' && Array.isArray(value)) {
+      return (value as unknown[]).map(String);
+    }
+
+    if (typeof value !== 'number' || context === undefined) {
+      return value;
+    }
+
+    return key === 'id' || /^-?\d{16,}$/.test(context.source) ? context.source : value;
+  }) as Snapshot;
 }

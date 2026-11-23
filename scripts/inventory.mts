@@ -8,7 +8,7 @@
  * over in the time it takes to pull and parse. `snap`, `parse` and `dex` still read the screen with Tesseract: `snap`
  * and `parse` for fixing a misread, `dex` for the Pokédex, which the export does not carry.
  *
- * The export is `/sdcard/Download/PGSharp/PGSStats.json`, pulled in one `adb exec-out cat` and turned into rows by
+ * The export is `/sdcard/Download/PGSharp/PGSStats.json`, read with `cat` over the shell and turned into rows by
  * `src/tools/inventory/snapshot.mts`: the species is the number the game gives it, the form is named off the export's
  * own form name, the level is the exact CP multiplier, and shininess, luckiness, size, shadow, purified, Dynamax,
  * Gigantamax, the moves and the tags come straight off it. Everything the walk used to work out from the screen — the
@@ -340,7 +340,7 @@ const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
 
 /**
  * The whole box as `inventory.jsonl`, read off PGSharp's export rather than the screen: every Pokémon the game has in
- * hand, decoded, pulled in one `exec-out cat` and turned into the rows the walk used to read one detail screen at a
+ * hand, decoded, read with `cat` over the shell and turned into the rows the walk used to read one detail screen at a
  * time. The export is switched on in PGSharp's own settings, and a phone without it there fails naming it, having
  * written nothing. The game master's load follows the pull, so a cold-cache run with no network fails before it writes.
  */
@@ -586,8 +586,8 @@ async function snap() {
 }
 
 /**
- * The numbers `--from` and `--to` cover, read ahead of the phone for the reason `scanRange` reads its own: a typo is
- * refused before anything is driven or leased. Neither given is every number there is.
+ * The numbers `--from` and `--to` cover, read ahead of the phone so a typo is refused before anything is driven or
+ * leased. Neither given is every number there is.
  */
 function dexRange() {
   const from = count('from', options.from, 1);
@@ -609,7 +609,7 @@ function dexRange() {
  * and it is not touched until the first entry has been read, so a run that cannot start leaves an earlier one where it
  * was.
  *
- * `held` is the shell the touchscreen is made on, as the scan's is.
+ * `held` is the shell the touchscreen is made on, which the caller closes once the walk is over.
  */
 async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
   const out = passed.includes('out') ? options.out : 'pokedex.jsonl';
@@ -617,8 +617,7 @@ async function dex(held: Transport, { from, to }: ReturnType<typeof dexRange>) {
   await device.check();
   const data = await loadGameData(CACHE, options.refresh);
 
-  // The touchscreen for the reason the scan has one: `input swipe` drops a swipe in ten, and a dropped one reads here
-  // as the end of the Pokédex.
+  // The touchscreen because `input swipe` drops a swipe in ten, and a dropped one reads here as the end of the Pokédex.
   const touch = await touchscreen(held).catch((error: unknown) => {
     console.error(
       `${said(error)}; swiping with \`input swipe\` instead, which can drop a swipe and end the walk early`,
