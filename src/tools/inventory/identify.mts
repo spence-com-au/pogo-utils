@@ -410,7 +410,6 @@ export function label(f: Form): string {
 }
 
 /**
- * How many of a reading's notes another look at the same screen could clear, which is what a scan reads one again for.
  * How many of an identity's notes a second read of the screen could clear: every one but the note `unseparated` raises,
  * whose forms share every number the screen prints, so reading it again answers the same and chasing it would read
  * every Pikachu twice for ever.

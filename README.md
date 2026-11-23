@@ -611,7 +611,7 @@ it reads one detail screen, grabbed off a phone or dropped in as a PNG, and prin
 `detail`, `moves`, the overlay box and what read inside it, and the identity — from the same
 [`readScreen`](src/tools/inventory/report.mts). A screen a scan could not have used is refused the way `snap` refuses
 it, with the reason said: an HP that did not read, or no PGSharp overlay. What the readers made of it anyway is still
-there, folded under the refusal. A scan of storage, its JSON, the flag passes and a scroll capture stay the CLI's.
+there, folded under the refusal. A scan of the whole box, its JSON and a scroll capture stay the CLI's.
 
 The phone is reached over WebUSB with [Tango](https://tangoadb.dev/) (`@yume-chan/adb`, MIT), picked through the
 browser's own device chooser, and has to be authorised on the phone the first time as it does for `adb`. It is a

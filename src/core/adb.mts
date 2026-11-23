@@ -1,5 +1,5 @@
 /**
- * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is eleven methods over one
+ * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is twelve methods over one
  * `Transport`, the only part that differs between the CLI and the Inventory page: `node/adb-cli.mts` runs the `adb`
  * binary, and `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
  */

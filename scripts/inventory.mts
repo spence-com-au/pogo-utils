@@ -395,9 +395,9 @@ async function scan() {
  * Where the overlay did not read, the map and a detail screen cannot be told apart, and scrolling the map drags the
  * phone for nothing.
  *
- * It **puts the panel back where it found it**, which `--scroll` leaves to the scan: `scrollUp`'s undershoot is safe
- * only for a caller the game will draw another Pokémon for, and nothing redraws the panel after a snap. The way back
- * is asked for again until it is had, and said out loud rather than refused where it cannot be.
+ * It **puts the panel back where it found it**: `scrollUp`'s undershoot is safe only for a caller the game will draw
+ * another Pokémon for, and nothing redraws the panel after a snap. The way back is asked for again until it is had, and
+ * said out loud rather than refused where it cannot be.
  *
  * **`--search` drives the phone to the Pokémon** instead of taking whatever is showing, which is what makes a capture
  * reproducible. Storage is somewhere only a game in front can be driven to, so the launch comes with it — see
