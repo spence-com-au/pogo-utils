@@ -77,7 +77,7 @@
  */
 
 import { said } from '../src/errors.ts';
-import { adbCli, adbHeld, readFile } from '../src/core/node/adb-cli.mts';
+import { adbCli, adbHeld } from '../src/core/node/adb-cli.mts';
 import { Device, type Transport } from '../src/core/adb.mts';
 import { signatureOfIcon, signaturesFor, type Colourings } from '../src/tools/inventory/artwork.mts';
 import { configWith, DEFAULTS, type Point } from '../src/tools/inventory/config.mts';
@@ -100,7 +100,7 @@ import {
 } from '../src/tools/inventory/report.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { parseSnapshot, rowsOf, type Snapshot } from '../src/tools/inventory/snapshot.mts';
+import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
 import { scrollFrames, scrollUp, settled } from '../src/tools/inventory/scroll.mts';
 import { offsetBetween, stitch } from '../src/tools/inventory/stitch.mts';
 import { storage, unsearchable } from '../src/tools/inventory/storage.mts';
@@ -345,26 +345,26 @@ const PGSTATS = '/sdcard/Download/PGSharp/PGSStats.json';
  * written nothing. The game master's load follows the pull, so a cold-cache run with no network fails before it writes.
  */
 async function scan() {
-  // So that an unplugged, unauthorised or offline phone is named as that rather than reported as a missing export: it
-  // is the one thing the read below cannot tell apart, `exec-out` failing the same way for a phone it cannot reach.
-  await new Device(adbCli(options.serial)).check();
+  const device = new Device(adbCli(options.serial));
 
-  let snapshot: Snapshot;
+  // So that an unplugged, unauthorised or offline phone is named as that rather than reported as a missing export.
+  await device.check();
 
-  // `adb exec-out` runs over adbd's raw `exec:` service, which carries no exit status back and folds stderr into
-  // stdout, so `cat` on a file the phone does not have exits 0 with `No such file` as the file's contents. A missing
-  // export is caught here, where the parse fails on that, rather than written out as a row; the phone itself is already
-  // ruled out above, so the export is what is left.
+  let text: string;
+
+  // `Device.read` runs `cat` over the shell, which carries its exit status back, so a file the phone does not have
+  // fails here rather than reading back as `cat`'s own message. The phone itself is ruled out above, so what is left
+  // is the export. A present-but-corrupt one is not caught here: it reads fine and fails the parse below, a different
+  // thing to say than that there is nothing to read.
   try {
-    const text = new TextDecoder().decode(await readFile(PGSTATS, options.serial));
-
-    snapshot = parseSnapshot(text);
+    text = new TextDecoder().decode(await device.read(PGSTATS));
   } catch (error) {
     throw new Error(`could not read ${PGSTATS} off the phone; switch PGSharp's inventory export on and run it first`, {
       cause: error,
     });
   }
 
+  const snapshot = parseSnapshot(text);
   const data = await loadGameData(CACHE, options.refresh);
   const rows = rowsOf(snapshot, data);
 

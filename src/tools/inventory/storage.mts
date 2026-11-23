@@ -67,9 +67,9 @@ const scrimmed = (image: Image) => margin(image, 0.4, 0.5) > PANEL_LIT && margin
  * power-up sheet's title where either reads, and by its scrim where neither does. A dialog's own buttons sit where the
  * screen's do — the close button's tap lands on the power-up sheet's CANCEL, and the main menu's tap or a later stray
  * could land on its confirm — so it is asked before the taps at the foot of the screen: `toStorage`'s close and menu
- * taps, and `closeDetail`'s. The scan asks it twice more, on every detail screen it reads and on the screenshot its
- * moves are read from, a dialog hiding what it is drawn over however much of the screen above it read. It is not asked
- * before the swipes between Pokémon, which do nothing over a dialog, nor before the search box's tap or a tile's, which
+ * taps, and `closeDetail`'s, a dialog hiding what it is drawn over however much of the screen above it read. It is not
+ * asked before the swipes a walk makes, which do nothing over a dialog, nor before the search box's tap or a tile's,
+ * which
  * are made on storage, where no detail screen's control can be hit.
  */
 export const dialogOpen = (lines: readonly Line[], image: Image) =>
@@ -215,10 +215,10 @@ async function onlyInstall(device: Device, config: Pick<Config, 'package'>) {
 /**
  * Getting about storage on the phone: to the grid, a search typed into it, and where the first tile of what it left is.
  *
- * Shared by `scan`, `snap --search` and the Search page rather than written once each, because they have to agree about
- * what a grid is and which tile is its first. A second copy would drift, and the way it would show is a capture pinned
- * off the *second* Pokémon the search matched — a screenshot of the wrong Pokémon looks just like one of the right
- * Pokémon.
+ * Shared by `snap --search`, the Pokédex walk and the Search page rather than written once each, because they have to
+ * agree about what a grid is and which tile is its first. A second copy would drift, and the way it would show is a
+ * capture pinned off the *second* Pokémon the search matched — a screenshot of the wrong Pokémon looks just like one
+ * of the right Pokémon.
  *
  * Taps are sized against a screenshot rather than `Config`, every position in it being a fraction of the screen so that
  * one configuration suits any phone of the same shape. `say` hears whether the game had to be launched, which the CLI
@@ -391,8 +391,8 @@ export function storage(
 
   /**
    * Gets to the storage grid from wherever the game is: the map, a detail screen, or the grid already. Brought to the
-   * front once per run rather than before every search, which is the one `adb` call `scan` spent when it owned that
-   * rather than one for each flag.
+   * front once per run rather than before every search, the one `adb` call a run that searches more than once saves by
+   * doing it the once.
    */
   const toStorage = async () => {
     await (fronted ??= toFront(device, config, say));

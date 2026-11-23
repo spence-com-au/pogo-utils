@@ -1719,8 +1719,8 @@ test(
       'how many captures `identify` raises a note on has changed',
     ).toBe(11);
 
-    // Off `clearable` and the readings themselves rather than the rows, that function being the one the scan's own
-    // fault count calls: a copy of its arithmetic here could pass while the trigger it stands for had changed.
+    // Off `clearable` and the readings themselves rather than the rows: a copy of its arithmetic here could pass while
+    // the one in `identify` it stands for had changed.
     const chased: string[] = [];
     const reported: string[] = [];
 
@@ -2253,7 +2253,7 @@ test('a CP the screen misreads is reported and changes nothing else', async () =
   expect(identity.form && label(identity.form)).toBe('Unown (Question Mark)');
   expect(identity.cp).toBe(486);
   expect(identity.notes).toStrictEqual(['the screen reads CP 4864, where this form at this level is 486']);
-  expect(clearable(identity), 'a scan no longer reads a screen again over a CP it misread').toBe(1);
+  expect(clearable(identity), 'the misread CP leaves one note a second read of the screen could clear').toBe(1);
 });
 
 /**

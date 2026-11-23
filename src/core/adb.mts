@@ -186,6 +186,16 @@ export class Device {
   }
 
   /**
+   * One file off the phone, `cat` over the shell so its exit status comes back: shell protocol 2 carries it where
+   * `exec-out` does not, so a file the phone does not have fails here rather than reading back as `cat`'s own `No such
+   * file` for the caller to tell from the real thing. The shell is a raw one — a command with no `-t` asks for none,
+   * so there is no terminal to turn a `\n` into `\r\n` on the phones this tool supports.
+   */
+  async read(path: string): Promise<Uint8Array> {
+    return this.#shell('cat', path);
+  }
+
+  /**
    * What the phone says of itself: its maker, model and Android version among the properties `getprop` lists as
    * `[ro.product.model]: [Pixel 8 Pro]`, its screen from `wm size`, and its charge from `dumpsys battery`. A display
    * scaled in the phone's settings lists an `Override size:` after its `Physical size:`, and the last listed is the

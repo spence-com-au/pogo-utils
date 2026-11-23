@@ -549,8 +549,8 @@ indistinguishable there. `pnpm inventory help` lists the flags each command acts
 does not act on it is refused rather than quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl`
 are git-ignored, since they describe a player's own account.
 
-Automated input is against Niantic's terms of service. The scan only reads and moves at about a person's pace, but the
-risk to the account is yours to weigh.
+Automating input is against Niantic's terms of service, and `snap` and `dex` drive the phone, if only at about a
+person's pace. The risk to the account is yours to weigh.
 
 ### The Pokédex
 
@@ -600,9 +600,9 @@ icons on these tiles, so the right one matches almost exactly. One that no icon 
 `--from N` and `--to M` walk only those numbers and replace only their lines of the file, leaving the rest of the record
 as it was. A walk ends by holding the whole record to the counts each tab of the Pokédex prints for each region,
 `148 / 151` on POKÉMON and `Caught: 80` on the others, and fails naming every region and tab that disagrees, with the
-lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes the same
-`--config`, `--serial`, `--user`, `--refresh` and `--verbose` as the scan, and swipes through the same touchscreen.
-Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
+lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes `--config`,
+`--serial`, `--user`, `--refresh` and `--verbose`, and swipes through a touchscreen it makes on the phone, as
+`pnpm battle` does. Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
 
 ### In the browser
 

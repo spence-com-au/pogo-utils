@@ -3,7 +3,7 @@
  * milliseconds against animations that take most of a second and means a dropped USB connection fails one call loudly.
  * It is how `pnpm inventory` and `pnpm phone` reach the phone, and how `pnpm battle` keeps the screen awake, puts the
  * setting back and reads the screen's size to record. `adbHeld`, which is how `pnpm battle` taps and swipes and what
- * `pnpm inventory scan` makes its touchscreen on, writes its shell commands to one `adb shell` held open, a battle's
+ * `pnpm inventory dex` makes its touchscreen on, writes its shell commands to one `adb shell` held open, a battle's
  * swipes coming too fast to start a process for each.
  */
 
@@ -12,51 +12,39 @@ import { holdShell } from '../held-shell.mts';
 import { execFile, spawn } from 'node:child_process';
 
 /** The phone `serial` names, or the only one plugged in where it names none. */
-function run(args: readonly string[], serial?: string): Promise<Buffer> {
+export function adbCli(serial?: string): Transport {
   const prefix = serial ? ['-s', serial] : [];
 
-  return new Promise((resolve, reject) => {
-    execFile(
-      'adb',
-      [...prefix, ...args],
-      { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024, timeout: TIMEOUT_MS },
-      (error, stdout, stderr) => {
-        if (error) {
-          const detail = error.killed ? NO_ANSWER : stderr.toString().trim() || error.message;
-          reject(new Error(`adb ${args.join(' ')}: ${detail}`));
-        } else {
-          resolve(stdout);
-        }
-      },
-    );
-  });
-}
+  const adb = (args: readonly string[]): Promise<Buffer> =>
+    new Promise((resolve, reject) => {
+      execFile(
+        'adb',
+        [...prefix, ...args],
+        { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024, timeout: TIMEOUT_MS },
+        (error, stdout, stderr) => {
+          if (error) {
+            const detail = error.killed ? NO_ANSWER : stderr.toString().trim() || error.message;
+            reject(new Error(`adb ${args.join(' ')}: ${detail}`));
+          } else {
+            resolve(stdout);
+          }
+        },
+      );
+    });
 
-export function adbCli(serial?: string): Transport {
   return {
-    state: async () => (await run(['get-state'], serial)).toString(),
-    shell: (args) => run(['shell', ...args], serial),
+    state: async () => (await adb(['get-state'])).toString(),
+    shell: (args) => adb(['shell', ...args]),
 
     // Raw pixels rather than `-p`'s PNG, which the phone takes longer to compress than USB takes to carry the pixels:
     // 0.87s a screenshot on a Pixel 4 XL against 1.2s, and no inflating it again here.
-    screencap: () => run(['exec-out', 'screencap'], serial),
+    screencap: () => adb(['exec-out', 'screencap']),
   };
 }
 
 /**
- * One file off the phone, through `exec-out` so its bytes arrive whole: `adb shell cat` runs the file through a
- * terminal that turns each `\n` into `\r\n` and can mangle a byte over 127, where `exec-out` is the raw stream
- * `screencap` reads pixels through. The raw `exec:` service carries no exit status and folds stderr into the stream, so
- * a file the phone does not have is not an error here — `cat`'s `No such file` comes back as the contents, which the
- * caller has to tell from a real one.
- */
-export function readFile(path: string, serial?: string): Promise<Buffer> {
-  return run(['exec-out', 'cat', path], serial);
-}
-
-/**
  * As `adbCli`, but with shell commands written one after another to a single `adb shell` held open, as
- * `../held-shell.mts` holds one, which is how `pnpm battle` taps and swipes and what `pnpm inventory scan` makes its
+ * `../held-shell.mts` holds one, which is how `pnpm battle` taps and swipes and what `pnpm inventory dex` makes its
  * touchscreen on: a fresh `adb` process for each of a battle's six swipes a second cost a median 50ms over a Training
  * battle on a Pixel 4 XL, against a fast move's 80ms swipe. The state, being no shell command, and the screenshot,
  * being binary, stay a process each.

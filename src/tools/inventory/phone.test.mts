@@ -166,18 +166,6 @@ class Phone {
     const text = (out: string) => ({ status: 0, out: new TextEncoder().encode(out) });
     const [command, ...rest] = args;
 
-    if (command === 'exec-out' && rest[0] === 'cat') {
-      // `exec-out` exits 0 even for a file the phone does not have, folding `cat`'s error into stdout, as the real one
-      // does: the raw `exec:` service carries no exit status back.
-      return {
-        status: 0,
-        out:
-          this.export.length > 0
-            ? this.export
-            : new TextEncoder().encode(`cat: ${rest[1]}: No such file or directory\n`),
-      };
-    }
-
     if (command === 'exec-out') {
       return { status: 0, out: this.screen() };
     }
@@ -186,6 +174,14 @@ class Phone {
 
     if (command === 'get-state') {
       return text('device\n');
+    }
+
+    if (command === 'shell' && rest[0] === 'cat') {
+      // `adb shell cat` carries its exit status back on shell protocol 2, as the real one does: 0 with the file, 1 with
+      // `cat`'s own message for a file the phone does not have.
+      return this.export.length > 0
+        ? { status: 0, out: this.export }
+        : { status: 1, out: new TextEncoder().encode(`cat: ${rest[1]}: No such file or directory\n`) };
     }
 
     if (command === 'shell' && rest[0] === 'dumpsys' && rest[1] === 'window') {
