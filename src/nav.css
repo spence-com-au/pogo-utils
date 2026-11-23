@@ -353,7 +353,7 @@
   }
 
   /**
-   * Seven tabs and three controls fit 360px at this padding, the narrowest phone width in common use. Narrower still,
+   * Six tabs and three controls fit 360px at this padding, the narrowest phone width in common use. Narrower still,
    * the tabs scroll, and `Nav` keeps the open one in view; wider, they share what is spare rather than leaving it in
    * one gap before the controls.
    */
