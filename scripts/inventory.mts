@@ -5,8 +5,9 @@
  * size, Dynamax or Gigantamax, CP, HP, level, IVs and moves, with the raw game IDs each was derived from beside it. It
  * reads them off PGSharp's export rather than the screen — the whole account, decoded, which PGSharp writes to a file
  * on the phone once its inventory export is switched on in its own settings — so a box that took the walk a day comes
- * over in the time it takes to pull and parse. `snap`, `parse` and `dex` still read the screen with Tesseract: `snap`
- * and `parse` for fixing a misread, `dex` for the Pokédex, which the export does not carry.
+ * over in the time it takes to pull and parse. `snap`, `parse` and `dex` still read the screen with Tesseract: `dex` to
+ * walk the Pokédex, which the export does not carry, and `snap` and `parse` to read a single detail screen as the
+ * Inventory page does, bound to go with that page in a later change.
  *
  * The export is `/sdcard/Download/PGSharp/PGSStats.json`, read with `cat` over the shell and turned into rows by
  * `src/tools/inventory/snapshot.mts`: the species is the number the game gives it, the form is named off the export's
@@ -21,7 +22,9 @@
  * fraction of the image's height. `parseMoves` is the one reader that is not, being anchored on `GYMS & RAIDS`, and
  * `powerUpOn` finds its row by the label wherever it is, for a screen that ends above it.
  *
- * `snap` and `parse` are the tools for fixing a misread. Every tap position, swipe and delay is in `DEFAULTS` and can
+ * `snap` and `parse` read a single detail screen and print what each reader makes of it, for working out why a reader
+ * went wrong — a job the scan, reading exact values off the export, no longer has, so they go with the Inventory page
+ * they share their readers with. Every tap position, swipe and delay is in `DEFAULTS` and can
  * be overridden from a JSON file passed as `--config`, with positions as fractions of the screen so one file suits any
  * phone of the same shape. Each prints its answer — species, form, CP, HP, level, IVs and moves, once each, coloured by
  * whether it was read off the screen or worked out from what was — with the notes that qualify it. `--verbose` adds the
