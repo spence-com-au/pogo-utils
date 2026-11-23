@@ -224,7 +224,7 @@ export function levelsOf(data: GameData, form: Form, iv: IVs, hp: number): numbe
 }
 
 /** The bands `Form.heights` bounds, smallest first, with no badge for the middle one. */
-const BANDS = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
+export const BANDS = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
 
 /**
  * How far the printed height can be from the one the game banded, which prints to the centimetre and rounds rather than

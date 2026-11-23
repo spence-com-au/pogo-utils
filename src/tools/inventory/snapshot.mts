@@ -17,7 +17,7 @@
 
 import { type Gender } from './badges.mts';
 import { type Max } from './detail.mts';
-import { type Form, type GameData, type IVs, type Move, type Size } from '../../core/game-master.mts';
+import { BANDS, type Form, type GameData, type IVs, type Move, type Size } from '../../core/game-master.mts';
 import { type Moves } from '../../core/moves.mts';
 import { fold } from '../../core/ocr.mts';
 
@@ -224,10 +224,8 @@ function resolveForm(data: GameData, mon: Mon): Resolved {
 
 /** The size badge the game draws: its own `size` enum, or the height band for the Pokémon caught before it recorded one. */
 function sizeOf(form: Form | null, mon: Mon): Size | null {
-  const bands: readonly (Size | null)[] = ['XXS', 'XS', null, 'XL', 'XXL'];
-
   if (mon.size >= 1 && mon.size <= 5) {
-    return bands[mon.size - 1] ?? null;
+    return BANDS[mon.size - 1] ?? null;
   }
 
   const heights = form?.heights;
@@ -236,14 +234,14 @@ function sizeOf(form: Form | null, mon: Mon): Size | null {
     return null;
   }
 
-  const band = bands.findIndex((_, index) => {
+  const band = BANDS.findIndex((_, index) => {
     const low = heights[index];
     const high = heights[index + 1];
 
     return low !== undefined && high !== undefined && mon.heightM >= low && mon.heightM <= high;
   });
 
-  return band === -1 ? null : (bands[band] ?? null);
+  return band === -1 ? null : (BANDS[band] ?? null);
 }
 
 /**
