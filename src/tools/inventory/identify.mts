@@ -410,12 +410,13 @@ export function label(f: Form): string {
 }
 
 /**
- * How many of a reading's notes another look at the same screen could clear, which is what a scan reads one again for.
- * Every note but the one `unseparated` raises: those forms share every number the screen prints, so a second read of it
- * answers the same thing, and chasing them would read every Pikachu twice for ever.
+ * How many of an identity's notes a second read of the screen could clear: every one but the note `unseparated` raises,
+ * whose forms share every number the screen prints, so reading it again answers the same and chasing it would read
+ * every Pikachu twice for ever.
  *
- * Here rather than in the scan because `screens.test.mts` asserts which captures it reaches, and a second copy of the
- * arithmetic would be free to disagree with the one that decides what a pass costs.
+ * The walk that read a doubtful screen again has gone, so nothing acts on this now, but `screens.test.mts` measures
+ * identify by it — which captures leave a note worth another look and which leave one already settled — and keeping the
+ * arithmetic here keeps the suite from a second copy of it free to drift.
  */
 export const clearable = (identity: Identity): number =>
   identity.notes.length - Number(identity.unseparated.length > 0);

@@ -10,7 +10,7 @@
  */
 
 import { type GameData } from '../../core/game-master.mts';
-import { rowsOf, type Snapshot } from './snapshot.mts';
+import { parseSnapshot, rowsOf, type Snapshot } from './snapshot.mts';
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
@@ -153,4 +153,27 @@ test('the raw game IDs are kept beside the row', () => {
     cpMultiplier: 0.667934,
     additionalCpMultiplier: 0,
   });
+});
+
+test('parseSnapshot keeps the ids as strings whatever their length and leaves other numbers alone', () => {
+  // Bare numbers in the text — a 19-digit id past what a double holds, and a short tag id, which has to become a string
+  // in `pokemonTagIds` to meet the string-keyed tag even though it fits a number.
+  const text =
+    '{"pokemons":[{"id":3533574831663761643,"cp":764,"creationTimeMs":1607999501342,' +
+    '"pokemonTagIds":[5651286867452610075,123]}],' +
+    '"tags":[{"id":"5651286867452610075","name":"Perfect"},{"id":"123","name":"Short"}]}';
+
+  const snapshot = parseSnapshot(text);
+  const mon = snapshot.pokemons[0];
+  const byId = new Map(snapshot.tags.map((tag) => [tag.id, tag.name]));
+
+  expect(mon?.id).toBe('3533574831663761643');
+  expect(mon?.pokemonTagIds).toEqual(['5651286867452610075', '123']);
+
+  // Both the long tag id and the short one meet their tag through the string-keyed map.
+  expect(mon?.pokemonTagIds.map((id) => byId.get(id))).toEqual(['Perfect', 'Short']);
+
+  // CP and a 13-digit timestamp are not id fields, so they stay numbers.
+  expect(mon?.cp).toBe(764);
+  expect((mon as unknown as { creationTimeMs: number }).creationTimeMs).toBe(1_607_999_501_342);
 });

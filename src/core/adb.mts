@@ -1,5 +1,5 @@
 /**
- * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is eleven methods over one
+ * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is twelve methods over one
  * `Transport`, the only part that differs between the CLI and the Inventory page: `node/adb-cli.mts` runs the `adb`
  * binary, and `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
  */
@@ -183,6 +183,16 @@ export class Device {
    */
   async views(): Promise<string> {
     return new TextDecoder().decode(await this.#shell('uiautomator', 'dump', '/dev/stdout', '|', 'cat'));
+  }
+
+  /**
+   * One file off the phone, `cat` over the shell so its exit status comes back: shell protocol 2 carries it where
+   * `exec-out` does not, so a file the phone does not have fails here rather than reading back as `cat`'s own `No such
+   * file` for the caller to tell from the real thing. The shell is a raw one — a command with no `-t` asks for none,
+   * so there is no terminal to turn a `\n` into `\r\n` on the phones this tool supports.
+   */
+  async read(path: string): Promise<Uint8Array> {
+    return this.#shell('cat', path);
   }
 
   /**

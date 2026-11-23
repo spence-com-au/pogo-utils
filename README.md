@@ -491,54 +491,35 @@ light theme's dark colour every time, rather than whenever the person rendering 
 ## Pokémon inventory
 
 `pnpm inventory scan` lists every Pokémon in storage as [JSON Lines](https://jsonlines.org/), one object per Pokémon
-(species, nickname, form, costume, shiny, lucky, XXL/XXS, Dynamax or Gigantamax, CP, HP, level, IVs and moves), by
-driving an Android phone over `adb`. Pokémon GO is drawn by Unity, so Android can't read its text; instead the script
-takes a screenshot at each step and reads it with Tesseract. Both tools have to be on `PATH`:
+(species, nickname, form, costume, shiny, lucky, XXL/XXS, Dynamax or Gigantamax, CP, HP, level, IVs and moves, with the
+raw game IDs each was derived from beside it), read off PGSharp's export rather than the screen. PGSharp writes the
+whole account, decoded, to a file on the phone when its inventory export is switched on; the scan pulls it over `adb`
+and turns it into rows. `adb` has to be on `PATH`:
 
 ```sh
-brew install android-platform-tools tesseract   # or: apt install adb tesseract-ocr
+brew install android-platform-tools   # or: apt install adb
 pnpm inventory scan --out inventory.jsonl
 ```
 
-Each line is written as its Pokémon is read, so a run cut short keeps every one before it, and `--skip` adds to the same
-file; `jq 'select(.shiny) | .species' inventory.jsonl` lists the shinies. A yes-or-no field is `null` rather than
-`false` where nothing checked it: a flag pass `--flags` left out, or one whose first Pokémon would not read. `iv` is
-`null` where PGSharp's overlay did not read, and `levels` holds every level the reading fits: one where it settles the
-level, several where it is ambiguous and none where nothing could be worked out.
+`jq 'select(.shiny) | .species' inventory.jsonl` lists the shinies. The export states outright what the old screen walk
+worked out — the exact IVs, the form, the level from the CP multiplier (a best buddy's boost added in), shadow and
+purified, Dynamax and Gigantamax — so every field is read rather than inferred, and a box that took the walk the best
+part of a day comes over in the time it takes to pull and parse. A `costume` the export names only by a number the game
+master has no name for is written as the costumes the dex could be wearing rather than guessed, and `null` is kept for
+the one it cannot name at all.
 
-The scan needs PGSharp with its IV display switched on, since PGSharp's overlay is where the level and the three IVs are
-read from; on the stock client those fields come back null. Plug the phone in with USB debugging on, set Pokémon GO to
-English and choose a storage sort order first; the scan keeps whatever order is set. It opens the first Pokémon and
-swipes through the rest, reading the detail screen and then the moves scrolled into view. Form is never shown on screen,
-so the script works it out from the HP, IVs and types against the base stats in
-[the game master](https://github.com/alexelgt/game_masters), which is also how a nicknamed Pokémon gets its species
-back. Size comes from the `XXL` or `XXS` badge on the detail screen, Dynamax or Gigantamax from the row under the weight
-and height that names it, shadow and purified from the stardust the `POWER UP` button asks, and shiny, lucky and costume
-from the game's own searches, one quick pass each before the full pass; `--flags` picks which. `costume` names the
-costume, as a list: a Pikachu's is matched off its artwork, against Pikachu already labelled and the game's own icons,
-and lists every costume it could be where the artwork does not settle which, with `""` among them for none wherever it
-could be that too, since the costumes alone would read as settled among them. Any other species found by the costume
-search lists every costume it comes in. `--search TERM` scans only what storage's own search matches,
-`--search '25,133&cp1500-'` for example, and narrows the flag passes to it too. Expect several seconds per Pokémon.
-`--limit` and `--skip` break a long run into pieces, and `--refresh` downloads the game master and form icons again
-rather than using the week-old cache. The icons are found through GitHub's API, which answers an address without a token
-60 times an hour; `GITHUB_TOKEN=$(gh auth token)` in front of the command lifts that where it runs out. The swipe from
-one Pokémon to the next goes through a touchscreen the scan makes on the phone, as `pnpm battle` does, since
-`input swipe` drops about one in ten on some phones and a dropped swipe looks just like the end of storage; where the
-phone will not make one it says so and falls back to `input swipe`. Each pass is held to the count the game shows for
-it, the `🔍(N)` of a search or the `N / M` under POKÉMON: a pass that seems to reach the end short of it takes the last
-swipe as dropped and swipes again, and one that still stops short fails rather than writing a short run as complete; a
-full pass that does says which `--skip` carries on from where it stopped. Pokémon GO is launched only where it is not
-already the app in front, so a run started over an open storage screen picks up from there rather than waiting out a
-cold start. A phone with a work profile can hold a copy of the game in each profile, signed in to different trainers, so
-the launch is for the copy in front, or the only one installed; with a copy in both and neither in front the scan stops
-and asks, and `--user 10` (or `"user": 10` in a `--config` file) names the work profile's.
+Switch PGSharp's inventory export on in its settings and run it once so the file is there, then plug the phone in with
+USB debugging on and run the scan. It reads the one file and makes no other demand of the phone — no walk, no sort
+order, no language — and `--refresh` downloads the game master again rather than using the week-old cache, which the
+species, forms and move names are resolved against. The game master is found through GitHub, and
+`GITHUB_TOKEN=$(gh auth token)` in front of the command lifts the unauthenticated rate limit where it runs out. Reading
+the game's data out of PGSharp breaks Niantic's terms of service as surely as driving the phone does; the risk to the
+account is yours to weigh.
 
 A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
 into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any
 screen it can confirm is a detail screen and leaves it as `NAME.png`, leaving the plain screenshot under that same name
-only where PGSharp's overlay did not read, which is where it does not scroll at all; a scan takes one where `--scroll`
-asks for it, reading the moves from it rather than from one screenshot taken part way down. A snap will not write over a
+only where PGSharp's overlay did not read, which is where it does not scroll at all. A snap will not write over a
 capture already saved under the name unless it has a better one to put there, so a re-snap that comes back refused
 leaves the earlier file alone and says so. It then drags the panel back to where it found it, measuring rather than
 assuming it got there, so one snap does not shift the next. The stitched image is not handed to the readers anchored on
@@ -547,27 +528,29 @@ it back to the screen it records before they see it, and read the moves off the 
 are lined up in is `scrollBand` in `--config`; it has to end above the game's floating buttons, which are drawn over the
 panel rather than in it, or their top is stitched in once per frame.
 
-Every tap position, swipe and delay can be overridden from a JSON file passed as `--config`. When something is misread,
-`pnpm inventory snap` saves a screenshot of whatever the phone shows and prints what each reader makes of it, and
-`pnpm inventory parse FILE.png` does the same for a saved one. `--search` drives the phone to the Pokémon first, typing
-a term into storage's own search box and opening the first thing it matches, so that `--search '+burmy & cp196'` names
-what the capture wanted where a screen set up by hand records nothing about which Pokémon that was. `--verbose` adds
-every line OCR found with its box, which is what separates a field left empty because no text was read there from one
-left empty because a reader anchored on the wrong line. On all three commands it also un-silences the preamble narrated
-before there is anything to report — the form icons about to be read, with the families no artwork settles — which is
-the same two lines on every run of a warm cache, and so is worth reading only when a form comes out wrong. A download
-says so either way, a file already in date being read without a word, so `Downloading` names only what a cold or stale
-run is actually waiting on. What went wrong is never held back either: a stale copy read because the download failed, or
-an icon that could not be had, prints regardless. `snap` exits non-zero unless the screen is a Pokémon detail screen
-carrying PGSharp's overlay, those being what every other reader depends on; it still saves the screenshot when it
-refuses, and still stitches one whose only fault is a field that did not read — what it will not scroll is a screen
-PGSharp's overlay cannot vouch for, the map and a detail screen being indistinguishable there. `pnpm inventory help`
-lists the flags each command acts on, and a flag given to a command that does not act on it is refused rather than
-quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl` are git-ignored, since they describe a
-player's own account.
+`snap`, `parse` and `dex` read the screen the way the old scan did — Pokémon GO is drawn by Unity, so Android cannot
+read its text and the script reads a screenshot with Tesseract, which has to be on `PATH` (`brew install tesseract`, or
+`apt install tesseract-ocr`). Every tap position, swipe and delay can be overridden from a JSON file passed as
+`--config`. When something is misread, `pnpm inventory snap` saves a screenshot of whatever the phone shows and prints
+what each reader makes of it, and `pnpm inventory parse FILE.png` does the same for a saved one. `--search` drives the
+phone to the Pokémon first, typing a term into storage's own search box and opening the first thing it matches, so that
+`--search '+burmy & cp196'` names what the capture wanted where a screen set up by hand records nothing about which
+Pokémon that was. `--verbose` adds every line OCR found with its box, which is what separates a field left empty because
+no text was read there from one left empty because a reader anchored on the wrong line. On all three commands it also
+un-silences the preamble narrated before there is anything to report — the form icons about to be read, with the
+families no artwork settles — which is the same two lines on every run of a warm cache, and so is worth reading only
+when a form comes out wrong. A download says so either way, a file already in date being read without a word, so
+`Downloading` names only what a cold or stale run is actually waiting on. What went wrong is never held back either: a
+stale copy read because the download failed, or an icon that could not be had, prints regardless. `snap` exits non-zero
+unless the screen is a Pokémon detail screen carrying PGSharp's overlay, those being what every other reader depends on;
+it still saves the screenshot when it refuses, and still stitches one whose only fault is a field that did not read —
+what it will not scroll is a screen PGSharp's overlay cannot vouch for, the map and a detail screen being
+indistinguishable there. `pnpm inventory help` lists the flags each command acts on, and a flag given to a command that
+does not act on it is refused rather than quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl`
+are git-ignored, since they describe a player's own account.
 
-Automated input is against Niantic's terms of service. The scan only reads and moves at about a person's pace, but the
-risk to the account is yours to weigh.
+Automating input is against Niantic's terms of service, and `snap` and `dex` drive the phone, if only at about a
+person's pace. The risk to the account is yours to weigh.
 
 ### The Pokédex
 
@@ -617,9 +600,9 @@ icons on these tiles, so the right one matches almost exactly. One that no icon 
 `--from N` and `--to M` walk only those numbers and replace only their lines of the file, leaving the rest of the record
 as it was. A walk ends by holding the whole record to the counts each tab of the Pokédex prints for each region,
 `148 / 151` on POKÉMON and `Caught: 80` on the others, and fails naming every region and tab that disagrees, with the
-lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes the same
-`--config`, `--serial`, `--user`, `--refresh` and `--verbose` as the scan, and swipes through the same touchscreen.
-Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
+lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes `--config`,
+`--serial`, `--user`, `--refresh` and `--verbose`, and swipes through a touchscreen it makes on the phone, as
+`pnpm battle` does. Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
 
 ### In the browser
 
@@ -628,7 +611,7 @@ it reads one detail screen, grabbed off a phone or dropped in as a PNG, and prin
 `detail`, `moves`, the overlay box and what read inside it, and the identity — from the same
 [`readScreen`](src/tools/inventory/report.mts). A screen a scan could not have used is refused the way `snap` refuses
 it, with the reason said: an HP that did not read, or no PGSharp overlay. What the readers made of it anyway is still
-there, folded under the refusal. A scan of storage, its JSON, the flag passes and a scroll capture stay the CLI's.
+there, folded under the refusal. A scan of the whole box, its JSON and a scroll capture stay the CLI's.
 
 The phone is reached over WebUSB with [Tango](https://tangoadb.dev/) (`@yume-chan/adb`, MIT), picked through the
 browser's own device chooser, and has to be authorised on the phone the first time as it does for `adb`. It is a

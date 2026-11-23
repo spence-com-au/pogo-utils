@@ -57,7 +57,7 @@ const ENTRIES = OPTIONS.split('\n').filter((line) => /^ {4}[^\s}]/.test(line)).l
 test('the flags are read off `parseArgs` whole, not some readable subset of it', () => {
   expect(OPTIONS, 'the `options` block was not found, so every claim about flags below is vacuous').not.toBe('');
   expect(FLAGS.length, 'an option is declared in a form the flag pattern cannot read').toBe(ENTRIES);
-  expect(FLAGS).toEqual(expect.arrayContaining(['out', 'scroll', 'refresh', 'verbose']));
+  expect(FLAGS).toEqual(expect.arrayContaining(['out', 'search', 'refresh', 'verbose']));
 });
 
 /**
@@ -247,10 +247,11 @@ test('the `--search` term the usage advertises is one the phone can be sent', ()
 /**
  * A `--search` term `type` would refuse is refused before the phone is opened, and for the same reason the name above
  * is: the alternative is driving the phone into storage and onto the search box before anything says the term was never
- * going to be sent, which leaves storage open with the keyboard up and nothing captured.
+ * going to be sent, which leaves storage open with the keyboard up and nothing captured. `snap` is the one command that
+ * still searches — `scan` reads the whole box from the export and takes no term.
  */
-test.for(['scan', 'snap'])('`%s` refuses an untypeable `--search`, before it opens the phone', async (command) => {
-  const failure = await run(process.execPath, [SCRIPT, command, '--search', '+burmy (sandy)']).catch(
+test('`snap` refuses an untypeable `--search`, before it opens the phone', async () => {
+  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', '+burmy (sandy)']).catch(
     (error: unknown) => error,
   );
   const { stderr } = failure as { stderr: string };
@@ -267,33 +268,14 @@ test.for(['scan', 'snap'])('`%s` refuses an untypeable `--search`, before it ope
  * The length is taken off `CLEAR_KEYS` rather than written out, so raising or lowering the clear moves this with it. A
  * run of `a`s because `typeable` has to pass first — the refusal under test is the length and not the characters.
  */
-test.for(['scan', 'snap'])(
-  '`%s` refuses a `--search` longer than the box can be cleared of, before it opens the phone',
-  async (command) => {
-    const failure = await run(process.execPath, [SCRIPT, command, '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch(
-      (error: unknown) => error,
-    );
-    const { stderr } = failure as { stderr: string };
-
-    expect(failure).toMatchObject({ code: 1 });
-    expect(stderr).toContain(`more than the ${CLEAR_KEYS} the box can be cleared of`);
-    expect(stderr, 'the phone was reached before the length was checked').not.toContain('adb');
-  },
-);
-
-/**
- * A scan types more than its term: each flag pass searches `costume&TERM` and the like, so a term the box can be cleared
- * of alone may still overflow the clear as a flag pass sends it, leaving the remainder prepended to the next search.
- * Six short of the clear, so `shiny&` and `lucky&` fit it exactly and only `costume&` goes over.
- */
-test('`scan` refuses a `--search` that only a flag pass would overflow, before it opens the phone', async () => {
-  const failure = await run(process.execPath, [SCRIPT, 'scan', '--search', 'a'.repeat(CLEAR_KEYS - 6)]).catch(
+test('`snap` refuses a `--search` longer than the box can be cleared of, before it opens the phone', async () => {
+  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', 'a'.repeat(CLEAR_KEYS + 1)]).catch(
     (error: unknown) => error,
   );
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
-  expect(stderr).toContain(`as the costume pass types it, is ${CLEAR_KEYS + 2} characters`);
+  expect(stderr).toContain(`more than the ${CLEAR_KEYS} the box can be cleared of`);
   expect(stderr, 'the phone was reached before the length was checked').not.toContain('adb');
 });
 
@@ -314,12 +296,10 @@ test('`--help` prints the usage even beside a `--search` that would be refused',
  * something else. `--search "$TERM"` with `TERM` unset is how either one reaches here.
  */
 test.for([
-  ['scan', 'empty', ''],
-  ['scan', 'whitespace-only', '   '],
-  ['snap', 'empty', ''],
-  ['snap', 'whitespace-only', '   '],
-] as const)('`%s` refuses an %s `--search`, before it opens the phone', async ([command, , term]) => {
-  const failure = await run(process.execPath, [SCRIPT, command, '--search', term]).catch((error: unknown) => error);
+  ['empty', ''],
+  ['whitespace-only', '   '],
+] as const)('`snap` refuses an %s `--search`, before it opens the phone', async ([, term]) => {
+  const failure = await run(process.execPath, [SCRIPT, 'snap', '--search', term]).catch((error: unknown) => error);
   const { stderr } = failure as { stderr: string };
 
   expect(failure).toMatchObject({ code: 1 });
@@ -328,34 +308,18 @@ test.for([
 });
 
 /**
- * A `--limit` or `--skip` a scan cannot use is refused before the phone is opened too. Watched through an `adb` of the
- * test's own first on the path, which marks that it ran, rather than through what the run printed: the held shell a
- * scan swipes on starts `adb shell` the moment it is made, which takes the phone's lease from any other session, and
- * nothing says so on a run that then throws. The `--skip` is refused for want of the `--out` it checks its landing
- * against, which the empty working directory does not have.
+ * `scan` takes none of the walk's flags: it reads the whole box from PGSharp's export in one pull, so `--search`, which
+ * the box walk filtered itself by, and `--keep-screens`, which saved each screen it read, are refused rather than
+ * silently ignored — and before the phone is opened, the `does not act on` list being checked before anything is read.
+ * The flags gone from the tool altogether, like `--limit` and `--skip`, are refused by the argument parser as any typo
+ * is.
  */
-test.for([
-  ['--limit', 'abc', '--limit takes a whole number, not abc'],
-  ['--skip', '3', 'it does not exist'],
-] as const)('`scan` refuses `%s %s`, before it opens the phone', async ([flag, value, refusal]) => {
-  const cwd = mkdtempSync(join(tmpdir(), 'inventory-cli-'));
-  const ran = join(cwd, 'adb-ran');
+test.for(['--search', '--keep-screens'])('`scan` does not act on `%s`, now the walk is gone', async (flag) => {
+  const failure = await run(process.execPath, [SCRIPT, 'scan', flag, 'x']).catch((error: unknown) => error);
+  const { stderr } = failure as { stderr: string };
 
-  writeFileSync(join(cwd, 'adb'), `#!/bin/sh\n: > '${ran}'\n`, { mode: 0o755 });
-
-  try {
-    const failure = await run(process.execPath, [SCRIPT, 'scan', flag, value], {
-      cwd,
-      env: { ...process.env, PATH: `${cwd}:${process.env.PATH}` },
-    }).catch((error: unknown) => error);
-    const { stderr } = failure as { stderr: string };
-
-    expect(failure).toMatchObject({ code: 1 });
-    expect(stderr).toContain(refusal);
-    expect(existsSync(ran), 'the phone was reached before the flag was checked').toBe(false);
-  } finally {
-    rmSync(cwd, { recursive: true });
-  }
+  expect(failure).toMatchObject({ code: 1 });
+  expect(stderr).toContain(`scan does not act on ${flag}`);
 });
 
 /**
