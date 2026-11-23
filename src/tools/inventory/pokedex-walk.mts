@@ -56,8 +56,7 @@ import {
   type Look,
   type Named,
 } from './pokedex.mts';
-import { SCROLL_DRAG_MS, settled, type Stillness } from './scroll.mts';
-import { SCROLL_STRIP } from './stitch.mts';
+import { SCROLL_DRAG_MS, SCROLL_STRIP, settled, type Stillness } from './scroll.mts';
 import { buttonKept, dialogOpen, isMainMenu, toFront } from './storage.mts';
 import { GENERATIONS, SUB_REGIONS } from '../../pokemon/generations.ts';
 

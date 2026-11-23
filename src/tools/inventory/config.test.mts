@@ -6,7 +6,7 @@
 import { configWith, DEFAULTS } from './config.mts';
 import { expect, test } from 'vitest';
 
-// `toEqual` where the whole config is compared, `configWith` spelling out the `overlay` that `DEFAULTS` leaves out.
+// `toEqual` where the whole config is compared, `configWith` spelling out the `user` that `DEFAULTS` leaves out.
 test('an empty file is the defaults', () => {
   expect(configWith({})).toEqual(DEFAULTS);
 });
@@ -18,7 +18,7 @@ test('one tap changed leaves the rest of the taps, and every other group, as the
   expect({ ...config, taps: DEFAULTS.taps }).toEqual(DEFAULTS);
 });
 
-test.for(['swipes', 'waits', 'scrollBand'] as const)('one setting in `%s` is laid over the rest of it', (group) => {
+test.for(['swipes', 'waits'] as const)('one setting in `%s` is laid over the rest of it', (group) => {
   const [field] = Object.keys(DEFAULTS[group]);
   const changed = { [field as string]: 'changed' };
 
@@ -32,13 +32,6 @@ test('a package is taken only as a string', () => {
 
 test('a package that is not an Android package name is refused', () => {
   expect(() => configWith({ package: 'com.example.game; reboot' })).toThrow('not an Android package name');
-});
-
-test('an overlay box is taken whole, there being none by default', () => {
-  const overlay = { x: 10, y: 200, width: 300, height: 40 };
-
-  expect(DEFAULTS.overlay).toBeUndefined();
-  expect(configWith({ overlay }).overlay).toBe(overlay);
 });
 
 test('a "user" is taken where it is a whole number and refused otherwise', () => {

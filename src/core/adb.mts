@@ -1,7 +1,7 @@
 /**
  * The phone, driven over ADB. Everything a scan, a battle or the phone button asks of it is twelve methods over one
- * `Transport`, the only part that differs between the CLI and the Inventory page: `node/adb-cli.mts` runs the `adb`
- * binary, and `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the page.
+ * `Transport`, the only part that differs between the CLI and the pages: `node/adb-cli.mts` runs the `adb` binary, and
+ * `src/core/browser/webusb.ts` speaks the protocol over WebUSB from the browser.
  */
 
 import { decodeScreencap, type Image } from './png.mts';
@@ -230,9 +230,9 @@ export const KEY = { BACK: 4, ENTER: 66, DEL: 67, MOVE_END: 123 } as const;
  * `unsearchable` will pass** — one number on purpose, the box having no length of its own: all 234 characters of a
  * patterned run landed with no sign of a cap, so what bounds it is what is typed into it.
  *
- * Longer than the 50 characters a re-snap sends, since a clear shorter than the term leaves its tail in the box and the
- * next term is typed onto the end of it. The failure is silent, which is what makes the bound worth enforcing: the
- * field scrolls, so a merged term looks exactly like a clean one and the only symptom is a result count quietly wrong.
+ * Longer than any term typed into it, since a clear shorter than the term leaves its tail in the box and the next term
+ * is typed onto the end of it. The failure is silent, which is what makes the bound worth enforcing: the field scrolls,
+ * so a merged term looks exactly like a clean one and the only symptom is a result count quietly wrong.
  *
  * Generous because generosity is free — `device.key` sends every code in one `input keyevent`, and a backspace on an
  * empty field does nothing. A term typed into the box by hand can still exceed it; clear it by hand too.

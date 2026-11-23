@@ -69,6 +69,9 @@ export interface Detail {
 
 export type Max = 'dynamax' | 'gigantamax';
 
+/** Whether a reading is of a detail screen at all: its HP read, which the map and storage do not draw. */
+export const isDetail = (detail: Detail) => detail.hp !== null;
+
 /** How far down a screen `readLines` reads it a second time inverted, as a fraction of its height. */
 export const SKY = 1 / 5;
 
@@ -88,7 +91,7 @@ export async function readLines(image: Image): Promise<Line[]> {
  * It admits 35 captures, 24 reading the CP exactly off the line; `wholeCp` recovers seven more and four are left to
  * the arithmetic. The two go together: the label says which line, the band says the whole number.
  *
- * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the Inventory page reads with answers
+ * A number may carry one space, which `cpOn` takes out: the WebAssembly Tesseract the pages read with answers
  * `cP48 7` off `unown-b.png`, where the CLI's `cP48/` leaves `wholeCp` to find the 487.
  *
  * And it may carry a `/`, which is how the CLI reads the large font's thin 7 more often than not: `cp/56` for a 756,
@@ -103,7 +106,7 @@ const foldCp = (text: string) => text.split('/').map(fold).join('/');
 
 /**
  * The line carrying the CP's label, which is what decides whether the CP is read off a line or swept for. Exported so
- * `screens.test.mts` can say which of the two a capture's candidates came from without a second copy of the rule.
+ * a capture's candidates can be told which of the two they came from without a second copy of the rule.
  */
 export const cpLabelOf = (lines: readonly Line[], image: Image): Line | undefined =>
   lines.find((l) => l.top < image.height / 4 && CP_LABEL.test(foldCp(l.text)));
@@ -141,7 +144,7 @@ export function cpOn(text: string, longest: number): string | null {
  * slash the stray. Nothing on the screen says which a third read will be, so where `wholeCp` does not settle it
  * `parseDetail` offers every reading as a candidate and leaves the choice to the arithmetic. That is five captures of
  * the corpus, four of them offering the CP their screen prints beside a stray and `castform-snowy.png`'s `ce/4 : 7`
- * offering only 747 and 47 for 746. The one place those figures live; `screens.test.mts` pins them capture by capture.
+ * offering only 747 and 47 for 746. The one place those figures live.
  */
 export function readingsOf(read: string, longest: number): string[] {
   const [first = '', ...rest] = read.split('/');
@@ -152,7 +155,7 @@ export function readingsOf(read: string, longest: number): string[] {
 
 /**
  * A CP line with the rest of its number put back, where Tesseract ended the line part way through it and read the
- * remainder as a line of its own. The WebAssembly build the Inventory page reads with does this on
+ * remainder as a line of its own. The WebAssembly build the pages read with does this on
  * `deoxys-defense.png`, `ce15` beside `69` with no gap between them, and the label alone would answer 15 — which
  * `wholeCp` then rescues into a 156 the screen does not print. Joined only where the second line is digits and nothing
  * else, sits on the same row and starts within half a line-height of where the first ends, so a word beside the CP is
@@ -200,9 +203,9 @@ export function joined(line: Line, lines: readonly Line[]): Line {
  * And never at or above PGSharp's overlay, which is drawn over the artwork the name sits under. Another frame of the
  * same Lugia read its `##` as `HH`, which none of the above admits, so the nearest line left was the overlay's `L15
  * iw82 13/14/10` and the nickname became `L15 iw82 131410`; leaving that out, the status bar's `10:06` was next. The
- * overlay is found by its IV triple, `findOverlay`'s own signature, rather than by its box, since the scan reads the
- * detail before it has looked for a box and on its first Pokémon has none. Over the 839 captures it changes no name.
- * Where the overlay did not read as a line, which is 88 of them, the search reaches the top of the screen as before.
+ * overlay is found by the IV triple `TRIPLE` matches, not by its box, since the scan reads the detail before it has
+ * looked for a box and on its first Pokémon has none. Over the 839 captures it changes no name. Where the overlay did
+ * not read as a line, which is 88 of them, the search reaches the top of the screen as before.
  */
 export function nameLineOf(lines: readonly Line[], hp: Line, labelled?: Line): Line | undefined {
   return underOverlay(lines, hp, labelled)
@@ -402,8 +405,7 @@ export async function parseDetail(lines: readonly Line[], data: GameData, image:
  * Unanchored and so unreliable, which is why these are candidates rather than an answer: a candidate is kept only
  * where the arithmetic reproduces it, so a number no form can show narrows nothing. Over the 15 captures that reach it,
  * 12 carry the CP their screen prints — one of them beside a stray — one carries only a wrong `169` for 1679, and two
- * read nothing. The one place those figures live, the callers pointing here; `screens.test.mts` pins them capture by
- * capture, so they fail there rather than going stale.
+ * read nothing. The one place those figures live, the callers pointing here.
  */
 async function cpsIn(image: Image): Promise<number[]> {
   const band = crop(
@@ -486,8 +488,7 @@ async function wholeCp(image: Image, line: Line, read: string, longest: number):
  * of the candidates `parseDetail` offers, where accepting it here would also accept a band that lost the thin 7 the
  * way the line did.
  *
- * Exported because nothing else states what it takes: `screens.test.mts` asserts the CP each capture ends with, which
- * this rule arrives at from any of several band readings. `detail.test.mts` pins the rule itself.
+ * Exported because nothing else states what it takes; `detail.test.mts` pins the rule itself.
  */
 export function rescue(text: string, read: string, longest: number): string | null {
   const more = (digits: string) =>
@@ -945,7 +946,7 @@ const CP_PADS = [0.35, 0.6];
  * A floor rather than a pad of its own, so 0.6 reaches across exactly as it always did and only 0.35 is widened. That
  * is measured rather than tidy: at a whole line height across both pads `smoliv.png`, whose `340` is whole on its line,
  * reads `P3400` at 0.6 and is rescued into a CP it does not have. So this is a fit to one capture with a failure on
- * either side, the same kind `CP_BRIGHTNESS` is, and the CP map in `screens.test.mts` is what would fail.
+ * either side, the same kind `CP_BRIGHTNESS` is.
  */
 const CP_ACROSS = 0.5;
 
@@ -956,7 +957,7 @@ const CP_ACROSS = 0.5;
  *
  * `readTreated` is the one reader, for `wholeCp` and `cpsIn` alike, so a treatment added or reordered answers to both.
  * Both the order and that rule are `wholeCp`'s: `cpsIn` unions what the three read, so what bounds a wrong number
- * there is `identify` refusing a candidate the arithmetic cannot reproduce.
+ * there is a later check refusing a candidate the arithmetic cannot reproduce.
  *
  * Brightness is here for `growlithe-nickname.png`, which neither of the others reaches: at pad 0.35 its band reads `38`
  * plain and near-white and `738` brightened. `castform-sunny.png` is the same at 0.35, `99` against a brightened
@@ -993,9 +994,6 @@ const readTreated = (band: Image): Promise<string>[] =>
  * 120 is not the middle of a window. Swept in fives over that band the digit comes back at 100, 105, 110, 120, 125 and
  * 130 and is lost at 115 and from 135 up — a jagged region with a failure five units below the value chosen, which is a
  * fit to OCR's noise rather than to the artwork. A Tesseract bump or a retaken capture can flip the single read this
- * treatment exists for, and the CP map in `screens.test.mts` is what would fail.
- *
- * Its own number rather than `overlay.mts`'s private `OVERLAY_BRIGHTNESS`, also 120, which is set low enough to hold
- * the overlay's colour-coded IV percentage — a glyph this band has none of, where this floor answers to the artwork.
+ * treatment exists for.
  */
 const CP_BRIGHTNESS = 120;

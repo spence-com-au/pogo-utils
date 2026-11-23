@@ -186,7 +186,7 @@ function baseForm(candidates: readonly Form[], costume: string | null): Form | n
  * A costume is a form in the game master but not in the Pokédex, so it is written under `costume` and `form` is left
  * the base form, as the walk writes it: `PikachuGofest2026CapRed` is `form: null, costume: ['Gofest 2026 Cap Red']`.
  * The base is the plainest form that is not a costume — the shortest-named, the ordinary form where there is one and a
- * costume's base where there is not, as the walk's own `identify` settles on with costumes sorted last.
+ * costume's base where there is not, costumes sorted last so a costume never stands in for the base.
  *
  * `Unset` and `Normal` are the export's ordinary form; a suffix that matches nothing and is neither is a form the game
  * master does not have, noted rather than filed silently under the base. Megas are left out, as the walk leaves them

@@ -1,7 +1,7 @@
 /**
  * A phone that is not there, for a reader with none to see what the phone tabs do: held in `phoneStore` like one
- * connected over WebUSB, so the Inventory and Search pages run their real readers against it and know nothing of the
- * difference. Its screen is `demoTransport`'s, the recordings fetched as each is first shown.
+ * connected over WebUSB, so the pages run their real readers against it and know nothing of the difference. Its screen
+ * is `demoTransport`'s, the recordings fetched as each is first shown.
  *
  * Fetched by the phone panel only once its Try the demo phone button is pressed.
  */

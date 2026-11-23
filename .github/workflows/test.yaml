@@ -29,16 +29,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 'corpus'
-            project: 'corpus'
+          - name: 'Tesseract CLI'
 
-          # The Inventory page reads with tesseract.js, not the CLI's Tesseract, so the corpus is read with it too.
-          - name: 'corpus (wasm)'
-            project: 'corpus'
+          # The pages read with tesseract.js, not the CLI's Tesseract, so the suite is read with it too.
+          - name: 'tesseract.js'
             ocr: 'wasm'
-
-          - name: 'default'
-            project: 'default'
     steps:
       - uses: 'actions/checkout@v7.0.1'
         with:
@@ -56,4 +51,4 @@ jobs:
       - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
-      - run: 'pnpm test:${{ matrix.project }}'
+      - run: 'pnpm test'

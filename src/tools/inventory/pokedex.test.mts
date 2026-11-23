@@ -3,8 +3,7 @@
  * over the captures under `fixtures/pokedex/`, read by the real Tesseract.
  *
  * The title's cases are lines rather than captures because `dexOn` takes lines and no image, so a capture buys it
- * nothing a line cannot state; that Tesseract reads the title at all is what the captures below say, and that no detail
- * screen reads as one is `screens.test.mts`'s to say.
+ * nothing a line cannot state; that Tesseract reads the title at all is what the captures below say.
  *
  * The captures are a Pixel 4 XL's, 1440x3040, taken as `pokedex-walk.mts` takes them: an entry from its top, then a
  * slow drag at a time down its CAUGHT tab. What each one is expected to read is what the phone showed when it was

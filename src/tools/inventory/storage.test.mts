@@ -6,6 +6,7 @@
 
 import { CLEAR_KEYS, Device, KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
+import { isDetail, parseDetail, readLines } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
@@ -273,7 +274,7 @@ test.for([
 
 /**
  * The screens the scrim must not be seen on: a detail screen scrolled down to its moves, whose panel runs the whole
- * height, and storage. Every capture in the corpus is asked the same in `screens.test.mts`.
+ * height, and storage.
  */
 test('a scrolled detail screen and storage read as having no dialog over them', () => {
   const open = ['moves/necrozma-cut-off.png', 'moves/rookidee-bounced.png', 'storage/grid.png'].filter((file) =>
@@ -281,6 +282,32 @@ test('a scrolled detail screen and storage read as having no dialog over them', 
   );
 
   expect(open).toStrictEqual([]);
+});
+
+/**
+ * The two screen-shape reads the walk turns on, over real captures rather than hand-built lines, now the corpus test
+ * that ran them over screenshots is gone: `isDetail`, which closes a Pokémon the walk opened by mistake, and
+ * `dialogOpen`, which closes a sheet over one. The demo phone's `deoxys-attack.png` is a detail screen with nothing over
+ * it; the map and a storage grid are neither. Read whatever `INVENTORY_OCR` asks for, since the page must read each the
+ * same under both engines. #1142 keeps the demo capture and `overworld.png`.
+ */
+test('isDetail and dialogOpen read a detail screen, the map and storage for what they are', async () => {
+  const finished = useTestEngine();
+
+  const shape = async (file: string) => {
+    const image = capture(file);
+    const lines = await readLines(image);
+
+    return { detail: isDetail(await parseDetail(lines, DATA, image)), dialog: dialogOpen(lines, image) };
+  };
+
+  try {
+    expect(await shape('deoxys-attack.png')).toStrictEqual({ detail: true, dialog: false });
+    expect((await shape('overworld.png')).detail).toBe(false);
+    expect((await shape('storage/grid.png')).detail).toBe(false);
+  } finally {
+    await finished();
+  }
 });
 
 test('a dialog open over the screen is closed with Back before the walk to storage taps anything', async () => {
@@ -349,9 +376,9 @@ const GRID = [STORAGE, word(3, 'CP415', 10, 50, 20, 8)].join('\n');
 test('clearing the box over the suggestions panel closes it with Back, which leaves the grid', async () => {
   const { sent, device } = phone(DEFAULTS.package);
   reads(sent, STORAGE, STORAGE, GRID);
-  const { search, tileLabel } = storage(device, CONFIG, DATA, SCREEN, () => {});
+  const { search } = storage(device, CONFIG, DATA, SCREEN, () => {});
 
-  expect(tileLabel(await search(''))).toBeDefined();
+  await search('');
   expect(sent.slice(-3)).toStrictEqual([['screencap'], ['input', 'keyevent', String(KEY.BACK)], ['screencap']]);
   expect(tapped(sent)).toStrictEqual([['input', 'tap', '50', '35']]);
 });
@@ -371,69 +398,14 @@ test('a screen Back leaves that is not storage is walked back to storage from', 
   ]);
 });
 
-test.for([
-  ['a counter of some and a label', '(12)', true, true],
-  ['a counter of some and no label, as sparkles leave a shiny tile', '(12)', false, true],
-  ['a counter of none, whatever reads as a label', '(0)', true, false],
-  ['a counter of none and no label', '(0)', false, false],
-  ['no counter but a label', '', true, true],
-  ['neither', '', false, false],
-] as const)(
-  'a search has matched by its counter, and by a label only without one: %s',
-  async ([, counter, label, is]) => {
-    const { sent, device } = phone(DEFAULTS.package);
-    const grid = [
-      ...(counter ? [word(1, counter, 70, 10, 20, 8)] : []),
-      word(2, 'SEARCH', 40, 30, 20, 10),
-      ...(label ? [word(3, 'CP415', 10, 50, 20, 8)] : []),
-    ];
-    reads(sent, STORAGE, grid.join('\n'));
-    const { search, matched } = storage(device, CONFIG, DATA, SCREEN, () => {});
-
-    expect(matched(await search('shiny'))).toBe(is);
-  },
-);
-
 /**
- * Each grid searched under real OCR, and the tops of the CP labels in its first row and its second: the first tile's
- * tap belongs between them. Searched rather than read alone, since what lies above the search box is no tile and the
- * search is what finds the box: `spheal.png` carries its term, `shiny&363`, ending in a CP-sized number of its own.
- * `sparkles.png` is the grid whose first row of labels all misread, the ✦✦ a shiny tile carries against its `CP`
- * turning them into `on 376`, `£ 546` and `seo`, so that the first to read was a row down and the scan began from the
- * fourth of six; `spheal.png` the one where they read `yor 37`, `7°` and `£ agi`, only one of them ending in a number,
- * and the scan began from the fourth of five (#798). The other two carry the tabs' counts above the box, which are not
- * labels either.
- */
-test.for([
-  ['sparkles', 742, 1261],
-  ['spheal', 742, 1261],
-  ['grid', 460, 828],
-  ['searched', 516, 880],
-] as const)("the first tile is tapped in the first row of storage/%s.png's grid", async ([name, row, next]) => {
-  const finished = useTestEngine();
-  const image = decodePng(new Uint8Array(readFileSync(new URL(`fixtures/storage/${name}.png`, import.meta.url))));
-  const { search, firstTile } = storage(
-    phone(DEFAULTS.package, { screens: [image] }).device,
-    CONFIG,
-    DATA,
-    image,
-    () => {},
-  );
-  const [x, y] = firstTile(await search('shiny').finally(finished));
-
-  expect(x).toBe(image.width * DEFAULTS.taps.firstTile[0]);
-  expect(y).toBeGreaterThan(row);
-  expect(y).toBeLessThan(next);
-});
-
-/**
- * Each storage screen under real OCR, given the empty search a scan without `--search` types, and whether it sent the
- * Back that closes the suggestions panel. `suggestions.png` is the panel a scan started from the map stopped on, its
- * Recommended chips each carrying a count — `362`, `631`, `405` and `296` at one height, which `tileLabel` takes for a
- * row of labels whose `CP`s misread — so the Back was skipped and the first tile tapped beneath `Normal` (#816).
- * `recent-cp.png` is the panel again with `cp-1500` the first of its Recent searches, which reads as a line of its own
- * and as a CP label (#829). The grids are the other half, where a Back closes storage, and the two whose first row of
- * labels misread are the ones that could be taken for the panel.
+ * Each storage screen under real OCR, given an empty search, and whether it sent the Back that closes the suggestions
+ * panel. `suggestions.png` is the panel a walk started from the map stopped on, its Recommended chips each carrying a
+ * count — `362`, `631`, `405` and `296` at one height, which could be taken for a row of labels whose `CP`s misread —
+ * so the Back was skipped and the panel's own counts read as the grid's (#816). `recent-cp.png` is the panel again with
+ * `cp-1500` the first of its Recent searches, which reads as a line of its own and as a CP label (#829). The grids are
+ * the other half, where a Back closes storage, and the two whose first row of labels misread are the ones that could be
+ * taken for the panel.
  */
 test.for([
   ['suggestions', true],
@@ -477,7 +449,7 @@ test('the map is walked to storage by the main menu, and the Pokémon button tap
 });
 
 /**
- * The map as the Inventory page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
+ * The map as the Search page reads it, with tesseract.js whatever `INVENTORY_OCR` asks for, since only that engine
  * reads a `yes` into the rooftops of `overworld.png` (#935). The phone answers every screenshot with the map, as it
  * would were it to drop every tap, so the menu never opens: the walk taps its button again each time the map is left
  * as it was (#1073) and stops once out of tries, having pressed no Back.

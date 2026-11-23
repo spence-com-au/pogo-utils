@@ -43,7 +43,7 @@
     // `@types/leaflet` and `@types/tz-lookup` are unaffected, being found through their packages rather than as
     // globals.
     //
-    // WebUSB is the one exception, being a browser API `lib.dom` does not carry: the Inventory page drives a phone over
+    // WebUSB is the one exception, being a browser API `lib.dom` does not carry: the pages drive a phone over
     // it, and Tango's declarations name `USBDevice` and the rest as the globals `@types/w3c-web-usb` declares.
     "types": ["w3c-web-usb"],
 

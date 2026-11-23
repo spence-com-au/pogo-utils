@@ -17,9 +17,9 @@ export const POKEMON_TYPES = 'data/pokemon-types.json';
 export const EVENTS_FEED = 'events.ics';
 
 /**
- * The Inventory page's two fetches, which the build has to publish where the page asks for them: the game master that
+ * The pages' two fetches, which the build has to publish where the pages ask for them: the game master that
  * `scripts/vend-game-master.mts` writes and `scripts/build-sprites.mts` also reads, and the directory
- * `scripts/assemble.mts` copies Tesseract.js's worker and cores into. The page's copy was only ever a `fetch` string,
+ * `scripts/assemble.mts` copies Tesseract.js's worker and cores into. A page's copy was only ever a `fetch` string,
  * which no build or lint step reads, so a path moved under it was a 404 at runtime behind a green build.
  *
  * `TESSERACT_VENDOR` ends in a slash because Tesseract.js takes it as a `corePath` it appends a file name to.
@@ -28,17 +28,11 @@ export const GAME_MASTER = 'data/game-master.json';
 export const TESSERACT_VENDOR = 'vendor/tesseract/';
 
 /**
- * What the demo phone in `src/tools/inventory/demo.mts` shows: detail screens from the reader's corpus, one per
- * screenshot in turn, and storage before and after a search. The corpus's own captures rather than copies of them, so
- * covering a trainer name on one covers it on the site too.
+ * What the demo phone in `src/tools/inventory/demo.mts` shows: a detail screen the Search page walks to storage from,
+ * and storage before and after a search. A fixture rather than a copy of one, so covering a trainer name on it covers
+ * it on the site too.
  */
-export const DEMO_DETAILS = [
-  'pikachu-ash-hat',
-  'charizard-gigantamax',
-  'eevee-background',
-  'ho-oh',
-  'deoxys-attack',
-].map((name) => `src/tools/inventory/fixtures/${name}.png`);
+export const DEMO_DETAIL = 'src/tools/inventory/fixtures/deoxys-attack.png';
 export const DEMO_STORAGE = 'src/tools/inventory/fixtures/storage/grid.png';
 export const DEMO_SEARCHED = 'src/tools/inventory/fixtures/storage/searched.png';
 

@@ -115,7 +115,7 @@ const coloured = (r: number, g: number, b: number) => chroma(r, g, b) >= SIZE_CH
  * badge where the whitelist misses `smoliv.png`'s, the rest answering null under both.
  *
  * **The pill's shape counts the letters, and the text only names the last.** A run of one letter is exactly what OCR
- * merges: the WebAssembly Tesseract the Inventory page reads with answers `XS` off `smoliv.png`'s pill even open, where
+ * merges: the WebAssembly Tesseract the pages read with answers `XS` off `smoliv.png`'s pill even open, where
  * the CLI answers `XXS`. The pill is drawn to fit its text, so its width says how many letters it holds where reading
  * them cannot — 0.96 of its height round two letters on both `XL` captures, 1.31 and 1.36 round three on `XXL` and
  * `XXS` — and `SIZE_THREE` sits between the two. What the text is still asked for is whether it ends in an `S` or an

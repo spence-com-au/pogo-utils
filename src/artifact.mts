@@ -8,7 +8,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, relative, sep } from 'node:path';
-import { DEMO_BATTLE, DEMO_DETAILS, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
+import { DEMO_BATTLE, DEMO_DETAIL, DEMO_SEARCHED, DEMO_STORAGE, TESSERACT_VENDOR } from './generated.ts';
 import { SERVED_TYPES } from './served-types.mts';
 
 /**
@@ -26,14 +26,14 @@ export const PUBLISHED = [
 
   // What the demo phone shows, out of the corpus for the same reason. These are in Git LFS, which a checkout leaves as
   // pointers unless it pulls them, and `lfsPointers` below is what fails a build that forgot to.
-  ...DEMO_DETAILS,
+  DEMO_DETAIL,
   DEMO_STORAGE,
   DEMO_SEARCHED,
   DEMO_BATTLE.clip,
 ];
 
 /**
- * What the Inventory page's OCR runs on, copied out of `node_modules` rather than fetched from tesseract.js's CDN
+ * What the pages' OCR runs on, copied out of `node_modules` rather than fetched from tesseract.js's CDN
  * default, so the version the build was tested with is the one served: its worker script, and the three LSTM-only
  * cores the worker picks between by what the browser's WebAssembly supports — relaxed SIMD, SIMD, or neither. Each is
  * some 4 MB with the WebAssembly inlined, and a browser fetches the one it runs. A missing file fails the copy.
@@ -279,8 +279,8 @@ export function scanReferences(dist: string): References {
  * five page sheets were written into the artifact and no document ever loaded one. Every page rendered unstyled, and
  * nothing in the build said so: the module graph was complete, the markup resolved, the byte counts looked plausible.
  *
- * `src/main.tsx` importing all seven is the fix. This is what stops the next page-local `import './x.css'` from quietly
- * reintroducing it.
+ * `src/main.tsx` importing every page's stylesheet is the fix. This is what stops the next page-local `import
+ * './x.css'` from quietly reintroducing it.
  */
 export function orphanedStylesheets(dist: string, named: ReadonlySet<string>): string[] {
   return readdirSync(join(dist, 'src'), { recursive: true, withFileTypes: true })

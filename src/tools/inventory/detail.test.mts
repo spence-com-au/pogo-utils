@@ -1,9 +1,8 @@
 /**
- * The pieces of the detail reader that the corpus cannot isolate, asserted on their own: chiefly what `rescue` takes
- * off a treated CP band and what it turns down — the rule every pass of `wholeCp` is run through.
- * `screens.test.mts` states the CP each capture ends with, and this rule against three different band readings can all
- * arrive at the same one. The rest (`pills`, `figureIn`, `joined`, `nameLineOf`, `cpOn` and `readingsOf`) are held to
- * their contracts below.
+ * The pieces of the detail reader asserted on their own: chiefly what `rescue` takes off a treated CP band and what it
+ * turns down — the rule every pass of `wholeCp` is run through, which three different band readings of one capture can
+ * all arrive at the same CP from. The rest (`pills`, `figureIn`, `joined`, `nameLineOf`, `cpOn` and `readingsOf`) are
+ * held to their contracts below.
  *
  * The readings quoted in the `rescue` tests are dumped off the real loop over every fixture, except in the one that
  * constructs its inputs: that one is a claim about the rule's whole domain rather than about a capture.
@@ -13,7 +12,18 @@
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
-import { cpDigits, cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
+import {
+  cpDigits,
+  cpOn,
+  type Detail,
+  figureIn,
+  isDetail,
+  joined,
+  nameLineOf,
+  pills,
+  readingsOf,
+  rescue,
+} from './detail.mts';
 import { type Line } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { type Image } from '../../core/png.mts';
@@ -109,7 +119,7 @@ test('only digits abutting the line on its own row are joined to it', () => {
  * and left the overlay above it as the nearest line that would do, so the scan wrote `L15 iw82 131410` for a nickname.
  * Under the overlay no line reads as a name — the status bar's `10:06` above it being what a rule that only passed over
  * the overlay's own line took instead — which is what has `parseDetail` read the `HH` line's box again on its own, and
- * `lugia-hashes-hh.png` in `screens.test.mts` is that frame reading `##` that way.
+ * `lugia-hashes-hh.png` is that frame reading `##` that way.
  */
 test('a name is never taken from PGSharp’s overlay or above it', () => {
   const hp = line('126 / 126 HP', 607, 1458, 227, 31);
@@ -322,4 +332,10 @@ test('a band settles a `/` only by reading a 7 at every one', () => {
   expect(rescue('CP487', '48/7', LONGEST), 'a band reading the `/` as nothing is taken').toBeNull();
   expect(rescue('P472', '4/2', LONGEST), 'a band reading the 7 is no longer taken').toBe('472');
   expect(rescue('P4712', '4/2', LONGEST), 'a band reading more than the 7 is taken').toBeNull();
+});
+
+// Only the HP is read, so a reading with the rest left out stands in for one of a detail screen or of anything else.
+test('a reading is of a detail screen only where its HP read', () => {
+  expect(isDetail({ hp: 500 } as Detail)).toBe(true);
+  expect(isDetail({ hp: null } as Detail)).toBe(false);
 });

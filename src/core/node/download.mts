@@ -651,9 +651,9 @@ export async function cached(dir: string, file: string, url: string, refresh: bo
   } catch (error) {
     const reason = said(error);
 
-    // Naming the URL rather than leaning on the line above it. `iconsFor` keeps 16 downloads in flight, so the
-    // `Downloading` this reads as a continuation of is rarely the line printed before it, and a bare `fetch failed;
-    // using the copy from before` cannot say which of the three files or which of ~162 icons went stale.
+    // Naming the URL rather than leaning on the line above it, so a `fetch failed; using the copy from before` says
+    // which file went stale rather than reading as a continuation of whichever `Downloading` was last printed, which
+    // with downloads running at once need not be the line before it.
     if (existsSync(path)) {
       console.error(`  ${url}: ${reason}; using the copy from before`);
       return readFileSync(path);

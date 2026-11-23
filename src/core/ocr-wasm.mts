@@ -1,7 +1,7 @@
 /**
- * Tesseract compiled to WebAssembly, as an `Engine`: what the Inventory page reads with, there being no CLI to shell
- * out to in a browser. [tesseract.js](https://github.com/naptha/tesseract.js) is the build, Apache-2.0, run in Node for
- * the corpus as well as in the page, so the two can be held to the same answers.
+ * Tesseract compiled to WebAssembly, as an `Engine`: what the pages read with, there being no CLI to shell out to in a
+ * browser. [tesseract.js](https://github.com/naptha/tesseract.js) is the build, Apache-2.0, run in Node for the corpus
+ * as well as in the browser, so the two can be held to the same answers.
  *
  * **The model is the CLI's**, `eng.traineddata` from `tessdata_fast` 4.1.0 — what both `apt install tesseract-ocr` and
  * `brew install tesseract` put beside the binary — rather than the `best_int` model tesseract.js fetches by default.
