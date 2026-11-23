@@ -69,8 +69,7 @@ const scrimmed = (image: Image) => margin(image, 0.4, 0.5) > PANEL_LIT && margin
  * could land on its confirm — so it is asked before the taps at the foot of the screen: `toStorage`'s close and menu
  * taps, and `closeDetail`'s, a dialog hiding what it is drawn over however much of the screen above it read. It is not
  * asked before the swipes a walk makes, which do nothing over a dialog, nor before the search box's tap or a tile's,
- * which
- * are made on storage, where no detail screen's control can be hit.
+ * which are made on storage, where no detail screen's control can be hit.
  */
 export const dialogOpen = (lines: readonly Line[], image: Image) =>
   lines.some((l) => l.top >= image.height * SKY && (DIALOG_BUTTON.test(fold(l.text)) || POWER_UP_TITLE.test(l.text))) ||

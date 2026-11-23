@@ -356,15 +356,19 @@ async function scan() {
   let text: string;
 
   // `Device.read` runs `cat` over the shell, which carries its exit status back, so a file the phone does not have
-  // fails here rather than reading back as `cat`'s own message. The phone itself is ruled out above, so what is left
-  // is the export. A present-but-corrupt one is not caught here: it reads fine and fails the parse below, a different
-  // thing to say than that there is nothing to read.
+  // fails here rather than reading back as `cat`'s own message — the likely cause, the phone having answered `check`
+  // above. But a slow link timing out or an export too big for the read's buffer fail here too, so the underlying
+  // reason leads and the export hint is only offered, not asserted. A present-but-corrupt export is not caught here:
+  // it reads fine and fails the parse below, a different thing to say than that there is nothing to read.
   try {
     text = new TextDecoder().decode(await device.read(PGSTATS));
   } catch (error) {
-    throw new Error(`could not read ${PGSTATS} off the phone; switch PGSharp's inventory export on and run it first`, {
-      cause: error,
-    });
+    const reason = error instanceof Error ? error.message : String(error);
+
+    throw new Error(
+      `could not read the export off the phone: ${reason} — switch PGSharp's inventory export on if it is off`,
+      { cause: error },
+    );
   }
 
   const snapshot = parseSnapshot(text);
