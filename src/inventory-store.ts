@@ -30,31 +30,56 @@ const failure = (error: unknown) =>
 export class InventoryStore extends Store {
   inventory: Inventory = { state: 'empty' };
 
+  /** The phone the inventory was read off, so a read is shown only for the phone it is of, not a swapped-in one. */
+  phone: Phone | null = null;
+
+  /** Which read is current, so one a swap or a clear overtook before it returned cannot land over what replaced it. */
+  #token = 0;
+
   /**
    * Reads PGSharp's export off `phone` and parses it to rows, fetching the game master once to resolve them against. A
-   * read already under way is left to finish rather than started again.
+   * read already under way is left to finish rather than started again, and one overtaken before it returns is dropped.
    */
   async read(phone: Phone): Promise<void> {
     if (this.inventory.state === 'reading') {
       return;
     }
 
+    const token = ++this.#token;
+
+    this.phone = phone;
     this.inventory = { state: 'reading' };
     this.emit();
 
     try {
       const text = new TextDecoder().decode(await new Device(phone.transport).read(PGSTATS));
       const rows = rowsOf(parseSnapshot(text), await gameData());
+
+      if (this.#token !== token) {
+        return;
+      }
+
       this.inventory = { state: 'read', rows };
     } catch (error) {
+      if (this.#token !== token) {
+        return;
+      }
+
       this.inventory = { state: 'failed', reason: failure(error) };
     }
 
     this.emit();
   }
 
-  /** Forgets what was read, back to before any read. */
+  /** The inventory, but only where it was read off `phone`: a swapped-in phone's is empty until its own read lands. */
+  forPhone(phone: Phone | null): Inventory {
+    return this.phone === phone ? this.inventory : { state: 'empty' };
+  }
+
+  /** Forgets what was read, back to before any read, and drops a read still under way. */
   clear(): void {
+    this.#token++;
+    this.phone = null;
     this.inventory = { state: 'empty' };
     this.emit();
   }
@@ -63,7 +88,7 @@ export class InventoryStore extends Store {
 /** The document's store, which outlives any one tab. */
 export const inventoryStore = new InventoryStore();
 
-/** What the store holds, with the calling component redrawn whenever that changes. */
-export function useInventory(): Inventory {
-  return useStore(inventoryStore).inventory;
+/** What the store holds for `phone`, with the calling component redrawn whenever that changes. */
+export function useInventory(phone: Phone | null): Inventory {
+  return useStore(inventoryStore).forPhone(phone);
 }

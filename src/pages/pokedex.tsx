@@ -405,7 +405,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
   /** The phone the document holds and what its PGSharp export says the reader owns, for marking the grid and forms. */
   const phone = usePhone();
-  const inventory = useInventory();
+  const inventory = useInventory(phone);
 
   /**
    * The entries the filters leave, in dex order — what the grid shows and what the dialog's arrows step through.

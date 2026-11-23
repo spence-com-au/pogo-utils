@@ -108,3 +108,38 @@ test('clear forgets what was read', async () => {
   store.clear();
   expect(store.inventory).toStrictEqual({ state: 'empty' });
 });
+
+test('a read is held only for the phone it was read off', async () => {
+  const rows = [{ dex: 25 }];
+
+  mocks.parseSnapshot.mockReturnValue({});
+  mocks.gameData.mockResolvedValue({});
+  mocks.rowsOf.mockReturnValue(rows);
+
+  const store = new InventoryStore();
+  const a = phone(async () => bytes('the export'));
+  const b = phone(async () => bytes('the export'));
+
+  await store.read(a.phone);
+
+  expect(store.forPhone(a.phone)).toStrictEqual({ state: 'read', rows });
+  expect(store.forPhone(b.phone)).toStrictEqual({ state: 'empty' });
+  expect(store.forPhone(null)).toStrictEqual({ state: 'empty' });
+});
+
+test('a read a clear overtook does not land over the cleared inventory', async () => {
+  mocks.parseSnapshot.mockReturnValue({});
+  mocks.gameData.mockResolvedValue({});
+  mocks.rowsOf.mockReturnValue([{ dex: 25 }]);
+
+  const store = new InventoryStore();
+  let release: (bytes: Uint8Array) => void = () => {};
+  const { phone: device } = phone(() => new Promise((resolve) => (release = resolve)));
+
+  const reading = store.read(device);
+  store.clear();
+  release(bytes('the export'));
+  await reading;
+
+  expect(store.inventory).toStrictEqual({ state: 'empty' });
+});
