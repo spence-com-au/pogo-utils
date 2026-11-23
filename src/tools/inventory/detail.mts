@@ -995,8 +995,5 @@ const readTreated = (band: Image): Promise<string>[] =>
  * 130 and is lost at 115 and from 135 up — a jagged region with a failure five units below the value chosen, which is a
  * fit to OCR's noise rather than to the artwork. A Tesseract bump or a retaken capture can flip the single read this
  * treatment exists for.
- *
- * Its own number rather than `overlay.mts`'s private `OVERLAY_BRIGHTNESS`, also 120, which is set low enough to hold
- * the overlay's colour-coded IV percentage — a glyph this band has none of, where this floor answers to the artwork.
  */
 const CP_BRIGHTNESS = 120;
