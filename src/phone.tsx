@@ -3,8 +3,8 @@
  * while no Android phone is held over WebUSB and green while one is, so the bar says which from any tab. A press opens
  * a panel. With a phone held, it says which phone it is, with a button to let it go; with none, its button offers the
  * browser's chooser to connect one. Connecting waits for that button rather than coming with the press, so a press
- * does the same whether a phone is held or not. With none held, a link under the button holds the demo phone, which
- * reads recorded screens in place of a phone, the browser's chooser listing USB devices alone.
+ * does the same whether a phone is held or not. With none held or plugged in, a second button holds the demo phone,
+ * which reads recorded screens in place of a phone, the browser's chooser listing USB devices alone.
  */
 
 import { Fragment } from 'preact';
@@ -31,6 +31,38 @@ function rows({ maker, model, android, screen, battery }: About, serial: string)
   ].filter((row): row is [string, string] => row[1] !== undefined);
 }
 
+/**
+ * Whether a phone this site was allowed before is plugged in, which the browser says without asking, checked while the
+ * panel is open. The chooser offers ADB phones alone, so every device the site was allowed is one. A phone plugged in
+ * but never picked is not seen, and a browser with no WebUSB has none to see.
+ */
+function usePluggedIn(open: boolean) {
+  const [plugged, setPlugged] = useState(false);
+
+  useEffect(() => {
+    if (!open || !('usb' in navigator)) {
+      return;
+    }
+
+    const check = () =>
+      void navigator.usb.getDevices().then(
+        (devices) => setPlugged(devices.length > 0),
+        () => setPlugged(false),
+      );
+
+    check();
+    navigator.usb.addEventListener('connect', check);
+    navigator.usb.addEventListener('disconnect', check);
+
+    return () => {
+      navigator.usb.removeEventListener('connect', check);
+      navigator.usb.removeEventListener('disconnect', check);
+    };
+  }, [open]);
+
+  return plugged;
+}
+
 export function Phone() {
   const root = useRef<HTMLDivElement>(null);
 
@@ -38,6 +70,7 @@ export function Phone() {
   const demo = phone?.serial === DEMO_SERIAL;
 
   const [open, setOpen] = useState(false);
+  const plugged = usePluggedIn(open);
 
   /** What the last press of Connect has to say, or null with nothing to add. */
   const [status, setStatus] = useState<string | null>(null);
@@ -113,8 +146,8 @@ export function Phone() {
   }
 
   /**
-   * Hold the demo phone. Never in place of a real one, which may be partway through something: the link is offered only
-   * while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
+   * Hold the demo phone. Never in place of a real one, which may be partway through something: its button is offered
+   * only while none is held, and `lend` sees to one lent to a battle, which nothing is held in place of, by taking it back
    * over the demo once the battle ends.
    */
   async function holdDemo() {
@@ -213,21 +246,18 @@ export function Phone() {
                   Disconnect
                 </button>
               ) : (
-                <button type="button" disabled={connecting} onClick={() => void connectPhone()}>
-                  Connect
-                </button>
+                <>
+                  <button type="button" disabled={connecting} onClick={() => void connectPhone()}>
+                    Connect
+                  </button>
+                  {!plugged && (
+                    <button type="button" disabled={connecting} onClick={() => void holdDemo()}>
+                      Try the demo phone
+                    </button>
+                  )}
+                </>
               )}
             </div>
-
-            {phone === null && (
-              <p class="menu-note phone-demo">
-                No phone?{' '}
-                <button type="button" disabled={connecting} onClick={() => void holdDemo()}>
-                  Try the demo phone
-                </button>
-                .
-              </p>
-            )}
 
             {/*
              * Added with its message rather than waiting empty: an alert is announced as it arrives, and `tell` can
