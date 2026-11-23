@@ -69,6 +69,9 @@ export interface Detail {
 
 export type Max = 'dynamax' | 'gigantamax';
 
+/** Whether a reading is of a detail screen at all: its HP read, which the map and storage do not draw. */
+export const isDetail = (detail: Detail) => detail.hp !== null;
+
 /** How far down a screen `readLines` reads it a second time inverted, as a fraction of its height. */
 export const SKY = 1 / 5;
 

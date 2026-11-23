@@ -6,11 +6,10 @@
 
 import { CLEAR_KEYS, Device, KEY, replaceSearch, typeable } from '../../core/adb.mts';
 import { type Config, type Point } from './config.mts';
-import { CP_LABEL, parseDetail, readLines, SKY } from './detail.mts';
+import { CP_LABEL, isDetail, parseDetail, readLines, SKY } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { centre, findLine, fold, type Line } from '../../core/ocr.mts';
 import { crop, difference, luminance, median, rgb, type Image } from '../../core/png.mts';
-import { isDetail } from './report.mts';
 import { SCROLL_STRIP } from './stitch.mts';
 
 /**

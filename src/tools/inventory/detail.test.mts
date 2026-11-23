@@ -13,7 +13,18 @@
  * live read per treatment would say, and that wants the band's own crop rather than a second copy of it here.
  */
 
-import { cpDigits, cpOn, figureIn, joined, nameLineOf, pills, readingsOf, rescue } from './detail.mts';
+import {
+  cpDigits,
+  cpOn,
+  type Detail,
+  figureIn,
+  isDetail,
+  joined,
+  nameLineOf,
+  pills,
+  readingsOf,
+  rescue,
+} from './detail.mts';
 import { type Line } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { type Image } from '../../core/png.mts';
@@ -322,4 +333,10 @@ test('a band settles a `/` only by reading a 7 at every one', () => {
   expect(rescue('CP487', '48/7', LONGEST), 'a band reading the `/` as nothing is taken').toBeNull();
   expect(rescue('P472', '4/2', LONGEST), 'a band reading the 7 is no longer taken').toBe('472');
   expect(rescue('P4712', '4/2', LONGEST), 'a band reading more than the 7 is taken').toBeNull();
+});
+
+// Only the HP is read, so a reading with the rest left out stands in for one of a detail screen or of anything else.
+test('a reading is of a detail screen only where its HP read', () => {
+  expect(isDetail({ hp: 500 } as Detail)).toBe(true);
+  expect(isDetail({ hp: null } as Detail)).toBe(false);
 });

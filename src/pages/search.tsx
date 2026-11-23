@@ -535,7 +535,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
     say('busy', `Searching on ${phone.name}…`);
 
     try {
-      const { searchStorage } = await loadChunk(() => import('../inventory/reader.js'));
+      const { searchStorage } = await loadChunk(() => import('../inventory/search.js'));
       const found = await searchStorage(
         phone.transport,
         tight,
