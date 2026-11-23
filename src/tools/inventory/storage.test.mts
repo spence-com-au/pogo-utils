@@ -6,6 +6,7 @@
 
 import { CLEAR_KEYS, Device, KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
+import { isDetail, parseDetail, readLines } from './detail.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
@@ -281,6 +282,32 @@ test('a scrolled detail screen and storage read as having no dialog over them', 
   );
 
   expect(open).toStrictEqual([]);
+});
+
+/**
+ * The two screen-shape reads the walk turns on, over real captures rather than hand-built lines, now the corpus test
+ * that ran them over screenshots is gone: `isDetail`, which closes a Pokémon the walk opened by mistake, and
+ * `dialogOpen`, which closes a sheet over one. The demo phone's `deoxys-attack.png` is a detail screen with nothing over
+ * it; the map and a storage grid are neither. Read whatever `INVENTORY_OCR` asks for, since the page must read each the
+ * same under both engines. #1142 keeps the demo capture and `overworld.png`.
+ */
+test('isDetail and dialogOpen read a detail screen, the map and storage for what they are', async () => {
+  const finished = useTestEngine();
+
+  const shape = async (file: string) => {
+    const image = capture(file);
+    const lines = await readLines(image);
+
+    return { detail: isDetail(await parseDetail(lines, DATA, image)), dialog: dialogOpen(lines, image) };
+  };
+
+  try {
+    expect(await shape('deoxys-attack.png')).toStrictEqual({ detail: true, dialog: false });
+    expect((await shape('overworld.png')).detail).toBe(false);
+    expect((await shape('storage/grid.png')).detail).toBe(false);
+  } finally {
+    await finished();
+  }
 });
 
 test('a dialog open over the screen is closed with Back before the walk to storage taps anything', async () => {
