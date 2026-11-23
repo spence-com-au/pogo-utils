@@ -28,7 +28,6 @@ const PAGES: Record<Page, () => Promise<{ default: PageComponent }>> = {
   search: () => loadChunk(() => import('./pages/search.js')),
   pokedex: () => loadChunk(() => import('./pages/pokedex.js')),
   integrations: () => loadChunk(() => import('./pages/integrations.js')),
-  inventory: () => loadChunk(() => import('./pages/inventory.js')),
   battle: () => loadChunk(() => import('./pages/battle.js')),
 };
 

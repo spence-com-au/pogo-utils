@@ -17,7 +17,6 @@ export const PAGES = [
   { name: 'search', label: 'Search', icon: '🔎', title: 'Search Strings' },
   { name: 'pokedex', label: 'Pokédex', icon: '📖', title: 'Pokédex' },
   { name: 'integrations', label: 'Integrations', icon: '🔌', title: 'Integrations' },
-  { name: 'inventory', label: 'Inventory', icon: '🎒', title: 'Inventory' },
   { name: 'battle', label: 'Battle', icon: '⚔️', title: 'Battle' },
 ] as const satisfies readonly { name: string; label: string; icon: string; title: string }[];
 

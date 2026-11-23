@@ -1,9 +1,8 @@
 /**
- * `pnpm inventory scan`, `snap` and `dex` driven as a subprocess, against a phone that is recordings: the script is run
- * as a person runs it, with only the `adb` on its `PATH` replaced. `cli.test.mts` reaches the rest of the script —
- * `parse` and the refusals that come before any phone is opened — and this reaches what needs one: the row a scan
- * writes off the export it pulls, the capture a snap leaves and the walk a dex makes, which the script wires together
- * from parts the other suites test one at a time.
+ * `pnpm inventory scan` and `dex` driven as a subprocess, against a phone that is recordings: the script is run as a
+ * person runs it, with only the `adb` on its `PATH` replaced. `cli.test.mts` reaches the rest of the script — the
+ * refusals that come before any phone is opened — and this reaches what needs one: the row a scan writes off the export
+ * it pulls, and the walk a dex makes, which the script wires together from parts the other suites test one at a time.
  *
  * The phone is `Phone`, three panels answering the taps, swipes and keys as the game does — a tap on storage opens the
  * first Pokémon, a swipe sideways moves to the next, a swipe up scrolls to the moves — over the captures committed
@@ -26,7 +25,7 @@ import { GAME_MASTER_CACHE, ICON_CACHE } from '../../core/node/download.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
 import { useEngine } from '../../core/ocr.mts';
 import { type GameData } from '../../core/game-master.mts';
-import { decodePng, encodePng, screenIn, type Image } from '../../core/png.mts';
+import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { LAST_DEX } from '../../pokemon/generations.ts';
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
@@ -61,8 +60,6 @@ interface Pokemon {
   detail: string;
   moves?: string;
 }
-
-const ELGYEM: Pokemon = { detail: 'moves/elgyem-detail.png', moves: 'moves/elgyem-moves.png' };
 
 /** What a tap on a tile opens where the game opens nothing readable: storage again, as a tap it dropped does. */
 const NOTHING: Pokemon = { detail: SEARCHED };
@@ -430,82 +427,6 @@ async function harness(
 
   return { cwd, inventory };
 }
-
-const snapped = (cwd: string, name: string) => join(cwd, '.cache', 'inventory', 'snaps', `${name}.png`);
-
-describe.concurrent('snap', () => {
-  test(
-    '`--search` opens the first match, and saves the whole screen stitched out of a scroll',
-    { timeout: SLOW },
-    async (context) => {
-      const phone = new Phone('storage', (term) => (term === 'shiny' ? [ELGYEM] : []));
-      const { cwd, inventory } = await harness(context, phone, ['Elgyem']);
-      const { code, stdout, stderr } = await inventory('snap', '--search', 'shiny', 'elgyem');
-      const saved = decodePng(readFileSync(snapped(cwd, 'elgyem')));
-
-      expect({ code, stderr }).toStrictEqual({ code: 0, stderr: 'Pokémon GO is already in front\n' });
-      expect(stdout).toMatch(/^species {2,}Elgyem$/m);
-      expect(stdout).toMatch(/^Stitched 2 frames, scrolling (\d+) = \1 pixels past the first\.$/m);
-
-      // The screen is written first, which is what keeps a snap of a phone nothing can be read off, and the stitch goes
-      // over it: two writes to the one name, the second the taller.
-      expect(stdout.match(/^Saved .*elgyem\.png \(\d+×\d+\)$/gm)).toHaveLength(2);
-      expect(saved.height, 'the file is the screen and not the stitch').toBeGreaterThan(screenIn(saved).height);
-      expect(screenIn(saved).height).toBe(heightOf(recording(ELGYEM.detail)));
-
-      // The term typed and the tile tapped, and only then the swipes that scroll: down to the moves and on to find the
-      // end, then back up by what was measured, which leaves the panel where it began.
-      const typed = phone.calls.indexOf("shell input text 'shiny'");
-      const tapped = phone.calls.findIndex((call, at) => at > typed && call.startsWith('shell input tap '));
-
-      expect(typed).toBeGreaterThan(-1);
-      expect(phone.calls.findIndex((call) => call.startsWith('shell input swipe '))).toBeGreaterThan(tapped);
-      expect(phone.swipes).toStrictEqual(['up', 'up', 'down']);
-      expect(phone.panel, 'the panel was left scrolled down').toBe('detail');
-    },
-  );
-
-  test(
-    'saves the plain screen where the overlay did not read, and refuses it, scrolling nothing',
-    { timeout: SLOW },
-    async (context) => {
-      const file = 'pgsharp-no-overlay.png';
-      const phone = new Phone('detail', () => [{ detail: file }]);
-      const { cwd, inventory } = await harness(context, phone, []);
-      const { code, stdout, stderr } = await inventory('snap', 'plain');
-      const saved = decodePng(readFileSync(snapped(cwd, 'plain')));
-
-      expect(code).toBe(1);
-      expect(stderr).toContain("snap: PGSharp's overlay was not found on it");
-
-      // The screen as the phone showed it, and the only write: a free name takes what could be had.
-      expect(Buffer.compare(saved.data, decodePng(recording(file)).data)).toBe(0);
-      expect(stdout.match(/^Saved /gm)).toHaveLength(1);
-      expect(phone.swipes, 'a screen the overlay is not on was scrolled').toStrictEqual([]);
-    },
-  );
-
-  test(
-    'leaves a capture already saved under the name as it was, where this one could not better it',
-    { timeout: SLOW },
-    async (context) => {
-      const phone = new Phone('detail', () => [{ detail: 'pgsharp-no-overlay.png' }]);
-      const { cwd, inventory } = await harness(context, phone, []);
-      const path = snapped(cwd, 'kept');
-
-      mkdirSync(join(cwd, '.cache', 'inventory', 'snaps'), { recursive: true });
-      writeFileSync(path, 'a capture from an earlier run');
-
-      const { code, stdout, stderr } = await inventory('snap', 'kept');
-
-      expect(code).toBe(1);
-      expect(stderr).toContain("snap: PGSharp's overlay was not found on it");
-      expect(stderr).toContain('snap: nothing was written, so a snap already saved under this name is still the one');
-      expect(readFileSync(path, 'utf8')).toBe('a capture from an earlier run');
-      expect(stdout).not.toContain('Saved');
-    },
-  );
-});
 
 /** The rows a scan wrote, one JSON object to a line. */
 const rowsIn = (cwd: string) =>

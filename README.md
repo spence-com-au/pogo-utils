@@ -13,8 +13,6 @@ application and reached from a shared top tab bar:
 - **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, a Live
   PokeMap display filter built from the shiny hunt list, and links to the
   [Pokémon GO Coin Bag](https://github.com/na-ji/pokemon-go-coin-bag)'s builds.
-- **Inventory** (`#/inventory`) — one Pokémon's detail screen read end to end, off a phone over WebUSB or from a saved
-  screenshot: what [`pnpm inventory parse`](#pokémon-inventory) prints, without installing anything.
 - **Battle** (`#/battle`) — Team Leader training or GO Battle League battles played on a phone connected with 📱 in the
   top bar, as [`pnpm battle run`](#trainer-battles) plays them, with its panel and the phone's screen beside it.
 
@@ -79,9 +77,9 @@ by a run going red.
 One caveat is local only and stays. The LAN address printed beside the local one is good for viewing the site on a phone
 but not for installing it — a plain-HTTP origin is no secure context, and Chrome will read `manifest.json` for
 installation only from one — so [Installing as an app](#installing-as-an-app) is a flow only `localhost` or Pages can
-exercise. WebUSB is held to a secure context the same way, and so is the Web Crypto hash the Inventory page checks its
-OCR model against before reading anything, so that page neither reaches a phone nor reads a dropped screenshot from the
-LAN address: `localhost` and Pages can do both, and the browser reaching this machine over the LAN can do neither.
+exercise. WebUSB is held to a secure context the same way, and so is the Web Crypto hash the Search page checks its OCR
+model against before reading anything, so that page neither reaches a phone nor reads what it drives one to from the LAN
+address: `localhost` and Pages can do both, and the browser reaching this machine over the LAN can do neither.
 
 Static hosting cannot list a directory, so the viewer is handed the paths in
 [`data/gpx-paths.json`](data/gpx-paths.json). Nothing but the paths comes from it. Each listed file is read for what it
@@ -516,41 +514,15 @@ species, forms and move names are resolved against. The game master is found thr
 the game's data out of PGSharp breaks Niantic's terms of service as surely as driving the phone does; the risk to the
 account is yours to weigh.
 
-A scroll capture keeps dragging the screen up and taking a screenshot until it stops moving, then stitches the frames
-into one tall image, which is how a screen longer than the phone is seen whole. `pnpm inventory snap` takes one of any
-screen it can confirm is a detail screen and leaves it as `NAME.png`, leaving the plain screenshot under that same name
-only where PGSharp's overlay did not read, which is where it does not scroll at all. A snap will not write over a
-capture already saved under the name unless it has a better one to put there, so a re-snap that comes back refused
-leaves the earlier file alone and says so. It then drags the panel back to where it found it, measuring rather than
-assuming it got there, so one snap does not shift the next. The stitched image is not handed to the readers anchored on
-a fraction of the height — the star corner, the overlay sweep, the tag band and the artwork — so `snap` and `parse` crop
-it back to the screen it records before they see it, and read the moves off the whole. The band of the screen the frames
-are lined up in is `scrollBand` in `--config`; it has to end above the game's floating buttons, which are drawn over the
-panel rather than in it, or their top is stitched in once per frame.
-
-`snap`, `parse` and `dex` read the screen the way the old scan did — Pokémon GO is drawn by Unity, so Android cannot
-read its text and the script reads a screenshot with Tesseract, which has to be on `PATH` (`brew install tesseract`, or
+`dex` reads the screen the way the old scan did — Pokémon GO is drawn by Unity, so Android cannot read its text and the
+script reads a screenshot with Tesseract, which has to be on `PATH` (`brew install tesseract`, or
 `apt install tesseract-ocr`). Every tap position, swipe and delay can be overridden from a JSON file passed as
-`--config`. When something is misread, `pnpm inventory snap` saves a screenshot of whatever the phone shows and prints
-what each reader makes of it, and `pnpm inventory parse FILE.png` does the same for a saved one. `--search` drives the
-phone to the Pokémon first, typing a term into storage's own search box and opening the first thing it matches, so that
-`--search '+burmy & cp196'` names what the capture wanted where a screen set up by hand records nothing about which
-Pokémon that was. `--verbose` adds every line OCR found with its box, which is what separates a field left empty because
-no text was read there from one left empty because a reader anchored on the wrong line. On all three commands it also
-un-silences the preamble narrated before there is anything to report — the form icons about to be read, with the
-families no artwork settles — which is the same two lines on every run of a warm cache, and so is worth reading only
-when a form comes out wrong. A download says so either way, a file already in date being read without a word, so
-`Downloading` names only what a cold or stale run is actually waiting on. What went wrong is never held back either: a
-stale copy read because the download failed, or an icon that could not be had, prints regardless. `snap` exits non-zero
-unless the screen is a Pokémon detail screen carrying PGSharp's overlay, those being what every other reader depends on;
-it still saves the screenshot when it refuses, and still stitches one whose only fault is a field that did not read —
-what it will not scroll is a screen PGSharp's overlay cannot vouch for, the map and a detail screen being
-indistinguishable there. `pnpm inventory help` lists the flags each command acts on, and a flag given to a command that
-does not act on it is refused rather than quietly ignored. The cache, the snaps, `inventory*.jsonl` and `pokedex.jsonl`
-are git-ignored, since they describe a player's own account.
+`--config`. `pnpm inventory help` lists the flags each command acts on, and a flag given to a command that does not act
+on it is refused rather than quietly ignored. The cache, `inventory*.jsonl` and `pokedex.jsonl` are git-ignored, since
+they describe a player's own account.
 
-Automating input is against Niantic's terms of service, and `snap` and `dex` drive the phone, if only at about a
-person's pace. The risk to the account is yours to weigh.
+Automating input is against Niantic's terms of service, and `dex` drives the phone, if only at about a person's pace.
+The risk to the account is yours to weigh.
 
 ### The Pokédex
 
@@ -601,17 +573,10 @@ icons on these tiles, so the right one matches almost exactly. One that no icon 
 as it was. A walk ends by holding the whole record to the counts each tab of the Pokédex prints for each region,
 `148 / 151` on POKÉMON and `Caught: 80` on the others, and fails naming every region and tab that disagrees, with the
 lines it wrote kept; a region outside `--from` and `--to` that disagrees is one to walk again. It takes `--config`,
-`--serial`, `--user`, `--refresh` and `--verbose`, and swipes through a touchscreen it makes on the phone, as
-`pnpm battle` does. Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
+`--serial`, `--user` and `--refresh`, and swipes through a touchscreen it makes on the phone, as `pnpm battle` does.
+Expect a few seconds an entry and more for every form: the whole Pokédex is an overnight run.
 
 ### In the browser
-
-The **Inventory** page ([`src/pages/inventory.tsx`](src/pages/inventory.tsx)) is `snap` and `parse` without the install:
-it reads one detail screen, grabbed off a phone or dropped in as a PNG, and prints the four blocks `parse` prints —
-`detail`, `moves`, the overlay box and what read inside it, and the identity — from the same
-[`readScreen`](src/tools/inventory/report.mts). A screen a scan could not have used is refused the way `snap` refuses
-it, with the reason said: an HP that did not read, or no PGSharp overlay. What the readers made of it anyway is still
-there, folded under the refusal. A scan of the whole box, its JSON and a scroll capture stay the CLI's.
 
 The phone is reached over WebUSB with [Tango](https://tangoadb.dev/) (`@yume-chan/adb`, MIT), picked through the
 browser's own device chooser, and has to be authorised on the phone the first time as it does for `adb`. It is a
@@ -622,8 +587,8 @@ WebUSB to find out why; it is a hosted app rather than a library, which is why t
 The phone is connected with 📱 in the top bar rather than from any one page, and the connection outlives the tab it was
 made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until it is disconnected there or
 unplugged, so `adb` cannot reach the phone until then or until the site is closed. That is what the Search page's
-**Search** button uses. Beside **Copy** while a phone is held, it drives storage the way `snap --search` does, through
-the same [`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front,
+**Search** button uses. Beside **Copy** while a phone is held, it drives storage through
+[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front,
 storage opened from the map or a detail screen, the string typed into the box, and the game's own count of what matched
 reported back. The OCR it finds its way with is fetched on the first press rather than with the page.
 
@@ -714,7 +679,7 @@ in full, is in [`src/tools/battle/README.md`](src/tools/battle/README.md).
 
 A screenshot takes 0.8–1.9 seconds over `adb` against a turn of half a second, so a battle is watched as video instead:
 `screenrecord` on the phone sends H.264 at 30 frames a second and `ffmpeg` decodes it, which needs `ffmpeg` on `PATH`
-beside `adb`. Text is read with the Inventory page's tesseract.js rather than the Tesseract CLI: two workers kept for
+beside `adb`. Text is read with the browser's tesseract.js rather than the Tesseract CLI: two workers kept for
 the run read a battle's band for about a third of the CPU a `tesseract` started afresh spends loading its model. The
 first run also downloads that model, 4 MB, and the game's form icons for the party screen, some 40 MB, each kept for a
 week like the game master. [`src/tools/battle/recognise.mts`](src/tools/battle/recognise.mts) reads which part of a
