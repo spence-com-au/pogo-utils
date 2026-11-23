@@ -167,8 +167,10 @@ test('parseSnapshot keeps the 64-bit ids exact and leaves shorter numbers as num
 
   expect(mon?.id).toBe('3533574831663761643');
   expect(mon?.pokemonTagIds).toEqual(['5651286867452610075', '4072350120649042737']);
+
   // The tag id the export already wrote as a string is untouched, so the Pokémon still matches it.
   expect(mon?.pokemonTagIds[0]).toBe(snapshot.tags[0]?.id);
+
   // CP and a 13-digit timestamp are short enough that nothing quotes them.
   expect(mon?.cp).toBe(764);
   expect((mon as unknown as { creationTimeMs: number }).creationTimeMs).toBe(1_607_999_501_342);
