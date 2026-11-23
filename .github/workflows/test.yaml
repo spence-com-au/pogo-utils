@@ -29,16 +29,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 'corpus'
-            project: 'corpus'
-
-          # The Inventory page reads with tesseract.js, not the CLI's Tesseract, so the corpus is read with it too.
-          - name: 'corpus (wasm)'
-            project: 'corpus'
-            ocr: 'wasm'
-
           - name: 'default'
             project: 'default'
+
+          # The pages read with tesseract.js, not the CLI's Tesseract, so the suite is read with it too.
+          - name: 'default (wasm)'
+            project: 'default'
+            ocr: 'wasm'
     steps:
       - uses: 'actions/checkout@v7.0.1'
         with:

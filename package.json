@@ -34,7 +34,6 @@
     "prune:events": "node scripts/prune-events.mts",
     "serve": "node scripts/serve.mts",
     "test": "vitest run",
-    "test:corpus": "vitest run --project corpus",
     "test:coverage": "vitest run --coverage",
     "test:default": "vitest run --project default",
     "vend:coin-bag": "node scripts/vend-coin-bag.mts",
