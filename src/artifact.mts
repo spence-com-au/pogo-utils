@@ -279,8 +279,8 @@ export function scanReferences(dist: string): References {
  * five page sheets were written into the artifact and no document ever loaded one. Every page rendered unstyled, and
  * nothing in the build said so: the module graph was complete, the markup resolved, the byte counts looked plausible.
  *
- * `src/main.tsx` importing all seven is the fix. This is what stops the next page-local `import './x.css'` from quietly
- * reintroducing it.
+ * `src/main.tsx` importing every page's stylesheet is the fix. This is what stops the next page-local `import
+ * './x.css'` from quietly reintroducing it.
  */
 export function orphanedStylesheets(dist: string, named: ReadonlySet<string>): string[] {
   return readdirSync(join(dist, 'src'), { recursive: true, withFileTypes: true })

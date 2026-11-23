@@ -203,9 +203,9 @@ export function joined(line: Line, lines: readonly Line[]): Line {
  * And never at or above PGSharp's overlay, which is drawn over the artwork the name sits under. Another frame of the
  * same Lugia read its `##` as `HH`, which none of the above admits, so the nearest line left was the overlay's `L15
  * iw82 13/14/10` and the nickname became `L15 iw82 131410`; leaving that out, the status bar's `10:06` was next. The
- * overlay is found by its IV triple, `findOverlay`'s own signature, rather than by its box, since the scan reads the
- * detail before it has looked for a box and on its first Pokémon has none. Over the 839 captures it changes no name.
- * Where the overlay did not read as a line, which is 88 of them, the search reaches the top of the screen as before.
+ * overlay is found by the IV triple `TRIPLE` matches, not by its box, since the scan reads the detail before it has
+ * looked for a box and on its first Pokémon has none. Over the 839 captures it changes no name. Where the overlay did
+ * not read as a line, which is 88 of them, the search reaches the top of the screen as before.
  */
 export function nameLineOf(lines: readonly Line[], hp: Line, labelled?: Line): Line | undefined {
   return underOverlay(lines, hp, labelled)
