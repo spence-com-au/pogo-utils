@@ -1,17 +1,8 @@
 /**
- * Where PGSharp draws its overlay, and the near-white it draws it in. The overlay states the level and the three IVs
- * outright, which the scan now reads off the export instead — so nothing reads the box any more. What is left is its
- * geometry, which `config.mts` takes as a default, and the luminance and chroma `detail.mts` reads a CP by, the detail
- * screen's CP being the same near-white text.
+ * The near-white PGSharp draws its overlay in, and the three-slash pattern it prints the IVs as. Nothing reads the IVs
+ * off the overlay any more — the scan reads them off the export — but `detail.mts` still reads a CP, which is the same
+ * near-white text, and tells the overlay's line from a name by the slashes.
  */
-
-/** Where PGSharp draws its overlay, as fractions of the screen's width and height. */
-export interface OverlayBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 /** Bright enough to be the overlay's white text, and flat enough in colour not to be its IV percentage. */
 export const OVERLAY_LUMINANCE = 150;

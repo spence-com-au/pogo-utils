@@ -120,7 +120,7 @@ test('only digits abutting the line on its own row are joined to it', () => {
  * and left the overlay above it as the nearest line that would do, so the scan wrote `L15 iw82 131410` for a nickname.
  * Under the overlay no line reads as a name — the status bar's `10:06` above it being what a rule that only passed over
  * the overlay's own line took instead — which is what has `parseDetail` read the `HH` line's box again on its own, and
- * `lugia-hashes-hh.png` in `screens.test.mts` is that frame reading `##` that way.
+ * `lugia-hashes-hh.png` is that frame reading `##` that way.
  */
 test('a name is never taken from PGSharp’s overlay or above it', () => {
   const hp = line('126 / 126 HP', 607, 1458, 227, 31);

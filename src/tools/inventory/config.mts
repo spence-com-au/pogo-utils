@@ -4,8 +4,7 @@
  */
 
 import { launchable } from '../../core/adb.mts';
-import { type OverlayBox } from './overlay.mts';
-import { SCREEN_BAND, SCROLL_STRIP, type Band } from './stitch.mts';
+import { SCREEN_BAND, type Band } from './stitch.mts';
 
 export type Point = [number, number];
 
@@ -21,9 +20,6 @@ export interface Config {
   swipes: {
     /** From one Pokémon to the next. */
     next: [Point, Point];
-
-    /** Back up the detail screen from the moves, the way down being `scrollStep`'s, which the band sets. */
-    scrollUp: [Point, Point];
   };
 
   /** Where to tap, as fractions of the screen's width and height. Used where OCR cannot find the control by name. */
@@ -61,13 +57,7 @@ export interface Config {
   };
 
   /**
-   * Where PGSharp's overlay sits, if it is known. Left out, the scanner finds it on the first Pokémon whose box it can
-   * make out and uses that for the rest of the run, which is what lets one configuration suit any phone.
-   */
-  overlay?: OverlayBox;
-
-  /**
-   * The band of the screen that scrolls, which `--scroll` lines its frames up inside. Everything outside it is
+   * The band of the screen that scrolls, which a scroll capture lines its frames up inside. Everything outside it is
    * furniture that stays put — the status bar, PGSharp's overlay, the game's floating buttons — and lining frames up
    * over those finds the shift that keeps *them* still, which is none. `SCREEN_BAND` says where it was measured.
    */
@@ -88,13 +78,6 @@ export const DEFAULTS: Config = {
     next: [
       [0.85, 0.3],
       [0.15, 0.3],
-    ],
-
-    // Down the same margin as the way down, and for its reason: a drag that starts at 0.35 of the height down the
-    // middle starts on the POWER UP or EVOLVE row of a scrolled panel, and one the phone drops is a tap there.
-    scrollUp: [
-      [SCROLL_STRIP, 0.35],
-      [SCROLL_STRIP, 0.9],
     ],
   },
   waits: { launch: 30000, tap: 900, swipe: 1100, scroll: 800, menu: 800, search: 1500 },
@@ -123,7 +106,6 @@ export function configWith(overrides: Partial<Record<keyof Config, object | stri
     taps: { ...DEFAULTS.taps, ...(overrides.taps as Partial<Config['taps']>) },
     swipes: { ...DEFAULTS.swipes, ...(overrides.swipes as Partial<Config['swipes']>) },
     waits: { ...DEFAULTS.waits, ...(overrides.waits as Partial<Config['waits']>) },
-    overlay: (overrides.overlay as OverlayBox | undefined) ?? DEFAULTS.overlay,
     scrollBand: { ...DEFAULTS.scrollBand, ...(overrides.scrollBand as Partial<Band>) },
   };
 }

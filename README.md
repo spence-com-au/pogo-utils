@@ -588,38 +588,33 @@ The phone is connected with 📱 in the top bar rather than from any one page, a
 made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until it is disconnected there or
 unplugged, so `adb` cannot reach the phone until then or until the site is closed. That is what the Search page's
 **Search** button uses. Beside **Copy** while a phone is held, it drives storage through
-[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front,
-storage opened from the map or a detail screen, the string typed into the box, and the game's own count of what matched
-reported back. The OCR it finds its way with is fetched on the first press rather than with the page.
+[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front, storage opened
+from the map or a detail screen, the string typed into the box, and the game's own count of what matched reported back.
+The OCR it finds its way with is fetched on the first press rather than with the page.
 
 With no phone to hand, **Try the demo phone** beside **Connect** in 📱's panel holds a demo phone instead, which answers
 from recorded screens rather than an account, so each tab can be tried without one; **Disconnect** puts it away. It is
 offered only while no phone the site was allowed is plugged in, and the browser's chooser cannot list it, offering USB
 devices alone.
 
-The readers run in the browser unchanged. [`png.mts`](src/core/png.mts) decodes with
+The reader runs in the browser unchanged. [`png.mts`](src/core/png.mts) decodes with
 [fflate](https://github.com/101arrowz/fflate) rather than `node:zlib`, keeping both the `Viewport` chunk a stitch
-carries and the uncorrected colours [`artwork.mts`](src/tools/inventory/artwork.mts) picks a form by, which
-`createImageBitmap` would lose. OCR is an `Engine` installed by whatever runs the readers: the CLI in
-[`ocr-cli.mts`](src/core/node/ocr-cli.mts), and [tesseract.js](https://github.com/naptha/tesseract.js) (Apache-2.0) in
-[`ocr-wasm.mts`](src/core/ocr-wasm.mts), with the whitelist and page segmentation mode passed per read and TSV asked for
-as the CLI's `tessedit_create_tsv` is. It reads with the CLI's own model, `eng.traineddata` from `tessdata_fast` 4.1.0 —
-what `apt` and `brew` both install — fetched once from that tag and kept in the browser.
+carries and the uncorrected colours a reader matching by colour needs, which `createImageBitmap` would lose. OCR is an
+`Engine` installed by whatever runs the readers: the CLI in [`ocr-cli.mts`](src/core/node/ocr-cli.mts), and
+[tesseract.js](https://github.com/naptha/tesseract.js) (Apache-2.0) in [`ocr-wasm.mts`](src/core/ocr-wasm.mts), with the
+whitelist and page segmentation mode passed per read and TSV asked for as the CLI's `tessedit_create_tsv` is. It reads
+with the CLI's own model, `eng.traineddata` from `tessdata_fast` 4.1.0 — what `apt` and `brew` both install — fetched
+once from that tag and kept in the browser.
 
-Nothing read leaves the page. What it fetches carries nothing about the screen: the model, the form icons from
-`pogo_assets` that the Pokédex page already draws, and the game master — the vended
-[`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23 MB it
-is made from. The screenshot and its reading stay in memory, and leave only as a download.
+Nothing read leaves the page. What it fetches carries nothing about the screen: the model, and the game master — the
+vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the
+23 MB it is made from. The screenshot and the count it reads stay in memory.
 
-The corpus is what holds the page to the CLI, and CI runs [`screens.test.mts`](src/tools/inventory/screens.test.mts)
-both ways: under the CLI, and under the WebAssembly engine with `INVENTORY_OCR=wasm pnpm test:corpus`, handed the CLI's
-model off disk so it reaches no network and checked to be the same file the page fetches. Every capture reads the same
-fields, identity, form, level and IVs under both. What differs is the route a CP took, which is not what any capture
-answers: tesseract.js is its own build of Tesseract, and it reads some captures' CP straight off the label line where
-the CLI has to sweep the region for it, and others the other way round. The two maps of which captures a CP is read off
-and what is offered where it is not are pinned for each engine, so a bump of either that moves a route fails; the test
-that measures the CLI's own sweep is skipped under wasm. The one other difference is pinned where the corpus finds it:
-tesseract.js reads a `yes` into the scenery of `overworld.png`, which `dialogOpen` takes for a dialog (#935).
+The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs the `default` project
+under the CLI and again as `default (wasm)` with `INVENTORY_OCR=wasm`, handed the CLI's own model off disk so it reaches
+no network and checked to be the same file the page fetches. tesseract.js is its own build of Tesseract, so where a
+reading moves under it the fixtures that pin it fail; `storage.test.mts` holds the one difference the search walk meets,
+the `yes` tesseract.js reads into the scenery of `overworld.png` that `dialogOpen` takes for a dialog (#935).
 
 ## Trainer battles
 
@@ -679,11 +674,11 @@ in full, is in [`src/tools/battle/README.md`](src/tools/battle/README.md).
 
 A screenshot takes 0.8–1.9 seconds over `adb` against a turn of half a second, so a battle is watched as video instead:
 `screenrecord` on the phone sends H.264 at 30 frames a second and `ffmpeg` decodes it, which needs `ffmpeg` on `PATH`
-beside `adb`. Text is read with the browser's tesseract.js rather than the Tesseract CLI: two workers kept for
-the run read a battle's band for about a third of the CPU a `tesseract` started afresh spends loading its model. The
-first run also downloads that model, 4 MB, and the game's form icons for the party screen, some 40 MB, each kept for a
-week like the game master. [`src/tools/battle/recognise.mts`](src/tools/battle/recognise.mts) reads which part of a
-battle a frame shows from colour samples alone, cheap enough for every frame;
+beside `adb`. Text is read with the browser's tesseract.js rather than the Tesseract CLI: two workers kept for the run
+read a battle's band for about a third of the CPU a `tesseract` started afresh spends loading its model. The first run
+also downloads that model, 4 MB, and the game's form icons for the party screen, some 40 MB, each kept for a week like
+the game master. [`src/tools/battle/recognise.mts`](src/tools/battle/recognise.mts) reads which part of a battle a frame
+shows from colour samples alone, cheap enough for every frame;
 [`src/tools/battle/menus.mts`](src/tools/battle/menus.mts) reads the screens between battles off full screenshots. No
 phone's shape is the reference: a position down the screen is written as where the game pins the piece — the top edge,
 the foot, or a fraction of the height between — and how many of the screen's widths it sits from there, a number every

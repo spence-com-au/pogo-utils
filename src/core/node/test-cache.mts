@@ -10,7 +10,7 @@ import { join } from 'node:path';
  * directory a subprocess runs in decides where its cache is, so no flag or stub is needed to move it.
  *
  * All three files are load-bearing, measured rather than reasoned about — seeded with the game master alone, a `pnpm
- * inventory parse` run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP
+ * inventory dex` run prints two `Downloading` lines. Only its *contents* matter: `loadGameData` throws without a CP
  * multiplier for every level or without the power-up costs, where an empty icon index and string table it takes in its
  * stride. That emptiness is what lets a run's stderr be asserted — no form means no icon to fetch, so an empty stderr is
  * exactly the claim that the seeded cache was read rather than merely present.
