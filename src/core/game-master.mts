@@ -159,6 +159,14 @@ export interface GameData {
   types: string[];
 
   /**
+   * Every move's name by the number the game names it, which is what PGSharp's export names a Pokémon's moves by: the
+   * `V0219_MOVE_QUICK_ATTACK` template's number against `Quick Attack`. A table of its own rather than a field on
+   * `Move`, which the form pools repeat thousands of times over in the vended copy. Only `pnpm inventory scan`, turning
+   * the export into rows, reads it.
+   */
+  moveNumbers: Record<number, string>;
+
+  /**
    * Every Mega Evolution and Primal Reversion, each a form of its own and named as the game names it, `Mega Mewtwo Y`
    * and `Primal Kyogre`: its own stats and types, its base form's moves and its `megaMove`. Apart from `forms`, which
    * `pnpm inventory` identifies a Pokémon in storage against and has never been checked against a Mega; a trainer
@@ -224,7 +232,7 @@ export function levelsOf(data: GameData, form: Form, iv: IVs, hp: number): numbe
 }
 
 /** The bands `Form.heights` bounds, smallest first, with no badge for the middle one. */
-const BANDS = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
+export const BANDS = ['XXS', 'XS', null, 'XL', 'XXL'] as const;
 
 /**
  * How far the printed height can be from the one the game banded, which prints to the centimetre and rounds rather than
