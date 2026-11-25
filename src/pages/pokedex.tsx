@@ -26,7 +26,7 @@ import {
   toFragment,
   type State,
 } from '../pokedex/state.js';
-import { ownedSpecies } from '../pokedex/owned.js';
+import { ownedForms, ownedSpecies, type OwnedForms } from '../pokedex/owned.js';
 import { said } from '../errors.js';
 import { fetchOk } from '../fetch-ok.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
@@ -117,8 +117,13 @@ function Mark({ kind, glyph, words }: { kind: string; glyph: string; words: stri
 const YesNo = ({ value, yes, no }: { value: boolean; yes: string; no: string }) =>
   value ? <Mark kind="yes" glyph="✓" words={yes} /> : <Mark kind="no" glyph="—" words={no} />;
 
-/** The forms table, which only a species that has forms gets. */
-function Variants({ entry }: { entry: Entry }) {
+/**
+ * The forms table, which only a species that has forms gets. The `Yours` column is drawn only once a read off the
+ * phone has landed — `owned` is null until then — so a reader who has not connected one sees the table the page has
+ * always shown rather than a column of dashes reading as "you own none of these". A form an owned one could not be told
+ * apart from is a `?` for the same reason.
+ */
+function Variants({ entry, owned }: { entry: Entry; owned: OwnedForms | null }) {
   return (
     <section class="variants">
       <h3>Forms and variants ({entry.variants.length})</h3>
@@ -126,7 +131,7 @@ function Variants({ entry }: { entry: Entry }) {
         <table>
           <thead>
             <tr>
-              {['Form', 'In GO', 'Shiny', 'Wild', 'Hunts'].map((title) => (
+              {['Form', 'In GO', 'Shiny', 'Wild', 'Hunts', ...(owned ? ['Yours'] : [])].map((title) => (
                 <th key={title} scope="col">
                   {title}
                 </th>
@@ -147,6 +152,15 @@ function Variants({ entry }: { entry: Entry }) {
                   <YesNo value={pokemon.released && pokemon.spawns} yes="spawns in the wild" no="does not spawn" />
                 </td>
                 <td class="hunts">{hunts.map(({ id }) => HUNT_LABELS.get(id)).join(', ') || '—'}</td>
+                {owned && (
+                  <td>
+                    {owned.get(name) === 'unsure' ? (
+                      <Mark kind="unsure" glyph="?" words="may be yours" />
+                    ) : (
+                      <YesNo value={owned.get(name) === 'yours'} yes="in your collection" no="not yours" />
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -164,6 +178,7 @@ function Detail({
   entry,
   icons,
   types,
+  owned,
   shinyFirst,
   step,
   first,
@@ -172,6 +187,7 @@ function Detail({
   entry: Entry;
   icons: Icons;
   types: readonly string[];
+  owned: OwnedForms | null;
   shinyFirst: boolean;
   step: (by: number) => void;
   first: boolean;
@@ -329,7 +345,7 @@ function Detail({
         )}
       </div>
 
-      {entry.variants.length > 0 && <Variants entry={entry} />}
+      {entry.variants.length > 0 && <Variants entry={entry} owned={owned} />}
     </>
   );
 }
@@ -423,6 +439,9 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
 
   const open = state.open === null ? null : (ENTRIES.find((entry) => entry.dex === state.open) ?? null);
   const at = open === null ? -1 : visible.findIndex((entry) => entry.dex === open.dex);
+
+  /** The forms of the open species the reader owns, for its forms table — null until a read lands, as its column is. */
+  const openOwned = open !== null && inventory.state === 'read' ? ownedForms(inventory.rows, open) : null;
 
   const mine = toFragment(state);
 
@@ -837,6 +856,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
                 entry={open}
                 icons={icons}
                 types={types[open.dex] ?? []}
+                owned={openOwned}
                 shinyFirst={state.mode === 'shiny'}
                 step={step}
                 first={at <= 0}
