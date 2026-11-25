@@ -1110,7 +1110,8 @@ body[data-page='pokedex'] {
     color: var(--start);
   }
 
-  .mark.no {
+  .mark.no,
+  .mark.unsure {
     color: var(--muted);
   }
 

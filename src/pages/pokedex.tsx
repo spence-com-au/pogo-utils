@@ -26,7 +26,7 @@ import {
   toFragment,
   type State,
 } from '../pokedex/state.js';
-import { ownedForms, ownedSpecies } from '../pokedex/owned.js';
+import { ownedForms, ownedSpecies, type OwnedForms } from '../pokedex/owned.js';
 import { said } from '../errors.js';
 import { fetchOk } from '../fetch-ok.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
@@ -120,9 +120,10 @@ const YesNo = ({ value, yes, no }: { value: boolean; yes: string; no: string }) 
 /**
  * The forms table, which only a species that has forms gets. The `Yours` column is drawn only once a read off the
  * phone has landed — `owned` is null until then — so a reader who has not connected one sees the table the page has
- * always shown rather than a column of dashes reading as "you own none of these".
+ * always shown rather than a column of dashes reading as "you own none of these". A form an owned one could not be told
+ * apart from is a `?` for the same reason.
  */
-function Variants({ entry, owned }: { entry: Entry; owned: ReadonlySet<string> | null }) {
+function Variants({ entry, owned }: { entry: Entry; owned: OwnedForms | null }) {
   return (
     <section class="variants">
       <h3>Forms and variants ({entry.variants.length})</h3>
@@ -153,7 +154,11 @@ function Variants({ entry, owned }: { entry: Entry; owned: ReadonlySet<string> |
                 <td class="hunts">{hunts.map(({ id }) => HUNT_LABELS.get(id)).join(', ') || '—'}</td>
                 {owned && (
                   <td>
-                    <YesNo value={owned.has(name)} yes="in your collection" no="not yours" />
+                    {owned.get(name) === 'unsure' ? (
+                      <Mark kind="unsure" glyph="?" words="may be yours" />
+                    ) : (
+                      <YesNo value={owned.get(name) === 'yours'} yes="in your collection" no="not yours" />
+                    )}
                   </td>
                 )}
               </tr>
@@ -182,7 +187,7 @@ function Detail({
   entry: Entry;
   icons: Icons;
   types: readonly string[];
-  owned: ReadonlySet<string> | null;
+  owned: OwnedForms | null;
   shinyFirst: boolean;
   step: (by: number) => void;
   first: boolean;
