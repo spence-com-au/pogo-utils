@@ -34,7 +34,14 @@ type Hunt = {
   perForm: boolean;
 };
 type EntryHunt = { id: string; watched: boolean };
-type Variant = { name: string; pokemon: Pokemon; hunts: EntryHunt[] };
+
+/**
+ * One form or regional variant under a species, as the forms table reads it. `region` is the adjective a regional
+ * variant wears (`Alolan`) and `form` the constant a form is filed under (`BLUE_FLOWER`) — one set and the other null,
+ * as `Pokemon.variants` holds them — kept beside the display name so the owned-form reconciliation can match the
+ * export's game-master form name against the dex's own spelling without parsing it back out of the label.
+ */
+type Variant = { name: string; region: string | null; form: string | null; pokemon: Pokemon; hunts: EntryHunt[] };
 
 /**
  * One row of the dex as the page reads it. Exported for `pages/pokedex.tsx` and `pokedex/state.ts`, which render and
@@ -141,7 +148,10 @@ function variantsOf(pokemon: Pokemon, name: string): Variant[] {
     const label = variant.region !== null ? `${variant.region} ${name}` : `${name} (${formNameOf(variant.form)})`;
     const child = variant.pokemon;
 
-    return [{ name: label, pokemon: child, hunts: huntsOf([child]) }, ...variantsOf(child, label)];
+    return [
+      { name: label, region: variant.region, form: variant.form, pokemon: child, hunts: huntsOf([child]) },
+      ...variantsOf(child, label),
+    ];
   });
 }
 

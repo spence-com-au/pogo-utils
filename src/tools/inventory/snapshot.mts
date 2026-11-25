@@ -149,9 +149,10 @@ export interface Row {
 /**
  * Drop everything two form names differ by but the letters and digits: the spaces, case, punctuation and the accents
  * `fold` folds, so `AdventureHat2020` meets `Adventure Hat 2020` and the export's ASCII `Flabebe` meets the game
- * master's `Flabébé`, whose prefix would otherwise never strip.
+ * master's `Flabébé`, whose prefix would otherwise never strip. Exported for the Pokédex's owned-form reconciliation,
+ * which squashes a resolved form name the same way to match it against the dex's own spelling.
  */
-const squash = (text: string): string => fold(text).replace(/[^a-z0-9]/g, '');
+export const squash = (text: string): string => fold(text).replace(/[^a-z0-9]/g, '');
 
 /** A suffix the export spells for the ordinary form, which the game master gives a null `form`. */
 const ORDINARY = new Set(['', 'normal', 'unset']);
