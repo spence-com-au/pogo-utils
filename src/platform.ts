@@ -32,3 +32,15 @@ export function detectPlatform({ userAgent, maxTouchPoints }: Device): Platform 
 export function currentPlatform(): Platform {
   return typeof navigator === 'undefined' ? 'other' : detectPlatform(navigator);
 }
+
+/**
+ * What the Copy button shows when the clipboard write is refused and the query is selected to copy by hand: the
+ * platform's own copy shortcut to press, or, on a phone with no keyboard, an instruction that names no key.
+ */
+export function copyHint(device: Device): string {
+  if (detectPlatform(device) !== 'other') {
+    return 'Copy the selection';
+  }
+
+  return /Mac/.test(device.userAgent) ? 'Press ⌘C' : 'Press Ctrl+C';
+}

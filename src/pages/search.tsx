@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
 import { usePhone } from '../phone-store.js';
+import { copyHint } from '../platform.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
 import {
   loadFavourites,
@@ -492,7 +493,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
         getSelection()?.selectAllChildren(shown);
       }
 
-      setCopyLabel('Press ⌘C');
+      setCopyLabel(copyHint(navigator));
     }
   }
 
