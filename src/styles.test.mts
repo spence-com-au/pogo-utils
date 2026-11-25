@@ -555,6 +555,98 @@ test('a rule keyed on a shown element is not a hiding rule', () => {
 });
 
 /**
+ * The modal dialog boxes a backdrop click would close by its own padding, and every box the check weighed. A `<dialog>`
+ * the user agent pads `1em`, and a modal one here closes on a click whose target is the dialog itself rather than a
+ * child — the backdrop — so padding on the box leaves a strip of itself outside the content that reports the dialog as
+ * the target and closes it, looking for all the world like the backdrop. Every modal dialog styles a `::backdrop`, so
+ * that pseudo names the boxes to weigh; each must reset `padding: 0` and carry its padding on a child, as `.sheet` and
+ * `.detail` do.
+ *
+ * A selector's `::backdrop` is dropped to name its box, and every rule selecting that box exactly — an `@media`
+ * override among them — is read for a `padding` off its own declarations rather than through `walkDecls`, which would
+ * reach a nested child and credit its padding here. A box is reported if a rule sets a non-zero padding, or if no rule
+ * sets padding at all and the agent's `1em` stands.
+ */
+function paddedDialogs(css: string) {
+  const boxes = new Set<string>();
+  const paddings = new Map<string, string[]>();
+
+  postcss.parse(css).walkRules((rule) => {
+    const selector = rule.selector.replace(/\s+/g, ' ').trim();
+
+    if (selector.endsWith('::backdrop')) {
+      boxes.add(selector.slice(0, -'::backdrop'.length).trim());
+      return;
+    }
+
+    const padding = rule.nodes.findLast((node): node is Declaration => node.type === 'decl' && node.prop === 'padding');
+
+    if (padding !== undefined) {
+      const seen = paddings.get(selector) ?? [];
+
+      seen.push(padding.value.trim());
+      paddings.set(selector, seen);
+    }
+  });
+
+  const padded = [...boxes].filter((box) => {
+    const declared = paddings.get(box) ?? [];
+
+    return declared.length === 0 || declared.some((value) => !/^0(px)?$/.test(value));
+  });
+
+  return { boxes: [...boxes], padded };
+}
+
+test('every modal dialog resets the padding a backdrop click would land on', () => {
+  /*
+   * A modal `<dialog>` here closes on a click whose target is the dialog itself rather than a child, which the handlers
+   * read as `event.target === event.currentTarget`. The user agent gives a `<dialog>` `padding: 1em`, so a box that
+   * does not reset it wears a strip of itself the click lands on and closes through, as if it were the backdrop.
+   *
+   * It has happened. `.naming`, the Search page's "Save this search" box, carried `padding: 16px`, and a click in that
+   * border closed it (#1139). The fix is the shape `.sheet` and `.detail` already have: no padding on the box, all of
+   * it on the one child.
+   */
+  const padded: string[] = [];
+  let found = 0;
+
+  for (const sheet of sources('.css')) {
+    const { boxes, padded: wrong } = paddedDialogs(readFileSync(sheet, 'utf8'));
+
+    found += boxes.length;
+    padded.push(...wrong.map((box) => `${sheet.slice(ROOT.length + 1)} pads ${box}`));
+  }
+
+  // Named rather than counted, so a failure says which dialog's box is padded and in which sheet.
+  expect(padded.sort()).toEqual([]);
+
+  // And that there were dialogs to weigh at all, rather than a walk that found no backdrop to name one.
+  expect(found).toBeGreaterThan(0);
+});
+
+test('the dialog check can tell a padded box from a reset one', () => {
+  // The same reason the others have one: a reader that found no backdrop would report no padded box however many there
+  // were.
+  expect(paddedDialogs('.box { padding: 16px } .box::backdrop { background: #000 }').padded).toEqual(['.box']);
+  expect(paddedDialogs('.box { padding: 0 } .box::backdrop { background: #000 }').padded).toEqual([]);
+
+  // A box the user agent's 1em still pads, because nothing reset it, is as wrong as one padded by hand.
+  expect(paddedDialogs('.box::backdrop { background: #000 }').padded).toEqual(['.box']);
+
+  // The padding on a child is the fix, not a violation: only a rule selecting the box itself is read.
+  expect(paddedDialogs('.box { padding: 0 } .box form { padding: 16px } .box::backdrop {}').padded).toEqual([]);
+
+  // An `@media` override that leaves padding alone keeps the reset; one that re-adds padding is caught.
+  expect(
+    paddedDialogs('.box { padding: 0 } .box::backdrop {} @media (width < 1px) { .box { margin: 0 } }').padded,
+  ).toEqual([]);
+  expect(
+    paddedDialogs('.box { padding: 0 } .box::backdrop {} @media (width < 1px) { .box { padding: 8px } }').padded,
+  ).toEqual(['.box']);
+});
+
+/**
  * The sheets under `src/` that `main.tsx` imports, resolved to paths. Only relative specifiers are this check's: a
  * package's sheet — `leaflet/dist/leaflet.css` — lives outside `src/` and is no file the walk would find.
  */
