@@ -184,49 +184,6 @@ body[data-page='pokedex'] {
     content: '';
   }
 
-  /**
-   * What the reader owns, read off the phone or an opened export: a line under the mode counts. Outside the fragment, because a shared link
-   * carries the filters a view was narrowed by rather than whose collection happened to mark it.
-   */
-  .dexhead .mine {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    padding: 0 22px 14px;
-    color: var(--go-deep);
-    font-size: 15px;
-  }
-
-  .dexhead .mine .figure {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .dexhead .mine button {
-    padding: 4px 14px;
-    border: 2px solid var(--tile-edge);
-    border-radius: 999px;
-    background: var(--tile);
-    color: var(--go-deep);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .dexhead .mine button:hover {
-    background: color-mix(in srgb, var(--tile) 70%, rgb(255 255 255 / 40%));
-  }
-
-  /* The failure reason stands out from the line, and the connect-a-phone hint steps back from it. */
-  .dexhead .mine .error {
-    font-weight: 600;
-  }
-
-  .dexhead .mine .hint {
-    color: var(--muted);
-  }
-
   .dexhead .stats {
     display: grid;
     grid-auto-columns: 1fr;
@@ -505,8 +462,10 @@ body[data-page='pokedex'] {
     margin-left: 40px;
   }
 
-  .round.clear {
+  .actions .middle {
+    display: flex;
     grid-column: 2;
+    gap: 16px;
   }
 
   .round.regions {
@@ -705,6 +664,33 @@ body[data-page='pokedex'] {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
+  }
+
+  /**
+   * What the reader owns, read off the phone or an opened export: a short sheet with the ways to read it and how many
+   * of the grid are theirs.
+   */
+
+  .minesheet .body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 8px 22px 22px;
+    font-size: 15px;
+  }
+
+  .minesheet .body p {
+    margin: 0;
+  }
+
+  .minesheet .error {
+    font-weight: 600;
+  }
+
+  .minesheet .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .regionlist ul {

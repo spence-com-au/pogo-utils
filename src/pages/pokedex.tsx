@@ -339,7 +339,7 @@ function Detail({
 }
 
 /**
- * The control that reads the reader's Pokémon off the connected phone or a copy of the export they open, and says how
+ * The sheet that reads the reader's Pokémon off the connected phone or a copy of the export they open, and says how
  * many of the filtered grid are theirs. What it reads is per-reader, so it is never in the fragment: a shared link
  * carries the filters a view was narrowed by, not whose collection happened to mark it.
  */
@@ -348,79 +348,75 @@ function Mine({
   inventory,
   held,
   total,
+  close,
 }: {
   phone: ReturnType<typeof usePhone>;
   inventory: Inventory;
   held: number | null;
   total: number;
+  close: () => void;
 }) {
   const picker = useRef<HTMLInputElement>(null);
-
-  if (inventory.state === 'reading') {
-    return (
-      <p class="mine" aria-live="polite">
-        Reading your Pokémon…
-      </p>
-    );
-  }
-
-  /**
-   * Opens a copy of the export, for a reader whose phone is not plugged in. Clicked through the button rather than
-   * shown, a file input being unstyleable, and `value` cleared as the change is read so the same file picked again
-   * after an edit fires a second time rather than nothing.
-   */
-  const open = (
-    <>
-      <button type="button" onClick={() => picker.current?.click()}>
-        Open {PGSTATS_NAME}
-      </button>
-      <input
-        ref={picker}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        onChange={(event) => {
-          const [file] = event.currentTarget.files ?? [];
-
-          event.currentTarget.value = '';
-
-          if (file !== undefined) {
-            void inventoryStore.open(file);
-          }
-        }}
-      />
-    </>
-  );
-
-  if (inventory.state === 'read') {
-    return (
-      <p class="mine" aria-live="polite">
-        <span class="figure">
-          {held} / {total}
-        </span>{' '}
-        yours
-        {phone !== null && inventoryStore.source === phone && (
-          <button type="button" onClick={() => inventoryStore.read(phone)}>
-            Refresh
-          </button>
-        )}
-        {open}
-      </p>
-    );
-  }
+  const reading = inventory.state === 'reading';
+  const fromPhone = phone !== null && inventoryStore.source === phone;
 
   return (
-    <p class="mine">
-      {inventory.state === 'failed' && <span class="error">{inventory.reason}</span>}
-      {phone === null ? (
-        <span class="hint">To mark what you own, connect a phone (📱) or</span>
-      ) : (
-        <button type="button" onClick={() => inventoryStore.read(phone)}>
-          {inventory.state === 'failed' && inventoryStore.source === phone ? 'Try again' : 'Show what I own'}
-        </button>
-      )}
-      {open}
-    </p>
+    <>
+      <div class="listhead">
+        <h2 id="mineTitle">Yours</h2>
+        {held !== null && (
+          <p>
+            {held} / {total}
+          </p>
+        )}
+      </div>
+      <div class="body">
+        <p aria-live="polite">
+          {reading ? (
+            'Reading your Pokémon…'
+          ) : inventory.state === 'failed' ? (
+            <span class="error">{inventory.reason}</span>
+          ) : inventory.state === 'read' ? (
+            'The ones you own are ticked.'
+          ) : (
+            `Connect a phone (📱) or open PGSharp’s ${PGSTATS_NAME} to tick what you own.`
+          )}
+        </p>
+        <div class="buttons">
+          {phone !== null && (
+            <button type="button" class="ghost" disabled={reading} onClick={() => inventoryStore.read(phone)}>
+              {!fromPhone ? 'Read the phone' : inventory.state === 'failed' ? 'Try again' : 'Refresh'}
+            </button>
+          )}
+          <button type="button" class="ghost" disabled={reading} onClick={() => picker.current?.click()}>
+            Open {PGSTATS_NAME}
+          </button>
+          <button type="button" class="ghost done" onClick={close}>
+            Done
+          </button>
+        </div>
+
+        {/*
+         * Clicked by the button above rather than shown, a file input being unstyleable, and `value` cleared as the
+         * change is read so the same file picked again after an edit fires a second time rather than nothing.
+         */}
+        <input
+          ref={picker}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(event) => {
+            const [file] = event.currentTarget.files ?? [];
+
+            event.currentTarget.value = '';
+
+            if (file !== undefined) {
+              void inventoryStore.open(file);
+            }
+          }}
+        />
+      </div>
+    </>
   );
 }
 
@@ -435,6 +431,7 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const queryRef = useRef<HTMLInputElement>(null);
   const regionsRef = useRef<HTMLDialogElement>(null);
+  const mineRef = useRef<HTMLDialogElement>(null);
 
   /** Each tile's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
   const tiles = useRef(new Map<number, HTMLButtonElement>());
@@ -569,7 +566,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             </li>
           ))}
         </ul>
-        <Mine phone={phone} inventory={inventory} held={mineHeld} total={visible.length} />
       </header>
 
       <main class="dex">
@@ -652,22 +648,30 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             </svg>
             {searching && <span class="dot" />}
           </button>
-          {searching && (
-            <button
-              type="button"
-              class="round clear"
-              aria-label="Clear search and filters"
-              onClick={() => {
-                clearFilters();
-
-                // The button is gone once there is nothing to clear, and the focus with it; the search beside it is
-                // where a reader who has just cleared a search goes next.
-                searchButtonRef.current?.focus();
-              }}
-            >
-              ✕
+          <span class="middle">
+            <button type="button" class="round mine" onClick={() => mineRef.current?.showModal()}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              <span class="tag">Yours</span>
             </button>
-          )}
+            {searching && (
+              <button
+                type="button"
+                class="round clear"
+                aria-label="Clear search and filters"
+                onClick={() => {
+                  clearFilters();
+
+                  // The button is gone once there is nothing to clear, and the focus with it; the search beside it is
+                  // where a reader who has just cleared a search goes next.
+                  searchButtonRef.current?.focus();
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </span>
           <button type="button" class="round regions" onClick={() => regionsRef.current?.showModal()}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="6" y="3" width="12" height="6" rx="3" />
@@ -764,6 +768,25 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             </button>
           </div>
         </section>
+      </dialog>
+
+      <dialog
+        ref={mineRef}
+        class="sheet minesheet"
+        aria-labelledby="mineTitle"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            mineRef.current?.close();
+          }
+        }}
+      >
+        <Mine
+          phone={phone}
+          inventory={inventory}
+          held={mineHeld}
+          total={visible.length}
+          close={() => mineRef.current?.close()}
+        />
       </dialog>
 
       {/*
