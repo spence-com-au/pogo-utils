@@ -371,8 +371,8 @@ function Mine({
    */
   const open = (
     <>
-      <button type="button" title={`Open a copy of ${PGSTATS_NAME}`} onClick={() => picker.current?.click()}>
-        Open file
+      <button type="button" onClick={() => picker.current?.click()}>
+        Open {PGSTATS_NAME}
       </button>
       <input
         ref={picker}
@@ -413,7 +413,7 @@ function Mine({
     <p class="mine">
       {inventory.state === 'failed' && <span class="error">{inventory.reason}</span>}
       {phone === null ? (
-        <span class="hint">Connect a phone (📱) or open PGSharp’s {PGSTATS_NAME} to mark what you own.</span>
+        <span class="hint">To mark what you own, connect a phone (📱) or</span>
       ) : (
         <button type="button" onClick={() => inventoryStore.read(phone)}>
           {inventory.state === 'failed' && inventoryStore.source === phone ? 'Try again' : 'Show what I own'}
