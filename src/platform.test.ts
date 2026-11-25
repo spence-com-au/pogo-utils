@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { detectPlatform } from './platform.js';
+import { copyHint, detectPlatform } from './platform.js';
 
 const IPHONE =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -29,4 +29,14 @@ test('an Android phone is Android', () => {
 
 test('a desktop is neither', () => {
   expect(detectPlatform({ userAgent: WINDOWS, maxTouchPoints: 0 })).toBe('other');
+});
+
+test('the copy hint gives each desktop its own shortcut and none on a phone', () => {
+  expect(copyHint({ userAgent: MAC, maxTouchPoints: 0 })).toBe('Press ⌘C');
+  expect(copyHint({ userAgent: WINDOWS, maxTouchPoints: 0 })).toBe('Press Ctrl+C');
+  expect(copyHint({ userAgent: ANDROID, maxTouchPoints: 5 })).toBe('Copy the selection');
+  expect(copyHint({ userAgent: IPHONE, maxTouchPoints: 5 })).toBe('Copy the selection');
+
+  // A 'Macintosh' that reports touch is an iPad, so it takes the phone hint, not the Mac shortcut.
+  expect(copyHint({ userAgent: MAC, maxTouchPoints: 5 })).toBe('Copy the selection');
 });
