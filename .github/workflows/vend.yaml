@@ -39,7 +39,7 @@ jobs:
       # `pages.yaml` by hand. An app's installation token does raise one, so the deploy follows from the push.
       - name: 'Mint an installation token'
         id: 'token'
-        uses: 'actions/create-github-app-token@v3.3.0'
+        uses: 'actions/create-github-app-token@v3.4.0'
         with:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
@@ -85,7 +85,7 @@ jobs:
     steps:
       - name: 'Mint an installation token'
         id: 'token'
-        uses: 'actions/create-github-app-token@v3.3.0'
+        uses: 'actions/create-github-app-token@v3.4.0'
         with:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
@@ -126,7 +126,7 @@ jobs:
     steps:
       - name: 'Mint an installation token'
         id: 'token'
-        uses: 'actions/create-github-app-token@v3.3.0'
+        uses: 'actions/create-github-app-token@v3.4.0'
         with:
           client-id: '${{ vars.APP_CLIENT_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
