@@ -185,7 +185,7 @@ body[data-page='pokedex'] {
   }
 
   /**
-   * What the reader owns, read off the phone: a line under the mode counts. Outside the fragment, because a shared link
+   * What the reader owns, read off the phone or an opened export: a line under the mode counts. Outside the fragment, because a shared link
    * carries the filters a view was narrowed by rather than whose collection happened to mark it.
    */
   .dexhead .mine {

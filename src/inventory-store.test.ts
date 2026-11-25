@@ -171,7 +171,7 @@ test("a read for a newly held phone is not blocked by another phone's read in fl
   const readingA = store.read(a.phone);
   await store.read(b.phone);
 
-  expect(store.phone).toBe(b.phone);
+  expect(store.source).toBe(b.phone);
   expect(store.forPhone(b.phone)).toStrictEqual({ state: 'read', rows });
 
   releaseA(bytes('the export'));
@@ -179,4 +179,50 @@ test("a read for a newly held phone is not blocked by another phone's read in fl
 
   expect(store.forPhone(b.phone)).toStrictEqual({ state: 'read', rows });
   expect(store.forPhone(a.phone)).toStrictEqual({ state: 'empty' });
+});
+
+test('an opened export converts the same way and shows whatever phone is held', async () => {
+  const rows = [{ dex: 25 }];
+  const snapshot = { box: [] };
+
+  mocks.parseSnapshot.mockReturnValue(snapshot);
+  mocks.gameData.mockResolvedValue({ forms: [] });
+  mocks.rowsOf.mockReturnValue(rows);
+
+  const store = new InventoryStore();
+  await store.open(new Blob(['the export']));
+
+  expect(mocks.parseSnapshot).toHaveBeenCalledWith('the export');
+  expect(mocks.rowsOf).toHaveBeenCalledWith(snapshot, { forms: [] });
+  expect(store.forPhone(null)).toStrictEqual({ state: 'read', rows });
+  expect(store.forPhone(phone(async () => bytes('')).phone)).toStrictEqual({ state: 'read', rows });
+});
+
+test('an opened file that is not an export fails without the export-off hint', async () => {
+  mocks.parseSnapshot.mockImplementation(() => {
+    throw new Error('Unexpected token');
+  });
+
+  const store = new InventoryStore();
+  await store.open(new Blob(['not json']));
+
+  expect(store.inventory).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+});
+
+test("an opened file supersedes a phone's read still under way", async () => {
+  mocks.parseSnapshot.mockReturnValue({});
+  mocks.gameData.mockResolvedValue({});
+  mocks.rowsOf.mockReturnValueOnce([{ dex: 1 }]).mockReturnValue([{ dex: 25 }]);
+
+  const store = new InventoryStore();
+  let release: (bytes: Uint8Array) => void = () => {};
+  const { phone: device } = phone(() => new Promise((resolve) => (release = resolve)));
+
+  const reading = store.read(device);
+  await store.open(new Blob(['the export']));
+  release(bytes('the export'));
+  await reading;
+
+  expect(store.source).toBe('file');
+  expect(store.inventory).toStrictEqual({ state: 'read', rows: [{ dex: 1 }] });
 });

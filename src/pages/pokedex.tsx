@@ -35,6 +35,10 @@ import { replaceQuery, toHash } from '../router.js';
 import { inventoryStore, useInventory, type Inventory } from '../inventory-store.js';
 import { usePhone } from '../phone-store.js';
 import { nameFragment } from '../search/query.js';
+import { PGSTATS } from '../tools/inventory/snapshot.mts';
+
+/** The export's file name, which a reader opening a copy of it looks for. */
+const PGSTATS_NAME = PGSTATS.slice(PGSTATS.lastIndexOf('/') + 1);
 
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
@@ -335,9 +339,9 @@ function Detail({
 }
 
 /**
- * The control that reads the reader's Pokémon off the connected phone and says how many of the filtered grid are
- * theirs. What it reads is per-reader and off the phone, so it is never in the fragment: a shared link carries the
- * filters a view was narrowed by, not whose collection happened to mark it.
+ * The control that reads the reader's Pokémon off the connected phone or a copy of the export they open, and says how
+ * many of the filtered grid are theirs. What it reads is per-reader, so it is never in the fragment: a shared link
+ * carries the filters a view was narrowed by, not whose collection happened to mark it.
  */
 function Mine({
   phone,
@@ -350,6 +354,8 @@ function Mine({
   held: number | null;
   total: number;
 }) {
+  const picker = useRef<HTMLInputElement>(null);
+
   if (inventory.state === 'reading') {
     return (
       <p class="mine" aria-live="polite">
@@ -358,6 +364,34 @@ function Mine({
     );
   }
 
+  /**
+   * Opens a copy of the export, for a reader whose phone is not plugged in. Clicked through the button rather than
+   * shown, a file input being unstyleable, and `value` cleared as the change is read so the same file picked again
+   * after an edit fires a second time rather than nothing.
+   */
+  const open = (
+    <>
+      <button type="button" title={`Open a copy of ${PGSTATS_NAME}`} onClick={() => picker.current?.click()}>
+        Open file
+      </button>
+      <input
+        ref={picker}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => {
+          const [file] = event.currentTarget.files ?? [];
+
+          event.currentTarget.value = '';
+
+          if (file !== undefined) {
+            void inventoryStore.open(file);
+          }
+        }}
+      />
+    </>
+  );
+
   if (inventory.state === 'read') {
     return (
       <p class="mine" aria-live="polite">
@@ -365,11 +399,12 @@ function Mine({
           {held} / {total}
         </span>{' '}
         yours
-        {phone !== null && (
+        {phone !== null && inventoryStore.source === phone && (
           <button type="button" onClick={() => inventoryStore.read(phone)}>
             Refresh
           </button>
         )}
+        {open}
       </p>
     );
   }
@@ -378,12 +413,13 @@ function Mine({
     <p class="mine">
       {inventory.state === 'failed' && <span class="error">{inventory.reason}</span>}
       {phone === null ? (
-        <span class="hint">Connect a phone (📱) to mark what you own.</span>
+        <span class="hint">Connect a phone (📱) or open PGSharp’s {PGSTATS_NAME} to mark what you own.</span>
       ) : (
         <button type="button" onClick={() => inventoryStore.read(phone)}>
-          {inventory.state === 'failed' ? 'Try again' : 'Show what I own'}
+          {inventory.state === 'failed' && inventoryStore.source === phone ? 'Try again' : 'Show what I own'}
         </button>
       )}
+      {open}
     </p>
   );
 }
