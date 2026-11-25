@@ -792,7 +792,7 @@ body[data-page='search'] {
 
   .naming {
     width: min(360px, calc(100vw - 32px));
-    padding: 16px;
+    padding: 0;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--panel);
@@ -802,6 +802,16 @@ body[data-page='search'] {
 
   .naming::backdrop {
     background: rgb(0 0 0 / 45%);
+  }
+
+  /**
+   * The padding is the form's, not the box's: a click on the box itself is how a backdrop click is told from one
+   * inside, so padding on the box turns its own border into a strip that closes the dialog when clicked. The Pokédex
+   * dialogs and `.sheet` do the same.
+   */
+
+  .naming form {
+    padding: 16px;
   }
 
   .naming h2 {
