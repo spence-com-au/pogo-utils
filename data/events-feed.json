@@ -61,8 +61,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/cresselia-darkrai-in-5-star-raid-battles-november-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/legendary-cresselia.jpg",
-    "start": "2026-11-16T06:00:00.000",
-    "end": "2026-11-24T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
@@ -97,17 +97,6 @@
     "start": "2026-11-17T10:00:00.000",
     "end": "2026-12-31T23:59:00.000",
     "added": "2026-11-17T04:44:15.674Z"
-  },
-  {
-    "eventID": "dynamax-trails-2026",
-    "name": "Dynamax Trails",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/dynamax-trails-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-11-16-dynamax-trails-2026/dynamax-trails-2026.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-19T22:36:12.344Z"
   },
   {
     "eventID": "february-communityday2027",
@@ -363,17 +352,6 @@
     "added": "2026-11-10T04:18:09.675Z"
   },
   {
-    "eventID": "max-mondays-2026-11-23",
-    "name": "Dynamax Espurr during Max Monday",
-    "eventType": "max-mondays",
-    "heading": "Max Mondays",
-    "link": "https://leekduck.com/events/max-mondays-2026-11-23/",
-    "image": "https://cdn.leekduck.com/assets/img/events/max-battles-kanto.jpg",
-    "start": null,
-    "end": null,
-    "added": "2026-10-19T22:36:12.344Z"
-  },
-  {
     "eventID": "max-mondays-2026-11-30",
     "name": "Dynamax Cryogonal during Max Monday",
     "eventType": "max-mondays",
@@ -435,8 +413,8 @@
     "heading": "Raid Battles",
     "link": "https://leekduck.com/events/mega-banette-in-mega-raids-november-2026/",
     "image": "https://cdn.leekduck.com/assets/img/events/mega-default.jpg",
-    "start": "2026-11-16T06:00:00.000",
-    "end": "2026-11-24T22:00:00.000",
+    "start": null,
+    "end": null,
     "added": "2026-10-19T22:36:12.344Z"
   },
   {
