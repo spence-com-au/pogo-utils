@@ -15,8 +15,8 @@ importers:
         specifier: ^2.6.2
         version: 2.6.2
       '@stylistic/eslint-plugin':
-        specifier: 6.0.0
-        version: 6.0.0(eslint@10.15.0(supports-color@10.2.2))
+        specifier: 6.0.1
+        version: 6.0.1(eslint@10.15.0(supports-color@10.2.2))
       '@types/leaflet':
         specifier: ^1.9.22
         version: 1.9.22
@@ -640,8 +640,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@stylistic/eslint-plugin@6.0.0':
-    resolution: {integrity: sha512-phICSey4OqR8nkSwmoeXsl9EBzv30Zqbge4jrK3CU02GhjTgZ+y5qhTTg92EDK5j7JhX2xzp4VvH+YYUknQ8/Q==}
+  '@stylistic/eslint-plugin@6.0.1':
+    resolution: {integrity: sha512-7nyi2RmGIuzBYGq5C8cFaoQsh+COfo6oHMWCygzg2iaqJJ4RDThaKCMYRkkOUAQWv80R7sbBbpuKZfulH7bFcw==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
@@ -2293,7 +2293,7 @@ snapshots:
   '@standard-schema/spec@1.1.0':
     optional: true
 
-  '@stylistic/eslint-plugin@6.0.0(eslint@10.15.0(supports-color@10.2.2))':
+  '@stylistic/eslint-plugin@6.0.1(eslint@10.15.0(supports-color@10.2.2))':
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@10.15.0(supports-color@10.2.2))
       '@typescript-eslint/types': 8.72.2
