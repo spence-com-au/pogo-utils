@@ -1,5 +1,49 @@
 [
   {
+    "eventID": "choose-your-path-daydream-destinations-2026-12-15",
+    "name": "Choose Your Path: Daydream Destinations (December 15, 2026)",
+    "eventType": "choose-your-path",
+    "heading": "Choose Your Path",
+    "link": "https://leekduck.com/events/choose-your-path-daydream-destinations-2026-12-15/",
+    "image": "https://cdn.leekduck.com/assets/img/events/choose-your-path-daydream-destinations-2026.jpg",
+    "start": "2026-12-15T10:00:00.000",
+    "end": "2026-12-21T20:00:00.000",
+    "added": "2026-11-25T13:25:00.436Z"
+  },
+  {
+    "eventID": "choose-your-path-daydream-destinations-2027-01-12",
+    "name": "Choose Your Path: Daydream Destinations (January 12, 2027)",
+    "eventType": "choose-your-path",
+    "heading": "Choose Your Path",
+    "link": "https://leekduck.com/events/choose-your-path-daydream-destinations-2027-01-12/",
+    "image": "https://cdn.leekduck.com/assets/img/events/choose-your-path-daydream-destinations-2026.jpg",
+    "start": "2027-01-12T10:00:00.000",
+    "end": "2027-01-18T20:00:00.000",
+    "added": "2026-11-25T13:25:00.436Z"
+  },
+  {
+    "eventID": "choose-your-path-daydream-destinations-2027-01-26",
+    "name": "Choose Your Path: Daydream Destinations (January 26, 2027)",
+    "eventType": "choose-your-path",
+    "heading": "Choose Your Path",
+    "link": "https://leekduck.com/events/choose-your-path-daydream-destinations-2027-01-26/",
+    "image": "https://cdn.leekduck.com/assets/img/events/choose-your-path-daydream-destinations-2026.jpg",
+    "start": "2027-01-26T10:00:00.000",
+    "end": "2027-02-01T20:00:00.000",
+    "added": "2026-11-25T13:25:00.436Z"
+  },
+  {
+    "eventID": "choose-your-path-daydream-destinations-2027-02-16",
+    "name": "Choose Your Path: Daydream Destinations (February 16, 2027)",
+    "eventType": "choose-your-path",
+    "heading": "Choose Your Path",
+    "link": "https://leekduck.com/events/choose-your-path-daydream-destinations-2027-02-16/",
+    "image": "https://cdn.leekduck.com/assets/img/events/choose-your-path-daydream-destinations-2026.jpg",
+    "start": "2027-02-16T10:00:00.000",
+    "end": "2027-02-21T20:00:00.000",
+    "added": "2026-11-25T13:25:00.436Z"
+  },
+  {
     "eventID": "clefable-super-mega-raid-day-2026",
     "name": "Clefable Super Mega Raid Day",
     "eventType": "raid-day",
@@ -225,7 +269,7 @@
     "eventType": "go-pass",
     "heading": "GO Pass",
     "link": "https://leekduck.com/events/go-pass-december-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-12-01-go-pass-december-2026/go-pass-december-2026.jpg",
     "start": "2026-12-01T10:00:00.000",
     "end": "2027-01-05T10:00:00.000",
     "added": "2026-11-25T03:08:40.420Z"
