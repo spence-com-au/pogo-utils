@@ -33,6 +33,7 @@ import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
 import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
 import { inventoryStore, useInventory, type Inventory } from '../inventory-store.js';
+import { JsonFileButton } from '../json-file-button.js';
 import { usePhone } from '../phone-store.js';
 import { nameFragment } from '../search/query.js';
 import { PGSTATS } from '../tools/inventory/snapshot.mts';
@@ -356,7 +357,6 @@ function Mine({
   total: number;
   close: () => void;
 }) {
-  const picker = useRef<HTMLInputElement>(null);
   const reading = inventory.state === 'reading';
   const fromPhone = phone !== null && inventoryStore.source === phone;
 
@@ -388,33 +388,13 @@ function Mine({
               {!fromPhone ? 'Read the phone' : inventory.state === 'failed' ? 'Try again' : 'Refresh'}
             </button>
           )}
-          <button type="button" class="ghost" disabled={reading} onClick={() => picker.current?.click()}>
+          <JsonFileButton class="ghost" disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
             Open {PGSTATS_NAME}
-          </button>
+          </JsonFileButton>
           <button type="button" class="ghost done" onClick={close}>
             Done
           </button>
         </div>
-
-        {/*
-         * Clicked by the button above rather than shown, a file input being unstyleable, and `value` cleared as the
-         * change is read so the same file picked again after an edit fires a second time rather than nothing.
-         */}
-        <input
-          ref={picker}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(event) => {
-            const [file] = event.currentTarget.files ?? [];
-
-            event.currentTarget.value = '';
-
-            if (file !== undefined) {
-              void inventoryStore.open(file);
-            }
-          }}
-        />
       </div>
     </>
   );
