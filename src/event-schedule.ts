@@ -203,7 +203,10 @@ export function agendaOf(events: readonly ParsedEvent[], month: Date, now: Date)
   for (const ev of events) {
     const { start, end } = ev;
     const starts = within(start);
-    const ends = within(end);
+
+    // An end on the month's first instant finished the month before, which lists it under `allMonth`, so it is no entry
+    // of this one: a window is open at its end, as `overlaps` has it, which is what leaves it out of the month's count.
+    const ends = within(end) && end > monthStart;
 
     if (starts && ends && startOfDay(start).getTime() === startOfDay(end).getTime()) {
       dayOf(start).entries.push({ ev, edge: 'both' });

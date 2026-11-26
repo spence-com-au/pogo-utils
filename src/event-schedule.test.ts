@@ -237,6 +237,17 @@ describe('agendaOf', () => {
     expect(result.days).toHaveLength(allMonth ? 0 : 1);
   });
 
+  /**
+   * The other side of the half-open month: an end on its first instant belongs to the month before, where the event ran
+   * all month, rather than being listed again as ending at midnight on the 1st of a month it never reached.
+   */
+  test('an event ending on the month’s first instant is listed in the month before and not this one', () => {
+    const ev = parsed({ eventID: 'a', start: at(2026, 7, 1), end: at(2026, 9, 1) });
+
+    expect(agenda([ev])).toEqual({ allMonth: [], days: [] });
+    expect(agendaOf([ev], at(2026, 8, 1), ELSEWHEN).allMonth.map(({ eventID }) => eventID)).toEqual(['a']);
+  });
+
   test('an event outside the month is left out, and a one-ended event is listed on its one day', () => {
     const result = agenda([
       parsed({ eventID: 'before', start: at(2026, 8, 1), end: at(2026, 8, 20) }),
