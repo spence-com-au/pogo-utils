@@ -5,9 +5,9 @@
  * in `src/event-store.ts` loads and merges the two, and either source failing still renders the other.
  * `data/entries-by-event.json` says which events have routes here, so a card can link through to them on the map.
  *
- * Three views over the same data: a card list grouped by status, a month grid where every event is a bar spanning the
- * days it covers within each week, and a Tracks timeline laying events out as horizontal bars in fixed category rows.
- * The search box, type filters and dismissals apply to all three.
+ * Three views over the same data: a card list grouped by status, a month listed as the days events start and end on,
+ * and a Tracks timeline laying events out as horizontal bars in fixed category rows. The search box, type filters and
+ * dismissals apply to all three.
  */
 
 import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
@@ -17,7 +17,7 @@ import { byCodeUnit, routeSummary } from '../event-feed.js';
 import { hiddenFor, type Prefs } from '../event-prefs.js';
 import {
   addDays,
-  continuations,
+  agendaOf,
   DAY_MS,
   layoutTracks,
   overlaps,
@@ -26,8 +26,8 @@ import {
   statusOf,
   trackBar,
   typeClass,
-  weekColumns,
   windowOf,
+  type AgendaEntry,
   type ParsedEvent,
   type StatusKind,
 } from '../event-schedule.js';
@@ -76,12 +76,21 @@ const dateFmt = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 });
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const monthNameFmt = new Intl.DateTimeFormat(undefined, { month: 'long' });
 const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
-
-// Taken from a week starting on a known Sunday (2023-01-01) so they follow the reader's locale without hard-coding
-// English. The grid itself is Sunday-first.
+const dayYearFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-const WEEKDAYS = Array.from({ length: 7 }, (_, i) => weekdayFmt.format(new Date(2023, 0, 1 + i)));
+const longDayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+const hourFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
+const minuteFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+
+/**
+ * The format for a time of day, leaving the minutes off on the hour — "6 am" rather than "6:00 am" — since nearly every
+ * event starts and ends on one. Given both ends of a range, so that the two read in the same style. Only on a 12-hour
+ * clock, whose am and pm say it is a time: on a 24-hour one the hour alone is a bare "20".
+ */
+const clockFor = (...times: Date[]) =>
+  hourFmt.resolvedOptions().hour12 === true && times.every((time) => time.getMinutes() === 0) ? hourFmt : minuteFmt;
 
 /**
  * The cards view's status buckets, in the order they are drawn. An array rather than an object keyed by kind, the
@@ -122,7 +131,7 @@ const TRACKS = [
 /**
  * The three reveals at the foot of the filter panel, each with its label and whether it is only offered to the cards
  * view. Both bucket reveals only mean anything there: the calendar and tracks views show a fixed window regardless,
- * and neither can draw a dateless event at all, `windowOf` giving it no window to place.
+ * and neither can draw a dateless event at all, there being no day to put it on.
  */
 const REVEALS = [
   { name: 'showPast', label: 'Ended', cardsOnly: true },
@@ -178,9 +187,9 @@ function timeRange(ev: ParsedEvent) {
 }
 
 /**
- * An event's bar in the calendar or on the tracks: a link to its source page, or a `<span>` for an event whose link
- * `webLink` dropped — the reason the cards view leaves its overlay out. An `<a>` with no `href` would still be drawn as
- * a bar to click, yet take no focus and open nothing.
+ * An event's row in the calendar or its bar on the tracks: a link to its source page, or a `<span>` for an event whose
+ * link `webLink` dropped — the reason the cards view leaves its overlay out. An `<a>` with no `href` would still be
+ * drawn as something to click, yet take no focus and open nothing.
  */
 function eventBar(
   ev: ParsedEvent,
@@ -270,6 +279,10 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /** The first-of-month the calendar view is showing, or the current month until the reader steps off it. */
   const [calMonth, setCalMonth] = useState<Date | null>(null);
+
+  // What the calendar view has unfolded: the events covering the whole month, and the days before today.
+  const [showAllMonth, setShowAllMonth] = useState(false);
+  const [showEarlier, setShowEarlier] = useState(false);
 
   /**
    * An `?event=` the fragment named and the feed had not yet arrived to apply. Held rather than re-read so the arrival
@@ -686,39 +699,24 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   }
 
   /**
-   * One week's segment of an event, from a span of one column to all seven. A function rather than a component for the
-   * reason `renderCard` is one: declared in here, a component is a fresh type on every render and the whole month is
-   * rebuilt rather than diffed.
+   * One event on the calendar: its name, and when on that day it starts or ends. A function rather than a component for
+   * the reason `renderCard` is one: declared in here, a component is a fresh type on every render and the whole month
+   * is rebuilt rather than diffed.
+   *
+   * The New mark is a label rather than the card's button, because the row is a link and a button cannot sit inside
+   * one; the header carries the way to clear it.
    */
-  function renderCalBar(
-    ev: ParsedEvent,
-    [first, last]: readonly [number, number],
-    { contLeft, contRight }: { contLeft: boolean; contRight: boolean },
-  ) {
-    const classes = ['cal-bar', statusOf(ev, now).kind];
-
-    if (contLeft) {
-      classes.push('cont-left');
-    }
-
-    if (contRight) {
-      classes.push('cont-right');
-    }
-
-    // A ring, not a badge: there is no room for a control in eleven pixels, so a bar says an event is new and the
-    // header carries the only way to clear it.
-    if (isNew(ev)) {
-      classes.push('new');
-    }
-
+  function renderRow(ev: ParsedEvent, when: string) {
     return eventBar(
       ev,
-      {
-        class: classes.join(' ') + typeClass(ev.eventType),
-        style: { gridColumn: `${first + 1} / span ${last - first + 1}` },
-        title: `${ev.name} — ${timeRange(ev)}`,
-      },
-      <span class="cal-bar-name">{ev.name}</span>,
+      { class: `agenda-row ${statusOf(ev, now).kind}${typeClass(ev.eventType)}`, title: timeRange(ev) },
+      <>
+        <span class="agenda-name">
+          {ev.name}
+          {isNew(ev) && <span class="agenda-new">New</span>}
+        </span>
+        <span class="agenda-when">{when}</span>
+      </>,
     );
   }
 
@@ -807,33 +805,48 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     };
   }
 
-  /** The calendar view: a month grid where every event is a bar spanning the days it covers within each week. */
+  /**
+   * The calendar view: the month as the days events start and end on, with the events covering the whole month folded
+   * into one list above them, and in the month holding today, the days before it folded away too.
+   */
   function calendar() {
     const month = calMonth ?? new Date(now.getFullYear(), now.getMonth(), 1);
     const year = month.getFullYear();
     const index = month.getMonth();
-    const lead = new Date(year, index, 1).getDay(); // blank days before the 1st (Sunday-first)
-    const daysInMonth = new Date(year, index + 1, 0).getDate();
-    const weeks = Math.ceil((lead + daysInMonth) / 7);
-    const gridStart = new Date(year, index, 1 - lead);
-    const todayKey = startOfDay(now).getTime();
+    const next = new Date(year, index + 1, 1);
+    const today = startOfDay(now).getTime();
+    const visible = events.filter(isVisible);
+    const { allMonth, days } = agendaOf(visible, month, now);
+    const inMonth = visible.filter((ev) => overlaps(windowOf(ev), month.getTime(), next.getTime())).length;
 
     /**
-     * Every event the grid can place, resolved once ahead of the week loop. `events` is already sorted by start, so
-     * the longest-running bars settle at the top of each week.
-     *
-     * One `flatMap` rather than a `map` and a `filter`, a predicate not narrowing what it filtered: the pair would
-     * stay `Span | null` past a `win !== null` test, which is two assertions' worth of noise where `win[0]` is read.
+     * How many of the days come before today, which are the first that many since the days run in order. Counted in the
+     * month holding today alone: a month already over is nothing but earlier days, and folding the lot would leave only
+     * the button.
      */
-    const placed = events.filter(isVisible).flatMap((ev) => {
-      const win = windowOf(ev);
+    const earlier =
+      year === now.getFullYear() && index === now.getMonth() ? days.filter(({ day }) => +day < today).length : 0;
 
-      return win === null ? [] : [{ ev, win }];
-    });
+    /** A date, with the year where it is not the year of the month on show. */
+    const date = (at: Date) => (at.getFullYear() === year ? dayFmt : dayYearFmt).format(at);
 
-    const monthStart = new Date(year, index, 1).getTime();
-    const monthEnd = new Date(year, index + 1, 1).getTime();
-    const inMonth = placed.filter(({ win }) => overlaps(win, monthStart, monthEnd)).length;
+    /** When on its day an entry starts or ends, or both for an event that is over within the day. */
+    function when({ ev: { start, end }, edge }: AgendaEntry) {
+      if (edge === 'end' || start === null) {
+        return end === null ? '' : `Ends ${clockFor(end).format(end)}`;
+      }
+
+      if (end === null) {
+        return `Starts ${clockFor(start).format(start)}`;
+      }
+
+      return edge === 'both'
+        ? clockFor(start, end).formatRange(start, end)
+        : `Starts ${clockFor(start).format(start)}, ends ${date(end)}`;
+    }
+
+    /** For an event listed on no day of its own: running all month, or through today. */
+    const until = ({ end }: ParsedEvent) => (end === null ? '' : `Ends ${date(end)}`);
 
     return {
       count: `${monthFmt.format(month)} · ${inMonth} event${inMonth === 1 ? '' : 's'}`,
@@ -866,59 +879,72 @@ export default function EventsPage({ query: fragment }: { query: string }) {
             </button>
           </div>
 
-          <div class="cal">
-            <div class="cal-wd-row">
-              {WEEKDAYS.map((name) => (
-                <div key={name} class="cal-wd">
-                  {name}
+          <div class="agenda">
+            {allMonth.length > 0 && (
+              <section class="agenda-all">
+                <h2>
+                  <button
+                    type="button"
+                    aria-controls="all-month"
+                    aria-expanded={showAllMonth}
+                    onClick={() => setShowAllMonth(!showAllMonth)}
+                  >
+                    All month
+                    <span class="agenda-count">{allMonth.length}</span>
+                    <span class="swatches" aria-hidden="true">
+                      {allMonth.map((ev) => (
+                        <span key={ev.eventID} class={`swatch${typeClass(ev.eventType)}`} />
+                      ))}
+                    </span>
+                  </button>
+                </h2>
+                <div id="all-month" class="agenda-list" hidden={!showAllMonth}>
+                  {allMonth.map((ev) => renderRow(ev, until(ev)))}
                 </div>
-              ))}
-            </div>
+              </section>
+            )}
 
-            {Array.from({ length: weeks }, (_, week) => {
-              const weekStart = addDays(gridStart, week * 7);
-              const weekStartMs = weekStart.getTime();
+            {earlier > 0 && (
+              <button
+                type="button"
+                class="agenda-earlier"
+                aria-expanded={showEarlier}
+                onClick={() => setShowEarlier(!showEarlier)}
+              >
+                {showEarlier ? 'Hide earlier days' : `Show ${earlier} earlier day${earlier === 1 ? '' : 's'}`}
+              </button>
+            )}
+
+            {(showEarlier ? days : days.slice(earlier)).map(({ day, entries, running }) => {
+              const isToday = +day === today;
 
               return (
-                <div key={weekStartMs} class="cal-week">
-                  {/* The cells first, so the bars that share their grid area paint over them rather than under. */}
-                  <div class="cal-days">
-                    {Array.from({ length: 7 }, (_, col) => {
-                      const day = addDays(weekStart, col);
-                      const classes = ['cal-day'];
-
-                      if (day.getMonth() !== index) {
-                        classes.push('other');
-                      }
-
-                      // The class is the pill and the tint; `aria-current` is the same fact for a reader who is getting
-                      // neither, and is the only thing on the grid that says which day is today rather than a colour.
-                      const today = day.getTime() === todayKey;
-
-                      if (today) {
-                        classes.push('today');
-                      }
-
-                      return (
-                        <div key={col} class={classes.join(' ')} aria-current={today ? 'date' : undefined}>
-                          <span class="daynum">{day.getDate()}</span>
-                        </div>
-                      );
-                    })}
+                <section
+                  key={+day}
+                  class={`agenda-day${isToday ? ' today' : +day < today ? ' past' : ''}`}
+                  aria-current={isToday ? 'date' : undefined}
+                >
+                  {/* The label reads the date whole, where the block splits it over lines and leaves out the month. */}
+                  <h2 class="agenda-date" aria-label={`${longDayFmt.format(day)}${isToday ? ', today' : ''}`}>
+                    <span>{weekdayFmt.format(day)}</span>
+                    <span class="dn">{day.getDate()}</span>
+                    {isToday && <span class="pill">Today</span>}
+                  </h2>
+                  <div class="agenda-list">
+                    {entries.map((entry) => renderRow(entry.ev, when(entry)))}
+                    {running.length > 0 && <h3 class="agenda-sub">On now</h3>}
+                    {running.map((ev) => renderRow(ev, until(ev)))}
+                    {entries.length + running.length === 0 && <p class="agenda-none">Nothing starts or ends today.</p>}
                   </div>
-
-                  <div class="cal-bars">
-                    {placed.flatMap(({ ev, win }) => {
-                      const columns = weekColumns(win, weekStart);
-
-                      return columns === null
-                        ? []
-                        : [renderCalBar(ev, columns, continuations(win, columns, weekStart))];
-                    })}
-                  </div>
-                </div>
+                </section>
               );
             })}
+
+            {days.length + allMonth.length === 0 && <p class="agenda-none">No events this month.</p>}
+
+            <button type="button" class="navbtn agenda-next" onClick={() => setCalMonth(next)}>
+              {monthNameFmt.format(next)} ›
+            </button>
           </div>
         </>
       ),
