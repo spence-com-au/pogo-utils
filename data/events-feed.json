@@ -253,6 +253,17 @@
     "added": "2026-11-25T03:08:40.420Z"
   },
   {
+    "eventID": "gigantamax-inteleon-max-battle-day-2026",
+    "name": "Gigantamax Inteleon Max Battle Day",
+    "eventType": "max-battles",
+    "heading": "Max Battles",
+    "link": "https://leekduck.com/events/gigantamax-inteleon-max-battle-day-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-12-05-gigantamax-inteleon-max-battle-day-2026/gigantamax-inteleon-max-battle-day.jpg",
+    "start": "2026-12-05T14:00:00.000",
+    "end": "2026-12-05T17:00:00.000",
+    "added": "2026-11-26T05:23:16.392Z"
+  },
+  {
     "eventID": "go-pass-december-2026",
     "name": "GO Pass: December",
     "eventType": "go-pass",
@@ -328,17 +339,6 @@
     "start": "2026-12-23T06:00:00.000",
     "end": "2026-12-29T22:00:00.000",
     "added": "2026-11-25T03:08:40.420Z"
-  },
-  {
-    "eventID": "max-battle-day-december-2026",
-    "name": "Max Battle Day",
-    "eventType": "max-battles",
-    "heading": "Max Battles",
-    "link": "https://leekduck.com/events/max-battle-day-december-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
-    "start": "2026-12-05T14:00:00.000",
-    "end": "2026-12-05T17:00:00.000",
-    "added": "2026-11-10T04:18:09.675Z"
   },
   {
     "eventID": "max-battle-day-january-2027",
@@ -537,6 +537,28 @@
     "start": "2026-12-29T10:00:00.000",
     "end": "2027-01-04T20:00:00.000",
     "added": "2026-11-25T03:08:40.420Z"
+  },
+  {
+    "eventID": "pokemon-champions-celebration-5-star-raid-battles-december-2026",
+    "name": "Pokémon Champions Celebration 5-star Raid Battles",
+    "eventType": "raid-battles",
+    "heading": "Raid Battles",
+    "link": "https://leekduck.com/events/pokemon-champions-celebration-5-star-raid-battles-december-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "start": "2026-12-09T06:00:00.000",
+    "end": "2026-12-15T22:00:00.000",
+    "added": "2026-11-26T05:23:16.392Z"
+  },
+  {
+    "eventID": "pokemon-champions-celebration-event-2026",
+    "name": "Pokémon Champions Celebration Event 2026",
+    "eventType": "event",
+    "heading": "Event",
+    "link": "https://leekduck.com/events/pokemon-champions-celebration-event-2026/",
+    "image": "https://cdn.leekduck.com/assets/img/events/article-images/2026/2026-12-08-pokemon-champions-celebration-event-2026/pokemon-champions-celebration-event-2026.jpg",
+    "start": "2026-12-08T10:00:00.000",
+    "end": "2026-12-14T20:00:00.000",
+    "added": "2026-11-26T05:23:16.392Z"
   },
   {
     "eventID": "pokemon-go-tour-alola-global-2027",
@@ -830,7 +852,7 @@
     "eventType": "event",
     "heading": "Event",
     "link": "https://leekduck.com/events/tropical-paradise-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
+    "image": "https://cdn.leekduck.com/assets/img/events/tropical-paradise-2026.jpg",
     "start": "2026-12-01T10:00:00.000",
     "end": "2026-12-07T20:00:00.000",
     "added": "2026-11-25T03:08:40.420Z"
@@ -845,28 +867,6 @@
     "start": "2026-11-24T10:00:00.000",
     "end": "2026-11-30T20:00:00.000",
     "added": "2026-10-19T22:36:12.344Z"
-  },
-  {
-    "eventID": "unannounced-event-december-2026",
-    "name": "Unannounced Event",
-    "eventType": "event",
-    "heading": "Event",
-    "link": "https://leekduck.com/events/unannounced-event-december-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
-    "start": "2026-12-08T10:00:00.000",
-    "end": "2026-12-14T20:00:00.000",
-    "added": "2026-11-25T03:08:40.420Z"
-  },
-  {
-    "eventID": "unannounced-pokemon-in-5-star-raid-battles-december-2026",
-    "name": "Unannounced Pokémon in 5-star Raid Battles",
-    "eventType": "raid-battles",
-    "heading": "Raid Battles",
-    "link": "https://leekduck.com/events/unannounced-pokemon-in-5-star-raid-battles-december-2026/",
-    "image": "https://cdn.leekduck.com/assets/img/events/events-default-img.jpg",
-    "start": "2026-12-09T06:00:00.000",
-    "end": "2026-12-15T22:00:00.000",
-    "added": "2026-11-25T03:08:40.420Z"
   },
   {
     "eventID": "winter-holiday-2026",
