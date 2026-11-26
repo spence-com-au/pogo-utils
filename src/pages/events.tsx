@@ -187,21 +187,22 @@ function timeRange(ev: ParsedEvent) {
 }
 
 /**
- * An event's row in the calendar or its bar on the tracks: a link to its source page, or a `<span>` for an event whose
- * link `webLink` dropped — the reason the cards view leaves its overlay out. An `<a>` with no `href` would still be
- * drawn as something to click, yet take no focus and open nothing.
+ * An event's row in the calendar or its bar on the tracks: a link to its source page, taking the `opening` handlers a
+ * card's link takes, or a `<span>` for an event whose link `webLink` dropped — the reason the cards view leaves its
+ * overlay out. An `<a>` with no `href` would still be drawn as something to click, yet take no focus and open nothing.
  */
 function eventBar(
   ev: ParsedEvent,
   bar: Pick<HTMLAttributes<HTMLElement>, 'class' | 'style' | 'title'>,
   children: ComponentChildren,
+  opened: Pick<HTMLAttributes<HTMLAnchorElement>, 'onClick' | 'onAuxClick'>,
 ) {
   return ev.link === undefined ? (
     <span key={ev.eventID} {...bar}>
       {children}
     </span>
   ) : (
-    <a key={ev.eventID} {...bar} href={ev.link} target="_blank" rel="noopener">
+    <a key={ev.eventID} {...bar} {...opened} href={ev.link} target="_blank" rel="noopener">
       {children}
     </a>
   );
@@ -314,6 +315,28 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /** Whether the event has turned up since the reader last acknowledged what was on the page. */
   const isNew = (ev: ParsedEvent) => isNewIn(prefs, ev);
+
+  /**
+   * The handlers that acknowledge an event as a link opens it, from a card, a calendar row or a tracks bar alike.
+   * `target="_blank"` leaves the reader on this page, so an event they have just gone and read would otherwise still be
+   * announcing itself as new when they come back.
+   *
+   * `auxclick` as well as `click` because a middle click — how a reader opens something in a background tab without
+   * losing their place — fires only the second of the two.
+   */
+  const opening = (ev: ParsedEvent) => {
+    const acknowledge = (event: MouseEvent) => {
+      // Left and middle are the two that open the link. Chrome reports a right click as an `auxclick` too, and that
+      // opens a menu rather than the event.
+      if (event.button > 1 || !isNew(ev)) {
+        return;
+      }
+
+      store.acknowledge([ev]);
+    };
+
+    return { onClick: acknowledge, onAuxClick: acknowledge };
+  };
 
   /**
    * The events the reader is being told are new, which is also what the top bar lists while nothing is searched for:
@@ -579,23 +602,6 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     const here = routeIndex[ev.eventID];
     const summary = here ? routeSummary(here) : null;
 
-    /**
-     * Opening the event acknowledges it. `target="_blank"` leaves the reader on this page, so a card they have just
-     * gone and read would otherwise still be announcing itself as new when they come back.
-     *
-     * `auxclick` as well as `click` because a middle click — how a reader opens something in a background tab without
-     * losing their place — fires only the second of the two.
-     */
-    const acknowledge = (event: MouseEvent) => {
-      // Left and middle are the two that open the link. Chrome reports a right click as an `auxclick` too, and that
-      // opens a menu rather than the event.
-      if (event.button > 1 || !fresh) {
-        return;
-      }
-
-      store.acknowledge([ev]);
-    };
-
     return (
       <article
         key={ev.eventID}
@@ -614,8 +620,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
             target="_blank"
             rel="noopener"
             aria-label={`Open “${ev.name}”`}
-            onClick={acknowledge}
-            onAuxClick={acknowledge}
+            {...opening(ev)}
           />
         )}
 
@@ -704,7 +709,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
    * is rebuilt rather than diffed.
    *
    * The New mark is a label rather than the card's button, because the row is a link and a button cannot sit inside
-   * one; the header carries the way to clear it.
+   * one; opening the row clears it, as the header's button does.
    */
   function renderRow(ev: ParsedEvent, when: string) {
     return eventBar(
@@ -717,6 +722,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
         </span>
         <span class="agenda-when">{when}</span>
       </>,
+      opening(ev),
     );
   }
 
@@ -989,6 +995,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
                 },
               },
               item.ev.name,
+              opening(item.ev),
             );
           })}
         </div>,
