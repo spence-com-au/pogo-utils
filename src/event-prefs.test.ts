@@ -29,6 +29,7 @@ test('the keys are the names readers hold', () => {
     dismissed: 'pogo-utils:events:dismissed',
     seen: 'pogo-utils:events:seen',
     collapsed: 'pogo-utils:events:collapsed',
+    view: 'pogo-utils:events:view',
   });
 });
 
@@ -60,6 +61,7 @@ test('a first visit gets the defaults, and a null seen set', () => {
   expect(prefs.dismissed).toEqual(new Set());
   expect(prefs.seen).toBeNull();
   expect(prefs.collapsed).toEqual(new Set());
+  expect(prefs.view).toBe('cards');
 });
 
 /**
@@ -204,6 +206,27 @@ test.for([
 ])('a stored scope of $stored reads as $reads', ({ stored, reads }) => {
   storage.setItem(KEYS.filterScope, stored);
   expect(loadPrefs().filterScope).toBe(reads);
+});
+
+/** The page opens on the view last chosen, and on the cards where what is stored names no view it has. */
+test.for([
+  { stored: '"calendar"', reads: 'calendar' },
+  { stored: '"tracks"', reads: 'tracks' },
+  { stored: '"grid"', reads: 'cards' },
+  { stored: '["tracks"]', reads: 'cards' },
+])('a stored view of $stored reads as $reads', ({ stored, reads }) => {
+  storage.setItem(KEYS.view, stored);
+  expect(loadPrefs().view).toBe(reads);
+});
+
+test('a chosen view is saved and read back', () => {
+  const prefs = loadPrefs();
+
+  prefs.view = 'tracks';
+  persist(prefs, 'view');
+
+  expect(storage.getItem(KEYS.view)).toBe('"tracks"');
+  expect(loadPrefs().view).toBe('tracks');
 });
 
 /**
@@ -491,6 +514,7 @@ const prefsFor = (over: Partial<Prefs>): Prefs => ({
   dismissed: new Set(),
   seen: null,
   collapsed: new Set(),
+  view: 'cards',
   ...over,
 });
 

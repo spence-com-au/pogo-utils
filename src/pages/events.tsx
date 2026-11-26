@@ -14,7 +14,7 @@ import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { byCodeUnit, routeSummary } from '../event-feed.js';
-import { hiddenFor, type Prefs } from '../event-prefs.js';
+import { hiddenFor, type Prefs, type View } from '../event-prefs.js';
 import {
   addDays,
   agendaOf,
@@ -45,9 +45,6 @@ import { ENTRIES_BY_EVENT, EVENTS_FEED } from '../generated.js';
 import { toHash } from '../router.js';
 
 import type { RouteIndex } from '../types.js';
-
-/** Which of the three views is showing. A page concept, so it stays here rather than beside the schedule. */
-type View = 'cards' | 'calendar' | 'tracks';
 
 /**
  * How often to recompute the relative labels against the wall clock, and — every `REFETCH_EVERY` ticks — pull the feed
@@ -256,7 +253,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /** Recomputed every minute, which is what keeps the relative labels honest without anything else being redrawn. */
   const [now, setNow] = useState(() => new Date());
 
-  const [view, setView] = useState<View>('cards');
+  const { view } = prefs;
   const [search, setSearch] = useState('');
 
   // A session's choices rather than saved preferences; `prefs` is what survives a reload.
@@ -472,10 +469,16 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     };
   }, []);
 
+  /** Switch views, saved so the page opens on this one next time. */
+  function setView(next: View) {
+    prefs.view = next;
+    commit('view');
+  }
+
   /**
-   * Switch which hidden-type set the chips edit and the views read. Persisted, unlike the view itself, because the sets
-   * it chooses between are: a scope falling back to global on reload would leave per-view filtering saved and silently
-   * out of force, which is worse than not having offered it.
+   * Switch which hidden-type set the chips edit and the views read. Persisted because the sets it chooses between are:
+   * a scope falling back to global on reload would leave per-view filtering saved and silently out of force, which is
+   * worse than not having offered it.
    */
   function setScope(next: Prefs['filterScope']) {
     prefs.filterScope = next;
