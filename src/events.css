@@ -323,10 +323,12 @@ body[data-page='events'] {
 
   /**
    * The whole row is the button, hairline included, so a click anywhere along the heading folds the bucket rather than
-   * only one on its words.
+   * only one on its words. The calendar's All month panel folds with the same button, so the two share these rules and
+   * the triangles and focus ring below.
    */
 
-  h2.group button {
+  h2.group button,
+  .agenda-all button {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -345,7 +347,8 @@ body[data-page='events'] {
     color: var(--text);
   }
 
-  h2.group button:focus-visible {
+  h2.group button:focus-visible,
+  .agenda-all button:focus-visible {
     outline: 2px solid var(--track);
     outline-offset: 2px;
     border-radius: 4px;
@@ -353,12 +356,14 @@ body[data-page='events'] {
 
   /* The same triangles the Integrations page's `details.subgroup` folds with, turned by the state the button reports. */
 
-  h2.group button::before {
+  h2.group button::before,
+  .agenda-all button::before {
     content: '▾';
     font-size: 9px;
   }
 
-  h2.group button[aria-expanded='false']::before {
+  h2.group button[aria-expanded='false']::before,
+  .agenda-all button[aria-expanded='false']::before {
     content: '▸';
   }
 
@@ -912,39 +917,18 @@ body[data-page='events'] {
     margin: 0;
   }
 
-  /* The whole heading is the button, as on the cards' groups, folding with the same triangles. */
+  /* The cards' group button, shared above, made the size of a panel heading rather than a muted section label. */
 
   .agenda-all button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
     min-height: 32px;
-    padding: 0;
-    border: 0;
-    background: none;
-    font: inherit;
     font-size: 14px;
     font-weight: 600;
     color: var(--text);
     text-align: left;
-    cursor: pointer;
   }
 
   .agenda-all button::before {
-    content: '▾';
-    font-size: 9px;
     color: var(--muted);
-  }
-
-  .agenda-all button[aria-expanded='false']::before {
-    content: '▸';
-  }
-
-  .agenda-all button:focus-visible {
-    outline: 2px solid var(--track);
-    outline-offset: 2px;
-    border-radius: 4px;
   }
 
   .agenda-count {
