@@ -312,7 +312,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
    * A link from the Routes page arrives as `#/events?event=<eventID>` and lands by searching for that event's name.
    * Reusing the search box rather than scrolling to the card leaves the term visible, and emptying it is how a reader
    * already knows to get the other cards back. The event is always there to find, the linter rejecting a `<pgr:event>`
-   * naming an ID `data/events.json` does not carry.
+   * naming an ID neither `data/events.json` nor the feed carries.
    */
   function applyPending(against: readonly ParsedEvent[]) {
     const id = pending.current;

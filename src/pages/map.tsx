@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import COUNTRIES from '../countries.js';
 import { byKey, fmtDist, gpxEntries, routeDistance, type Route, type Waypoint } from '../routes.js';
 import { copyText, el } from '../dom.js';
-import { LOCAL_EVENTS } from '../event-feed.js';
+import { eventStore } from '../event-store.js';
 import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
@@ -76,26 +76,16 @@ async function loadGpxFile(file: string): Promise<{ routes: Route[]; waypoints: 
 }
 
 /**
- * The name to show for a `<pgr:event>`, which the files record only by `eventID`. `LOCAL_EVENTS` is where that name lives
- * — the same file `validate-gpx.mts` checks those IDs against.
+ * The name to show for a `<pgr:event>`, which the files record only by `eventID`, read from the same merged list the
+ * Events page draws, so an override's name wins here as it does there.
  *
- * A fetch that fails leaves every entry naming its event by ID, which reads well enough and still links to the right
+ * A load that fails leaves every entry naming its event by ID, which reads well enough and still links to the right
  * place, so a missing calendar is not worth withholding a page of routes over.
  */
 async function loadEventNames(): Promise<ReadonlyMap<string, string>> {
-  const names = new Map<string, string>();
+  await eventStore.ensureLoaded();
 
-  try {
-    const res = await fetchOk(LOCAL_EVENTS);
-
-    for (const event of await res.json()) {
-      names.set(event.eventID, event.name);
-    }
-  } catch (e) {
-    console.error(`${LOCAL_EVENTS}: ${said(e)} — entries will name their event by ID`);
-  }
-
-  return names;
+  return new Map(eventStore.events.map((event) => [event.eventID, event.name]));
 }
 
 /**

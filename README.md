@@ -122,9 +122,9 @@ GPX 1.1 has no element for a locality, a country, a short/long variant or an eve
 namespace declared on `<gpx>`. `<pgr:city>` is the locality the place sits in, including its region — it is absent when
 the name is itself the place (`Melbourne`, `Boston, MA`). `<pgr:variant>` is `short`/`long`, and only for routes that
 come as a pair. `<pgr:event>` names the event the entry was added for, by the `eventID` it has in
-[`data/events.json`](data/events.json), and is absent for a place that stands on its own. `<pgr:event temporary="true">`
-says the entry is there only for the event, a stop on a tour or a venue for the day, so the
-[Prune workflow](.github/workflows/prune.yaml) removes the entry when the event ends rather than only the reference.
+[`data/events.json`](data/events.json) or the Leek Duck feed, and is absent for a place that stands on its own.
+`<pgr:event temporary="true">` says the entry is there only for the event, a stop on a tour or a venue for the day, so
+the [Prune workflow](.github/workflows/prune.yaml) removes the entry when the event ends rather than only the reference.
 `<name>` and `<pgr:country>` are required; the viewer names any file missing either instead of guessing from the file
 name.
 
@@ -143,8 +143,8 @@ The schema pass reaches the GPX itself, not the `pgr` fields: GPX declares `<ext
 namespace, processed leniently, so a misspelled `<pgr:contry>` sails through it. A second pass closes that gap by
 reading each file the way the viewer does — every `<trk>` and `<wpt>` must carry a non-empty `<pgr:country>`, a
 `<pgr:variant>` is only ever `short` or `long`, a `<pgr:event>` must name an `eventID` that
-[`data/events.json`](data/events.json) actually has, and a `pgr` element with no matching field (that `<pgr:contry>`) is
-reported as the typo it is.
+[`data/events.json`](data/events.json) or the feed actually has, and a `pgr` element with no matching field (that
+`<pgr:contry>`) is reported as the typo it is.
 
 One caveat: an editor that does not model foreign extensions drops the whole `<extensions>` block when it exports.
 gpx.studio is one, so a route re-exported from there comes back without its city, country and variant, and needs them
@@ -192,9 +192,11 @@ removes every event that has ended everywhere — a naive end once it has passed
 naming one, and the whole entry where that `<pgr:event>` is `temporary="true"`. A file left with no entry is deleted,
 though its country stays in [`src/countries.ts`](src/countries.ts) for the next event there. An event with no announced
 end is kept, and so is one the feed also carries: that entry overrides the feed's rather than being the only copy of it,
-so removing it would uncover upstream's, which by then is usually the same event without its dates. The run re-checks
-the files with `pnpm lint:xml` before it commits, a reference left behind being one the build would refuse on every
-deploy after it.
+so removing it would uncover upstream's, which by then is usually the same event without its dates. A feed event a
+`<pgr:event>` names is the vend's to hand over: when the feed drops one, the vend adds the copy it last held to
+`data/events.json`, and the prune removes it from there once it is over, as it would any other. The run re-checks the
+files with `pnpm lint:xml` before it commits, a reference left behind being one the build would refuse on every deploy
+after it.
 
 ```sh
 pnpm prune:events
