@@ -12,6 +12,9 @@
  *
  * It stamps `data/events.json` too, whose entries are written by hand and land without one. That is the vend's job
  * rather than the author's for the reason `stamp` gives, and why the Vend workflow runs on a push to that file.
+ *
+ * And it adopts into `data/events.json` any feed event a GPX entry still names when the feed drops it, for the reason
+ * `adopted` gives.
  */
 
 import {
@@ -23,6 +26,7 @@ import {
   VENDED_EVENTS,
   type StampedEvent,
 } from '../src/event-feed.ts';
+import { eventRefs, gpxSources, parseGpx } from '../src/gpx-source.mts';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 const readEvents = (path: string): StampedEvent[] => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : []);
@@ -48,11 +52,31 @@ const events = stamp(vendable(await res.json()), new Map([...stampsOf(local), ..
 writeFileSync(VENDED_EVENTS, `${JSON.stringify(events, null, 2)}\n`);
 console.log(`${VENDED_EVENTS}: ${events.length} events`);
 
+/**
+ * The feed events a GPX entry names that the feed has just dropped, as the previous copy had them. The feed drops an
+ * event once it is over, and sometimes before, as a rename does, and `validate-gpx.mts` refuses a reference to an event
+ * neither list has, so leaving one behind would fail every deploy until the file was edited by hand. Adopted into
+ * `data/events.json` instead, the event is the prune's like any other: gone once it is over, and its references with
+ * it, a temporary entry whole.
+ */
+const listed = new Set([...events, ...local].map(({ eventID }) => eventID));
+const referenced = new Set(
+  gpxSources().flatMap(({ contents }) => eventRefs(parseGpx(contents)).map((ref) => ref.eventID)),
+);
+const adopted = previous.filter(({ eventID }) => referenced.has(eventID) && !listed.has(eventID));
+
 // An override takes the stamp of the feed entry it replaces, for the same reason. Written only when something was
-// unstamped, so a run that stamps nothing leaves a hand-kept file exactly as it was.
+// unstamped or adopted, so a run that does neither leaves a hand-kept file exactly as it was.
 const unstamped = local.filter((ev) => !ev.added).map((ev) => ev.eventID);
 
+if (unstamped.length > 0 || adopted.length > 0) {
+  writeFileSync(LOCAL_EVENTS, `${JSON.stringify([...stamp(local, stampsOf(events), now), ...adopted], null, 2)}\n`);
+}
+
 if (unstamped.length > 0) {
-  writeFileSync(LOCAL_EVENTS, `${JSON.stringify(stamp(local, stampsOf(events), now), null, 2)}\n`);
   console.log(`${LOCAL_EVENTS}: stamped ${unstamped.join(', ')}`);
+}
+
+if (adopted.length > 0) {
+  console.log(`${LOCAL_EVENTS}: adopted ${adopted.map(({ eventID }) => eventID).join(', ')}, which the feed dropped`);
 }

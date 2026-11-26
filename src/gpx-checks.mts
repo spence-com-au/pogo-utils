@@ -81,8 +81,8 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
     }
 
     /**
-     * Every `<pgr:event>` names an event `data/events.json` still has, since a typo or an event renamed out from under
-     * it would otherwise sit in the file unnoticed.
+     * Every `<pgr:event>` names an event `data/events.json` or the feed still has, since a typo or an event renamed out
+     * from under it would otherwise sit in the file unnoticed.
      *
      * Read through `eventRefs` rather than the field walk below, because `scripts/prune-events.mts` cuts these elements
      * through the same function — which is what keeps the pruner from leaving behind a reference this check then
@@ -91,7 +91,11 @@ export function entryProblems(sources: readonly GpxSource[], { eventIds, countri
      */
     for (const { element, entry, eventID, temporary } of eventRefs(doc)) {
       if (eventID && !eventIds.has(eventID)) {
-        report(fileName, element, `<${element.tagName}> is "${eventID}" — not an eventID in data/events.json`);
+        report(
+          fileName,
+          element,
+          `<${element.tagName}> is "${eventID}" — not an eventID in data/events.json or the feed`,
+        );
       }
 
       /**

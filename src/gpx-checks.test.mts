@@ -110,7 +110,7 @@ test('a <pgr:event> names an event data/events.json has, wherever in the file it
     problemsIn(
       `<metadata>${ext('<pgr:event>gone</pgr:event>')}</metadata>${wpt('<name>Here</name>' + ext(AUSTRALIA))}`,
     ),
-  ).toEqual(['t.gpx:4: <pgr:event> is "gone" — not an eventID in data/events.json']);
+  ).toEqual(['t.gpx:4: <pgr:event> is "gone" — not an eventID in data/events.json or the feed']);
 });
 
 test('a <pgr:event> carries no attribute but temporary="true", and only in an entry', () => {

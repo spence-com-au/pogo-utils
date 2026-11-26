@@ -14,7 +14,7 @@
 
 import COUNTRIES from '../src/countries.ts';
 import { eventProblems } from '../src/event-checks.mts';
-import { LOCAL_EVENTS } from '../src/event-feed.ts';
+import { LOCAL_EVENTS, VENDED_EVENTS } from '../src/event-feed.ts';
 import { ENTRIES_BY_EVENT, GPX_PATHS } from '../src/generated.ts';
 import { gpxSources } from '../src/gpx-source.mts';
 import type { FeedEvent } from '../src/types.js';
@@ -47,8 +47,13 @@ if (events.length === 0) {
   console.log(`${EVENTS.length} events carry an eventID of their own and dates every reader takes.`);
 }
 
-/** The events a `<pgr:event>` may point at, by `eventID` (`LOCAL_EVENTS`). */
-const eventIds = new Set(EVENTS.map((event) => event.eventID));
+/**
+ * The events a `<pgr:event>` may point at, by `eventID`: this repository's own and the feed's. A feed event the feed
+ * drops while a reference to it remains is adopted into `LOCAL_EVENTS` by `scripts/vend-feed.mts`, so the reference
+ * stays one this accepts.
+ */
+const VENDED: FeedEvent[] = JSON.parse(readFileSync(VENDED_EVENTS, 'utf8'));
+const eventIds = new Set([...EVENTS, ...VENDED].map((event) => event.eventID));
 
 const entries = entryProblems(sources, { eventIds, countries: COUNTRIES });
 problems.push(...entries.problems);
