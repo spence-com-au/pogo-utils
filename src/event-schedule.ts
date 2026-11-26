@@ -128,8 +128,9 @@ export function statusOf(ev: ParsedEvent, now: Date): Status {
 }
 
 /**
- * The instant window an event occupies for the calendar's overlap tests. A start with no end is a single-day marker
- * rather than an open-ended band that would paint every following day; an end with no start is a day at its end date.
+ * The instant window an event occupies, for the month's count and the Tracks timeline. A start with no end is a
+ * single-day marker rather than an open-ended band that would run to the timeline's end; an end with no start is a day
+ * at its end date.
  * `start ?? end` is null exactly when both are, so the dateless case needs no guard of its own.
  */
 export function windowOf(ev: ParsedEvent): Span | null {
@@ -150,28 +151,100 @@ export function overlaps(win: Span | null, from: number, to: number) {
   return win !== null && win[0] < to && win[1] > from;
 }
 
-/**
- * The columns of one week row an event's window touches, as `[first, last]` inclusive, or null for a week it misses. A
- * window is one contiguous interval, so the columns it covers are contiguous and the pair describes them completely.
- */
-export function weekColumns(win: Span | null, weekStart: Date): readonly [number, number] | null {
-  let first = -1;
-  let last = -1;
+/** How an event meets a day of the agenda: starting on it, ending on it, or both, as a one-day event does. */
+export interface AgendaEntry {
+  ev: ParsedEvent;
+  edge: 'start' | 'end' | 'both';
+}
 
-  for (let col = 0; col < 7; col += 1) {
-    if (overlaps(win, addDays(weekStart, col).getTime(), addDays(weekStart, col + 1).getTime())) {
-      first = first === -1 ? col : first;
-      last = col;
+/**
+ * A day of the Calendar view's agenda: what starts or ends on it, in the order it does so, and what runs right through
+ * it. Only today carries the last, so `running` is empty on every other day.
+ */
+export interface AgendaDay {
+  day: Date;
+  entries: AgendaEntry[];
+  running: ParsedEvent[];
+}
+
+/**
+ * A month as the Calendar view lists it: the days something starts or ends on, and the events that do neither because
+ * they cover the whole month, listed once under `allMonth` rather than on every day. Regional events run for months at
+ * a time, so drawn on every day of the month they buried what changes from one day to the next.
+ *
+ * The edges are the event's own `start` and `end` rather than its `windowOf`, which rounds a one-ended event out to
+ * midnight and would lose the time the agenda prints. A one-ended event has the one edge to list and never covers a
+ * month. Today is a day of the agenda whenever it falls in the month, with or without anything on it, and carries the
+ * events running through it that are not already listed under `allMonth`, the soonest to end first.
+ */
+export function agendaOf(events: readonly ParsedEvent[], month: Date, now: Date) {
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+  const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+  const within = (at: Date | null): at is Date => at !== null && at >= monthStart && at < monthEnd;
+  const byDay = new Map<number, AgendaDay>();
+  const allMonth: ParsedEvent[] = [];
+
+  const dayOf = (at: Date) => {
+    const day = startOfDay(at);
+    const known = byDay.get(day.getTime());
+
+    if (known !== undefined) {
+      return known;
+    }
+
+    const made: AgendaDay = { day, entries: [], running: [] };
+    byDay.set(day.getTime(), made);
+
+    return made;
+  };
+
+  const today = within(now) ? dayOf(now) : null;
+
+  for (const ev of events) {
+    const { start, end } = ev;
+    const starts = within(start);
+    const ends = within(end);
+
+    if (starts && ends && startOfDay(start).getTime() === startOfDay(end).getTime()) {
+      dayOf(start).entries.push({ ev, edge: 'both' });
+      continue;
+    }
+
+    if (starts) {
+      dayOf(start).entries.push({ ev, edge: 'start' });
+    }
+
+    if (ends) {
+      dayOf(end).entries.push({ ev, edge: 'end' });
+    }
+
+    if (start !== null && end !== null && start < monthStart && end >= monthEnd) {
+      allMonth.push(ev);
     }
   }
 
-  return first === -1 ? null : [first, last];
+  if (today !== null) {
+    const tomorrow = addDays(today.day, 1);
+
+    today.running = events
+      .filter(({ start, end }) => start !== null && end !== null && start < today.day && end >= tomorrow)
+      .filter((ev) => !allMonth.includes(ev))
+      .sort((a, b) => Number(a.end) - Number(b.end));
+  }
+
+  const edgeOf = ({ ev, edge }: AgendaEntry) => Number(edge === 'end' ? ev.end : ev.start);
+
+  for (const day of byDay.values()) {
+    day.entries.sort((a, b) => edgeOf(a) - edgeOf(b));
+  }
+
+  return { allMonth, days: [...byDay.values()].sort((a, b) => a.day.getTime() - b.day.getTime()) };
 }
 
 /**
  * The class marking an event's type, so CSS can give each its own colour (the `.type-*` rules in `events.css`). Takes
- * the stable `eventType` slug rather than the human `heading`, and is worn by the card, both bars and the filter chip
- * alike, which is what keeps one type reading the same colour in all four.
+ * the stable `eventType` slug rather than the human `heading`, and is worn by the card, the calendar's row, the
+ * timeline's bar and the filter chip alike, which is what keeps one type reading the same colour in all four.
  */
 export function typeClass(eventType: string) {
   return eventType ? ` type-${eventType}` : '';
@@ -194,19 +267,6 @@ export function packLanes(items: readonly TrackItem[]) {
   }
 
   return laneEnds.length;
-}
-
-/**
- * Whether a week row's segment of an event carries on past the row, as the page draws it. A segment continues past the
- * week only where the week's own edge is what stopped it: reaching column 0 while having begun earlier means it ran in
- * from the row above, and anything starting later than column 0 began inside this week, because it misses the column
- * before. The same holds at the right edge against the end of column 6.
- */
-export function continuations(win: Span, [first, last]: readonly [number, number], weekStart: Date) {
-  return {
-    contLeft: first === 0 && win[0] < weekStart.getTime(),
-    contRight: last === 6 && win[1] > addDays(weekStart, 7).getTime(),
-  };
 }
 
 /**

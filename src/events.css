@@ -74,7 +74,8 @@ body[data-page='events'] {
   /**
    * How many events have arrived since this browser last acknowledged them, and the only control that clears them. Its
    * own line beside the count rather than inside it, because each of the three views writes that line itself and this
-   * has to read the same in all of them — a calendar or tracks bar can mark a new event but has no room for a control.
+   * has to read the same in all of them — a calendar row or a tracks bar can mark a new event but cannot hold a
+   * control.
    */
 
   .newly {
@@ -262,8 +263,8 @@ body[data-page='events'] {
   /**
    * The panel's chip row is made of these. A type chip wears its own type's colour — a tinted fill and a matching
    * border — which makes that row the legend for the three colour-coded views below it: the chip carries the same
-   * `.type-*` class the cards and the calendar and timeline bars do, so --type-color inherits here and one palette
-   * serves all four. The three reveals carry no type and so fall through to the muted grey.
+   * `.type-*` class the cards, the calendar's rows and the timeline's bars do, so --type-color inherits here and one
+   * palette serves all four. The three reveals carry no type and so fall through to the muted grey.
    *
    * `font-family` has to be asked for because these are buttons: a button does not inherit it, and left alone the chips
    * come out in the UA's default face rather than the page's.
@@ -553,9 +554,9 @@ body[data-page='events'] {
 
   /**
    * Per-type colour palette. Each event type gets a distinctive hue in --type-color, set here so it inherits to the
-   * card badge and applies directly to the calendar and timeline bars that carry the same class. Kept in CSS rather
-   * than JS so the dark-mode overrides below sit beside the light values; the slugs are the feed's stable `eventType`,
-   * and a type the feed adds later simply has no rule and falls back to the neutral default in each consumer.
+   * card badge, the calendar's swatches and the timeline's bars that carry the same class. Kept in CSS rather than JS
+   * so the dark-mode overrides below sit beside the light values; the slugs are the feed's stable `eventType`, and a
+   * type the feed adds later simply has no rule and falls back to the neutral default in each consumer.
    */
 
   .type-choose-your-path {
@@ -721,9 +722,9 @@ body[data-page='events'] {
   }
 
   /**
-   * The type badge is filled with the event's type colour, matching the calendar and timeline bars so a type reads the
-   * same across all three views. --type-color is set on the card (see the `.type-*` rules) and inherits down to here;
-   * a type with no colour falls back to the neutral track blue, as the bars do.
+   * The type badge is filled with the event's type colour, matching the calendar's swatches and the timeline's bars so
+   * a type reads the same across all three views. --type-color is set on the card (see the `.type-*` rules) and
+   * inherits down to here; a type with no colour falls back to the neutral track blue, as the bars do.
    */
 
   .card .badge {
@@ -858,8 +859,8 @@ body[data-page='events'] {
   }
 
   /**
-   * Calendar view: a month toolbar over a stack of week rows. Each week is seven day cells carrying only the date, with
-   * a bar laid across them for every event the week covers, whether it runs one day or several.
+   * Calendar view: a month toolbar over the month as an agenda. A panel folds away the events covering the whole month,
+   * and below it each day something starts or ends on is a panel of its own, its date down the left beside its events.
    */
 
   .calbar {
@@ -875,7 +876,7 @@ body[data-page='events'] {
     font-weight: 700;
   }
 
-  .calbar .navbtn {
+  .navbtn {
     padding: 6px 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -885,280 +886,263 @@ body[data-page='events'] {
     cursor: pointer;
   }
 
-  .calbar .navbtn:hover {
+  .navbtn:hover {
     border-color: var(--accent);
     color: var(--accent);
   }
 
-  .cal {
+  .agenda {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 12px;
   }
 
-  /**
-   * A week is two grids stacked in one grid area rather than a band of bars above a row of cells: the day cells and the
-   * bars occupy the same square of the page, so an event is drawn inside the days it covers instead of floating above
-   * them. Both layers stretch to the area, and the area takes the height of the taller — so the bars, which are the
-   * only layer with content that grows, are what sizes the week, and the cells follow them.
-   *
-   * Reserving the row height for a band instead put every event outside the cell it belonged to. With most events
-   * running more than a day that left the grid inverted: seven empty bordered boxes per week carrying nothing but a
-   * number, under a stack holding all of the information.
-   */
+  /* The same resting elevation the cards and the tracks panel carry, so a day reads as the same kind of surface. */
 
-  .cal-week {
-    display: grid;
-    grid-template-areas: 'week';
-
-    /**
-     * The strip at the top of a cell that the day number occupies, which the bars are offset past. Declared here so the
-     * number's own box and the offset the other layer keeps clear derive from one value rather than two that can drift
-     * apart and let a bar cover a date.
-     *
-     * The border counts towards that offset as much as the padding does, because only one of the two layers has one: a
-     * cell's content starts a border-width lower than the bars layer's, so an offset of padding plus strip alone leaves
-     * the first bar overlapping the last row of the date by exactly this much.
-     */
-    --cell-border: 1px;
-    --cell-pad: 4px;
-    --daynum-h: 17px;
-  }
-
-  /**
-   * Every grid that runs the width of a week shares one column definition, which is what lines a bar up with the day
-   * cell behind it. Declared together so the three cannot drift apart and leave a bar a column off from the day it
-   * names.
-   */
-
-  .cal-wd-row,
-  .cal-bars,
-  .cal-days {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .cal-bars,
-  .cal-days {
-    grid-area: week;
-  }
-
-  /**
-   * Dense auto-placement does the lane packing for free: each bar carries a definite `grid-column`, and CSS drops it
-   * into the first row where that span is unoccupied — the same greedy interval partitioning packLanes() spells out for
-   * the Tracks view, so two bars that do not overlap share a row instead of each taking their own.
-   *
-   * The layer covers the cells completely, so it would swallow a click meant for one; only the bars themselves take the
-   * pointer.
-   */
-
-  .cal-bars {
-    /**
-     * Which layer is on top has to be stated rather than left to document order, because `opacity` on a day cell lifts
-     * it into the z-index 0 painting layer and so above a plain in-flow sibling. A neighbouring month's cell is dimmed
-     * that way, which is why the bars crossing into one came out washed through the cell drawn over them.
-     */
-    position: relative;
-    z-index: 1;
-    grid-auto-flow: row dense;
-    gap: 2px 4px;
-    align-content: start;
-    padding-top: calc(var(--cell-border) + var(--cell-pad) + var(--daynum-h));
-    pointer-events: none;
-  }
-
-  .cal-wd {
-    padding: 4px 0;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    text-align: center;
-  }
-
-  /**
-   * The same resting elevation the cards and the tracks panel carry, so a day cell reads as the same kind of surface. A
-   * cell holds nothing but its date — the events that fall on it are drawn in the layer above — so it takes its height
-   * from the bars stacked over the week rather than from its own content, and the minimum only keeps an empty week from
-   * collapsing to a row of numbers.
-   */
-
-  .cal-day {
-    min-height: 52px;
-    padding: var(--cell-pad);
-    border: var(--cell-border) solid var(--border);
-    border-radius: 8px;
+  .agenda-all,
+  .agenda-day {
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     background: var(--panel);
     box-shadow: var(--shadow);
   }
 
-  /* Days spilling in from the neighbouring months are dimmed so the current month reads as the focus. */
-
-  .cal-day.other {
-    opacity: 0.45;
+  .agenda-all h2 {
+    margin: 0;
   }
 
-  /**
-   * Today is marked twice, because the two marks answer different questions. The tint and border say which column it is
-   * from across the grid, where a mark the size of a date would be lost; the pill on the date itself says exactly which
-   * day, which a tint cannot without a reader comparing one cell against the next.
-   *
-   * Neither is a ring around the cell, and that is the constraint to keep: a cell is as tall as its whole week, so
-   * anything drawn on the cell's own edge reads as a tall accent column with bars crossing it rather than as a marked
-   * day. Whatever marks the day has to be on the date.
-   */
+  /* The whole heading is the button, as on the cards' groups, folding with the same triangles. */
 
-  .cal-day.today {
-    border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
-    background: color-mix(in srgb, var(--accent) 12%, var(--panel));
-  }
-
-  .cal-day .daynum {
-    display: block;
-    height: var(--daynum-h);
-    font-size: 12px;
+  .agenda-all button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 32px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 14px;
     font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .agenda-all button::before {
+    content: '▾';
+    font-size: 9px;
     color: var(--muted);
   }
 
+  .agenda-all button[aria-expanded='false']::before {
+    content: '▸';
+  }
+
+  .agenda-all button:focus-visible {
+    outline: 2px solid var(--track);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .agenda-count {
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  /* A swatch per event folded away, so the panel says what kinds of event it holds before it is opened. */
+
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--type-color, var(--track));
+  }
+
+  .agenda-all .agenda-list {
+    padding: 10px 0 4px;
+  }
+
+  .agenda-earlier {
+    align-self: flex-start;
+    padding: 8px 14px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .agenda-earlier:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .agenda-day {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 20px;
+  }
+
   /**
-   * The filled pill, in the white-on-accent the controls and the event bars already use. Block-level flex rather than
-   * an inline one so it is exactly the strip's height: an inline box sits on a baseline and brings the strut's
-   * descender with it, which would push the date past the offset `.cal-bars` keeps clear and let a bar cover it.
-   * `fit-content` shrinks it to the date — a `display: flex` box would otherwise fill the cell — and `min-width`
-   * squares it back up, so the 1st reads as a disc and the 21st as a short pill.
+   * Today takes the accent on its border and its date, and the label under the date says it in words, for a reader the
+   * colour does not reach.
    */
 
-  .cal-day.today .daynum {
+  .agenda-day.today {
+    border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+    background: color-mix(in srgb, var(--accent) 4%, var(--panel));
+  }
+
+  .agenda-date {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    width: fit-content;
-    min-width: var(--daynum-h);
-    padding: 0 5px;
+    gap: 2px;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .agenda-date .dn {
+    font-size: 26px;
+    line-height: 1.05;
+    letter-spacing: 0;
+    color: var(--text);
+  }
+
+  .agenda-day.today .agenda-date,
+  .agenda-day.today .agenda-date .dn {
+    color: var(--accent);
+  }
+
+  .agenda-date .pill {
+    margin-top: 2px;
+    padding: 1px 7px;
     border-radius: 999px;
     background: var(--accent);
     color: #fff;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  /* A day gone by keeps its events at full strength, since some run on; only its date dims. */
+
+  .agenda-day.past .agenda-date {
+    opacity: 0.6;
+  }
+
+  .agenda-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
   }
 
   /**
-   * One bar per event per week row, filled with its type colour like the timeline bars. Flex rather than a plain block
-   * so the continuation arrow keeps its place at the end while the name takes the ellipsis. Spanning the columns an
-   * event covers is what finally gives a long name room to be read: drawn as a pill per day, 113 of 163 names were cut
-   * off.
+   * One event, its type colour in the swatch at its start so the type reads the same as on its card and its bar. The
+   * time wraps under the name rather than squeezing it once the two no longer fit on one line.
    */
 
-  .cal-bar {
+  .agenda-row {
+    position: relative;
     display: flex;
-    gap: 4px;
-    align-items: center;
-    padding: 2px 7px;
-    border-radius: 4px;
-    background: var(--type-color, var(--track));
-    color: #fff;
-    font-size: 11px;
-    line-height: 1.35;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 16px;
+    padding-left: 20px;
+    color: inherit;
     text-decoration: none;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
-
-    /* Restored from the layer, which declines the pointer so an empty stretch of it does not shadow the cell behind. */
-    pointer-events: auto;
   }
 
-  .cal-bar .cal-bar-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .agenda-row::before {
+    position: absolute;
+    top: 0.3em;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--type-color, var(--track));
+    content: '';
   }
 
-  /* A past event keeps its type colour but dims, matching the cards and the timeline bars. */
+  .agenda-name {
+    flex: 1 1 320px;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
 
-  .cal-bar.ended {
+  a.agenda-row:hover .agenda-name {
+    text-decoration: underline;
+  }
+
+  .agenda-when {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* A past event dims, as its card and its bar do. */
+
+  .agenda-row.ended {
     opacity: 0.55;
   }
 
-  /**
-   * An event that has arrived since the reader last acknowledged the page, on both bar kinds. A ring rather than a
-   * badge or a leading dot because it costs no label width, and these labels have none to spare — a third of them
-   * already ellipsise at desktop width and half do on a phone.
-   *
-   * Two rings, because one cannot work: the accent against the fifteen type colours measures 1.04 to 1.28 contrast in
-   * both themes, which is no ring at all. The page colour is the only value that clears every type colour (2.80 worst
-   * in light, 6.13 in dark), so it goes inside — and the accent then sits outside it, against the page, where it
-   * measures 4.39 and 5.91. The drop shadow is repeated because a `box-shadow` declaration replaces the list rather
-   * than adds to it.
-   *
-   * One pixel of page colour and two of accent, in that order, because the whole ring has to fit the 2px row gap the
-   * bars are packed with: wider and it laps over the bar in the row above. A single pixel is all the separation the
-   * contrast measurement needs, and spending the rest on the accent is what makes the ring visible at all.
-   */
+  /* The card's New mark, as a label: the row is a link, and a button cannot sit inside one. */
 
-  .cal-bar.new,
-  .bar.new {
-    box-shadow:
-      0 0 0 1px var(--bg),
-      0 0 0 3px var(--accent),
-      0 1px 2px rgb(0 0 0 / 20%);
+  .agenda-new {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 2px;
+    color: #fff;
   }
 
-  .cal-bar:hover {
-    filter: brightness(1.08);
+  .agenda-sub {
+    margin: 4px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
-  /**
-   * A segment the week's edge cut off is squared there and given an arrow, so a bar reads as running on into the next
-   * row rather than as ending on the Saturday. The arrow is decoration over the `title`, which carries the real dates.
-   */
-
-  .cal-bar.cont-left {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+  .agenda-none {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
   }
 
-  .cal-bar.cont-right {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .cal-bar.cont-left::before {
-    content: '‹';
-  }
-
-  .cal-bar.cont-right::after {
-    margin-left: auto;
-    content: '›';
+  .agenda-next {
+    align-self: flex-end;
   }
 
   @media (width <= 640px) {
-    .cal,
-    .cal-wd-row,
-    .cal-bars,
-    .cal-days {
-      gap: 2px;
-    }
-
-    /**
-     * The cell padding is narrowed through the variable rather than on `.cal-day` itself, because the bar layer's
-     * offset past the day number derives from it — set one and not the other and every bar sits a pixel off the date it
-     * covers.
-     */
-    .cal-week {
-      --cell-pad: 3px;
-    }
-
-    .cal-bar {
-      font-size: 10px;
-    }
-
-    /**
-     * Seven columns of a phone screen leave a bar about 50px per day, so the arrow would eat what little room the name
-     * has on a short span. The squared-off end still says it continues.
-     */
-    .cal-bar::before,
-    .cal-bar::after {
-      content: none;
+    .agenda-day {
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px;
     }
   }
 
@@ -1231,7 +1215,7 @@ body[data-page='events'] {
   }
 
   /**
-   * One bar per event, filled with its type colour to match the calendar bars. Absolutely positioned within its lane
+   * One bar per event, filled with its type colour to match the cards. Absolutely positioned within its lane
    * from the inline left/width/top the renderer computes. A type with no colour falls back to the neutral track blue.
    */
 
@@ -1251,10 +1235,32 @@ body[data-page='events'] {
     box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
   }
 
-  /* A past event keeps its type colour but dims, matching the calendar bars. */
+  /* A past event keeps its type colour but dims, matching the cards and the calendar's rows. */
 
   .bar.ended {
     opacity: 0.55;
+  }
+
+  /**
+   * An event that has arrived since the reader last acknowledged the page. A ring rather than a badge or a leading dot
+   * because it costs no label width, and these labels have none to spare.
+   *
+   * Two rings, because one cannot work: the accent against the fifteen type colours measures 1.04 to 1.28 contrast in
+   * both themes, which is no ring at all. The page colour is the only value that clears every type colour (2.80 worst
+   * in light, 6.13 in dark), so it goes inside — and the accent then sits outside it, against the page, where it
+   * measures 4.39 and 5.91. The drop shadow is repeated because a `box-shadow` declaration replaces the list rather
+   * than adds to it.
+   *
+   * One pixel of page colour and two of accent, because the whole ring has to fit the gap between the lanes: wider and
+   * it laps over the bar in the lane above. A single pixel is all the separation the contrast measurement needs, and
+   * spending the rest on the accent is what makes the ring visible at all.
+   */
+
+  .bar.new {
+    box-shadow:
+      0 0 0 1px var(--bg),
+      0 0 0 3px var(--accent),
+      0 1px 2px rgb(0 0 0 / 20%);
   }
 
   .bar:hover {

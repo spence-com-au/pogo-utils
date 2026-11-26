@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   addDays,
-  continuations,
+  agendaOf,
   DAY_MS,
   layoutTracks,
   mergeEvents,
@@ -17,8 +17,8 @@ import {
   TRACK_MIN_DAYS,
   trackBar,
   typeClass,
-  weekColumns,
   windowOf,
+  type AgendaEntry,
   type ParsedEvent,
   type TrackItem,
 } from './event-schedule.js';
@@ -71,7 +71,7 @@ test('parseDate answers null for a missing or unusable date', () => {
   expect(parseDate('2026-09-21T06:00:00.000Z')?.toISOString()).toBe('2026-09-21T06:00:00.000Z');
 });
 
-/** `startOfDay` lands on a local midnight whatever time of day it is handed, which is what the grid's cells are. */
+/** `startOfDay` lands on a local midnight whatever time of day it is handed, which is what a day of the agenda is. */
 test('startOfDay drops the time of day', () => {
   const midnight = startOfDay(at(2026, 9, 21, 23));
 
@@ -80,8 +80,8 @@ test('startOfDay drops the time of day', () => {
 });
 
 /**
- * `addDays` counts calendar days rather than fixed spans of milliseconds, which is what the week grid needs: a day a
- * clock change makes 23 or 25 hours long is still one column.
+ * `addDays` counts calendar days rather than fixed spans of milliseconds, which is what the agenda needs: a day a clock
+ * change makes 23 or 25 hours long is still one day.
  */
 test('addDays steps calendar days across a month and year boundary', () => {
   expect(addDays(at(2026, 1, 30), 3).getTime()).toBe(at(2026, 2, 2).getTime());
@@ -91,8 +91,8 @@ test('addDays steps calendar days across a month and year boundary', () => {
 
 /**
  * A step is one calendar day and not 86,400,000 milliseconds, which is the whole reason this is a `Date` constructor
- * rather than arithmetic: a day a clock change makes 23 or 25 hours long is still one column of the grid, and adding a
- * fixed span across one lands at 23:00 or 01:00 and drags every later column with it.
+ * rather than arithmetic: a day a clock change makes 23 or 25 hours long is still one day, and adding a fixed span
+ * across one lands at 23:00 or 01:00 and drags every later day with it.
  *
  * Walking a whole year is what reaches that, since the two readings agree on every other day — so in a zone with no DST
  * at all they cannot be told apart, and this passes for a reason rather than catching anything. `testEveryZone` is what
@@ -174,10 +174,9 @@ test.for([
   expect(win[0]).toBeLessThanOrEqual(at(2026, 9, 20, 18).getTime());
 });
 
-/** A dateless event has no window, so it can never land on the calendar or the timeline at all. */
+/** A dateless event has no window, so it can never land on the timeline or count towards a month at all. */
 test('a dateless event has no window', () => {
   expect(windowOf(parsed({}))).toBeNull();
-  expect(weekColumns(null, at(2026, 9, 20))).toBeNull();
   expect(overlaps(null, 0, Number.MAX_SAFE_INTEGER)).toBe(false);
 });
 
@@ -196,48 +195,114 @@ test('overlaps is half-open, so touching windows do not overlap', () => {
   expect(overlaps(win, 0, 1000)).toBe(false);
 });
 
-/**
- * 2026-01-04 is a Sunday, which is the column the grid starts each row on. A window is one contiguous interval, so the
- * columns it covers are contiguous and the inclusive pair describes them completely.
- */
-const WEEK_START = at(2026, 1, 4);
+describe('agendaOf', () => {
+  const MONTH = at(2026, 9, 1);
 
-test.for([
-  { span: 'Tuesday to Thursday', from: at(2026, 1, 6), to: at(2026, 1, 8, 12), columns: [2, 4] },
-  { span: 'the whole week', from: at(2026, 1, 4), to: at(2026, 1, 10, 23), columns: [0, 6] },
-  { span: 'one day', from: at(2026, 1, 7, 9), to: at(2026, 1, 7, 10), columns: [3, 3] },
-  { span: 'from before the week into it', from: at(2025, 12, 30), to: at(2026, 1, 5, 12), columns: [0, 1] },
-  { span: 'from inside the week past it', from: at(2026, 1, 9), to: at(2026, 2, 1), columns: [5, 6] },
-])('a window spanning $span covers columns $columns', ({ from, to, columns }) => {
-  expect(weekColumns([from.getTime(), to.getTime()], WEEK_START)).toEqual(columns);
-});
+  /** A now in another month, for the cases that are not about today and would otherwise carry it as a day. */
+  const ELSEWHEN = at(2026, 11, 5);
 
-/**
- * A cell is one calendar day from midnight to midnight, not 86,400,000ms from midnight. Each case sits at an edge a
- * fixed span gets wrong on a day a clock change makes 25 hours long, which ends a span early so a late event lands on
- * no column, or 23 hours long, which runs a span into the next day so an early event and a one-day marker cover two.
- *
- * Walking a year through `testEveryZone` is what reaches those days, as with `addDays`: in January, or in a zone that
- * never changes its clocks, the two readings cannot be told apart.
- */
-testEveryZone('every day of a year is one column, at either edge of the day', () => {
-  const origin = at(2026, 1, 4);
+  const agenda = (events: ParsedEvent[], now = ELSEWHEN) => agendaOf(events, MONTH, now);
+  const entries = (list: readonly AgendaEntry[]) => list.map(({ ev, edge }) => [ev.eventID, edge]);
 
-  for (let i = 0; i < 364; i += 1) {
-    const weekStart = addDays(origin, i - (i % 7));
-    const day = addDays(origin, i);
-    const [y, m, d] = [day.getFullYear(), day.getMonth() + 1, day.getDate()];
-    const col = i % 7;
+  /** The agenda's days as their dates and entries, which is what the reader sees of them. */
+  const listed = (events: ParsedEvent[], now = ELSEWHEN) =>
+    agenda(events, now).days.map((day) => [day.day.getDate(), entries(day.entries)]);
 
-    expect(weekColumns([at(y, m, d, 23, 15).getTime(), at(y, m, d, 23, 45).getTime()], weekStart)).toEqual([col, col]);
-    expect(weekColumns([at(y, m, d, 0, 15).getTime(), at(y, m, d, 0, 45).getTime()], weekStart)).toEqual([col, col]);
-    expect(weekColumns(windowOf(parsed({ start: at(y, m, d, 18) })), weekStart)).toEqual([col, col]);
-  }
-});
+  test('an event is listed on the day it starts and the day it ends', () => {
+    expect(listed([parsed({ eventID: 'a', start: at(2026, 9, 3, 10), end: at(2026, 9, 9, 20) })])).toEqual([
+      [3, [['a', 'start']]],
+      [9, [['a', 'end']]],
+    ]);
+  });
 
-test('a window that misses the week entirely covers no columns', () => {
-  const next = addDays(WEEK_START, 7);
-  expect(weekColumns([next.getTime(), addDays(next, 2).getTime()], WEEK_START)).toBeNull();
+  test('a one-day event is listed once', () => {
+    expect(listed([parsed({ eventID: 'a', start: at(2026, 9, 12, 14), end: at(2026, 9, 12, 17) })])).toEqual([
+      [12, [['a', 'both']]],
+    ]);
+  });
+
+  /**
+   * An event is all month exactly when it neither starts nor ends inside the month, so it is listed either there or on
+   * its days and never both. The month is half-open: its first instant is inside it, the next month's first is not.
+   */
+  test.for([
+    { runs: 'from before the month to after it', start: at(2026, 8, 1), end: at(2026, 12, 31), allMonth: true },
+    { runs: 'to the next month’s first instant', start: at(2026, 8, 1), end: at(2026, 10, 1), allMonth: true },
+    { runs: 'from the month’s first instant', start: at(2026, 9, 1), end: at(2026, 12, 31), allMonth: false },
+    { runs: 'to the month’s last minute', start: at(2026, 8, 1), end: at(2026, 9, 30, 23, 59), allMonth: false },
+  ])('an event running $runs is all month: $allMonth', ({ start, end, allMonth }) => {
+    const result = agenda([parsed({ eventID: 'a', start, end })]);
+
+    expect(result.allMonth.map((ev) => ev.eventID)).toEqual(allMonth ? ['a'] : []);
+    expect(result.days).toHaveLength(allMonth ? 0 : 1);
+  });
+
+  test('an event outside the month is left out, and a one-ended event is listed on its one day', () => {
+    const result = agenda([
+      parsed({ eventID: 'before', start: at(2026, 8, 1), end: at(2026, 8, 20) }),
+      parsed({ eventID: 'after', start: at(2026, 10, 2), end: at(2026, 10, 3) }),
+      parsed({ eventID: 'opens', start: at(2026, 9, 5, 6) }),
+      parsed({ eventID: 'closes', end: at(2026, 9, 7, 20) }),
+      parsed({ eventID: 'opened-long-ago', start: at(2026, 1, 1) }),
+      parsed({ eventID: 'undated' }),
+    ]);
+
+    expect(result.allMonth).toEqual([]);
+    expect(result.days.map((day) => [day.day.getDate(), entries(day.entries)])).toEqual([
+      [5, [['opens', 'start']]],
+      [7, [['closes', 'end']]],
+    ]);
+  });
+
+  test('the days run in order, each listing its events in the order they start or end', () => {
+    expect(
+      listed([
+        parsed({ eventID: 'starts', start: at(2026, 9, 12, 9), end: at(2026, 9, 20) }),
+        parsed({ eventID: 'ends', start: at(2026, 8, 20), end: at(2026, 9, 12, 8) }),
+        parsed({ eventID: 'hour', start: at(2026, 9, 12, 10), end: at(2026, 9, 12, 11) }),
+      ]),
+    ).toEqual([
+      [
+        12,
+        [
+          ['ends', 'end'],
+          ['starts', 'start'],
+          ['hour', 'both'],
+        ],
+      ],
+      [20, [['starts', 'end']]],
+    ]);
+  });
+
+  test('today is a day of the agenda even with nothing on it', () => {
+    expect(listed([], at(2026, 9, 21, 12))).toEqual([[21, []]]);
+  });
+
+  /**
+   * What runs right through today rides on it, the soonest to end first, leaving out the events listed elsewhere: one
+   * starting or ending today is an entry of the day, and one covering the month is under `allMonth`.
+   */
+  test('today carries the events running through it', () => {
+    const { days } = agenda(
+      [
+        parsed({ eventID: 'later', start: at(2026, 9, 10), end: at(2026, 9, 28) }),
+        parsed({ eventID: 'sooner', start: at(2026, 9, 15), end: at(2026, 9, 23) }),
+        parsed({ eventID: 'season', start: at(2026, 6, 1), end: at(2026, 12, 1) }),
+        parsed({ eventID: 'ends-today', start: at(2026, 9, 15), end: at(2026, 9, 21, 20) }),
+        parsed({ eventID: 'starts-today', start: at(2026, 9, 21, 9), end: at(2026, 9, 22, 9) }),
+      ],
+      at(2026, 9, 21, 12),
+    );
+
+    const today = days.find((day) => day.day.getDate() === 21);
+
+    expect(today?.running.map((ev) => ev.eventID)).toEqual(['sooner', 'later']);
+    expect(entries(today?.entries ?? [])).toEqual([
+      ['starts-today', 'start'],
+      ['ends-today', 'end'],
+    ]);
+    expect(days.filter((day) => day !== today).every((day) => day.running.length === 0)).toBe(true);
+  });
 });
 
 /**
@@ -263,25 +328,6 @@ test('packLanes reuses a lane for an event starting as the last one ends', () =>
 
 test('packLanes needs no lanes for no events', () => {
   expect(packLanes([])).toBe(0);
-});
-
-/**
- * A segment continues past its week row only where the row's own edge stopped it: touching column 0 having begun
- * earlier, or column 6 having ended later. One that starts or ends inside the row continues nowhere, even at the edge
- * column.
- */
-test.for<{ name: string; from: Date; to: Date; cols: readonly [number, number]; left: boolean; right: boolean }>([
-  { name: 'inside the week', from: at(2026, 1, 6), to: at(2026, 1, 8), cols: [2, 3], left: false, right: false },
-  { name: 'in from the row above', from: at(2025, 12, 30), to: at(2026, 1, 6), cols: [0, 1], left: true, right: false },
-  { name: 'on past the row', from: at(2026, 1, 8), to: at(2026, 1, 20), cols: [4, 6], left: false, right: true },
-  { name: 'across the whole row', from: at(2025, 12, 30), to: at(2026, 1, 20), cols: [0, 6], left: true, right: true },
-  { name: 'from the first column', from: at(2026, 1, 4), to: at(2026, 1, 7), cols: [0, 2], left: false, right: false },
-  { name: 'to the last column', from: at(2026, 1, 8), to: at(2026, 1, 11), cols: [4, 6], left: false, right: false },
-])('a segment $name continues left $left and right $right', ({ from, to, cols, left, right }) => {
-  const win = [from.getTime(), to.getTime()] as const;
-
-  expect(weekColumns(win, WEEK_START)).toEqual(cols);
-  expect(continuations(win, cols, WEEK_START)).toEqual({ contLeft: left, contRight: right });
 });
 
 describe('layoutTracks', () => {
