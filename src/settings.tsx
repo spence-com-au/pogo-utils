@@ -12,6 +12,7 @@ import { backupName, restoreBackup, writeBackup } from './backup.js';
 import { download } from './dom.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
+import { JsonFileButton } from './json-file-button.js';
 import { useDismiss } from './popover.js';
 
 export function Settings() {
@@ -23,11 +24,6 @@ export function Settings() {
    * toast, since a refusal is the one thing here a reader may need to read twice and act on.
    */
   const [status, setStatus] = useState<string | null>(null);
-
-  /**
-   * The file picker Import clicks, hidden so the two controls match each other rather than one being browser-styled.
-   */
-  const picker = useRef<HTMLInputElement>(null);
 
   useDismiss(open, () => setOpen(false), root);
 
@@ -103,34 +99,13 @@ export function Settings() {
             <button type="button" title="Download every saved preference as a file" onClick={exportPrefs}>
               Export
             </button>
-            <button
-              type="button"
+            <JsonFileButton
               title="Restore a saved file, replacing only the preferences it holds"
-              onClick={() => picker.current?.click()}
+              onFile={(file) => void importPrefs(file)}
             >
               Import
-            </button>
+            </JsonFileButton>
           </div>
-
-          {/*
-           * Clicked by the button above rather than shown, a file input being unstyleable. `value` is cleared as the
-           * change is read so that picking the same file twice in a row fires a second time rather than nothing.
-           */}
-          <input
-            ref={picker}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(event) => {
-              const [file] = event.currentTarget.files ?? [];
-
-              event.currentTarget.value = '';
-
-              if (file !== undefined) {
-                void importPrefs(file);
-              }
-            }}
-          />
 
           {/*
            * Present from the first render even with nothing to say: `hidden` takes an element out of the accessibility
