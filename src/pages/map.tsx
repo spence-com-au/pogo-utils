@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import COUNTRIES from '../countries.js';
 import { byKey, fmtDist, gpxEntries, routeDistance, type Route, type Waypoint } from '../routes.js';
 import { copyText, el } from '../dom.js';
-import { LOCAL_EVENTS } from '../event-feed.js';
+import { LOCAL_EVENTS, VENDED_EVENTS } from '../event-feed.js';
 import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
@@ -76,24 +76,28 @@ async function loadGpxFile(file: string): Promise<{ routes: Route[]; waypoints: 
 }
 
 /**
- * The name to show for a `<pgr:event>`, which the files record only by `eventID`. `LOCAL_EVENTS` is where that name lives
- * — the same file `validate-gpx.mts` checks those IDs against.
+ * The name to show for a `<pgr:event>`, which the files record only by `eventID`. `VENDED_EVENTS` and `LOCAL_EVENTS`
+ * are where that name lives — the same two files `validate-gpx.mts` checks those IDs against — and the local file is
+ * read last, so an override's name wins as it does on the Events page.
  *
- * A fetch that fails leaves every entry naming its event by ID, which reads well enough and still links to the right
- * place, so a missing calendar is not worth withholding a page of routes over.
+ * A fetch that fails leaves the entries it would have named naming their event by ID, which reads well enough and still
+ * links to the right place, so a missing calendar is not worth withholding a page of routes over.
  */
 async function loadEventNames(): Promise<ReadonlyMap<string, string>> {
   const names = new Map<string, string>();
+  const files = [VENDED_EVENTS, LOCAL_EVENTS];
+  const lists = await Promise.allSettled(files.map(async (file) => (await fetchOk(file)).json()));
 
-  try {
-    const res = await fetchOk(LOCAL_EVENTS);
+  lists.forEach((list, i) => {
+    if (list.status === 'rejected') {
+      console.error(`${files[i]}: ${said(list.reason)} — entries will name their event by ID`);
+      return;
+    }
 
-    for (const event of await res.json()) {
+    for (const event of list.value) {
       names.set(event.eventID, event.name);
     }
-  } catch (e) {
-    console.error(`${LOCAL_EVENTS}: ${said(e)} — entries will name their event by ID`);
-  }
+  });
 
   return names;
 }

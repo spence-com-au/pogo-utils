@@ -53,17 +53,26 @@ writeFileSync(VENDED_EVENTS, `${JSON.stringify(events, null, 2)}\n`);
 console.log(`${VENDED_EVENTS}: ${events.length} events`);
 
 /**
- * The feed events a GPX entry names that the feed has just dropped, as the previous copy had them. The feed drops an
- * event once it is over, and sometimes before, as a rename does, and `validate-gpx.mts` refuses a reference to an event
- * neither list has, so leaving one behind would fail every deploy until the file was edited by hand. Adopted into
- * `data/events.json` instead, the event is the prune's like any other: gone once it is over, and its references with
- * it, a temporary entry whole.
+ * The feed events a GPX entry names that the feed has just dropped, or just dropped the end of, as the previous copy
+ * had them. The feed drops an event once it is over, and sometimes before, as a rename does, and `validate-gpx.mts`
+ * refuses a reference to an event neither list has, so leaving one behind would fail every deploy until the file was
+ * edited by hand. Adopted into `data/events.json` instead, the event is the prune's like any other: gone once it is
+ * over, and its references with it, a temporary entry whole.
+ *
+ * Adopted at the lost end too, because ScrapedDuck nulls an event's dates before it drops the event, and the prune
+ * keeps an event with no end for good. Taken then, the copy still has the dates, and it overrides the feed's undated
+ * one until the feed drops it.
  */
-const listed = new Set([...events, ...local].map(({ eventID }) => eventID));
+const vendedNow = new Map(events.map((event) => [event.eventID, event]));
+const localIds = new Set(local.map(({ eventID }) => eventID));
 const referenced = new Set(
   gpxSources().flatMap(({ contents }) => eventRefs(parseGpx(contents)).map((ref) => ref.eventID)),
 );
-const adopted = previous.filter(({ eventID }) => referenced.has(eventID) && !listed.has(eventID));
+const adopted = previous.filter(({ eventID, end }) => {
+  const current = vendedNow.get(eventID);
+
+  return referenced.has(eventID) && !localIds.has(eventID) && (!current || (end && !current.end));
+});
 
 // An override takes the stamp of the feed entry it replaces, for the same reason. Written only when something was
 // unstamped or adopted, so a run that does neither leaves a hand-kept file exactly as it was.
@@ -78,5 +87,5 @@ if (unstamped.length > 0) {
 }
 
 if (adopted.length > 0) {
-  console.log(`${LOCAL_EVENTS}: adopted ${adopted.map(({ eventID }) => eventID).join(', ')}, which the feed dropped`);
+  console.log(`${LOCAL_EVENTS}: adopted ${adopted.map(({ eventID }) => eventID).join(', ')} from the previous feed`);
 }

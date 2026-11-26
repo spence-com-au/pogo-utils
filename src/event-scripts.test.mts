@@ -304,20 +304,22 @@ test('vend stamps a data/events.json entry with the feed’s stamp for its ID, e
   expect(stdout).toContain('stamped known, new-to-feed, local-only');
 });
 
-test('vend adopts a feed event it drops into data/events.json while a GPX entry still names it', async () => {
-  // `named` has a waypoint and `unnamed` none, so only `named` would leave behind a reference `validate-gpx.mts`
-  // refuses. `kept` is still in the feed and `local` already in `data/events.json`, so neither needs adopting.
-  const named = event('named', { added: '2026-01-01T00:00:00.000Z' });
+test('vend adopts a GPX entry’s feed event, dates and all, once the feed drops it or its end', async () => {
+  // `dropped` is gone from the feed and `undated` has lost its dates there, so both are taken as the previous copy had
+  // them. `unnamed` has no waypoint, `kept` keeps its dates and `local` is already in `data/events.json`, so none of
+  // those needs adopting.
+  const dropped = event('dropped', { added: '2026-01-01T00:00:00.000Z' });
+  const undated = event('undated', { added: '2026-01-01T00:00:00.000Z' });
   const local = event('local', { added: '2026-02-02T00:00:00.000Z' });
   const { directory, stdout } = await vend(
     {
-      'data/events-feed.json': json([event('kept'), named, event('unnamed')]),
+      'data/events-feed.json': json([dropped, event('kept'), undated, event('unnamed')]),
       'data/events.json': json([local]),
-      'data/one.gpx': waypoint('named', 'kept', 'local'),
+      'data/one.gpx': waypoint('dropped', 'kept', 'local', 'undated'),
     },
-    [event('kept')],
+    [event('kept'), event('undated', { start: null, end: null })],
   );
 
-  expect(read(directory, 'data/events.json')).toBe(json([local, named]));
-  expect(stdout).toContain('adopted named, which the feed dropped');
+  expect(read(directory, 'data/events.json')).toBe(json([local, dropped, undated]));
+  expect(stdout).toContain('adopted dropped, undated from the previous feed');
 });
