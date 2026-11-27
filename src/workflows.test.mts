@@ -34,16 +34,22 @@ function matrix(workflow: string, key: string): string[] {
 }
 
 /**
- * The `ocr` engine each entry in `test.yaml`'s matrix reads under, which it lists under `include` rather than as a plain
- * list so one entry can set `ocr` where the default leaves it the CLI's Tesseract.
+ * The `ocr` engine and the `pnpm` command of each entry in `test.yaml`'s matrix, which it lists under `include` rather
+ * than as a plain list so one entry can set `ocr` where the default leaves it the CLI's Tesseract.
  */
-function enginesRun(): string[] {
+function legs(): { ocr?: string; test?: string }[] {
   const workflow = '.github/workflows/test.yaml';
   const block = /^ +matrix:\n +include:\n([\s\S]*?)\n {4}\w/m.exec(read(workflow))?.[1];
 
   expect(block, `\`include\` matrix in ${workflow}`).toBeDefined();
 
-  return [...(block ?? '').matchAll(/^ +ocr: '([\w-]+)'$/gm)].map(([, name = '']) => name);
+  return (block ?? '')
+    .split(/^ +- /m)
+    .slice(1)
+    .map((entry) => ({
+      ocr: /^ +ocr: '([\w-]+)'$/m.exec(entry)?.[1],
+      test: /^ +test: '(.*)'$/m.exec(entry)?.[1],
+    }));
 }
 
 /** The `i/n` of each `--shard` `test.yaml` runs. */
@@ -59,8 +65,10 @@ test('`lint.yaml` runs every `lint:*` check `package.json` defines', () => {
   expect(new Set(matrix('.github/workflows/lint.yaml', 'check'))).toStrictEqual(new Set(scriptsOf('lint')));
 });
 
-test('`test.yaml` reads the suite under the WebAssembly engine the pages read with', () => {
-  expect(enginesRun()).toContain('wasm');
+test('`test.yaml` runs the tests that follow `INVENTORY_OCR` under the WebAssembly engine the pages read with', () => {
+  expect(legs().filter(({ ocr }) => ocr === 'wasm')).toStrictEqual([
+    { ocr: 'wasm', test: 'exec vitest related --run src/core/node/test-engine.mts' },
+  ]);
 });
 
 test('`test.yaml` runs every shard of the suite', () => {
