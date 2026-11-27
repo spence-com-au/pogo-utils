@@ -9,35 +9,14 @@
  */
 
 import { said } from '../errors.js';
+import { inStore as inDatabase } from '../indexed-db.js';
 import { isStayOn, putStayOn, readStayOn, stayOnUsb, type Shell } from '../tools/battle/stay-on.mts';
 
 const DATABASE = 'pogo-utils-battle';
 const STORE = 'stay-on-while-plugged-in';
 
-/** What `act` asks of the store, once the transaction it was asked in has committed. */
-async function inStore<T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const opening = indexedDB.open(DATABASE, 1);
-  opening.onupgradeneeded = () => opening.result.createObjectStore(STORE);
-
-  const database = await new Promise<IDBDatabase>((resolve, reject) => {
-    opening.onsuccess = () => resolve(opening.result);
-    opening.onerror = () => reject(opening.error ?? new Error(`${DATABASE} could not be opened`));
-  });
-
-  try {
-    const transaction = database.transaction(STORE, mode);
-    const request = act(transaction.objectStore(STORE));
-
-    await new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = transaction.onabort = () => reject(transaction.error ?? new Error(`${STORE} not written`));
-    });
-
-    return request.result;
-  } finally {
-    database.close();
-  }
-}
+const inStore = <T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>) =>
+  inDatabase(DATABASE, STORE, mode, act);
 
 /**
  * The value kept for `serial`, or `undefined` where none is, or none can be read: storage this browser refuses, as in

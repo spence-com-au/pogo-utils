@@ -1,7 +1,7 @@
 /**
- * PGSharp's export turned into rows, off a phone or from a file the reader opened. Apart from `inventory-store.ts`,
- * which the phone button loads on every page, so that the parser and the game-master fetch load only once a read
- * starts.
+ * PGSharp's export turned into rows, off a phone, from a file the reader opened or from the copy kept. Apart from
+ * `inventory-store.ts`, which the phone button loads on every page, so that the parser and the game-master fetch load
+ * only once a read starts or a kept export is restored, which a visitor who has never read one does not pay for.
  */
 
 import { Device } from './core/adb.mts';
@@ -11,7 +11,8 @@ import { said } from './errors.js';
 import { PGSTATS } from './tools/inventory/pgstats.mts';
 import { parseSnapshot, rowsOf, type Row } from './tools/inventory/snapshot.mts';
 
-export type Result = { rows: readonly Row[] } | { reason: string };
+/** The rows an export holds and the export itself, kept to parse again on the next visit, or why there are none. */
+export type Result = { rows: readonly Row[]; text: string } | { reason: string };
 
 /**
  * Why a read off the phone failed, the reason leading and the export hint only offered: a slow link or a read too big
@@ -21,9 +22,9 @@ const unread = (error: unknown) =>
   `could not read the export off the phone: ${said(error)} — switch PGSharp's inventory export on if it is off`;
 
 /** The export's `text` parsed to rows, or why it could not be. */
-async function rowsFrom(text: string): Promise<Result> {
+export async function textRows(text: string): Promise<Result> {
   try {
-    return { rows: rowsOf(parseSnapshot(text), await gameData()) };
+    return { rows: rowsOf(parseSnapshot(text), await gameData()), text };
   } catch (error) {
     return { reason: `could not read the inventory: ${said(error)}` };
   }
@@ -43,7 +44,7 @@ export async function phoneRows(phone: Phone): Promise<Result> {
     return { reason: unread(error) };
   }
 
-  return rowsFrom(text);
+  return textRows(text);
 }
 
 /** A copy of the export the reader opened, parsed to rows, or why it could not be. */
@@ -56,5 +57,5 @@ export async function fileRows(file: Blob): Promise<Result> {
     return { reason: `could not open that file: ${said(error)}` };
   }
 
-  return rowsFrom(text);
+  return textRows(text);
 }
