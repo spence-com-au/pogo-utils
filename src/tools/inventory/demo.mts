@@ -71,6 +71,10 @@ export function demoTransport(read: (path: string) => Promise<Uint8Array>): Tran
         return Promise.resolve(encode(`Row: 0 _data=${EXPORT}\n`));
       }
 
+      if (command === 'stat') {
+        return Promise.resolve(encode(`1795785573 ${EXPORT}\n`));
+      }
+
       if (command === 'cat' && action === `'${EXPORT}'`) {
         return read(DEMO_STATS);
       }

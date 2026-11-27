@@ -204,16 +204,29 @@ export class Device {
   /**
    * The newest file called `name` on the phone's shared storage, or null where there is none, for a file an app writes
    * to a folder the user picks. MediaStore is asked first, which indexes shared storage as it is written and answers in
-   * about a second; where it cannot be asked, or knows of none, the storage is searched with `find`, which took 3 to 8
-   * seconds over 24 000 files on a Pixel 8 Pro. Of several, the newest by `stat` wins: MediaStore leaves a fresh file's
-   * `date_modified` empty until it scans it, and an old copy left in a folder the user moved away from is the likely
-   * second.
+   * about a second; where it cannot be asked, or none of the files it lists is still there, the storage is searched
+   * with `find`, which took 3 to 8 seconds over 24 000 files on a Pixel 8 Pro. Every file either lists is checked with
+   * `stat`, the newest winning: MediaStore keeps a row for a deleted file until its next scan on Android 10 and older,
+   * leaves a fresh file's `date_modified` empty until it scans it, and an old copy left in a folder the user moved away
+   * from is the likely second.
    */
   async locate(name: string): Promise<string | null> {
     const text = async (...args: string[]) => new TextDecoder().decode(await this.#shell(...args));
-    const where = quoted(`_display_name=${quoted(name)}`);
 
-    let paths = await text(
+    // `|| true` on `stat` and `find` both, which fail for a file that is gone and a folder they may not read,
+    // `Android/data` among them, after printing what they could.
+    const newest = async (paths: readonly string[]) => {
+      if (paths.length === 0) {
+        return null;
+      }
+
+      const stats = await text('stat', '-c', quoted('%Y %n'), ...paths.map(quoted), '2>/dev/null', '||', 'true');
+      const [found] = [...stats.matchAll(/^(\d+) (.*)$/gm)].sort(([, a], [, b]) => Number(b) - Number(a));
+
+      return found?.[2] ?? null;
+    };
+
+    const indexed = await text(
       'content',
       'query',
       '--uri',
@@ -221,27 +234,19 @@ export class Device {
       '--projection',
       '_data',
       '--where',
-      where,
+      quoted(`_display_name=${quoted(name)}`),
     )
       .then((rows) => [...rows.matchAll(/^Row: \d+ _data=(.*)$/gm)].map(([, path]) => path as string))
       .catch((): string[] => []);
 
-    // `|| true` because `find` fails on the folders it may not read, `Android/data` among them, after listing what it
-    // found.
-    if (paths.length === 0) {
-      paths = (await text('find', '/sdcard/', '-type', 'f', '-name', quoted(name), '2>/dev/null', '||', 'true'))
-        .split('\n')
-        .filter(Boolean);
-    }
-
-    if (paths.length <= 1) {
-      return paths[0] ?? null;
-    }
-
-    const stats = await text('stat', '-c', quoted('%Y %n'), ...paths.map(quoted));
-    const [newest] = [...stats.matchAll(/^(\d+) (.*)$/gm)].sort(([, a], [, b]) => Number(b) - Number(a));
-
-    return newest?.[2] ?? null;
+    return (
+      (await newest(indexed)) ??
+      newest(
+        (await text('find', '/sdcard/', '-type', 'f', '-name', quoted(name), '2>/dev/null', '||', 'true'))
+          .split('\n')
+          .filter(Boolean),
+      )
+    );
   }
 
   /**

@@ -183,6 +183,10 @@ class Phone {
       return text('');
     }
 
+    if (command === 'shell' && rest[0] === 'stat') {
+      return text(this.export.length > 0 ? '1795785573 /storage/emulated/0/Download/PGSharp/PGSStats.json\n' : '');
+    }
+
     if (command === 'shell' && rest[0] === 'cat') {
       // `adb shell cat` carries its exit status back on shell protocol 2, as the real one does: 0 with the file, 1 with
       // `cat`'s own message for a file the phone does not have.

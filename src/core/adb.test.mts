@@ -154,10 +154,11 @@ function storage(answers: Partial<Record<'content' | 'find' | 'stat', string>>) 
   return { sent, device: new Device(transport) };
 }
 
-test('a file MediaStore knows of is found by name, and nothing else is asked', async () => {
-  const { sent, device } = storage({ content: 'Row: 0 _data=/storage/emulated/0/Download/PGSharp/PGSStats.json\n' });
+test('a file MediaStore knows of is found by name, and checked to be there', async () => {
+  const path = '/storage/emulated/0/Download/PGSharp/PGSStats.json';
+  const { sent, device } = storage({ content: `Row: 0 _data=${path}\n`, stat: `1795785573 ${path}\n` });
 
-  expect(await device.locate('PGSStats.json')).toBe('/storage/emulated/0/Download/PGSharp/PGSStats.json');
+  expect(await device.locate('PGSStats.json')).toBe(path);
   expect(sent).toStrictEqual([
     [
       'content',
@@ -169,15 +170,17 @@ test('a file MediaStore knows of is found by name, and nothing else is asked', a
       '--where',
       `'_display_name='\\''PGSStats.json'\\'''`,
     ],
+    ['stat', '-c', "'%Y %n'", `'${path}'`, '2>/dev/null', '||', 'true'],
   ]);
 });
 
 test('where MediaStore cannot be asked, or knows of none, the storage is searched', async () => {
-  const unasked = storage({ find: '/sdcard/Documents/exports/PGSStats.json\n' });
-  const unknown = storage({ content: 'No result found.\n', find: '/sdcard/Documents/exports/PGSStats.json\n' });
+  const path = '/sdcard/Documents/exports/PGSStats.json';
+  const unasked = storage({ find: `${path}\n`, stat: `1795785573 ${path}\n` });
+  const unknown = storage({ content: 'No result found.\n', find: `${path}\n`, stat: `1795785573 ${path}\n` });
 
-  expect(await unasked.device.locate('PGSStats.json')).toBe('/sdcard/Documents/exports/PGSStats.json');
-  expect(await unknown.device.locate('PGSStats.json')).toBe('/sdcard/Documents/exports/PGSStats.json');
+  expect(await unasked.device.locate('PGSStats.json')).toBe(path);
+  expect(await unknown.device.locate('PGSStats.json')).toBe(path);
   expect(unknown.sent[1]).toStrictEqual([
     'find',
     '/sdcard/',
@@ -189,6 +192,22 @@ test('where MediaStore cannot be asked, or knows of none, the storage is searche
     '||',
     'true',
   ]);
+});
+
+/**
+ * The export moved to another folder and the old copy deleted, with MediaStore still listing the old one until its
+ * next scan, as Android 10 and older keep it: `stat` prints nothing for a file that is gone, so storage is searched.
+ */
+test('a file MediaStore lists that is gone is passed over, and the storage searched', async () => {
+  const gone = '/storage/emulated/0/Download/PGSharp/PGSStats.json';
+  const moved = '/sdcard/Documents/exports/PGSStats.json';
+  const { device } = storage({
+    content: `Row: 0 _data=${gone}\n`,
+    find: `${moved}\n`,
+    stat: `1795788681 ${moved}\n`,
+  });
+
+  expect(await device.locate('PGSStats.json')).toBe(moved);
 });
 
 test('of several, the newest by `stat` is found, a folder name the shell would split quoted whole', async () => {
@@ -206,6 +225,9 @@ test('of several, the newest by `stat` is found, a folder name the shell would s
     "'%Y %n'",
     `'${old}'`,
     `'/storage/emulated/0/Documents/Ash'\\''s exports/PGSStats.json'`,
+    '2>/dev/null',
+    '||',
+    'true',
   ]);
 });
 

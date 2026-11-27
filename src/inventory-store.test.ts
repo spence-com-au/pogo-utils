@@ -34,9 +34,14 @@ function phone(shell: (args: readonly string[]) => Promise<Uint8Array>, serial =
   const transport = {
     state: async () => 'device' as const,
 
-    // MediaStore answers where PGSharp writes the export by default; what is asked of the export itself is recorded.
+    // MediaStore and `stat` find the export where PGSharp writes it by default; what is asked of the export itself is
+    // recorded.
     shell: (args: readonly string[]) =>
-      args[0] === 'content' ? Promise.resolve(bytes(`Row: 0 _data=${EXPORT}\n`)) : (asked.push([...args]), shell(args)),
+      args[0] === 'content'
+        ? Promise.resolve(bytes(`Row: 0 _data=${EXPORT}\n`))
+        : args[0] === 'stat'
+          ? Promise.resolve(bytes(`1795785573 ${EXPORT}\n`))
+          : (asked.push([...args]), shell(args)),
     screencap: async () => new Uint8Array(),
   };
 
