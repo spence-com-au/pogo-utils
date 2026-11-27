@@ -140,6 +140,12 @@ export async function writeBackup(): Promise<string> {
   for (const name of owned) {
     const stores = await readDatabase(name);
 
+    // A database holding nothing is left out, as a battle that ended leaves the stay-awake store: restored, it would
+    // only empty the same database in the browser it lands in.
+    if (Object.values(stores).every((entries) => Object.keys(entries).length === 0)) {
+      continue;
+    }
+
     database[name.slice(KEY_PREFIX.length)] = sorted(
       Object.fromEntries(Object.entries(stores).map(([store, entries]) => [store, sorted(entries)])),
     );

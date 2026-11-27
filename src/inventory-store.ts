@@ -9,7 +9,7 @@
 import { loadChunk } from './chunks.js';
 import type { Phone } from './core/browser/webusb.js';
 import { said } from './errors.js';
-import { databaseNames, inStore } from './indexed-db.js';
+import { inStore } from './indexed-db.js';
 import type { Result } from './inventory-read.js';
 import { phoneStore, type PhoneStore } from './phone-store.js';
 import { KEY_PREFIX } from './storage-namespace.js';
@@ -97,18 +97,13 @@ export class InventoryStore extends Store {
 
   /**
    * Parses the export kept from an earlier visit, unless a read has started since this was asked. Storage the browser
-   * refuses, as in a private window, keeps nothing, so finding nothing is all it says. The database is looked for
-   * before it is opened, since opening one makes it: every visit would leave an empty one behind for a backup to carry.
+   * refuses, as in a private window, keeps nothing, so finding nothing is all it says.
    */
   async restore(): Promise<void> {
     const token = this.#token;
     let kept: unknown;
 
     try {
-      if (!(await databaseNames()).includes(DATABASE)) {
-        return;
-      }
-
       kept = await inStore(DATABASE, STORE, 'readonly', (store) => store.get(LATEST));
     } catch {
       return;

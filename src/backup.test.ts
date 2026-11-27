@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { applyBackup, backupName, ownedKeys, parseBackup, restoreBackup, writeBackup } from './backup.js';
 import { KEYS, loadPrefs, persist, type Prefs } from './event-prefs.js';
-import { databaseNames, readDatabase, replaceDatabase } from './indexed-db.js';
+import { databaseNames, inStore, readDatabase, replaceDatabase } from './indexed-db.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 let storage: FakeStorage;
@@ -618,4 +618,26 @@ test.for([
 
   expect(storage.snapshot()).toEqual({});
   expect(await databaseNames()).toEqual([]);
+});
+
+/** A database holding nothing, as a battle that ended leaves its stay-awake store, is not carried. */
+test('an empty database is left out of the file', async () => {
+  await replaceDatabase('pogo-utils:battle', { 'stay-on-while-plugged-in': {} });
+  await replaceDatabase('pogo-utils:inventory', INVENTORY);
+
+  const { database } = JSON.parse(await writeBackup()) as { database: Record<string, unknown> };
+
+  expect(Object.keys(database)).toEqual(['inventory']);
+});
+
+/**
+ * A file can name a database without the store its owner keeps in it, `"inventory": {}` edited down or written by hand.
+ * Restored, the owner's next write still lands: the store is added to the database it finds.
+ */
+test('a restored database without its owner’s store still takes the owner’s writes', async () => {
+  await restoreBackup(backup4Of({}, { inventory: {} }), () => {});
+
+  await inStore('pogo-utils:inventory', 'export', 'readwrite', (store) => store.put('kept', 'latest'));
+
+  expect(await inStore('pogo-utils:inventory', 'export', 'readonly', (store) => store.get('latest'))).toBe('kept');
 });

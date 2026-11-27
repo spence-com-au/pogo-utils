@@ -216,3 +216,9 @@ test('a value kept under the name from before the namespace is moved in and put 
   expect(connected.ran).toEqual(['settings put global stay_on_while_plugged_in 3']);
   expect((await indexedDB.databases()).map(({ name }) => name)).toEqual(['pogo-utils:battle']);
 });
+
+test('a phone connected with nothing kept leaves no database behind', async () => {
+  await putBack(phone('pixel'));
+
+  expect(await indexedDB.databases()).toEqual([]);
+});

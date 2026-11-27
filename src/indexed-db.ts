@@ -24,19 +24,62 @@ const committed = (transaction: IDBTransaction) =>
   });
 
 /**
- * One request against one object store, in a database holding that store alone: opened, created on first use, asked
- * and closed again, the answer handed back once the transaction has committed.
+ * `database` opened, with `store` in it where `create` says to make it: added by a version above the one found where a
+ * restored backup left the database without it. Without `create`, a database or store not there is null, and nothing
+ * is made — a read that made one would leave an empty database behind on every visit, for a backup to carry.
+ */
+async function openedWith(database: string, store: string, create: boolean): Promise<IDBDatabase | null> {
+  const opening = indexedDB.open(database);
+
+  // Only a database not there yet is upgraded, opened as it is without a version.
+  opening.onupgradeneeded = () => {
+    if (create) {
+      opening.result.createObjectStore(store);
+    } else {
+      opening.transaction?.abort();
+    }
+  };
+
+  const opened = await answered(opening).catch((error: unknown) => {
+    if (opening.error?.name === 'AbortError') {
+      return null;
+    }
+
+    throw error;
+  });
+
+  if (opened === null || opened.objectStoreNames.contains(store)) {
+    return opened;
+  }
+
+  opened.close();
+
+  if (!create) {
+    return null;
+  }
+
+  const upgrading = indexedDB.open(database, opened.version + 1);
+  upgrading.onupgradeneeded = () => upgrading.result.createObjectStore(store);
+
+  return answered(upgrading);
+}
+
+/**
+ * One request against one object store: its database opened, asked and closed again, the answer handed back once the
+ * transaction has committed. A write makes the database and store where they are not there; a read of one not there
+ * answers undefined and makes nothing.
  */
 export async function inStore<T>(
   database: string,
   store: string,
   mode: IDBTransactionMode,
   act: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T> {
-  const opening = indexedDB.open(database, 1);
-  opening.onupgradeneeded = () => opening.result.createObjectStore(store);
+): Promise<T | undefined> {
+  const opened = await openedWith(database, store, mode !== 'readonly');
 
-  const opened = await answered(opening);
+  if (opened === null) {
+    return undefined;
+  }
 
   try {
     const transaction = opened.transaction(store, mode);
