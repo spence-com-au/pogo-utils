@@ -61,17 +61,15 @@ Work through all four. Each ends when every row on both sides is accounted for â
 3. **The levels.** Compare the mega levels FAQ 3331 names with `megalevel`'s `max`, and the buddy levels FAQ 1486 and
    `phraseData` give with `buddylevel`'s `max` and `BUDDY_LEVELS`. The doc comment above `RANGE_TABLE` says why each
    ceiling is what it is; a source that now settles what it left open is a proposal.
-4. **The legacy moves.** Compare p337's table with `LEGACY_MOVES`, both ways. For each row to add, prove its spelling:
-   - The move must be a `name` in `data/game-master.json`'s `moves`, lower-cased as the existing rows are. p337 writes
-     names for people, so a spelling the game master lacks needs resolving before it is proposed.
-   - The game completes a move's name, so `@acid` also matches Acid Spray, which Muk learns now. A row is only ever
-     asked of its own species, so list the moves the term is a prefix of among the `moves` of that species' entries in
-     `data/game-master.json`'s `forms`, every form included. Another species' move cannot misfire: `Psybeam+` is under
-     `megas`, a Mega Malamar's, and never Chansey's. Where the term takes in a move its own species learns, qualify it
-     by slot as `@1acid` is: `@1` for a fast move and `@2` for a charged one, from the move's `fast`. Two moves in the
-     same slot cannot be told apart this way, so report that row rather than propose it.
-   - The doc comment above `LEGACY_MOVES` covers forms the search cannot name. Read it before proposing a row for a
-     species with forms.
+4. **The legacy moves.** Compare p337's table with `LEGACY_MOVES`, both ways. `src/search/legacy-moves.test.mts` proves
+   each row's spelling and prefixes against the game master, so what is left for each row to add is judgement:
+   - **Resolve p337's spelling** to a move `name` in `data/game-master.json`'s `moves`, lower-cased as the existing rows
+     are. p337 writes names for people.
+   - **Choose a slot.** The game completes a move's name, so `@acid` also matches Acid Spray, which Muk learns now.
+     Where the term starts another move its species learns, qualify it as `@1acid` is: `@1` for a fast move and `@2` for
+     a charged one. Two moves in the same slot cannot be told apart this way, so report that row rather than propose it.
+   - **Read the doc comment above `LEGACY_MOVES`** before proposing a row for a species with forms: it covers the forms
+     the search cannot name.
 
 **A site term no source mentions is unverified, not gone.** These pages document terms rather than list every one, so
 report it for the user to try in the game. Only a source saying a term is gone, or the user's own check on the phone,

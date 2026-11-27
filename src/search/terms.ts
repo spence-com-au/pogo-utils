@@ -567,7 +567,7 @@ const EVER_BUDDIED = 1;
  * `src/core/node/download.mts` adds what those in storage hold. But a Therian Tornadus, Thundurus or Landorus taught
  * its storm by an Elite TM shows beside the Incarnate ones that are legacy.
  */
-const LEGACY_MOVES: readonly (readonly [Pokemon, string])[] = [
+export const LEGACY_MOVES: readonly (readonly [Pokemon, string])[] = [
   [POKEMON.PIKACHU, '@grass knot'],
   [POKEMON.GRIMER, '@1acid'],
   [POKEMON.MUK, '@1acid'],
