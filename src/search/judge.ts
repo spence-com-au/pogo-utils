@@ -14,9 +14,9 @@
  * move and the first charged move only, as the community phrase list reports.
  */
 
-import { type GameData } from '../core/game-master.mts';
-import { fold } from '../core/ocr.mts';
+import { effectiveness, type GameData } from '../core/game-master.mts';
 import { GENERATIONS } from '../pokemon/generations.js';
+import { fold } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import { type Row } from '../tools/inventory/snapshot.mts';
 import { RANGES_BY_ID } from './terms.js';
@@ -27,7 +27,7 @@ export type Verdict = 'yes' | 'no' | 'unsure';
 /** What a search is judged against: every Pokémon the reader has, the game data and the time it is asked at. */
 export interface Collection {
   rows: readonly Row[];
-  data: Pick<GameData, 'combat' | 'cpm' | 'effectiveness' | 'megas'>;
+  data: Pick<GameData, 'combat' | 'cpm' | 'effectiveness' | 'megas' | 'moveNumbers'>;
   now: number;
 }
 
@@ -55,9 +55,25 @@ const barOf = (iv: number) => (iv === 0 ? 0 : iv === 15 ? 4 : Math.min(Math.ceil
 /** The calendar day a moment falls on where the reader is, so a Pokémon caught yesterday evening is a day old. */
 const dayOf = (time: number) => Math.floor((time - new Date(time).getTimezoneOffset() * 60_000) / 86_400_000);
 
-/** How strongly a move of this type hits a Pokémon of these types, every type counted. */
-function effect(data: Collection['data'], attacking: string, defending: readonly string[]) {
-  return defending.reduce((product, type) => product * (data.effectiveness[attacking]?.[type] ?? 1), 1);
+/**
+ * Whether a name starts with what was typed, folded as the Search page's suggestions fold a name, so `mrmime` finds Mr.
+ * Mime. Text the fold leaves nothing of, a Japanese nickname say, is compared as typed instead: folded to nothing, it
+ * would be the start of every name.
+ */
+function starts(name: string, typed: string, exactly = false) {
+  const asked = fold(typed);
+  const [one, other] = asked === '' ? [name.toLowerCase(), typed.toLowerCase()] : [fold(name), asked];
+
+  return exactly ? one === other : one.startsWith(other);
+}
+
+/**
+ * The fast move and the two charged moves by slot, from the export's own numbers: null for an empty slot, and
+ * `undefined` for a move the game data has no name for, which is a move all the same — one Niantic added since the
+ * game master was last vendored.
+ */
+function slotsOf(data: Collection['data'], row: Row): (string | null | undefined)[] {
+  return [row.raw.move1, row.raw.move2, row.raw.move3].map((id) => (id === 0 ? null : data.moveNumbers[id]));
 }
 
 const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
@@ -66,15 +82,19 @@ const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
  * Whether any of these moves is one `test` holds of, by its type. A move the game data has no type for is unknown, so
  * it leaves the answer unsure unless another move settles it.
  */
-function anyMove(data: Collection['data'], moves: readonly (string | null)[], test: (type: string) => boolean): Answer {
+function anyMove(
+  data: Collection['data'],
+  moves: readonly (string | null | undefined)[],
+  test: (type: string) => boolean,
+): Answer {
   let unknown = false;
 
   for (const move of moves) {
-    const type = move === null ? undefined : data.combat[move]?.type;
+    const type = move == null ? undefined : data.combat[move]?.type;
 
-    if (type === undefined) {
-      unknown ||= move !== null;
-    } else if (test(type)) {
+    if (move !== null && type === undefined) {
+      unknown = true;
+    } else if (type !== undefined && test(type)) {
       return true;
     }
   }
@@ -157,15 +177,15 @@ export function judging({ rows, data, now }: Collection) {
     const type = typed?.[2] !== undefined && data.effectiveness[capitalise(typed[2])] ? capitalise(typed[2]) : null;
 
     if (type !== null) {
-      const [fast, first, second] = [row.moves.fast, ...row.moves.charged];
+      const slots = slotsOf(data, row);
 
       switch (typed?.[1]) {
         case 'weak':
-          return types === null ? null : effect(data, type, row.types) > 1;
+          return types === null ? null : effectiveness(data, type, row.types) > 1;
         case 'strong':
-          return anyMove(data, [fast ?? null, first ?? null], (move) => effect(data, move, [type]) > 1);
+          return anyMove(data, slots.slice(0, 2), (move) => effectiveness(data, move, [type]) > 1);
         case 'move':
-          return anyMove(data, [fast ?? null, first ?? null, second ?? null], (move) => move === type);
+          return anyMove(data, slots, (move) => move === type);
         default:
           return types === null ? null : types.includes(type.toLowerCase());
       }
@@ -253,23 +273,18 @@ export function judging({ rows, data, now }: Collection) {
     }
 
     if (text.startsWith('#')) {
-      const tag = fold(text.slice(1));
-
-      return row.tags.some((one) => fold(one) === tag);
+      return row.tags.some((tag) => starts(tag, text.slice(1), true));
     }
 
     if (text.startsWith('@')) {
       const [, slot, rest = ''] = /^@([123])?(.*)$/s.exec(text) ?? [];
-      const moves = [row.moves.fast, ...row.moves.charged];
-      const move = fold(rest);
-      const slotted = slot === undefined ? moves : [moves[Number(slot) - 1] ?? null];
-      const unnamed = [row.raw.move1, row.raw.move2, row.raw.move3].filter((id) => id !== 0).length > moves.length;
+      const slots = slotsOf(data, row);
+      const asked = slot === undefined ? slots : [slots[Number(slot) - 1]];
 
-      return slotted.some((one) => one != null && fold(one).startsWith(move)) || (unnamed ? null : false);
+      return asked.some((move) => move != null && starts(move, rest)) || (asked.includes(undefined) ? null : false);
     }
 
-    const asked = fold(text);
-    const named = [row.species, row.nickname].some((one) => one !== null && fold(one).startsWith(asked));
+    const named = [row.species, row.nickname].some((one) => one !== null && starts(one, text));
 
     return named || (row.species === null ? null : false);
   }

@@ -12,9 +12,9 @@
  * prompt, and so the stat stages those move: their attack and our defense, as they stand, go into the hit.
  */
 
-import { cpOf, type CombatMove, type Form, type GameData, type IVs } from '../../core/game-master.mts';
+import { cpOf, effectiveness, type CombatMove, type Form, type GameData, type IVs } from '../../core/game-master.mts';
 import { type Meta } from './meta.mts';
-import { chargedOf, effectiveness, formsOf, heldOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
+import { chargedOf, formsOf, heldOf, STAB, stage, type Pick, type Shown } from './strategy.mts';
 
 /**
  * What a charged move's damage is multiplied by in a trainer battle and not in a raid: the game master's

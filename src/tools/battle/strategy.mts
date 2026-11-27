@@ -14,7 +14,7 @@
  * have is narrowed, in a league PvPoke ranks, to those its players run.
  */
 
-import { type Form, type GameData } from '../../core/game-master.mts';
+import { effectiveness, type Form, type GameData } from '../../core/game-master.mts';
 import { type Stages } from './damage.mts';
 import { type Meta, type Moveset } from './meta.mts';
 import { type Card } from './party.mts';
@@ -159,11 +159,6 @@ export function worth(
 /** What `stages` up or down multiply an attack or defense stat by in a trainer battle: ×1.25 for +1, ×0.8 for −1. */
 export function stage(stages = 0): number {
   return stages >= 0 ? (4 + stages) / 4 : 4 / (4 - stages);
-}
-
-/** What a move of `type` multiplies its damage by against a Pokémon of the `defender`'s types. */
-export function effectiveness(data: GameData, type: string, defender: readonly string[]): number {
-  return defender.reduce((product, against) => product * (data.effectiveness[type]?.[against] ?? 1), 1);
 }
 
 /**

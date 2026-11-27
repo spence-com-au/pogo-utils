@@ -163,3 +163,24 @@ test('a species the game data does not know is unsure on a name, settled on its 
   expect(ask('fire', UNKNOWN)).toBe('unsure');
   expect(ask('sparky', byForm('DeoxysAttack'))).toBe('yes');
 });
+
+test('a name is folded as the suggestions fold it, and text that folds to nothing is matched as typed', () => {
+  const mime: Row = { ...PIKACHU, species: 'Mr. Mime', dex: 122, nickname: 'ミミ', tags: ['My Tag'] };
+
+  expect(ask('mrmime & #mytag', mime)).toBe('yes');
+  expect(ask('ミミ', mime)).toBe('yes');
+  expect(ask('ピカ', mime)).toBe('no');
+});
+
+test('a move the game data does not number is unsure in its own slot and shifts no other', () => {
+  // A fast move and a first charged move Niantic added since the game master was vendored, then Discharge.
+  const unnamed: Row = { ...PIKACHU, raw: { ...PIKACHU.raw, move1: 99999, move2: 99998, move3: 35 } };
+
+  expect(ask('@3discharge & @electric', unnamed)).toBe('yes');
+  expect(ask('@2discharge', unnamed)).toBe('unsure');
+  expect(ask('@quick', unnamed)).toBe('unsure');
+  expect(ask('!@fire', unnamed)).toBe('unsure');
+
+  // `>type` counts the fast move and the first charged move, both unknown here, and not Discharge.
+  expect(ask('>water', unnamed)).toBe('unsure');
+});
