@@ -14,8 +14,8 @@ Most of what the Search page knows is derived: species, forms, types and moveset
 `pnpm vend:game-master` writes to `data/game-master.json`. What this skill audits is the rest, the facts transcribed by
 hand because no machine-readable source has them, each with the source it was read off named in its doc comment:
 
-- **`LEGACY_MOVES`** in `src/search/terms.ts`: each species beside a move it can no longer learn, dated by the line
-  above it ("listed them on …").
+- **`LEGACY_MOVES`** in `src/search/terms.ts`: each species beside a move it can no longer learn, dated by the doc
+  comment above it, which says p337 "listed them on" a given day.
 - **The terms**: `GROUPS`, `RANGE_TABLE`, `SHORTCUTS` and `BUDDY_LEVELS` in the same file, including the `max` of
   `megalevel` and `buddylevel`.
 - **The precedence rule** the whole of `src/search/clauses.ts` rests on: a `,` binds tighter than an `&`.
@@ -93,8 +93,9 @@ Report in the chat, in this order, then wait for the user:
 
 ## Landing the approved changes
 
-1. Edit `src/search/terms.ts` and set the date on the line above `LEGACY_MOVES` to the day p337 was read. A ceiling that
-   changes takes its doc comment with it, since that comment says why the ceiling is what it is.
+1. Edit `src/search/terms.ts` and set the date after "listed them on" in the doc comment above `LEGACY_MOVES` to the day
+   p337 was read. A ceiling that changes takes its doc comment with it, since that comment says why the ceiling is what
+   it is.
 2. Run `pnpm lint` and `pnpm test src/search`. The `legacymovesets` preset's expected clauses in
    `src/search/query.test.ts` move with `LEGACY_MOVES`, so update them and check the diff is only the rows you changed.
 3. Commit and open one pull request for the run, as the repository's `CLAUDE.md` and pull request rules say.
