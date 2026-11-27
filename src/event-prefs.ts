@@ -7,6 +7,11 @@
 import RECURRING_TYPES from './recurring-types.js';
 import { KEY_PREFIX } from './storage-namespace.js';
 
+/** The Events page's views, by the names its buttons and `hiddenByView` key them under. */
+export const VIEWS = ['cards', 'calendar', 'tracks'] as const;
+
+export type View = (typeof VIEWS)[number];
+
 /** The reader's saved choices, keyed the way `KEYS` is so `persist` can take a name alone. */
 export interface Prefs {
   hiddenTypes: Set<string>;
@@ -21,6 +26,9 @@ export interface Prefs {
 
   /** The cards view's status buckets folded under their headings, by `StatusKind`. */
   collapsed: Set<string>;
+
+  /** The view the reader last chose, which the page opens on. */
+  view: View;
 }
 
 /**
@@ -54,6 +62,7 @@ export const KEYS = {
   dismissed: `${KEY_PREFIX}events:dismissed`,
   seen: `${KEY_PREFIX}events:seen`,
   collapsed: `${KEY_PREFIX}events:collapsed`,
+  view: `${KEY_PREFIX}events:view`,
 };
 
 /**
@@ -387,6 +396,8 @@ function legacySet(name: (typeof LEGACY_SETS)[number]): Set<string> | null {
 export function loadPrefs(): Prefs {
   migrateLegacy();
 
+  const view = readJSON(keyFor('view'));
+
   return {
     hiddenTypes: readSet(keyFor('hiddenTypes')) ?? legacySet('hiddenTypes') ?? new Set(DEFAULT_HIDDEN),
     hiddenByView: readSetsByView(keyFor('hiddenByView')),
@@ -402,6 +413,10 @@ export function loadPrefs(): Prefs {
     seen: readSeen(keyFor('seen')),
 
     collapsed: readSet(keyFor('collapsed')) ?? new Set(),
+
+    // Anything but a name in `VIEWS` opens on the cards, as a first visit does, so no stored value can leave the page
+    // with no view's button pressed.
+    view: VIEWS.find((name) => name === view) ?? 'cards',
   };
 }
 

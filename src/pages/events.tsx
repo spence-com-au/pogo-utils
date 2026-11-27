@@ -14,7 +14,7 @@ import { Fragment, type ComponentChildren, type HTMLAttributes } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { byCodeUnit, routeSummary } from '../event-feed.js';
-import { hiddenFor, type Prefs } from '../event-prefs.js';
+import { hiddenFor, type Prefs, type View } from '../event-prefs.js';
 import {
   addDays,
   agendaOf,
@@ -45,9 +45,6 @@ import { ENTRIES_BY_EVENT, EVENTS_FEED } from '../generated.js';
 import { toHash } from '../router.js';
 
 import type { RouteIndex } from '../types.js';
-
-/** Which of the three views is showing. A page concept, so it stays here rather than beside the schedule. */
-type View = 'cards' | 'calendar' | 'tracks';
 
 /**
  * How often to recompute the relative labels against the wall clock, and — every `REFETCH_EVERY` ticks — pull the feed
@@ -256,7 +253,13 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /** Recomputed every minute, which is what keeps the relative labels honest without anything else being redrawn. */
   const [now, setNow] = useState(() => new Date());
 
-  const [view, setView] = useState<View>('cards');
+  /**
+   * Whether an `?event=` link has shown the cards over the saved view. Only the cards can be made to draw any event, so
+   * that is where a link lands. Held for the visit rather than saved, so the next one opens on the reader's choice.
+   */
+  const [arrived, setArrived] = useState(false);
+  const view = arrived ? 'cards' : prefs.view;
+
   const [search, setSearch] = useState('');
 
   // A session's choices rather than saved preferences; `prefs` is what survives a reload.
@@ -367,6 +370,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
      */
     setUnhidden(match.eventType);
     setSearch(match.name);
+    setArrived(true);
 
     // Reveal its status bucket for the same reason: the Routes page keeps linking an event for up to a day after it
     // ends here. The clock rather than `now`, which can lag it, so an event that has just ended is not missed.
@@ -472,10 +476,17 @@ export default function EventsPage({ query: fragment }: { query: string }) {
     };
   }, []);
 
+  /** Switch views, saved so the page opens on this one next time. */
+  function setView(next: View) {
+    setArrived(false);
+    prefs.view = next;
+    commit('view');
+  }
+
   /**
-   * Switch which hidden-type set the chips edit and the views read. Persisted, unlike the view itself, because the sets
-   * it chooses between are: a scope falling back to global on reload would leave per-view filtering saved and silently
-   * out of force, which is worse than not having offered it.
+   * Switch which hidden-type set the chips edit and the views read. Persisted because the sets it chooses between are:
+   * a scope falling back to global on reload would leave per-view filtering saved and silently out of force, which is
+   * worse than not having offered it.
    */
   function setScope(next: Prefs['filterScope']) {
     prefs.filterScope = next;

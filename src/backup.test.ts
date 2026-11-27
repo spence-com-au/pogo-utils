@@ -28,7 +28,7 @@ const backupOf = (values: unknown) => JSON.stringify({ version: 3, namespace: 'p
 /** The keys a written file carries, in the order it carries them, which is what it would write back. */
 const carried = (text: string) => parseBackup(text).map(([key]) => key);
 
-/** A reader with every kind of value in play: two sets, the per-view object, the scalar, and a populated `seen`. */
+/** A reader with every kind of value in play: the sets, the per-view object, both scalars and a populated `seen`. */
 function storePrefs(): Prefs {
   const prefs: Prefs = {
     hiddenTypes: new Set(['community-day', 'raid-hour']),
@@ -37,6 +37,7 @@ function storePrefs(): Prefs {
     dismissed: new Set(['event-a']),
     seen: { through: Date.parse('2026-10-01T00:00:00.000Z'), ids: new Set(['event-b', 'event-c']) },
     collapsed: new Set(['ended']),
+    view: 'tracks',
   };
 
   for (const name of Object.keys(KEYS) as (keyof typeof KEYS)[]) {
@@ -110,6 +111,7 @@ const emptyPrefs = (): Prefs => ({
   dismissed: new Set(),
   seen: null,
   collapsed: new Set(),
+  view: 'cards',
 });
 
 /**
