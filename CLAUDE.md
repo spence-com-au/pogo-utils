@@ -10,6 +10,15 @@
 - **An unresolved conversation can block the merge.** When the rulesets require review threads resolved, green checks
   are not enough, and clearing an open thread falls to the pull request's author: fix what it raises or reply with why
   not, then resolve it.
+- **Run the tests a change touches before pushing it, and leave the full suite to CI.** The whole of `pnpm test` ties up
+  the machine the user is working on for minutes, and CI runs all of it on every push anyway. So once a change bound for
+  a pull request is committed, run `pnpm test --changed origin/master`, then push and open the pull request. That runs
+  only the test files that import something the branch changed, so a test that reads its input from disk instead, such
+  as a stylesheet, a workflow, `data/game-master.json` or a script it runs, is missed. For each changed file nothing
+  imports, grep `src` for its name and run the tests that name it as well, as `pnpm test styles` runs the one that reads
+  the stylesheets and `index.html`. A branch that changes `package.json` or `vitest.config.mjs` skips `--changed`, which
+  runs every test file for those. Leave the rest to its checks rather than a local run of the full suite, in the
+  foreground or the background: `gh pr checks`, then `gh run view <id> --log-failed` for what failed.
 - **Light alone is enough for a pull request's screenshots.** Take a dark set as well only when dark draws the change
   meaningfully differently: a change that only follows the theme's colours gains nothing from a second set.
 - **File an issue for what a change leaves behind.** A defect met on the way to something else, or a follow-up a change
