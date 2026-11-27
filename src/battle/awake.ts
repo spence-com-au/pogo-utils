@@ -9,14 +9,52 @@
  */
 
 import { said } from '../errors.js';
-import { inStore as inDatabase } from '../indexed-db.js';
+import { databaseNames, inStore as inDatabase, readDatabase, replaceDatabase } from '../indexed-db.js';
+import { KEY_PREFIX } from '../storage-namespace.js';
 import { isStayOn, putStayOn, readStayOn, stayOnUsb, type Shell } from '../tools/battle/stay-on.mts';
 
-const DATABASE = 'pogo-utils-battle';
+/** Named in the namespace, so a backup carries a value a closed tab left kept along with everything else. */
+const DATABASE = `${KEY_PREFIX}battle`;
 const STORE = 'stay-on-while-plugged-in';
 
-const inStore = <T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>) =>
-  inDatabase(DATABASE, STORE, mode, act);
+/** The name the database had before it joined the namespace, where a value kept since may still wait. */
+const OUTSIDE = 'pogo-utils-battle';
+
+/**
+ * Moves what is kept under `OUTSIDE` into `DATABASE`, once a realm, the page and the battle's Worker each asking
+ * before their first use. One that cannot be moved stays where it was, to be tried again on the next visit.
+ */
+let moved: Promise<void> | undefined;
+
+async function moveIn(): Promise<void> {
+  try {
+    if (!(await databaseNames()).includes(OUTSIDE)) {
+      return;
+    }
+
+    const [first, ...rest] = Object.entries((await readDatabase(OUTSIDE))[STORE] ?? {});
+
+    if (first !== undefined) {
+      await inDatabase(DATABASE, STORE, 'readwrite', (store) => {
+        for (const [serial, value] of rest) {
+          store.put(value, serial);
+        }
+
+        return store.put(first[1], first[0]);
+      });
+    }
+
+    await replaceDatabase(OUTSIDE, null);
+  } catch {
+    /* Left under the old name, which the next visit tries again. */
+  }
+}
+
+async function inStore<T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>) {
+  await (moved ??= moveIn());
+
+  return inDatabase(DATABASE, STORE, mode, act);
+}
 
 /**
  * The value kept for `serial`, or `undefined` where none is, or none can be read: storage this browser refuses, as in
