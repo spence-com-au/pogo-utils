@@ -1,20 +1,40 @@
 /**
  * The owned Pokémon this document holds, read from PGSharp's export rather than fetched: the whole account, decoded,
  * which the Pokédex marks against. Read off each phone the `phoneStore` comes to hold, or from a copy of the export the
- * reader opens, and kept until the next read lands or the page is closed. Never published — the export is the account
- * itself, so it stays in the browser.
+ * reader opens. The export itself is kept in IndexedDB, the latest read alone, and parsed again as the next visit
+ * starts, so the Pokédex is marked before a phone is connected; Forget drops it. Never published — the export is the
+ * account itself, so it stays in the browser.
  */
 
 import { loadChunk } from './chunks.js';
 import type { Phone } from './core/browser/webusb.js';
 import { said } from './errors.js';
+import { inStore } from './indexed-db.js';
 import type { Result } from './inventory-read.js';
 import { phoneStore, type PhoneStore } from './phone-store.js';
+import { KEY_PREFIX } from './storage-namespace.js';
 import { Store, useStore } from './store.js';
 import type { Row } from './tools/inventory/snapshot.mts';
 
 /** Whether a read is under way, or why the last one failed. */
 export type Status = { state: 'idle' } | { state: 'reading' } | { state: 'failed'; reason: string };
+
+/** Where the export is kept: a database of the namespace's own, its one store holding the latest read under one key. */
+const DATABASE = `${KEY_PREFIX}inventory`;
+const STORE = 'export';
+const LATEST = 'latest';
+
+/** What is kept: the export as it was read, and when, in milliseconds since the epoch. */
+interface Kept {
+  text: string;
+  at: number;
+}
+
+const isKept = (value: unknown): value is Kept =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as Kept).text === 'string' &&
+  typeof (value as Kept).at === 'number';
 
 /** `inventory-read.ts`, fetched once a read starts, and what a failure to fetch it says in place of a read's result. */
 const reader = (read: (module: typeof import('./inventory-read.js')) => Promise<Result>): Promise<Result> =>
@@ -29,6 +49,9 @@ export class InventoryStore extends Store {
 
   /** The rows the last read that landed produced, kept through a read after it and after its phone is let go. */
   rows: readonly Row[] | null = null;
+
+  /** When the read the rows came from was made, in milliseconds since the epoch, or null with no rows. */
+  readAt: number | null = null;
 
   /**
    * The serial of the phone last read, so a phone held again with it is not read again: a battle hands the phone it
@@ -72,6 +95,41 @@ export class InventoryStore extends Store {
     );
   }
 
+  /**
+   * Parses the export kept from an earlier visit, unless a read has started since this was asked. Storage the browser
+   * refuses, as in a private window, keeps nothing, so finding nothing is all it says.
+   */
+  async restore(): Promise<void> {
+    const token = this.#token;
+    let kept: unknown;
+
+    try {
+      kept = await inStore(DATABASE, STORE, 'readonly', (store) => store.get(LATEST));
+    } catch {
+      return;
+    }
+
+    if (!isKept(kept) || this.#token !== token) {
+      return;
+    }
+
+    const { text, at } = kept;
+    const landed = await reader((module) => module.textRows(text));
+
+    if (this.#token !== token) {
+      return;
+    }
+
+    if ('rows' in landed) {
+      this.rows = landed.rows;
+      this.readAt = at;
+    } else {
+      this.status = { state: 'failed', reason: landed.reason };
+    }
+
+    this.emit();
+  }
+
   /** Reads a copy of PGSharp's export the reader opened, superseding any read under way. */
   async open(file: Blob): Promise<void> {
     await this.#land(
@@ -101,8 +159,12 @@ export class InventoryStore extends Store {
     this.#reading = null;
 
     if ('rows' in landed) {
+      const kept: Kept = { text: landed.text, at: Date.now() };
+
       this.rows = landed.rows;
+      this.readAt = kept.at;
       this.status = { state: 'idle' };
+      void this.#keep((store) => store.put(kept, LATEST));
     } else if (source !== 'file' && this.#phones.phone !== source) {
       this.#serial = null;
       this.status = { state: 'idle' };
@@ -113,19 +175,39 @@ export class InventoryStore extends Store {
     this.emit();
   }
 
-  /** Forgets what was read, back to before any read, and drops a read still under way. */
-  clear(): void {
+  /**
+   * Forgets what was read, back to before any read, the kept copy included, and drops a read still under way. Answers
+   * once the kept copy is gone.
+   */
+  clear(): Promise<void> {
     this.#token++;
     this.#serial = null;
     this.#reading = null;
     this.rows = null;
+    this.readAt = null;
     this.status = { state: 'idle' };
     this.emit();
+
+    return this.#keep((store) => store.delete(LATEST));
+  }
+
+  /**
+   * Changes the kept copy. IndexedDB commits writes to one store in the order they were started, so a Forget straight
+   * after a read deletes what the read put. A change that fails is told on the console rather than the panel: the rows
+   * read are still shown, and only the next visit goes without them.
+   */
+  #keep(act: (store: IDBObjectStore) => IDBRequest): Promise<void> {
+    return inStore(DATABASE, STORE, 'readwrite', act).then(
+      () => undefined,
+      (error: unknown) => console.error(`${DATABASE}: ${said(error)} — the next visit will not have this read`),
+    );
   }
 }
 
 /** The document's store, which outlives any one tab. */
 export const inventoryStore = new InventoryStore(phoneStore);
+
+void inventoryStore.restore();
 
 /** The document's store, with the calling component redrawn whenever it changes. */
 export function useInventory(): InventoryStore {

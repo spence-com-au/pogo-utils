@@ -18,6 +18,7 @@ import { loadChunk } from './chunks.js';
 import type { About } from './core/adb.mts';
 import type { Phone as Held } from './core/browser/webusb.js';
 import { said } from './errors.js';
+import { relative } from './event-schedule.js';
 import { inventoryStore, useInventory } from './inventory-store.js';
 import { JsonFileButton } from './json-file-button.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
@@ -36,9 +37,15 @@ export function openPhonePanel() {
   show();
 }
 
-/** What was read of the reader's Pokémon, with a button to read the held phone again and one to open the export. */
+/** How long ago `at` was, "just now" inside a minute, where Intl would say "now" and read as the read still going. */
+const ago = (at: number) => (Date.now() - at < 60_000 ? 'just now' : relative(new Date(at), new Date()));
+
+/**
+ * What was read of the reader's Pokémon and how long ago, with buttons to read the held phone again, open the export
+ * and forget what was read.
+ */
 function Yours({ held }: { held: Held | null }) {
-  const { rows: owned, status } = useInventory();
+  const { rows: owned, readAt, status } = useInventory();
   const reading = status.state === 'reading';
 
   return (
@@ -49,8 +56,8 @@ function Yours({ held }: { held: Held | null }) {
           'Reading your Pokémon…'
         ) : status.state === 'failed' ? (
           status.reason
-        ) : owned !== null ? (
-          `${owned.length.toLocaleString()} Pokémon read.`
+        ) : owned !== null && readAt !== null ? (
+          `${owned.length.toLocaleString()} Pokémon, read ${ago(readAt)}.`
         ) : (
           <>
             Connect a phone or open PGSharp’s <code>{PGSTATS_NAME}</code>.
@@ -66,6 +73,11 @@ function Yours({ held }: { held: Held | null }) {
         <JsonFileButton disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
           Open {PGSTATS_NAME}
         </JsonFileButton>
+        {owned !== null && (
+          <button type="button" onClick={() => void inventoryStore.clear()}>
+            Forget
+          </button>
+        )}
       </div>
     </section>
   );

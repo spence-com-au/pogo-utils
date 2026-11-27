@@ -1,10 +1,12 @@
 /**
  * The inventory store's own wiring: that a read reaches the phone for the export at its path, hands the bytes to the
  * converter and the fetched game master, and lands the rows — that a failed read keeps the underlying reason — and
- * that each phone the phone store comes to hold is read, but not the one a battle hands back. The converter and the
- * game master are stood in for, since `snapshot.test.mts` holds the conversion itself.
+ * that each phone the phone store comes to hold is read, but not the one a battle hands back, and that the latest read
+ * is kept in IndexedDB for the next visit. The converter and the game master are stood in for, since
+ * `snapshot.test.mts` holds the conversion itself.
  */
 
+import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import type { Phone } from './core/browser/webusb.js';
@@ -65,14 +67,29 @@ const reached = (asked: readonly unknown[]) => vi.waitFor(() => expect(asked).to
 
 let phones: PhoneStore;
 
+/** Until a store started from nothing, as the next visit's is, restores the rows `rows`. */
+const kept = (rows: unknown) =>
+  vi.waitFor(async () => {
+    const next = new InventoryStore(new PhoneStore());
+
+    await next.restore();
+    expect(next.rows).toStrictEqual(rows);
+
+    return next;
+  });
+
 beforeEach(() => {
+  vi.stubGlobal('indexedDB', new IDBFactory());
   phones = new PhoneStore();
   mocks.parseSnapshot.mockReturnValue({});
   mocks.gameData.mockResolvedValue({});
   mocks.rowsOf.mockReturnValue([{ dex: 25 }]);
 });
 
-afterEach(() => vi.resetAllMocks());
+afterEach(() => {
+  vi.resetAllMocks();
+  vi.unstubAllGlobals();
+});
 
 test('a read reaches the phone for the export, converts it, and lands the rows', async () => {
   const rows = [{ dex: 25 }, { dex: 1 }];
@@ -302,4 +319,81 @@ test('the rows stay once the phone they were read off is let go', async () => {
   phones.release();
 
   expect(store.rows).toStrictEqual([{ dex: 25 }]);
+});
+
+test('the latest read is kept, and the next visit parses it again with when it was read', async () => {
+  const store = new InventoryStore(phones);
+  await store.read(phone(async () => bytes('the export')).phone);
+
+  mocks.parseSnapshot.mockClear();
+  const next = await kept([{ dex: 25 }]);
+
+  expect(mocks.parseSnapshot).toHaveBeenCalledWith('the export');
+  expect(next.readAt).toBe(store.readAt);
+});
+
+test('an opened export is kept the same way', async () => {
+  const store = new InventoryStore(phones);
+  await store.open(new Blob(['the opened export']));
+
+  mocks.parseSnapshot.mockClear();
+  await kept([{ dex: 25 }]);
+
+  expect(mocks.parseSnapshot).toHaveBeenCalledWith('the opened export');
+});
+
+test('a clear straight after a read forgets the kept copy too', async () => {
+  const store = new InventoryStore(phones);
+  await store.read(phone(async () => bytes('the export')).phone);
+  await store.clear();
+
+  const next = new InventoryStore(new PhoneStore());
+  await next.restore();
+
+  expect(next.rows).toBeNull();
+  expect(next.readAt).toBeNull();
+});
+
+test('a read that starts while the kept copy is parsed is not overwritten by it', async () => {
+  const store = new InventoryStore(phones);
+  await store.open(new Blob(['the old export']));
+  await kept([{ dex: 25 }]);
+
+  mocks.rowsOf.mockReturnValue([{ dex: 1 }]);
+
+  const next = new InventoryStore(new PhoneStore());
+  const restoring = next.restore();
+  await next.read(phone(async () => bytes('the new export')).phone);
+  await restoring;
+
+  expect(next.rows).toStrictEqual([{ dex: 1 }]);
+});
+
+test('a kept export that no longer parses says why', async () => {
+  const store = new InventoryStore(phones);
+  await store.open(new Blob(['the export']));
+  await kept([{ dex: 25 }]);
+
+  mocks.parseSnapshot.mockImplementation(() => {
+    throw new Error('Unexpected token');
+  });
+
+  const next = new InventoryStore(new PhoneStore());
+  await next.restore();
+
+  expect(next.rows).toBeNull();
+  expect(next.status).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+});
+
+test('a browser that refuses storage keeps nothing, and tells only the console', async () => {
+  vi.stubGlobal('indexedDB', undefined);
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  const store = new InventoryStore(phones);
+  await store.restore();
+  await store.read(phone(async () => bytes('the export')).phone);
+
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
+  expect(store.status).toStrictEqual({ state: 'idle' });
+  await vi.waitFor(() => expect(errors).toHaveBeenCalledOnce());
 });
