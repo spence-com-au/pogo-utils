@@ -1,8 +1,9 @@
 /**
  * The Tesseract a test of the readers runs under: the CLI, unless `INVENTORY_OCR=wasm` asks for the WebAssembly build
- * the pages read with. The captures are the same either way and CI runs the suite both ways, so a reading that
- * moves under one engine fails the same row it would under the other. What the two do not share is which route a CP
- * took to its reading, so the tests that pin that hold an expectation for each, and `ON_WASM` is what picks one.
+ * the pages read with. The captures are the same either way and CI runs the tests importing this both ways, so a
+ * reading that moves under one engine fails the same row it would under the other. What the two do not share is which
+ * route a CP took to its reading, so the tests that pin that hold an expectation for each, and `ON_WASM` is what picks
+ * one.
  *
  * This is the one module that reads `INVENTORY_OCR`, so the tests importing it are the ones the WebAssembly leg in
  * `test.yaml` runs, found by `vitest related` on this file: every other test reads the same under either.
