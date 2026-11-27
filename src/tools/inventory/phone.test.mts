@@ -173,6 +173,16 @@ class Phone {
       return text('device\n');
     }
 
+    // Where `Device.locate` looks for the export: MediaStore knows of it where PGSharp writes it unless told otherwise,
+    // and neither it nor `find` of one the phone does not have.
+    if (command === 'shell' && rest[0] === 'content') {
+      return text(this.export.length > 0 ? 'Row: 0 _data=/storage/emulated/0/Download/PGSharp/PGSStats.json\n' : '');
+    }
+
+    if (command === 'shell' && rest[0] === 'find') {
+      return text('');
+    }
+
     if (command === 'shell' && rest[0] === 'cat') {
       // `adb shell cat` carries its exit status back on shell protocol 2, as the real one does: 0 with the file, 1 with
       // `cat`'s own message for a file the phone does not have.
@@ -515,13 +525,13 @@ describe.concurrent('scan', () => {
   );
 
   test('fails naming the export where the phone does not have it', async (context) => {
-    // The export left unset, so `shell cat` answers as it does for a file that is not there.
+    // The export left unset, so neither MediaStore nor `find` knows of one.
     const phone = new Phone('storage', () => []);
     const { inventory } = await harness(context, phone, []);
     const { code, stderr } = await inventory('scan');
 
     expect(code).toBe(1);
-    expect(stderr).toContain('/sdcard/Download/PGSharp/PGSStats.json');
+    expect(stderr).toContain('found no PGSStats.json on the phone');
     expect(stderr).toContain("switch PGSharp's inventory export on");
   });
 });

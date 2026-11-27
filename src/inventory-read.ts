@@ -8,7 +8,7 @@ import { Device } from './core/adb.mts';
 import { gameData } from './core/browser/fetch.js';
 import type { Phone } from './core/browser/webusb.js';
 import { said } from './errors.js';
-import { PGSTATS } from './tools/inventory/pgstats.mts';
+import { readExport } from './tools/inventory/pgstats.mts';
 import { parseSnapshot, rowsOf, type Row } from './tools/inventory/snapshot.mts';
 
 /** The rows an export holds and the export itself, kept to parse again on the next visit, or why there are none. */
@@ -39,7 +39,7 @@ export async function phoneRows(phone: Phone): Promise<Result> {
   let text: string;
 
   try {
-    text = new TextDecoder().decode(await new Device(phone.transport).read(PGSTATS));
+    text = await readExport(new Device(phone.transport));
   } catch (error) {
     return { reason: unread(error) };
   }

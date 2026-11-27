@@ -26,14 +26,17 @@ vi.mock('./tools/inventory/snapshot.mts', async (actual) => ({
 }));
 
 const { InventoryStore } = await import('./inventory-store.js');
-const { PGSTATS } = await import('./tools/inventory/pgstats.mts');
+const EXPORT = '/storage/emulated/0/Download/PGSharp/PGSStats.json';
 
 /** A phone whose shell answers each `cat` through `shell`, recording what it was asked to read. */
 function phone(shell: (args: readonly string[]) => Promise<Uint8Array>, serial = 'A') {
   const asked: string[][] = [];
   const transport = {
     state: async () => 'device' as const,
-    shell: (args: readonly string[]) => (asked.push([...args]), shell(args)),
+
+    // MediaStore answers where PGSharp writes the export by default; what is asked of the export itself is recorded.
+    shell: (args: readonly string[]) =>
+      args[0] === 'content' ? Promise.resolve(bytes(`Row: 0 _data=${EXPORT}\n`)) : (asked.push([...args]), shell(args)),
     screencap: async () => new Uint8Array(),
   };
 
@@ -104,7 +107,7 @@ test('a read reaches the phone for the export, converts it, and lands the rows',
 
   await store.read(device);
 
-  expect(asked).toStrictEqual([['cat', PGSTATS]]);
+  expect(asked).toStrictEqual([['cat', `'${EXPORT}'`]]);
   expect(mocks.parseSnapshot).toHaveBeenCalledWith('the export');
   expect(mocks.rowsOf).toHaveBeenCalledWith(snapshot, { forms: [] });
   expect(store.rows).toStrictEqual(rows);
@@ -255,8 +258,8 @@ test('each phone held is read, without being asked', async () => {
   await phones.hold(b.phone);
   await landed(store);
 
-  expect(a.asked).toStrictEqual([['cat', PGSTATS]]);
-  expect(b.asked).toStrictEqual([['cat', PGSTATS]]);
+  expect(a.asked).toStrictEqual([['cat', `'${EXPORT}'`]]);
+  expect(b.asked).toStrictEqual([['cat', `'${EXPORT}'`]]);
   expect(store.rows).toStrictEqual([{ dex: 25 }]);
 });
 

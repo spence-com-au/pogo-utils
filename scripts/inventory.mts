@@ -57,7 +57,7 @@ import { useEngine } from '../src/core/ocr.mts';
 import { encodePng } from '../src/core/png.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { PGSTATS } from '../src/tools/inventory/pgstats.mts';
+import { readExport } from '../src/tools/inventory/pgstats.mts';
 import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
 import { touchscreen } from '../src/core/touchscreen.mts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -165,13 +165,12 @@ async function scan() {
 
   let text: string;
 
-  // `Device.read` runs `cat` over the shell, which carries its exit status back, so a file the phone does not have
-  // fails here rather than reading back as `cat`'s own message — the likely cause, the phone having answered `check`
-  // above. But a slow link timing out or an export too big for the read's buffer fail here too, so the underlying
-  // reason leads and the export hint is only offered, not asserted. A present-but-corrupt export is not caught here:
-  // it reads fine and fails the parse below, a different thing to say than that there is nothing to read.
+  // No export found on the phone is the likely failure here, the phone having answered `check` above. But a slow link
+  // timing out or an export too big for the read's buffer fail here too, so the underlying reason leads and the export
+  // hint is only offered, not asserted. A present-but-corrupt export is not caught here: it reads fine and fails the
+  // parse below, a different thing to say than that there is nothing to read.
   try {
-    text = new TextDecoder().decode(await device.read(PGSTATS));
+    text = await readExport(device);
   } catch (error) {
     const reason = said(error);
 
