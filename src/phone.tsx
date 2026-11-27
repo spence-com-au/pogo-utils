@@ -73,7 +73,8 @@ function Yours({ held }: { held: Held | null }) {
         <JsonFileButton disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
           Open {PGSTATS_NAME}
         </JsonFileButton>
-        {owned !== null && (
+        {/* On a failure too: a kept export that no longer parses fails as the page loads, with no rows to show. */}
+        {(owned !== null || status.state === 'failed') && (
           <button type="button" onClick={() => void inventoryStore.clear()}>
             Forget
           </button>

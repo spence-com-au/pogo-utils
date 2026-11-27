@@ -397,3 +397,27 @@ test('a browser that refuses storage keeps nothing, and tells only the console',
   expect(store.status).toStrictEqual({ state: 'idle' });
   await vi.waitFor(() => expect(errors).toHaveBeenCalledOnce());
 });
+
+test('a kept export that no longer parses can still be forgotten', async () => {
+  const store = new InventoryStore(phones);
+  await store.open(new Blob(['the export']));
+  await kept([{ dex: 25 }]);
+
+  mocks.parseSnapshot.mockImplementation(() => {
+    throw new Error('Unexpected token');
+  });
+
+  const next = new InventoryStore(new PhoneStore());
+  await next.restore();
+  expect(next.status.state).toBe('failed');
+
+  await next.clear();
+  expect(next.status).toStrictEqual({ state: 'idle' });
+
+  mocks.parseSnapshot.mockClear();
+  const after = new InventoryStore(new PhoneStore());
+  await after.restore();
+
+  expect(after.status).toStrictEqual({ state: 'idle' });
+  expect(mocks.parseSnapshot).not.toHaveBeenCalled();
+});
