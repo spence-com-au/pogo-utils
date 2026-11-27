@@ -36,8 +36,6 @@ import { useInventory } from '../inventory-store.js';
 import { openPhonePanel } from '../phone.js';
 import { nameFragment } from '../search/query.js';
 
-/** The export's file name, which a reader opening a copy of it looks for. */
-
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
 

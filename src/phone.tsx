@@ -25,6 +25,7 @@ import { useDismiss } from './popover.js';
 import { ticked } from './ticked.js';
 import { PGSTATS } from './tools/inventory/pgstats.mts';
 
+/** The export's file name, which a reader opening a copy of it looks for. */
 const PGSTATS_NAME = PGSTATS.slice(PGSTATS.lastIndexOf('/') + 1);
 
 /** Opens the panel from elsewhere on the page, with the focus on its button; nothing until the panel is drawn. */
