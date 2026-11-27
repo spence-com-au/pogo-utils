@@ -48,24 +48,12 @@ export function Settings() {
    */
   async function importPrefs(file: File) {
     try {
-      const restored = restoreBackup(
-        await file.text(),
-        new Date(),
-        (text, name) => download(text, name, 'application/json'),
-        () => eventStore.restored(),
-      );
+      const written = restoreBackup(await file.text(), () => eventStore.restored());
 
-      if (restored === null) {
-        setStatus('That backup has no saved preferences, so nothing changed.');
-        return;
-      }
-
-      const { written, rescued } = restored;
-
-      // The one place the copy is explained, said only when it was taken, so the file in Downloads is not a mystery.
       setStatus(
-        `Restored ${written} saved preference${written === 1 ? '' : 's'}.` +
-          (rescued ? ' Your previous preferences were downloaded first.' : ''),
+        written === null
+          ? 'That backup has no saved preferences, so nothing changed.'
+          : `Restored ${written} saved preference${written === 1 ? '' : 's'}.`,
       );
     } catch (e) {
       setStatus(`Could not restore that backup: ${said(e)}`);
