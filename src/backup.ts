@@ -176,11 +176,10 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /**
- * The keys a backup file carries, or a refusal naming which defect it has. Separate from `applyBackup` so that nothing
- * a caller does between the two can be undone by a refusal arriving after it: a file is judged whole before storage is
- * touched at all, which is what lets the page take its own copy in between and not take one for a file it is about to
- * turn away. Separate messages rather than one because they ask different things of a reader: a readable file, a file
- * from this site, or a newer page to read it with.
+ * The keys a backup file carries, or a refusal naming which defect it has. Separate from `applyBackup` so that a file
+ * is judged whole before storage is touched at all, and a refusal can never leave storage half-written. Separate
+ * messages rather than one because they ask different things of a reader: a readable file, a file from this site, or a
+ * newer page to read it with.
  *
  * A file carrying no keys is an empty answer rather than a refusal. The version, and from version 2 the namespace, is
  * what says a file is ours, so a reader who exported on a first visit has a legitimately empty backup — refusing that
