@@ -37,6 +37,12 @@ export interface Display {
 
   /** 0 none, 1 Dynamax, 2 Gigantamax; 4 on the Crowned and Eternatus forms, which show no Max row. */
   breadModeEnum: number;
+
+  /** How far it has levelled its Mega Evolution, null for one never Mega Evolved. */
+  megaEvolutionLevel?: { level: number } | null;
+
+  /** The background it shows, a location's or an event's, null for none. */
+  locationCard?: { locationCard: number } | null;
 }
 
 /** The fields this reads of one Pokémon in the export. `id` and `pokemonTagIds` are the 64-bit IDs kept as strings. */
@@ -81,6 +87,25 @@ export interface Mon {
   isEgg: boolean;
   pokemonTagIds: string[];
   pokemonDisplay: Display | null;
+
+  /**
+   * The fields below are optional because the made-up export the tests and the demo phone read predates them, and a
+   * row says null for each one missing rather than guessing.
+   */
+
+  /** When it was caught, in milliseconds since 1970. */
+  creationTimeMs?: number;
+
+  /** When it was traded, 0 for one never traded. */
+  tradedTimeMs?: number;
+
+  hatchedFromEgg?: boolean;
+  caughtInParty?: boolean;
+
+  /** The gym it is defending, empty when it is in none. */
+  deployedFortId?: string;
+
+  buddyKmWalked?: number;
 }
 
 /** A tag the account named, which a Pokémon points at by `id`. */
@@ -139,6 +164,33 @@ export interface Row {
   types: string[];
   notes: string[];
   costume: string[] | null;
+
+  /**
+   * The fields `pnpm inventory scan` never wrote, which only the export knows. Each is null for an export that does not
+   * carry it.
+   */
+
+  /** When it was caught, in milliseconds since 1970. */
+  caught: number | null;
+
+  traded: boolean | null;
+  hatched: boolean | null;
+
+  /** Caught in Party Play. */
+  party: boolean | null;
+
+  /** Defending a gym. */
+  defender: boolean | null;
+
+  /** Whether it shows a background. The export does not say whether a location's or an event's. */
+  background: boolean | null;
+
+  /** Its Mega level, 0 for one never Mega Evolved. */
+  megaLevel: number | null;
+
+  /** How far it has walked as a buddy. */
+  buddyKm: number | null;
+
   raw: Raw;
 }
 
@@ -340,6 +392,14 @@ function rowOf(mon: Mon, index: number, data: GameData, tags: ReadonlyMap<string
     height: mon.heightM,
     types: form?.types ?? [],
     notes: note === null ? [] : [note],
+    caught: mon.creationTimeMs ?? null,
+    traded: mon.tradedTimeMs === undefined ? null : mon.tradedTimeMs > 0,
+    hatched: mon.hatchedFromEgg ?? null,
+    party: mon.caughtInParty ?? null,
+    defender: mon.deployedFortId === undefined ? null : mon.deployedFortId !== '',
+    background: display?.locationCard === undefined ? null : display.locationCard !== null,
+    megaLevel: display?.megaEvolutionLevel === undefined ? null : (display.megaEvolutionLevel?.level ?? 0),
+    buddyKm: mon.buddyKmWalked ?? null,
     raw: {
       id: mon.id,
       pokemonId: mon.pokemonId,

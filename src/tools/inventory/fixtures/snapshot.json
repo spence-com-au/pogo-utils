@@ -38,8 +38,16 @@
         "gender": 1,
         "shiny": false,
         "alignment": 0,
-        "breadModeEnum": 0
-      }
+        "breadModeEnum": 0,
+        "megaEvolutionLevel": null,
+        "locationCard": null
+      },
+      "creationTimeMs": 1700000000000,
+      "tradedTimeMs": 0,
+      "hatchedFromEgg": false,
+      "caughtInParty": false,
+      "deployedFortId": "",
+      "buddyKmWalked": 0.0
     },
     {
       "id": "1000000000000000002",
@@ -69,8 +77,18 @@
         "gender": 2,
         "shiny": true,
         "alignment": 0,
-        "breadModeEnum": 0
-      }
+        "breadModeEnum": 0,
+        "megaEvolutionLevel": null,
+        "locationCard": {
+          "locationCard": 7
+        }
+      },
+      "creationTimeMs": 1600000000000,
+      "tradedTimeMs": 1650000000000,
+      "hatchedFromEgg": false,
+      "caughtInParty": true,
+      "deployedFortId": "",
+      "buddyKmWalked": 4.2
     },
     {
       "id": "1000000000000000003",
@@ -193,8 +211,18 @@
         "gender": 2,
         "shiny": false,
         "alignment": 0,
-        "breadModeEnum": 2
-      }
+        "breadModeEnum": 2,
+        "megaEvolutionLevel": {
+          "level": 2
+        },
+        "locationCard": null
+      },
+      "creationTimeMs": 1480000000000,
+      "tradedTimeMs": 0,
+      "hatchedFromEgg": true,
+      "caughtInParty": false,
+      "deployedFortId": "0f1e2d3c4b5a.16",
+      "buddyKmWalked": 0.0
     },
     {
       "id": "1000000000000000007",
