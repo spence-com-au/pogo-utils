@@ -411,7 +411,7 @@ export function sneaking(
   const balls = paint(painted(fixture('charged-shadow-sneak'), [200, 60, 60], FIRST_BALL));
 
   // Our fill run on to `px` of the bar's 100 at 360 wide, red under 20 as the game draws a bar that low, and dark beyond
-  // it; and Shadow Sneak's button unlit, as in the test above.
+  // it; and Shadow Sneak's button unlit, as in `run-baits.test.mts`'s test of fast moves finishing the opponent.
   const ours = (px: number) =>
     painted(
       painted(balls, [105, 91, 41], [22 / 360, 220 / 360, 122 / 360, 225 / 360]),
@@ -583,7 +583,10 @@ export function charizardHit(prompt: Image, spent = false): Record<string, Scene
 /** The red of a bar's fill as the stream draws it, for painting a bar low enough to turn red. */
 export const RED = [230, 106, 96];
 
-/** Xerneas against Garchomp as above, our grey Poké Ball painted red. */
+/**
+ * Xerneas against Garchomp as in `run-baits.test.mts`'s test of a lit move going once our energy fills the move held
+ * for too late, our grey Poké Ball painted red.
+ */
 const xerneas = () =>
   painted(fixture('battle-pixel8-xerneas-super-effective'), [200, 60, 60], [15 / 360, 69 / 360, 30 / 360, 82 / 360]);
 
