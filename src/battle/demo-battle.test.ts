@@ -55,10 +55,10 @@ const { setImmediate } = node.getBuiltinModule('node:timers/promises');
 
 /**
  * How long what the demo phone does takes on the battle's clock, in milliseconds, which is all the loop sees however
- * long the machine takes. An OCR read takes as long as `run.test.mts` gives one, about what a band of a battle's frame
- * took here, 29 to 42ms on average by its size. A screenshot takes a second, as there, though here one took 180ms:
- * each is decoded and read for real, so the fewer the loop takes, the sooner the battle is done. A touch takes as long
- * as `heldShell`'s `echo` on a Pixel 8 Pro, and a swipe as long as it is, as a phone's shell waits it out.
+ * long the machine takes. An OCR read takes as long as `run-*.test.mts` give one, about what a band of a battle's frame
+ * took here, 29 to 42ms on average by its size. A screenshot takes a second, as there, though here one took 180ms: each
+ * is decoded and read for real, so the fewer the loop takes, the sooner the battle is done. A touch takes as long as
+ * `heldShell`'s `echo` on a Pixel 8 Pro, and a swipe as long as it is, as a phone's shell waits it out.
  */
 const OCR_MS = 35;
 const SCREENSHOT_MS = 1000;
