@@ -45,13 +45,17 @@ function Yours({ held }: { held: Held | null }) {
     <section class="menu-section" aria-labelledby="phone-yours">
       <h2 id="phone-yours">Your Pokémon</h2>
       <p class="menu-note" aria-live="polite">
-        {reading
-          ? 'Reading your Pokémon…'
-          : status.state === 'failed'
-            ? status.reason
-            : owned !== null
-              ? `${owned.length.toLocaleString()} Pokémon read.`
-              : `Connect a phone or open PGSharp’s ${PGSTATS_NAME}.`}
+        {reading ? (
+          'Reading your Pokémon…'
+        ) : status.state === 'failed' ? (
+          status.reason
+        ) : owned !== null ? (
+          `${owned.length.toLocaleString()} Pokémon read.`
+        ) : (
+          <>
+            Connect a phone or open PGSharp’s <code>{PGSTATS_NAME}</code>.
+          </>
+        )}
       </p>
       <div class="menu-actions">
         {held && (
