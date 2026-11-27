@@ -496,6 +496,7 @@ body[data-page='pokedex'] {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.02em;
+    white-space: nowrap;
     text-transform: uppercase;
     box-shadow: 0 1px 4px rgb(0 0 0 / 14%);
   }
@@ -664,33 +665,6 @@ body[data-page='pokedex'] {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-  }
-
-  /**
-   * What the reader owns, read off the phone or an opened export: a short sheet with the ways to read it and how many
-   * of the grid are theirs.
-   */
-
-  .minesheet .body {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 8px 22px 22px;
-    font-size: 15px;
-  }
-
-  .minesheet .body p {
-    margin: 0;
-  }
-
-  .minesheet .error {
-    font-weight: 600;
-  }
-
-  .minesheet .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
   }
 
   .regionlist ul {

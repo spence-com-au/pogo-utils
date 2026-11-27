@@ -17,7 +17,7 @@
 import { DEMO_DETAIL, DEMO_SEARCHED, DEMO_STATS, DEMO_STORAGE } from '../../generated.ts';
 import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
-import { PGSTATS } from './snapshot.mts';
+import { PGSTATS } from './pgstats.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 
 const PROPS = [

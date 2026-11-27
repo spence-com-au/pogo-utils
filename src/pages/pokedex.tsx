@@ -32,14 +32,9 @@ import { fetchOk } from '../fetch-ok.js';
 import { POKEMON_ICONS, POKEMON_TYPES } from '../generated.js';
 import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
-import { inventoryStore, useInventory, type Inventory } from '../inventory-store.js';
-import { JsonFileButton } from '../json-file-button.js';
-import { usePhone } from '../phone-store.js';
+import { useInventory } from '../inventory-store.js';
+import { openPhonePanel } from '../phone.js';
 import { nameFragment } from '../search/query.js';
-import { PGSTATS } from '../tools/inventory/snapshot.mts';
-
-/** The export's file name, which a reader opening a copy of it looks for. */
-const PGSTATS_NAME = PGSTATS.slice(PGSTATS.lastIndexOf('/') + 1);
 
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
 const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
@@ -355,67 +350,6 @@ function Detail({
   );
 }
 
-/**
- * The sheet that reads the reader's Pokémon off the connected phone or a copy of the export they open, and says how
- * many of the filtered grid are theirs. What it reads is per-reader, so it is never in the fragment: a shared link
- * carries the filters a view was narrowed by, not whose collection happened to mark it.
- */
-function Mine({
-  phone,
-  inventory,
-  held,
-  total,
-  close,
-}: {
-  phone: ReturnType<typeof usePhone>;
-  inventory: Inventory;
-  held: number | null;
-  total: number;
-  close: () => void;
-}) {
-  const reading = inventory.state === 'reading';
-  const fromPhone = phone !== null && inventoryStore.source === phone;
-
-  return (
-    <>
-      <div class="listhead">
-        <h2 id="mineTitle">Yours</h2>
-        {held !== null && (
-          <p>
-            {held} / {total}
-          </p>
-        )}
-      </div>
-      <div class="body">
-        <p aria-live="polite">
-          {reading ? (
-            'Reading your Pokémon…'
-          ) : inventory.state === 'failed' ? (
-            <span class="error">{inventory.reason}</span>
-          ) : inventory.state === 'read' ? (
-            'The ones you own are ticked.'
-          ) : (
-            `Connect a phone (📱) or open PGSharp’s ${PGSTATS_NAME} to tick what you own.`
-          )}
-        </p>
-        <div class="buttons">
-          {phone !== null && (
-            <button type="button" class="ghost" disabled={reading} onClick={() => inventoryStore.read(phone)}>
-              {!fromPhone ? 'Read the phone' : inventory.state === 'failed' ? 'Try again' : 'Refresh'}
-            </button>
-          )}
-          <JsonFileButton class="ghost" disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
-            Open {PGSTATS_NAME}
-          </JsonFileButton>
-          <button type="button" class="ghost done" onClick={close}>
-            Done
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
 export default function PokedexPage({ query: fragment }: { query: string }) {
   const [state, setState] = useState<State>(() => fromFragment(fragment));
 
@@ -427,14 +361,12 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const queryRef = useRef<HTMLInputElement>(null);
   const regionsRef = useRef<HTMLDialogElement>(null);
-  const mineRef = useRef<HTMLDialogElement>(null);
 
   /** Each tile's button by the species it stands for, so a closing dialog can hand the focus back to the right one. */
   const tiles = useRef(new Map<number, HTMLButtonElement>());
 
-  /** The phone the document holds and what its PGSharp export says the reader owns, for marking the grid and forms. */
-  const phone = usePhone();
-  const inventory = useInventory(phone);
+  /** What the reader's PGSharp export says they own, for marking the grid and forms. */
+  const { rows } = useInventory();
 
   /**
    * The entries the filters leave, in dex order — what the grid shows and what the dialog's arrows step through.
@@ -447,14 +379,14 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
   const shown = new Set(visible.map((entry) => entry.dex));
 
   /** The dex numbers the reader owns, and how many of the filtered grid are among them — null until a read lands. */
-  const ownedDex = inventory.state === 'read' ? ownedSpecies(inventory.rows) : new Set<number>();
-  const mineHeld = inventory.state === 'read' ? visible.filter((entry) => ownedDex.has(entry.dex)).length : null;
+  const ownedDex = rows !== null ? ownedSpecies(rows) : new Set<number>();
+  const mineHeld = rows !== null ? visible.filter((entry) => ownedDex.has(entry.dex)).length : null;
 
   const open = state.open === null ? null : (ENTRIES.find((entry) => entry.dex === state.open) ?? null);
   const at = open === null ? -1 : visible.findIndex((entry) => entry.dex === open.dex);
 
   /** The forms of the open species the reader owns, for its forms table — null until a read lands, as its column is. */
-  const openOwned = open !== null && inventory.state === 'read' ? ownedForms(inventory.rows, open) : null;
+  const openOwned = open !== null && rows !== null ? ownedForms(rows, open) : null;
 
   const mine = toFragment(state);
 
@@ -648,11 +580,14 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             {searching && <span class="dot" />}
           </button>
           <span class="middle">
-            <button type="button" class="round mine" onClick={() => mineRef.current?.showModal()}>
+            {/* Read in the phone panel, which this opens; the tag counts what the grid shows of it once it is read. */}
+            <button type="button" class="round mine" onClick={openPhonePanel}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
-              <span class="tag">Yours</span>
+              <span class="tag">
+                {mineHeld === null ? 'Yours' : `${mineHeld.toLocaleString()} / ${visible.length.toLocaleString()}`}
+              </span>
             </button>
             {searching && (
               <button
@@ -767,25 +702,6 @@ export default function PokedexPage({ query: fragment }: { query: string }) {
             </button>
           </div>
         </section>
-      </dialog>
-
-      <dialog
-        ref={mineRef}
-        class="sheet minesheet"
-        aria-labelledby="mineTitle"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            mineRef.current?.close();
-          }
-        }}
-      >
-        <Mine
-          phone={phone}
-          inventory={inventory}
-          held={mineHeld}
-          total={visible.length}
-          close={() => mineRef.current?.close()}
-        />
       </dialog>
 
       {/*

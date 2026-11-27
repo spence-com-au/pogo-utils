@@ -1,12 +1,14 @@
 /**
  * The inventory store's own wiring: that a read reaches the phone for the export at its path, hands the bytes to the
- * converter and the fetched game master, and lands the rows — and that a failed read keeps the underlying reason. The
- * converter and the game master are stood in for, since `snapshot.test.mts` holds the conversion itself.
+ * converter and the fetched game master, and lands the rows — that a failed read keeps the underlying reason — and
+ * that each phone the phone store comes to hold is read, but not the one a battle hands back. The converter and the
+ * game master are stood in for, since `snapshot.test.mts` holds the conversion itself.
  */
 
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import type { Phone } from './core/browser/webusb.js';
+import { PhoneStore } from './phone-store.js';
 
 const mocks = vi.hoisted(() => ({
   gameData: vi.fn(),
@@ -22,10 +24,10 @@ vi.mock('./tools/inventory/snapshot.mts', async (actual) => ({
 }));
 
 const { InventoryStore } = await import('./inventory-store.js');
-const { PGSTATS } = await import('./tools/inventory/snapshot.mts');
+const { PGSTATS } = await import('./tools/inventory/pgstats.mts');
 
-/** A phone whose shell answers one `cat` with `bytes`, recording what it was asked to read. */
-function phone(shell: (args: readonly string[]) => Promise<Uint8Array>) {
+/** A phone whose shell answers each `cat` through `shell`, recording what it was asked to read. */
+function phone(shell: (args: readonly string[]) => Promise<Uint8Array>, serial = 'A') {
   const asked: string[][] = [];
   const transport = {
     state: async () => 'device' as const,
@@ -33,10 +35,42 @@ function phone(shell: (args: readonly string[]) => Promise<Uint8Array>) {
     screencap: async () => new Uint8Array(),
   };
 
-  return { asked, phone: { transport } as unknown as Phone };
+  const device = {
+    name: serial,
+    serial,
+    transport,
+    close: () => Promise.resolve(),
+    disconnected: new Promise<void>(() => {}),
+  } as unknown as Phone;
+
+  return { asked, phone: device };
+}
+
+/** A shell whose one read waits for `release`, for a test to land it when it says. */
+function held() {
+  let release: (bytes: Uint8Array) => void = () => {};
+  const shell = () => new Promise<Uint8Array>((resolve) => (release = resolve));
+
+  return { shell, release: (text: string) => release(bytes(text)) };
 }
 
 const bytes = (text: string) => new TextEncoder().encode(text);
+
+/** Until the read under way lands, which a hold starts without handing back to wait on. */
+const landed = (store: InstanceType<typeof InventoryStore>) =>
+  vi.waitFor(() => expect(store.status.state).not.toBe('reading'));
+
+/** Until `asked` has reached the phone, past the reader module's import, so its read can be released. */
+const reached = (asked: readonly unknown[]) => vi.waitFor(() => expect(asked).toHaveLength(1));
+
+let phones: PhoneStore;
+
+beforeEach(() => {
+  phones = new PhoneStore();
+  mocks.parseSnapshot.mockReturnValue({});
+  mocks.gameData.mockResolvedValue({});
+  mocks.rowsOf.mockReturnValue([{ dex: 25 }]);
+});
 
 afterEach(() => vi.resetAllMocks());
 
@@ -48,7 +82,7 @@ test('a read reaches the phone for the export, converts it, and lands the rows',
   mocks.gameData.mockResolvedValue({ forms: [] });
   mocks.rowsOf.mockReturnValue(rows);
 
-  const store = new InventoryStore();
+  const store = new InventoryStore(phones);
   const { asked, phone: device } = phone(async () => bytes('the export'));
 
   await store.read(device);
@@ -56,18 +90,20 @@ test('a read reaches the phone for the export, converts it, and lands the rows',
   expect(asked).toStrictEqual([['cat', PGSTATS]]);
   expect(mocks.parseSnapshot).toHaveBeenCalledWith('the export');
   expect(mocks.rowsOf).toHaveBeenCalledWith(snapshot, { forms: [] });
-  expect(store.inventory).toStrictEqual({ state: 'read', rows });
+  expect(store.rows).toStrictEqual(rows);
+  expect(store.status).toStrictEqual({ state: 'idle' });
 });
 
-test('a read that cannot reach the export keeps the reason and offers the export hint', async () => {
-  const store = new InventoryStore();
+test('a read of a held phone that cannot reach the export keeps the reason and offers the export hint', async () => {
+  const store = new InventoryStore(phones);
   const { phone: device } = phone(async () => {
     throw new Error('cat: No such file or directory');
   });
 
-  await store.read(device);
+  await phones.hold(device);
+  await landed(store);
 
-  expect(store.inventory).toStrictEqual({
+  expect(store.status).toStrictEqual({
     state: 'failed',
     reason:
       'could not read the export off the phone: cat: No such file or directory — ' +
@@ -77,111 +113,95 @@ test('a read that cannot reach the export keeps the reason and offers the export
 });
 
 test('a corrupt export or a failed game master fails without the export-off hint', async () => {
-  mocks.gameData.mockResolvedValue({});
   mocks.parseSnapshot.mockImplementation(() => {
     throw new Error('Unexpected token');
   });
 
-  const store = new InventoryStore();
-  await store.read(phone(async () => bytes('not json')).phone);
+  const store = new InventoryStore(phones);
+  const { phone: device } = phone(async () => bytes('not json'));
 
-  expect(store.inventory).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+  await phones.hold(device);
+  await landed(store);
+
+  expect(store.status).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+});
+
+test('a failed read keeps the rows the last one landed', async () => {
+  const store = new InventoryStore(phones);
+  await store.open(new Blob(['the export']));
+
+  const { phone: device } = phone(async () => {
+    throw new Error('closed');
+  });
+
+  await phones.hold(device);
+  await landed(store);
+
+  expect(store.status.state).toBe('failed');
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
 });
 
 test('a read already under way is left to finish rather than started again', async () => {
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValue([]);
-
-  const store = new InventoryStore();
-  let release: (bytes: Uint8Array) => void = () => {};
-  const { asked, phone: device } = phone(() => new Promise((resolve) => (release = resolve)));
+  const store = new InventoryStore(phones);
+  const wait = held();
+  const { asked, phone: device } = phone(wait.shell);
 
   const first = store.read(device);
-  expect(store.inventory.state).toBe('reading');
+  expect(store.status.state).toBe('reading');
 
   await store.read(device);
-  release(bytes('the export'));
+  await reached(asked);
+  wait.release('the export');
   await first;
 
   expect(asked).toHaveLength(1);
-  expect(store.inventory.state).toBe('read');
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
 });
 
 test('clear forgets what was read', async () => {
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValue([{ dex: 25 }]);
-
-  const store = new InventoryStore();
+  const store = new InventoryStore(phones);
   await store.read(phone(async () => bytes('the export')).phone);
-  expect(store.inventory.state).toBe('read');
+  expect(store.rows).not.toBeNull();
 
   store.clear();
-  expect(store.inventory).toStrictEqual({ state: 'empty' });
-});
-
-test('a read is held only for the phone it was read off', async () => {
-  const rows = [{ dex: 25 }];
-
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValue(rows);
-
-  const store = new InventoryStore();
-  const a = phone(async () => bytes('the export'));
-  const b = phone(async () => bytes('the export'));
-
-  await store.read(a.phone);
-
-  expect(store.forPhone(a.phone)).toStrictEqual({ state: 'read', rows });
-  expect(store.forPhone(b.phone)).toStrictEqual({ state: 'empty' });
-  expect(store.forPhone(null)).toStrictEqual({ state: 'empty' });
+  expect(store.rows).toBeNull();
+  expect(store.status).toStrictEqual({ state: 'idle' });
 });
 
 test('a read a clear overtook does not land over the cleared inventory', async () => {
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValue([{ dex: 25 }]);
+  const store = new InventoryStore(phones);
+  const wait = held();
 
-  const store = new InventoryStore();
-  let release: (bytes: Uint8Array) => void = () => {};
-  const { phone: device } = phone(() => new Promise((resolve) => (release = resolve)));
+  const { asked, phone: device } = phone(wait.shell);
 
   const reading = store.read(device);
+  await reached(asked);
   store.clear();
-  release(bytes('the export'));
+  wait.release('the export');
   await reading;
 
-  expect(store.inventory).toStrictEqual({ state: 'empty' });
+  expect(store.rows).toBeNull();
+  expect(store.status).toStrictEqual({ state: 'idle' });
 });
 
-test("a read for a newly held phone is not blocked by another phone's read in flight", async () => {
-  const rows = [{ dex: 25 }];
+test("a newer read lands and an older one it overtook is dropped, the phone's or a file's", async () => {
+  mocks.rowsOf.mockReturnValueOnce([{ dex: 1 }]).mockReturnValue([{ dex: 25 }]);
 
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValue(rows);
+  const store = new InventoryStore(phones);
+  const wait = held();
 
-  const store = new InventoryStore();
-  let releaseA: (bytes: Uint8Array) => void = () => {};
-  const a = phone(() => new Promise((resolve) => (releaseA = resolve)));
-  const b = phone(async () => bytes('the export'));
+  const { asked, phone: device } = phone(wait.shell);
 
-  const readingA = store.read(a.phone);
-  await store.read(b.phone);
+  const reading = store.read(device);
+  await reached(asked);
+  await store.open(new Blob(['the export']));
+  wait.release('the export');
+  await reading;
 
-  expect(store.source).toBe(b.phone);
-  expect(store.forPhone(b.phone)).toStrictEqual({ state: 'read', rows });
-
-  releaseA(bytes('the export'));
-  await readingA;
-
-  expect(store.forPhone(b.phone)).toStrictEqual({ state: 'read', rows });
-  expect(store.forPhone(a.phone)).toStrictEqual({ state: 'empty' });
+  expect(store.rows).toStrictEqual([{ dex: 1 }]);
 });
 
-test('an opened export converts the same way and shows whatever phone is held', async () => {
+test('an opened export converts the same way as a read off a phone', async () => {
   const rows = [{ dex: 25 }];
   const snapshot = { box: [] };
 
@@ -189,13 +209,12 @@ test('an opened export converts the same way and shows whatever phone is held', 
   mocks.gameData.mockResolvedValue({ forms: [] });
   mocks.rowsOf.mockReturnValue(rows);
 
-  const store = new InventoryStore();
+  const store = new InventoryStore(phones);
   await store.open(new Blob(['the export']));
 
   expect(mocks.parseSnapshot).toHaveBeenCalledWith('the export');
   expect(mocks.rowsOf).toHaveBeenCalledWith(snapshot, { forms: [] });
-  expect(store.forPhone(null)).toStrictEqual({ state: 'read', rows });
-  expect(store.forPhone(phone(async () => bytes('')).phone)).toStrictEqual({ state: 'read', rows });
+  expect(store.rows).toStrictEqual(rows);
 });
 
 test('an opened file that is not an export fails without the export-off hint', async () => {
@@ -203,26 +222,84 @@ test('an opened file that is not an export fails without the export-off hint', a
     throw new Error('Unexpected token');
   });
 
-  const store = new InventoryStore();
+  const store = new InventoryStore(phones);
   await store.open(new Blob(['not json']));
 
-  expect(store.inventory).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
+  expect(store.status).toStrictEqual({ state: 'failed', reason: 'could not read the inventory: Unexpected token' });
 });
 
-test("an opened file supersedes a phone's read still under way", async () => {
-  mocks.parseSnapshot.mockReturnValue({});
-  mocks.gameData.mockResolvedValue({});
-  mocks.rowsOf.mockReturnValueOnce([{ dex: 1 }]).mockReturnValue([{ dex: 25 }]);
+test('each phone held is read, without being asked', async () => {
+  const store = new InventoryStore(phones);
+  const a = phone(async () => bytes('the export'), 'A');
+  const b = phone(async () => bytes('the export'), 'B');
 
-  const store = new InventoryStore();
-  let release: (bytes: Uint8Array) => void = () => {};
-  const { phone: device } = phone(() => new Promise((resolve) => (release = resolve)));
+  await phones.hold(a.phone);
+  await landed(store);
+  await phones.hold(b.phone);
+  await landed(store);
 
-  const reading = store.read(device);
-  await store.open(new Blob(['the export']));
-  release(bytes('the export'));
-  await reading;
+  expect(a.asked).toStrictEqual([['cat', PGSTATS]]);
+  expect(b.asked).toStrictEqual([['cat', PGSTATS]]);
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
+});
 
-  expect(store.source).toBe('file');
-  expect(store.inventory).toStrictEqual({ state: 'read', rows: [{ dex: 1 }] });
+test('the phone a battle hands back, the serial last read, is not read again', async () => {
+  const store = new InventoryStore(phones);
+  const lent = phone(async () => bytes('the export'), 'A');
+  const back = phone(async () => bytes('the export'), 'A');
+
+  await phones.hold(lent.phone);
+  await landed(store);
+  phones.release();
+  await phones.hold(back.phone);
+  await landed(store);
+
+  expect(lent.asked).toHaveLength(1);
+  expect(back.asked).toHaveLength(0);
+});
+
+test('a phone connected again through the phone button is read again, and a new one only once', async () => {
+  const store = new InventoryStore(phones);
+  const first = phone(async () => bytes('the export'), 'A');
+  const again = phone(async () => bytes('the export'), 'A');
+
+  // What `connectPhone` does: hold, then read.
+  await phones.hold(first.phone);
+  await store.read(first.phone);
+  await landed(store);
+  phones.release();
+  await phones.hold(again.phone);
+  await store.read(again.phone);
+  await landed(store);
+
+  expect(first.asked).toHaveLength(1);
+  expect(again.asked).toHaveLength(1);
+});
+
+test('a read cut off by the phone being lent says nothing, and the phone handed back is read', async () => {
+  const store = new InventoryStore(phones);
+  const lent = phone(() => Promise.reject(new Error('the transport closed')), 'A');
+  const back = phone(async () => bytes('the export'), 'A');
+
+  // Taken out of the store before the read fails, as `lend` takes it before closing it.
+  await store.read(lent.phone);
+
+  expect(store.status).toStrictEqual({ state: 'idle' });
+  expect(store.rows).toBeNull();
+
+  await phones.hold(back.phone);
+  await landed(store);
+
+  expect(back.asked).toHaveLength(1);
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
+});
+
+test('the rows stay once the phone they were read off is let go', async () => {
+  const store = new InventoryStore(phones);
+
+  await phones.hold(phone(async () => bytes('the export')).phone);
+  await landed(store);
+  phones.release();
+
+  expect(store.rows).toStrictEqual([{ dex: 25 }]);
 });
