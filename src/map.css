@@ -262,36 +262,63 @@ body[data-page='map'] {
     color: var(--muted);
   }
 
-  .route .copy {
+  /* The eye that hides an entry from the backup is a button of the same kind as Copy, so it wears the same. */
+
+  .route :is(.copy, .eye) {
     border: 1px solid var(--border);
     background: var(--panel);
     color: var(--muted);
     border-radius: 6px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     font-size: 12px;
-    line-height: 1.2;
+    line-height: 1;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.12s;
   }
 
-  .route:hover .copy,
-  .route.active .copy,
-  .route .copy:focus-visible {
+  /**
+   * Smaller than the Search page's 18px, which would stand the two buttons taller than the 13px name they sit beside
+   * and space every row out for them.
+   *
+   * Inline in a line of the button's own text size rather than a block, so the button keeps a text baseline for the
+   * row to line it up by. A button holding only a block has none, and is put on the name's baseline by its bottom edge,
+   * which sat the pair half a line high on every waypoint's row, where no distance stands beside them to align by.
+   */
+
+  .route :is(.copy, .eye) svg {
+    width: 14px;
+    height: 14px;
+    vertical-align: -3px;
+  }
+
+  .route:hover :is(.copy, .eye),
+  .route.active :is(.copy, .eye),
+  .route :is(.copy, .eye):focus-visible,
+  .route.faded .eye {
     opacity: 1;
   }
 
-  /* Touch devices have no hover — always show the copy button there. */
+  /* Touch devices have no hover — always show the buttons there. */
 
   @media (hover: none) {
-    .route .copy {
+    .route :is(.copy, .eye) {
       opacity: 1;
     }
   }
 
-  .route .copy:hover {
+  .route :is(.copy, .eye):hover {
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  /**
+   * An entry hidden from the PGSharp backup. Still listed and drawn, as hiding is for the backup alone, but faded, and
+   * with its struck-through eye always showing so it can be put back.
+   */
+
+  .route.faded {
+    opacity: 0.6;
   }
 
   .route .copy.done {
@@ -503,14 +530,14 @@ body[data-page='map'] {
 
   /**
    * A reader who has asked the operating system for less movement still gets the layout, colour and elevation — only
-   * the swinging chevron, the fading copy button and the toast's slide go, each becoming an instant change of state
-   * instead.
+   * the swinging chevron, the fading copy and hide buttons and the toast's slide go, each becoming an instant change of
+   * state instead.
    */
 
   @media (prefers-reduced-motion: reduce) {
     .continent .chev,
     .country .chev,
-    .route .copy,
+    .route :is(.copy, .eye),
     #toast {
       transition: none;
     }

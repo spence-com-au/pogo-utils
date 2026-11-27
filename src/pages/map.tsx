@@ -23,6 +23,8 @@ import { eventStore } from '../event-store.js';
 import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
+import { loadHidden, toggleHidden, type Kind } from '../hidden-entries.js';
+import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
 import { said } from '../errors.js';
 import { toHash } from '../router.js';
 
@@ -140,38 +142,41 @@ function buildPopup(name: string, detail: string, copyLabel: string, text: strin
 }
 
 /**
- * A copy button that says how it went. Its own component so the flash is state belonging to the one button rather than
- * a timer and a captured label in a WeakMap keyed by element, which is what it took to do this to a node.
+ * A copy button that says how it went: the Search page's copy icon, turned to a tick for a moment once a copy has
+ * worked. A copy that failed leaves the icon be, the toast saying so in words a tick has no opposite for. Its own
+ * component so the tick is state belonging to the one button rather than a timer and a captured label in a WeakMap
+ * keyed by element, which is what it took to do this to a node.
  */
 function CopyButton({ text, title, onCopied }: { text: string; title: string; onCopied: (ok: boolean) => void }) {
-  const [flash, setFlash] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (flash === null) {
+    if (!copied) {
       return;
     }
 
-    const restore = setTimeout(() => setFlash(null), 1400);
+    const restore = setTimeout(() => setCopied(false), 1400);
 
     return () => clearTimeout(restore);
-  }, [flash]);
+  }, [copied]);
 
   return (
     <button
       type="button"
-      class={flash === null ? 'copy' : 'copy done'}
+      class={copied ? 'copy done' : 'copy'}
       title={title}
+      aria-label={copied ? 'Copied' : title}
       onClick={(event) => {
         // The row behind it would select the entry otherwise, which a reader reaching for Copy did not ask for.
         event.stopPropagation();
 
         void copyText(text).then((ok) => {
-          setFlash(ok ? 'Copied' : 'Failed');
+          setCopied(ok);
           onCopied(ok);
         });
       }}
     >
-      {flash ?? 'Copy'}
+      {icon(copied ? DONE_ICON : COPY_ICON)}
     </button>
   );
 }
@@ -179,10 +184,13 @@ function CopyButton({ text, title, onCopied }: { text: string; title: string; on
 /** One row in the sidebar, before it knows which group will hold it. */
 interface Row {
   id: string;
+  kind: Kind;
   name: string;
+  fullName: string;
   country: string;
   dist: number;
   event: string;
+  hidden: boolean;
   hit: boolean;
   gpx: string | null;
   coordStr: string | null;
@@ -217,6 +225,12 @@ export default function MapPage({ query: fragment }: { query: string }) {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 
   const [toast, setToast] = useState<string | null>(null);
+
+  /**
+   * What the reader has hidden from the PGSharp backup, as storage had it when the page opened or as the last toggle
+   * left it. Only the rows say so: the map draws every entry either way, hiding being for the backup.
+   */
+  const [hidden, setHidden] = useState(loadHidden);
 
   const mapNode = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -535,6 +549,19 @@ export default function MapPage({ query: fragment }: { query: string }) {
     }
   }
 
+  /** Hide an entry from the PGSharp backup, or put it back. */
+  function hide(row: Row) {
+    const next = toggleHidden(row.kind, row.fullName);
+
+    if (next === null) {
+      setToast('This browser could not save that');
+
+      return;
+    }
+
+    setHidden(next);
+  }
+
   /** The continent and country group keys an entry's row sits under, so selecting it can open both. */
   function groupKeys(id: string): readonly string[] {
     const held = loadedRef.current;
@@ -627,20 +654,26 @@ export default function MapPage({ query: fragment }: { query: string }) {
   const all: Row[] = [
     ...(loaded?.routes ?? []).map((route) => ({
       id: route.id,
+      kind: 'routes' as const,
       name: route.name,
+      fullName: route.fullName,
       country: route.country,
       dist: route.distance,
       event: route.event,
+      hidden: hidden.routes.has(route.fullName),
       hit: !term || route.name.toLowerCase().includes(term) || route.country.toLowerCase().includes(term),
       gpx: route.gpx,
       coordStr: null,
     })),
     ...(loaded?.cities ?? []).map((city) => ({
       id: city.id,
+      kind: 'waypoints' as const,
       name: city.name,
+      fullName: city.fullName,
       country: city.country,
       dist: 0,
       event: city.event,
+      hidden: hidden.waypoints.has(city.fullName),
       hit: !term || city.name.toLowerCase().includes(term) || city.country.toLowerCase().includes(term),
       gpx: null,
       coordStr: city.coordStr,
@@ -802,9 +835,17 @@ export default function MapPage({ query: fragment }: { query: string }) {
                               routeClasses.push('hidden');
                             }
 
+                            if (row.hidden) {
+                              routeClasses.push('faded');
+                            }
+
                             if (chosen.has(row.id)) {
                               routeClasses.push('active');
                             }
+
+                            const action = row.hidden
+                              ? 'Put back in the PGSharp backup'
+                              : 'Hide from the PGSharp backup';
 
                             return (
                               <div
@@ -835,6 +876,24 @@ export default function MapPage({ query: fragment }: { query: string }) {
                                       )
                                     }
                                   />
+
+                                  {/*
+                                   * The Search page's eye: open while the entry goes into the PGSharp backup, struck
+                                   * through while it is hidden from it. The map draws it either way. Stopped short of
+                                   * the row for the reason Copy is.
+                                   */}
+                                  <button
+                                    type="button"
+                                    class="eye"
+                                    title={action}
+                                    aria-label={`${row.name}: ${action}`}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      hide(row);
+                                    }}
+                                  >
+                                    {icon(row.hidden ? EYE_OFF_ICON : EYE_ICON)}
+                                  </button>
                                 </span>
 
                                 {/*

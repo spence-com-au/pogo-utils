@@ -9,7 +9,8 @@
 import tzlookup from 'tz-lookup';
 
 import COUNTRIES from '../countries.js';
-import { eachTrack, entryCoords, entryCountry, extText, placeName } from '../gpx.js';
+import { eachTrack, entryCoords, entryCountry, entryName } from '../gpx.js';
+import { NOTHING_HIDDEN, type Hidden } from '../hidden-entries.js';
 
 /** The two favourite keys in PGSData.dat: one coordinate each, and whole paths. */
 export const POINTS_KEY = 'hlfavor';
@@ -78,17 +79,6 @@ export function encodeRoutes(entries: readonly Route[]) {
 }
 
 /**
- * A favourite's whole name — "Kings Park, Perth, Western Australia, Australia (long)". PGSharp lists and deletes
- * favourites by name, so this is the only identity one has, which is why every part comes from the file rather than
- * the path. Mirrors pgsedit's `entry_name`.
- */
-function entryName(el: Element) {
-  const label = `${placeName(el)}, ${entryCountry(el)}`;
-  const variant = extText(el, 'variant');
-  return variant ? `${label} (${variant})` : label;
-}
-
-/**
  * A subdivision flag is a black flag, the region and subdivision letters as tag characters (ASCII shifted into the tag
  * block), then the cancel tag.
  */
@@ -131,18 +121,32 @@ function flaggedName(el: Element) {
  * flagged, so the two lists read alike in the app even though PGSharp shows them on separate tabs.
  *
  * It takes the parsed tree rather than the file's text, so the one call a browser is needed for stays at the caller.
+ *
+ * What the reader hid on the Map page is left out here, by kind, and counted as `hidden` so the summary can say so. An
+ * entry is matched before it is flagged: `hidden` holds the names the map knows, which carry no flag.
  */
-export function gpxFavourites(doc: Document) {
+export function gpxFavourites(doc: Document, hidden: Hidden = NOTHING_HIDDEN) {
   const points: Point[] = [];
 
   const routes: Route[] = [];
+  let left = 0;
 
   for (const wpt of doc.getElementsByTagName('wpt')) {
+    if (hidden.waypoints.has(entryName(wpt))) {
+      left++;
+      continue;
+    }
+
     const [lat, lng] = entryCoords(wpt).coords;
     points.push({ name: flaggedName(wpt), lat, lng });
   }
 
   for (const { trk, trkpts } of eachTrack(doc)) {
+    if (hidden.routes.has(entryName(trk))) {
+      left++;
+      continue;
+    }
+
     const pts: RoutePoint[] = [];
 
     for (const p of trkpts) {
@@ -153,7 +157,7 @@ export function gpxFavourites(doc: Document) {
     routes.push({ name: flaggedName(trk), points: pts });
   }
 
-  return { points, routes };
+  return { points, routes, hidden: left };
 }
 
 /**

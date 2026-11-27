@@ -11,6 +11,7 @@
  */
 
 import { KEY_PREFIX } from '../storage-namespace.js';
+import { load, store } from '../stored-list.js';
 import type { Preset } from './terms.js';
 
 export const FAVOURITES_KEY = `${KEY_PREFIX}search:favourites`;
@@ -33,44 +34,18 @@ const isFavourite = (value: unknown): value is Favourite => {
   return typeof label === 'string' && typeof fragment === 'string';
 };
 
-/**
- * A list as storage holds it. Storage is a channel anything can write to — an import from a backup someone edited by
- * hand among them — so whatever `keep` refuses is dropped rather than trusted, and storage that will not answer reads
- * as nothing saved.
- */
-function load<T>(key: string, keep: (value: unknown) => value is T): T[] {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
-
-    return Array.isArray(stored) ? stored.filter(keep) : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Write a list back, answering whether it was written. Not swallowed as `event-prefs.ts` swallows a refusal: a filter
- * that fails to save still filters for the rest of the session, but a favourite that fails to save is gone at the next
- * load, which the reader has to be told while they can still copy the link instead. The panel reads both lists from
- * storage as it draws, so a hide refused would otherwise be a press that does nothing.
- */
-function store(key: string, list: readonly unknown[]): boolean {
-  try {
-    localStorage.setItem(key, JSON.stringify(list));
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** The saved favourites, oldest first. */
 export const loadFavourites = (): Favourite[] => load(FAVOURITES_KEY, isFavourite);
 
+/**
+ * Whether the list was written. A favourite that fails to save is gone at the next load, which the reader has to be
+ * told while they can still copy the link instead.
+ */
 export const storeFavourites = (list: readonly Favourite[]): boolean => store(FAVOURITES_KEY, list);
 
 export const loadHidden = (): string[] => load(HIDDEN_KEY, (value) => typeof value === 'string');
 
+/** Whether the ids were written: the panel reads them from storage as it draws, so a refused hide does nothing. */
 export const storeHidden = (ids: readonly string[]): boolean => store(HIDDEN_KEY, ids);
 
 /**

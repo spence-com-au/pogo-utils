@@ -123,6 +123,18 @@ export function entryCountry(el: Element): string {
 }
 
 /**
+ * An entry's whole name — "Kings Park, Perth, Western Australia, Australia (long)". PGSharp lists and deletes
+ * favourites by name, so this is the only identity one has, which is why every part comes from the file rather than
+ * the path. The map hides an entry by it for the same reason, so what a reader hides there is what the backup leaves
+ * out. Mirrors pgsedit's `entry_name`.
+ */
+export function entryName(el: Element): string {
+  const label = `${placeName(el)}, ${entryCountry(el)}`;
+  const variant = extText(el, 'variant');
+  return variant ? `${label} (${variant})` : label;
+}
+
+/**
  * Where a `<trkpt>` or a `<wpt>` says it is, one reader for both tags because they are one format. `coords` is a tuple
  * so destructuring gives two numbers rather than two `number | undefined`; `coordStr` is the file's own text for the
  * pair, so a consumer can hand over exactly what the file said.

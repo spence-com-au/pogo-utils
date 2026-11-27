@@ -25,6 +25,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
+import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
 import { usePhone } from '../phone-store.js';
 import { copyHint } from '../platform.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
@@ -71,29 +72,8 @@ import {
   type Path,
 } from '../search/tree.js';
 
-/** An icon drawn in the text colour of the button it sits in, so it follows the theme and a button's states. */
-const icon = (path: string) => (
-  <svg
-    viewBox="0 0 24 24"
-    width="18"
-    height="18"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path d={path} />
-  </svg>
-);
-
-const COPY_ICON = 'M8 8h12v12H8zM4 16V4h12';
-const DONE_ICON = 'M5 12l5 5L19 7';
 const SAVE_ICON = 'M6 3h12v18l-6-4-6 4z';
 const SEARCH_ICON = 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.9-4.9';
-const EYE_ICON = 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z';
-const EYE_OFF_ICON = `${EYE_ICON}M4 4l16 16`;
 
 /**
  * What a chip in the sheet wears in each of its two states — the glyph, and the words a screen reader is given instead

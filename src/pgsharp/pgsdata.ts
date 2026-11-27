@@ -27,10 +27,14 @@ import {
   type Route,
 } from './favourites.js';
 
-/** The two lists as `gpxFavourites` builds them, before anything has been dropped, ordered or timezoned. */
+/**
+ * The two lists as `gpxFavourites` builds them, before any duplicate has been dropped, ordered or timezoned, and how
+ * many entries it left out because the reader hid them on the Map page.
+ */
 export interface RepoFavourites {
   points: Point[];
   routes: Route[];
+  hidden: number;
 }
 
 /**
@@ -60,6 +64,10 @@ export interface Backup {
  */
 export function buildBackup(repo: RepoFavourites, ticked: ReadonlySet<string>): Backup {
   const notes: string[] = [];
+
+  if (repo.hidden) {
+    notes.push(`${repo.hidden} hidden on the Map page left out`);
+  }
 
   const p = dedupeByName(repo.points);
   const r = dedupeByName(repo.routes);

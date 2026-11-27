@@ -22,6 +22,7 @@ import { said } from '../errors.js';
 import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
+import { loadHidden } from '../hidden-entries.js';
 import { displayFilterText, shinyHuntFilter } from '../livepokemap/display-filter.js';
 import { CONTROLS, CONTROL_LABELS, CONTROL_RESETS, type Control } from '../pgsharp/controls.js';
 import { gpxFavourites, type Point, type Route } from '../pgsharp/favourites.js';
@@ -66,21 +67,24 @@ async function buildRepoFavourites() {
   const points: Point[] = [];
 
   const routes: Route[] = [];
+  const hide = loadHidden();
+  let hidden = 0;
 
   for (const [file, text] of texts) {
     let parsed;
 
     try {
-      parsed = gpxFavourites(parseGpxDocument(text));
+      parsed = gpxFavourites(parseGpxDocument(text), hide);
     } catch (e) {
       throw new Error(`${file}: ${said(e)}`, { cause: e });
     }
 
     points.push(...parsed.points);
     routes.push(...parsed.routes);
+    hidden += parsed.hidden;
   }
 
-  return { points, routes };
+  return { points, routes, hidden };
 }
 
 /**
@@ -218,7 +222,8 @@ export default function IntegrationsPage() {
 
           <p>
             Build a PGSharp backup holding this site’s routes and waypoints and the options ticked below. Importing it
-            replaces only those and leaves the rest of your PGSharp settings alone. Everything runs in your browser.
+            replaces only those and leaves the rest of your PGSharp settings alone. Anything you hid on the Map page is
+            left out. Everything runs in your browser.
           </p>
 
           <details class="subgroup" open>
