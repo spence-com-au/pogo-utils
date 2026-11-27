@@ -421,3 +421,9 @@ test('a kept export that no longer parses can still be forgotten', async () => {
   expect(after.status).toStrictEqual({ state: 'idle' });
   expect(mocks.parseSnapshot).not.toHaveBeenCalled();
 });
+
+test('a visit with nothing kept leaves no database behind', async () => {
+  await new InventoryStore(phones).restore();
+
+  expect(await indexedDB.databases()).toEqual([]);
+});
