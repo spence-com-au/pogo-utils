@@ -15,8 +15,9 @@
   a pull request is committed, run `pnpm test --changed origin/master`, then push and open the pull request. That runs
   only the test files that import something the branch changed, so a test that reads what it checks from disk is missed
   and is run by name beside it: `pnpm test styles` for a stylesheet or `index.html`, `pnpm test workflows` for a
-  workflow. Leave the rest to its checks rather than a local run of the full suite, in the foreground or the background:
-  `gh pr checks`, then `gh run view <id> --log-failed` for what failed.
+  workflow. A branch that changes `package.json` or `vitest.config.mjs` skips `--changed`, which runs every test file
+  for those. Leave the rest to its checks rather than a local run of the full suite, in the foreground or the
+  background: `gh pr checks`, then `gh run view <id> --log-failed` for what failed.
 - **Light alone is enough for a pull request's screenshots.** Take a dark set as well only when dark draws the change
   meaningfully differently: a change that only follows the theme's colours gains nothing from a second set.
 - **File an issue for what a change leaves behind.** A defect met on the way to something else, or a follow-up a change
