@@ -163,6 +163,7 @@ test('gpxEntries splits a file into routes and waypoints', () => {
         [-37.81, 144.98],
       ],
       name: 'Tan Track, Melbourne',
+      fullName: 'Tan Track, Melbourne, Australia (long)',
       country: 'Australia',
       variant: 'long',
       event: 'Community Day',
@@ -173,6 +174,7 @@ test('gpxEntries splits a file into routes and waypoints', () => {
   expect(waypoints).toEqual([
     {
       name: 'Melbourne Zoo',
+      fullName: 'Melbourne Zoo, Australia',
       country: 'Australia',
       event: '',
       coords: [-37.7841, 144.9512],

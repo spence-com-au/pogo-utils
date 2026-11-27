@@ -68,6 +68,27 @@ test('a subdivision gets a tag sequence rather than a pair of regional indicator
   expect(points[0]?.name).toBe('\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F} Soho, London, England');
 });
 
+/**
+ * What the reader hid on the Map page is matched by the whole name the map knows, locality and variant included, and
+ * within its own kind: the track and the waypoint here share a name, as Pier 39's do, and only the track is hidden.
+ * The short track shows the variant is part of the match rather than ignored, which would hide both of a pair.
+ */
+test('an entry hidden on the Map page is left out by kind and counted', () => {
+  const track = (variant: string) =>
+    '<trk><name>Melbourne Zoo</name><extensions><pgr:city>Melbourne</pgr:city>' +
+    `<pgr:country>Australia</pgr:country><pgr:variant>${variant}</pgr:variant></extensions>` +
+    '<trkseg><trkpt lat="-37.8" lon="144.97"/><trkpt lat="-37.81" lon="144.98"/></trkseg></trk>';
+
+  const { points, routes, hidden } = gpxFavourites(gpx(MELBOURNE_ZOO + track('long') + track('short')), {
+    routes: new Set(['Melbourne Zoo, Melbourne, Australia (long)']),
+    waypoints: new Set(),
+  });
+
+  expect(points.map((point) => point.name)).toEqual(['🇦🇺 Melbourne Zoo, Melbourne, Australia']);
+  expect(routes.map((route) => route.name)).toEqual(['🇦🇺 Melbourne Zoo, Melbourne, Australia (short)']);
+  expect(hidden).toBe(1);
+});
+
 test('a locality is optional where a name and a country are not', () => {
   const { points } = gpxFavourites(
     gpx(

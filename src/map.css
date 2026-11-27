@@ -75,7 +75,9 @@ body[data-page='map'] {
     border-bottom: 1px solid var(--border);
   }
 
-  .search input {
+  /* The box alone, not the checkbox under it, which a full width would set adrift from its label. */
+
+  .search input[type='search'] {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border);
@@ -85,9 +87,25 @@ body[data-page='map'] {
     font-size: 13px;
   }
 
-  .search input:focus {
+  .search input[type='search']:focus {
     outline: 2px solid var(--track);
     outline-offset: -1px;
+  }
+
+  .search .toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .search .toggle input {
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
   }
 
   #list {
@@ -262,7 +280,9 @@ body[data-page='map'] {
     color: var(--muted);
   }
 
-  .route .copy {
+  /* The eye that hides an entry is a button of the same kind as Copy, so it wears the same and appears with it. */
+
+  .route :is(.copy, .eye) {
     border: 1px solid var(--border);
     background: var(--panel);
     color: var(--muted);
@@ -275,23 +295,45 @@ body[data-page='map'] {
     transition: opacity 0.12s;
   }
 
-  .route:hover .copy,
-  .route.active .copy,
-  .route .copy:focus-visible {
+  /**
+   * Sized to the Copy button's height: 12px text at a line height of 1.2 is about 14px, where the Search page's 18px
+   * icon would make the eye the taller of the two and the row's buttons ragged.
+   */
+
+  .route .eye {
+    padding: 2px 4px;
+  }
+
+  .route .eye svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+  }
+
+  .route:hover :is(.copy, .eye),
+  .route.active :is(.copy, .eye),
+  .route :is(.copy, .eye):focus-visible,
+  .route.faded .eye {
     opacity: 1;
   }
 
-  /* Touch devices have no hover — always show the copy button there. */
+  /* Touch devices have no hover — always show the buttons there. */
 
   @media (hover: none) {
-    .route .copy {
+    .route :is(.copy, .eye) {
       opacity: 1;
     }
   }
 
-  .route .copy:hover {
+  .route :is(.copy, .eye):hover {
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  /* A hidden entry, listed only while the hidden ones are shown, faded as its line or dot is on the map. */
+
+  .route.faded {
+    opacity: 0.6;
   }
 
   .route .copy.done {
@@ -503,14 +545,14 @@ body[data-page='map'] {
 
   /**
    * A reader who has asked the operating system for less movement still gets the layout, colour and elevation — only
-   * the swinging chevron, the fading copy button and the toast's slide go, each becoming an instant change of state
-   * instead.
+   * the swinging chevron, the fading copy and hide buttons and the toast's slide go, each becoming an instant change of
+   * state instead.
    */
 
   @media (prefers-reduced-motion: reduce) {
     .continent .chev,
     .country .chev,
-    .route .copy,
+    .route :is(.copy, .eye),
     #toast {
       transition: none;
     }

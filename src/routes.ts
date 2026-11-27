@@ -8,7 +8,7 @@
  */
 
 import { MIN_TRKPTS } from './gpx-dialect.js';
-import { eachTrack, entryCoords, entryCountry, entryGpx, extText, placeName } from './gpx.js';
+import { eachTrack, entryCoords, entryCountry, entryGpx, entryName, extText, placeName } from './gpx.js';
 
 /**
  * A drawable track as the file gives it. `latlngs` is a list of *pairs* rather than a list of lists, because that is
@@ -18,10 +18,14 @@ import { eachTrack, entryCoords, entryCountry, entryGpx, extText, placeName } fr
  * `gpx` is this one track written back out as a file of its own, for the Copy button to hand over. It is carried here
  * rather than taken off the page's own copy of the fetched text because a stored file holds a whole country: what was
  * read is every route in it, and what was asked for is this one.
+ *
+ * `fullName` is the whole name `entryName` gives, country and variant included, which is what hiding the route
+ * remembers it by and so what the backup leaves it out by.
  */
 export interface Route {
   latlngs: [number, number][];
   name: string;
+  fullName: string;
   country: string;
   variant: string;
   event: string;
@@ -30,10 +34,11 @@ export interface Route {
 
 /**
  * One place to stand. `coordStr` is the file's own lat/lon text rather than the parsed pair restringified, so what the
- * copy button hands over is exactly what the file said.
+ * copy button hands over is exactly what the file said. `fullName` is a route's.
  */
 export interface Waypoint {
   name: string;
+  fullName: string;
   country: string;
   event: string;
   coords: [number, number];
@@ -111,6 +116,7 @@ export function gpxEntries(doc: Document): { routes: Route[]; waypoints: Waypoin
     routes.push({
       latlngs,
       name: placeName(trk),
+      fullName: entryName(trk),
       country: entryCountry(trk),
       variant: extText(trk, 'variant') || '',
       event: extText(trk, 'event') || '',
@@ -124,6 +130,7 @@ export function gpxEntries(doc: Document): { routes: Route[]; waypoints: Waypoin
     waypoints.push({
       country: entryCountry(w),
       name: placeName(w),
+      fullName: entryName(w),
       ...entryCoords(w),
       event: extText(w, 'event') || '',
     });

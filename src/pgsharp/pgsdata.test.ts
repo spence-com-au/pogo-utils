@@ -158,7 +158,10 @@ test('the two kinds are deduped separately and reported separately', () => {
 
 /** A coordinate tz-lookup will not name is counted rather than guessed at, and the point is kept without the field. */
 test('a point with no timezone is counted and kept', () => {
-  const backup = buildBackup({ points: [{ name: 'Off the globe', lat: 91, lng: 0 }], routes: [] }, new Set());
+  const backup = buildBackup(
+    { points: [{ name: 'Off the globe', lat: 91, lng: 0 }], routes: [], hidden: 0 },
+    new Set(),
+  );
   const points: { name: string; tz?: string }[] = JSON.parse(String(reread(backup.bytes).get('hlfavor')));
 
   expect(points).toEqual([{ name: 'Off the globe', lat: 91, lng: 0 }]);
@@ -228,7 +231,7 @@ test('an unknown control id contributes nothing', () => {
  * An empty repository is a valid backup of nothing rather than a failure: the two keys are there, holding empty lists.
  */
 test('a repository with no files still builds', () => {
-  const backup = buildBackup({ points: [], routes: [] }, new Set());
+  const backup = buildBackup({ points: [], routes: [], hidden: 0 }, new Set());
   const root = reread(backup.bytes);
 
   expect(root.get('hlfavor')).toBe('[]');
@@ -278,6 +281,25 @@ test('the summary quotes the counts the build answered', () => {
 
   expect(backupSummary(backup)).toBe(
     'Built a partial backup — 1 waypoint(s) and 1 route(s) (1 duplicate waypoint name(s) skipped). ' +
+      'Import it into PGSharp.',
+  );
+});
+
+/**
+ * What the reader hid on the Map page is missing from the bytes PGSharp imports, not only from the counts, and the
+ * summary says how many went, so a backup holding fewer than the site lists does not read as entries lost.
+ */
+test('an entry hidden on the Map page is left out of the bytes and said so', () => {
+  const repo = gpxFavourites(gpx(MELBOURNE + trk('Tan Track') + trk('Botanic Loop')), {
+    routes: new Set(['Tan Track, Australia']),
+    waypoints: new Set(),
+  });
+  const backup = buildBackup(repo, new Set());
+  const routes: { name: string }[] = JSON.parse(String(reread(backup.bytes).get('hlfavorRoute')));
+
+  expect(routes.map((route) => route.name)).toEqual(['🇦🇺 Botanic Loop, Australia']);
+  expect(backupSummary(backup)).toBe(
+    'Built a partial backup — 1 waypoint(s) and 1 route(s) (1 hidden on the Map page left out). ' +
       'Import it into PGSharp.',
   );
 });
