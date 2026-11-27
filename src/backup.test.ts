@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { applyBackup, backupName, ownedKeys, parseBackup, rescueName, restoreBackup, writeBackup } from './backup.js';
+import { applyBackup, backupName, ownedKeys, parseBackup, restoreBackup, writeBackup } from './backup.js';
 import { KEYS, loadPrefs, persist, type Prefs } from './event-prefs.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
@@ -438,15 +438,9 @@ test('a version 2 file restores its keys as named, and relabelled 3 is refused',
   expect(loadPrefs().hiddenByView).toEqual({ cards: new Set(['raid-hour']) });
 });
 
-/**
- * Dated, because a fixed name makes the browser number successive exports and they stop saying which is which — and
- * the rescue copy is named apart, telling the two apart being the whole of its worth to someone recovering.
- */
-test('the two names are dated, and differ from each other', () => {
-  const when = new Date('2026-10-09T12:00:00Z');
-
-  expect(backupName(when)).toBe('pogo-utils-backup-2026-10-09.json');
-  expect(rescueName(when)).toBe('pogo-utils-backup-before-import-2026-10-09.json');
+/** Dated, because a fixed name makes the browser number successive exports and they stop saying which is which. */
+test('an export is named for the day', () => {
+  expect(backupName(new Date('2026-10-09T12:00:00Z'))).toBe('pogo-utils-backup-2026-10-09.json');
 });
 
 /**
@@ -492,45 +486,25 @@ test('a write that fails partway puts back what it found', () => {
   expect(storage.snapshot()).toEqual(before);
 });
 
-/**
- * The order a restore runs in, recorded as it happens: the copy has to be taken before the keys are written, since
- * taken after it would be a copy of the file just imported.
- */
+/** The corrections a restore runs, recorded as they happen. */
 function runRestore(text: string) {
   const calls: string[] = [];
-  const copies: string[] = [];
-  const result = restoreBackup(
-    text,
-    new Date(2026, 9, 10),
-    (copy, name) => {
-      calls.push(`download ${name}`);
-      copies.push(copy);
-    },
-    () => calls.push('restored'),
-  );
+  const result = restoreBackup(text, () => calls.push('restored'));
 
-  return { calls, copies, result };
+  return { calls, result };
 }
 
-test('a restore takes its copy of what is stored before writing the file over it, then runs the corrections', () => {
+test('a restore writes the file over what is stored and runs the corrections', () => {
   storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
 
-  const { calls, copies, result } = runRestore(backupOf({ dismissed: ['new'] }));
-
-  expect(calls).toEqual([`download ${rescueName(new Date(2026, 9, 10))}`, 'restored']);
-  expect(copies.map((copy) => (JSON.parse(copy) as { values: object }).values)).toEqual([{ dismissed: ['old'] }]);
-  expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['new']));
-  expect(result).toEqual({ written: 1, rescued: true });
-});
-
-test('a restore into empty storage takes no copy of nothing', () => {
   const { calls, result } = runRestore(backupOf({ dismissed: ['new'] }));
 
   expect(calls).toEqual(['restored']);
-  expect(result).toEqual({ written: 1, rescued: false });
+  expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['new']));
+  expect(result).toBe(1);
 });
 
-test('an empty file changes nothing, takes no copy and runs no corrections', () => {
+test('an empty file changes nothing and runs no corrections', () => {
   storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
 
   const { calls, result } = runRestore(backupOf({}));
@@ -540,18 +514,9 @@ test('an empty file changes nothing, takes no copy and runs no corrections', () 
   expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['old']));
 });
 
-test('a refused file takes no copy and runs no corrections', () => {
-  storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
-
+test('a refused file runs no corrections', () => {
   const calls: string[] = [];
 
-  expect(() =>
-    restoreBackup(
-      'not json',
-      new Date(),
-      () => calls.push('download'),
-      () => calls.push('restored'),
-    ),
-  ).toThrow('not readable JSON');
+  expect(() => restoreBackup('not json', () => calls.push('restored'))).toThrow('not readable JSON');
   expect(calls).toEqual([]);
 });
