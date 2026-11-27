@@ -17,6 +17,7 @@
 import { type GameData } from '../core/game-master.mts';
 import { fold } from '../core/ocr.mts';
 import { GENERATIONS } from '../pokemon/generations.js';
+import POKEMON from '../pokemon/pokedex.js';
 import { type Row } from '../tools/inventory/snapshot.mts';
 import { RANGES_BY_ID } from './terms.js';
 import { isGroup, leafText, whole, type Leaf, type Node } from './tree.js';
@@ -34,6 +35,9 @@ export interface Collection {
 type Answer = boolean | null;
 
 const verdict = (answer: Answer): Verdict => (answer === null ? 'unsure' : answer ? 'yes' : 'no');
+
+/** Each species by its dex number, for the categories the game data does not carry. */
+const SPECIES = new Map(Object.values(POKEMON).map((pokemon) => [pokemon.dex, pokemon]));
 
 const REGIONS = ['alola', 'galar', 'hisui', 'paldea'];
 
@@ -142,6 +146,7 @@ export function judging({ rows, data, now }: Collection) {
     const total = row.iv && row.iv.attack + row.iv.defense + row.iv.stamina;
     const stars = total === null ? null : starsOf(total);
     const region = row.dex === null ? null : regionOf(row.form);
+    const species = row.dex === null ? undefined : SPECIES.get(row.dex);
     const generation = GENERATIONS.find(({ number }) => `gen${number}` === id);
 
     if (generation) {
@@ -177,6 +182,14 @@ export function judging({ rows, data, now }: Collection) {
       case 'candyxl':
         // Past 40 on the Pokémon's own multiplier, a Best Buddy's boost left out as the chip's help says.
         return row.raw.cpMultiplier > fortieth + 1e-6;
+      case 'legendary':
+        return species?.legendary ?? null;
+      case 'mythical':
+        return species?.mythical ?? null;
+      case 'ultrabeast':
+        return species?.ultraBeast ?? null;
+      case 'eggsonly':
+        return species?.baby ?? null;
       case 'shadow':
         return row.shadow;
       case 'purified':

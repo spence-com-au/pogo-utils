@@ -52,7 +52,13 @@ test('a pill nothing here can judge is unsure, and turning it round leaves it un
   expect(ask('evolve', PIKACHU)).toBe('unsure');
   expect(ask('!evolve', PIKACHU)).toBe('unsure');
   expect(ask('+pikachu', PIKACHU)).toBe('unsure');
-  expect(ask('legendary', PIKACHU)).toBe('unsure');
+  expect(ask('item', PIKACHU)).toBe('unsure');
+});
+
+test('a species’ category is the Pokédex’s', () => {
+  expect(ask('mythical & !legendary & !ultrabeast', byForm('DeoxysAttack'))).toBe('yes');
+  expect(ask('legendary, mythical, ultrabeast, eggsonly', PIKACHU)).toBe('no');
+  expect(ask('legendary', UNKNOWN)).toBe('unsure');
 });
 
 test('an unsure pill is settled by a no beside it in an all, and by a yes beside it in an any', () => {
