@@ -9,7 +9,8 @@ describe('dex', () => {
   /**
    * Two pop-ups over the map, each of which takes the main menu's tap and does nothing with it (#1046). Each is put off
    * with its LATER, which is the only tap the phone answers on one, and the walk goes on from the map beneath them over
-   * the same range as the test above, which gets as far as the grid and no further.
+   * the same range as the walk past the last species seen in `phone-dex-ends.test.mts`, which gets as far as the grid
+   * and no further.
    */
   test(
     'puts off the pop-ups over the map with their LATER and walks on from it',
@@ -27,7 +28,7 @@ describe('dex', () => {
 
   /**
    * A first tap on the main menu's button that the phone drops, leaving the map as it was with the button drawn where
-   * it was (#1058). The walk taps it again and goes on over the same range as the test above.
+   * it was (#1058). The walk taps it again and goes on over the same range as the one above.
    */
   test('taps the main menu again where the phone dropped the tap', { timeout: SLOW }, async (context) => {
     const phone = new Pokedex();

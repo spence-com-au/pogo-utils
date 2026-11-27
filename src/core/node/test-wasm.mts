@@ -1,7 +1,6 @@
 /**
- * The WebAssembly build of Tesseract as a test runs it, whatever `INVENTORY_OCR` asks for: `pnpm battle` and the
- * Battle tab both read with it, so the battle readers' tests hold no CLI answers to keep. A test whose engine follows
- * the environment takes it from `test-engine.mts` instead.
+ * The WebAssembly build of Tesseract as a test runs it, which reads no `INVENTORY_OCR`: a test whose engine follows the
+ * environment takes it from `test-engine.mts` instead.
  *
  * The build is handed the CLI's own model rather than a download, so a test reaches no network. The two engines are
  * comparable only where they hold the same file, and `tesseractWasm` refuses any but the one the page fetches, so a CLI
@@ -25,6 +24,10 @@ export function tessdata(): string {
   return dir;
 }
 
+/**
+ * The WebAssembly build whatever the environment asks for, which is what the battle readers' tests run under: `pnpm
+ * battle` and the Battle tab both read with it, so the CLI's answers are no reader's to keep.
+ */
 export const wasmEngine = () => tesseractWasm({ langPath: tessdata(), workers: availableParallelism(), cache: false });
 
 /** Installs `wasmEngine`, and answers what to call once the file's reads are done. */
