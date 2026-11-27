@@ -253,7 +253,13 @@ export default function EventsPage({ query: fragment }: { query: string }) {
   /** Recomputed every minute, which is what keeps the relative labels honest without anything else being redrawn. */
   const [now, setNow] = useState(() => new Date());
 
-  const { view } = prefs;
+  /**
+   * Whether an `?event=` link has shown the cards over the saved view. Only the cards can be made to draw any event, so
+   * that is where a link lands. Held for the visit rather than saved, so the next one opens on the reader's choice.
+   */
+  const [arrived, setArrived] = useState(false);
+  const view = arrived ? 'cards' : prefs.view;
+
   const [search, setSearch] = useState('');
 
   // A session's choices rather than saved preferences; `prefs` is what survives a reload.
@@ -364,6 +370,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
      */
     setUnhidden(match.eventType);
     setSearch(match.name);
+    setArrived(true);
 
     // Reveal its status bucket for the same reason: the Routes page keeps linking an event for up to a day after it
     // ends here. The clock rather than `now`, which can lag it, so an event that has just ended is not missed.
@@ -471,6 +478,7 @@ export default function EventsPage({ query: fragment }: { query: string }) {
 
   /** Switch views, saved so the page opens on this one next time. */
   function setView(next: View) {
+    setArrived(false);
     prefs.view = next;
     commit('view');
   }
