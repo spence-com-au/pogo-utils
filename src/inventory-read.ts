@@ -1,7 +1,7 @@
 /**
  * PGSharp's export turned into rows, off a phone, from a file the reader opened or from the copy kept. Apart from
  * `inventory-store.ts`, which the phone button loads on every page, so that the parser and the game-master fetch load
- * only once a read starts.
+ * only once a read starts or a kept export is restored, which a visitor who has never read one does not pay for.
  */
 
 import { Device } from './core/adb.mts';
