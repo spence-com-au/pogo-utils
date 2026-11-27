@@ -25,7 +25,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { loadChunk } from '../chunks.js';
 import { said } from '../errors.js';
-import { EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
+import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
 import { usePhone } from '../phone-store.js';
 import { copyHint } from '../platform.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
@@ -72,8 +72,6 @@ import {
   type Path,
 } from '../search/tree.js';
 
-const COPY_ICON = 'M8 8h12v12H8zM4 16V4h12';
-const DONE_ICON = 'M5 12l5 5L19 7';
 const SAVE_ICON = 'M6 3h12v18l-6-4-6 4z';
 const SEARCH_ICON = 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.9-4.9';
 

@@ -24,7 +24,7 @@ import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
 import { loadHidden, toggleHidden, type Hidden, type Kind } from '../hidden-entries.js';
-import { EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
+import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
 import { said } from '../errors.js';
 import { toHash } from '../router.js';
 
@@ -167,38 +167,41 @@ function buildPopup(name: string, detail: string, copyLabel: string, text: strin
 }
 
 /**
- * A copy button that says how it went. Its own component so the flash is state belonging to the one button rather than
- * a timer and a captured label in a WeakMap keyed by element, which is what it took to do this to a node.
+ * A copy button that says how it went: the Search page's copy icon, turned to a tick for a moment once a copy has
+ * worked. A copy that failed leaves the icon be, the toast saying so in words a tick has no opposite for. Its own
+ * component so the tick is state belonging to the one button rather than a timer and a captured label in a WeakMap
+ * keyed by element, which is what it took to do this to a node.
  */
 function CopyButton({ text, title, onCopied }: { text: string; title: string; onCopied: (ok: boolean) => void }) {
-  const [flash, setFlash] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (flash === null) {
+    if (!copied) {
       return;
     }
 
-    const restore = setTimeout(() => setFlash(null), 1400);
+    const restore = setTimeout(() => setCopied(false), 1400);
 
     return () => clearTimeout(restore);
-  }, [flash]);
+  }, [copied]);
 
   return (
     <button
       type="button"
-      class={flash === null ? 'copy' : 'copy done'}
+      class={copied ? 'copy done' : 'copy'}
       title={title}
+      aria-label={copied ? 'Copied' : title}
       onClick={(event) => {
         // The row behind it would select the entry otherwise, which a reader reaching for Copy did not ask for.
         event.stopPropagation();
 
         void copyText(text).then((ok) => {
-          setFlash(ok ? 'Copied' : 'Failed');
+          setCopied(ok);
           onCopied(ok);
         });
       }}
     >
-      {flash ?? 'Copy'}
+      {icon(copied ? DONE_ICON : COPY_ICON)}
     </button>
   );
 }

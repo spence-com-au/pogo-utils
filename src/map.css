@@ -287,27 +287,27 @@ body[data-page='map'] {
     background: var(--panel);
     color: var(--muted);
     border-radius: 6px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     font-size: 12px;
-    line-height: 1.2;
+    line-height: 1;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.12s;
   }
 
   /**
-   * Sized to the Copy button's height: 12px text at a line height of 1.2 is about 14px, where the Search page's 18px
-   * icon would make the eye the taller of the two and the row's buttons ragged.
+   * Smaller than the Search page's 18px, which would stand the two buttons taller than the 13px name they sit beside
+   * and space every row out for them.
+   *
+   * Inline in a line of the button's own text size rather than a block, so the button keeps a text baseline for the
+   * row to line it up by. A button holding only a block has none, and is put on the name's baseline by its bottom edge,
+   * which sat the pair half a line high on every waypoint's row, where no distance stands beside them to align by.
    */
 
-  .route .eye {
-    padding: 2px 4px;
-  }
-
-  .route .eye svg {
-    display: block;
+  .route :is(.copy, .eye) svg {
     width: 14px;
     height: 14px;
+    vertical-align: -3px;
   }
 
   .route:hover :is(.copy, .eye),
