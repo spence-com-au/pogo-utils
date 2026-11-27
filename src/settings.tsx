@@ -85,7 +85,7 @@ export function Settings() {
 
         <section class="menu-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="menu-note">Save what this browser keeps for this site as a file, or restore one.</p>
+          <p class="menu-note">Save this site’s data as a file, or restore one.</p>
 
           <div class="menu-actions">
             <button type="button" title="Download everything saved as a file" onClick={() => void exportPrefs()}>
