@@ -64,9 +64,12 @@ Work through all four. Each ends when every row on both sides is accounted for â
 4. **The legacy moves.** Compare p337's table with `LEGACY_MOVES`, both ways. For each row to add, prove its spelling:
    - The move must be a `name` in `data/game-master.json`'s `moves`, lower-cased as the existing rows are. p337 writes
      names for people, so a spelling the game master lacks needs resolving before it is proposed.
-   - The game completes a move's name, so `@acid` also matches Acid Spray. List every game master move the term is a
-     prefix of. Where that takes in another move, qualify it by slot as `@1acid` is: `@1` for a fast move and `@2` for a
-     charged one, from the move's `fast`.
+   - The game completes a move's name, so `@acid` also matches Acid Spray, which Muk learns now. A row is only ever
+     asked of its own species, so list the moves the term is a prefix of among the `moves` of that species' entries in
+     `data/game-master.json`'s `forms`, every form included. Another species' move cannot misfire: `Psybeam+` is under
+     `megas`, a Mega Malamar's, and never Chansey's. Where the term takes in a move its own species learns, qualify it
+     by slot as `@1acid` is: `@1` for a fast move and `@2` for a charged one, from the move's `fast`. Two moves in the
+     same slot cannot be told apart this way, so report that row rather than propose it.
    - The doc comment above `LEGACY_MOVES` covers forms the search cannot name. Read it before proposing a row for a
      species with forms.
 
