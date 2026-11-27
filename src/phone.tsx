@@ -5,6 +5,9 @@
  * browser's chooser to connect one. Connecting waits for that button rather than coming with the press, so a press
  * does the same whether a phone is held or not. With none held or plugged in, a second button holds the demo phone,
  * which reads recorded screens in place of a phone, the browser's chooser listing USB devices alone.
+ *
+ * Below the phone, the panel says what `inventoryStore` read of the reader's Pokémon, which it reads off each phone as
+ * it is held, and offers to read it again or open a copy of the export instead.
  */
 
 import { Fragment } from 'preact';
@@ -15,9 +18,53 @@ import { loadChunk } from './chunks.js';
 import type { About } from './core/adb.mts';
 import type { Phone as Held } from './core/browser/webusb.js';
 import { said } from './errors.js';
+import { inventoryStore, useInventory } from './inventory-store.js';
+import { JsonFileButton } from './json-file-button.js';
 import { DEMO_SERIAL, phoneStore, usePhone } from './phone-store.js';
 import { useDismiss } from './popover.js';
 import { ticked } from './ticked.js';
+import { PGSTATS } from './tools/inventory/pgstats.mts';
+
+const PGSTATS_NAME = PGSTATS.slice(PGSTATS.lastIndexOf('/') + 1);
+
+/** Opens the panel from elsewhere on the page, with the focus on its button; nothing until the panel is drawn. */
+let show = () => {};
+
+/** Opens the phone panel, where the reader's Pokémon are read, from a control outside the bar. */
+export function openPhonePanel() {
+  show();
+}
+
+/** What was read of the reader's Pokémon, with a button to read the held phone again and one to open the export. */
+function Yours({ held }: { held: Held | null }) {
+  const { rows: owned, status } = useInventory();
+  const reading = status.state === 'reading';
+
+  return (
+    <section class="menu-section" aria-labelledby="phone-yours">
+      <h2 id="phone-yours">Your Pokémon</h2>
+      <p class="menu-note" aria-live="polite">
+        {reading
+          ? 'Reading your Pokémon…'
+          : status.state === 'failed'
+            ? status.reason
+            : owned !== null
+              ? `${owned.length.toLocaleString()} Pokémon read.`
+              : `Connect a phone or open PGSharp’s ${PGSTATS_NAME}.`}
+      </p>
+      <div class="menu-actions">
+        {held && (
+          <button type="button" disabled={reading} onClick={() => void inventoryStore.read(held)}>
+            Refresh
+          </button>
+        )}
+        <JsonFileButton disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
+          Open {PGSTATS_NAME}
+        </JsonFileButton>
+      </div>
+    </section>
+  );
+}
 
 /** The panel's list: what the phone said of itself, less what it said nothing of, and the serial it is found by. */
 function rows({ maker, model, android, screen, battery }: About, serial: string) {
@@ -68,6 +115,7 @@ function usePluggedIn(open: boolean, connecting: boolean) {
 
 export function Phone() {
   const root = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
 
   const phone = usePhone();
   const demo = phone?.serial === DEMO_SERIAL;
@@ -95,6 +143,19 @@ export function Phone() {
   // The chooser is the browser's own and modal, so nothing outside it reaches the page to close the panel while it is
   // up.
   useDismiss(open, close, root);
+
+  // The focus moved to the button rather than left where the press was, which would close the panel on the reader's
+  // next Tab.
+  useEffect(() => {
+    show = () => {
+      setOpen(true);
+      toggle.current?.focus();
+    };
+
+    return () => {
+      show = () => {};
+    };
+  }, []);
 
   // Asked at every opening rather than kept, the charge being a part that moves, and again for a phone connected or
   // taken back from a battle while the panel is open.
@@ -205,6 +266,7 @@ export function Phone() {
   return (
     <div class="menu phone" ref={root}>
       <button
+        ref={toggle}
         type="button"
         class="menu-toggle"
         aria-expanded={open}
@@ -272,6 +334,8 @@ export function Phone() {
               </p>
             )}
           </section>
+
+          <Yours held={phone} />
         </div>
       )}
     </div>

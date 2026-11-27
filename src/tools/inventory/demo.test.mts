@@ -8,7 +8,7 @@ import { DEMO_DETAIL, DEMO_STATS } from '../../generated.ts';
 import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
-import { PGSTATS } from './snapshot.mts';
+import { PGSTATS } from './pgstats.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, screenIn, type Image } from '../../core/png.mts';
 import { storage } from './storage.mts';

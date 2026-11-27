@@ -281,6 +281,10 @@
   padding: 10px 12px 12px;
 }
 
+.menu-section + .menu-section {
+  border-top: 1px solid var(--border);
+}
+
 .menu-section h2 {
   margin: 0 0 4px;
   font-size: 13px;
