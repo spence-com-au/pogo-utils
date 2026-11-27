@@ -266,8 +266,8 @@ test.for([
 });
 
 /**
- * Judging a file touches nothing, which is the whole reason the two halves are separate. The page leans on it: it
- * downloads a copy of the current preferences between the two, and must not take one for a file it then turns away.
+ * Judging a file touches nothing, which is the whole reason the two halves are separate: a file turned away can never
+ * leave storage half-written.
  */
 test('parsing a file writes nothing, acceptable or not', () => {
   storePrefs();
