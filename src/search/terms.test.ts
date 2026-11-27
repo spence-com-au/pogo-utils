@@ -10,11 +10,20 @@
  * The other two are about names colliding, and both are the kind of fault that leaves the page working: a term and a
  * range sharing an id draws two chips that read each other's pill, and a shortcut naming no range writes no span at
  * all. Neither throws, and neither shows up anywhere but in the one search that quietly stopped meaning what it said.
+ *
+ * `LEGACY_MOVES` is held to the game master the same way. A vend that teaches a listed species a new move can turn one
+ * of its rows into a prefix of that move too, as Acid Spray did to `@acid` on Muk, and the search goes on running.
  */
 
 import { expect, test } from 'vitest';
 
-import { bounded, GROUPS, RANGES, RANGES_BY_ID, SHORTCUTS, TERMS_BY_ID } from './terms.js';
+import { type GameData } from '../core/game-master.mts';
+import { fixture } from '../testing/fixture.js';
+import { bounded, GROUPS, LEGACY_MOVES, RANGES, RANGES_BY_ID, SHORTCUTS, TERMS_BY_ID } from './terms.js';
+
+const DATA = JSON.parse(
+  new TextDecoder().decode(fixture(new URL('../../data/game-master.json', import.meta.url))),
+) as GameData;
 
 const ticks = (text: string) => [...text].filter((character) => character === '`').length;
 
@@ -114,4 +123,35 @@ test('a named range runs from its first name to its last', () => {
     spans: named.map((range) => ({ id: range.id, min: 0, max: (range.levels ?? []).length - 1 })),
     some: true,
   });
+});
+
+test('every legacy move names a move and takes in no other its species learns', () => {
+  const names = new Set(DATA.moves.map((move) => move.name.toLowerCase()));
+
+  const faults = LEGACY_MOVES.flatMap(([pokemon, term]) => {
+    // `@1` is the fast slot, `@2` and `@3` the two charged ones, and a bare `@` any of them.
+    const [, slot, name] = /^@([123]?)(.+)$/.exec(term) ?? [];
+
+    if (name === undefined || !names.has(name)) {
+      return [`${term}: no such move`];
+    }
+
+    // The game completes a move's name, so the term reaches every move it starts, in the slot it names if any.
+    const reached = new Set(
+      DATA.forms
+        .filter((form) => form.dex === pokemon.dex)
+        .flatMap((form) => form.moves)
+        .filter((move) => slot === '' || move.fast === (slot === '1'))
+        .map((move) => move.name.toLowerCase())
+        .filter((move) => move.startsWith(name) && move !== name),
+    );
+
+    return [...reached].map((move) => `${term} on #${pokemon.dex}: also ${move}`);
+  });
+
+  // The rows qualified by slot are the other half: without them this would pass just as quietly over `@acid`.
+  expect({
+    faults,
+    qualified: LEGACY_MOVES.some(([, term]) => /^@[123]/.test(term)),
+  }).toEqual({ faults: [], qualified: true });
 });
