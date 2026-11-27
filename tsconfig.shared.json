@@ -45,11 +45,8 @@
     "src/pokedex/types.ts",
     "src/pokemon/generations.ts",
     "src/pokemon/names.ts",
-    "src/pokemon/pokedex.ts",
-    "src/pokemon/pokemon.ts",
     "src/recurring-types.ts",
     "src/release.ts",
-    "src/search/terms.ts",
     "src/types.d.ts"
   ]
 }

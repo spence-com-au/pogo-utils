@@ -61,13 +61,15 @@ Work through all four. Each ends when every row on both sides is accounted for ‚
 3. **The levels.** Compare the mega levels FAQ 3331 names with `megalevel`'s `max`, and the buddy levels FAQ 1486 and
    `phraseData` give with `buddylevel`'s `max` and `BUDDY_LEVELS`. The doc comment above `RANGE_TABLE` says why each
    ceiling is what it is; a source that now settles what it left open is a proposal.
-4. **The legacy moves.** Compare p337's table with `LEGACY_MOVES`, both ways. `src/search/legacy-moves.test.mts` proves
-   each row's spelling and prefixes against the game master, so what is left for each row to add is judgement:
+4. **The legacy moves.** Compare p337's table with `LEGACY_MOVES`, both ways. A test in `src/search/terms.test.ts`
+   proves each row's spelling and prefixes against the game master, so what is left for each row to add is judgement:
    - **Resolve p337's spelling** to a move `name` in `data/game-master.json`'s `moves`, lower-cased as the existing rows
      are. p337 writes names for people.
    - **Choose a slot.** The game completes a move's name, so `@acid` also matches Acid Spray, which Muk learns now.
-     Where the term starts another move its species learns, qualify it as `@1acid` is: `@1` for a fast move and `@2` for
-     a charged one. Two moves in the same slot cannot be told apart this way, so report that row rather than propose it.
+     Where the term starts another move its species learns, qualify it as `@1acid` is: `@1` is the fast slot. A charged
+     move has two slots, `@2` the first and `@3` the second, and either qualifier misses the Pok√©mon holding the move in
+     the other, so a charged row that needs qualifying is reported rather than proposed. So is a row whose term starts
+     another move in the same slot, which no qualifier can tell apart.
    - **Read the doc comment above `LEGACY_MOVES`** before proposing a row for a species with forms: it covers the forms
      the search cannot name.
 
