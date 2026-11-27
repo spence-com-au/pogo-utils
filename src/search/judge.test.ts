@@ -126,6 +126,18 @@ test('a regional form is its region and not Kanto’s', () => {
   expect(ask('kanto', PIKACHU)).toBe('yes');
 });
 
+test('a region is where a species comes from as well as its regional forms', () => {
+  const as = (dex: number, form: string | null = null): Row => ({ ...PIKACHU, dex, form });
+
+  expect(ask('alola & !kanto', as(37, 'Alola'))).toBe('yes');
+  expect(ask('alola', as(722))).toBe('yes');
+  expect(ask('hisui & !galar', as(899))).toBe('yes');
+  expect(ask('paldea', as(906))).toBe('yes');
+
+  // An Alola species keeps its region in a Hisuian form, which makes it the one Pokémon two regions find.
+  expect(ask('alola & hisui', as(724, 'Hisuian'))).toBe('yes');
+});
+
 test('types, what hurts them and what the moves hit are read off the game data', () => {
   // Marowak's Alolan form is Fire and Ghost: Water hurts the Fire and leaves the Ghost alone, Fighting cannot touch it.
   expect(ask('fire & ghost & <water & !<fighting', MAROWAK)).toBe('yes');

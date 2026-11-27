@@ -15,8 +15,8 @@
  */
 
 import { effectiveness, type GameData } from '../core/game-master.mts';
-import { GENERATIONS } from '../pokemon/generations.js';
-import { fold } from '../pokemon/names.js';
+import { GENERATIONS, regionOf as homeRegionOf } from '../pokemon/generations.js';
+import { fold, titleise } from '../pokemon/names.js';
 import POKEMON from '../pokemon/pokedex.js';
 import { type Row } from '../tools/inventory/snapshot.mts';
 import { RANGES_BY_ID } from './terms.js';
@@ -41,8 +41,24 @@ const SPECIES = new Map(Object.values(POKEMON).map((pokemon) => [pokemon.dex, po
 
 const REGIONS = ['alola', 'galar', 'hisui', 'paldea'];
 
+/** The generation Alola is, the first whose species a regional form leaves in their own region. */
+const ALOLA = 7;
+
 /** A regional form's region, from a form name such as `Galarian Zen` or `Paldea Aqua`. */
 const regionOf = (form: string | null) => REGIONS.find((region) => fold(form ?? '').startsWith(region)) ?? null;
+
+/**
+ * The region a species comes from, as a region term reads it, or null where its regional form takes that away. The
+ * community phrase list, quoted in `terms.ts`, has the early generations "permanently exclude regional forms", so an
+ * Alolan Vulpix is not Kantonian, and makes Hisuian Decidueye, an Alola species, the one Pokémon two regions find. So
+ * the home region holds for a species from Alola on whatever form it is in, and before that only in no regional form.
+ */
+function homeOf(dex: number, region: string | null) {
+  const generation = GENERATIONS.find(({ first, last }) => dex >= first && dex <= last);
+  const home = homeRegionOf(dex)?.toLowerCase() ?? null;
+
+  return region === null || (generation?.number ?? 0) >= ALOLA ? home : null;
+}
 
 /** The appraisal's star rating: 4 ★ is 45 points in all, 3 ★ is 37 or more, 2 ★ 30, 1 ★ 23, and 0 ★ the rest. */
 const STARS = [0, 23, 30, 37, 45];
@@ -75,8 +91,6 @@ function starts(name: string, typed: string, exactly = false) {
 function slotsOf(data: Collection['data'], row: Row): (string | null | undefined)[] {
   return [row.raw.move1, row.raw.move2, row.raw.move3].map((id) => (id === 0 ? null : data.moveNumbers[id]));
 }
-
-const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 /**
  * Whether any of these moves is one `test` holds of, by its type. A move the game data has no type for is unknown, so
@@ -174,7 +188,7 @@ export function judging({ rows, data, now }: Collection) {
     }
 
     const typed = /^(weak|strong|move)?([a-z]+)$/.exec(id);
-    const type = typed?.[2] !== undefined && data.effectiveness[capitalise(typed[2])] ? capitalise(typed[2]) : null;
+    const type = typed?.[2] !== undefined && data.effectiveness[titleise(typed[2])] ? titleise(typed[2]) : null;
 
     if (type !== null) {
       const slots = slotsOf(data, row);
@@ -256,12 +270,11 @@ export function judging({ rows, data, now }: Collection) {
         // A size of 3 is the ordinary one, which has no badge and so no band.
         return row.size !== null ? row.size === id.toUpperCase() : row.raw.size === 3 ? false : null;
       case 'kanto':
-        return row.dex === null ? null : row.dex <= 151 && region === null;
       case 'alola':
       case 'galar':
       case 'hisui':
       case 'paldea':
-        return row.dex === null ? null : region === id;
+        return row.dex === null ? null : region === id || homeOf(row.dex, region) === id;
       default:
         return null;
     }
