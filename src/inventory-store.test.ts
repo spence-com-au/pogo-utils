@@ -258,6 +258,24 @@ test('the phone a battle hands back, the serial last read, is not read again', a
   expect(back.asked).toHaveLength(0);
 });
 
+test('a phone connected again through the phone button is read again, and a new one only once', async () => {
+  const store = new InventoryStore(phones);
+  const first = phone(async () => bytes('the export'), 'A');
+  const again = phone(async () => bytes('the export'), 'A');
+
+  // What `connectPhone` does: hold, then read.
+  await phones.hold(first.phone);
+  await store.read(first.phone);
+  await landed(store);
+  phones.release();
+  await phones.hold(again.phone);
+  await store.read(again.phone);
+  await landed(store);
+
+  expect(first.asked).toHaveLength(1);
+  expect(again.asked).toHaveLength(1);
+});
+
 test('a read cut off by the phone being lent says nothing, and the phone handed back is read', async () => {
   const store = new InventoryStore(phones);
   const lent = phone(() => Promise.reject(new Error('the transport closed')), 'A');

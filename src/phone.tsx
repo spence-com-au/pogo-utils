@@ -200,7 +200,11 @@ export function Phone() {
         return;
       }
 
+      // Read even where `inventoryStore` read this serial last, which its own following of the store skips so that a
+      // battle's take-back is not read again: a phone connected here may have a newer export than it did. A new serial
+      // is not read twice, `read` leaving a read of the same phone to the one under way.
       await phoneStore.hold(picked);
+      void inventoryStore.read(picked);
       setStatus(null);
 
       // A battle whose tab was closed mid-run left the phone kept awake, which is put back now that it is here again.
