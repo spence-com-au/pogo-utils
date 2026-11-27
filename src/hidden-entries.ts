@@ -1,7 +1,7 @@
 /**
- * The routes and waypoints a reader has hidden on the Map page, which the PGSharp backup on the Integrations page
- * leaves out as well. Stored under `KEY_PREFIX` like every other choice this app keeps, so `src/backup.ts`'s sweep
- * carries them without being told they exist.
+ * The routes and waypoints a reader has hidden from the PGSharp backup the Integrations page builds, by the eye on
+ * each of their rows on the Map page — which still draws them, faded in the list. Stored under `KEY_PREFIX` like every
+ * other choice this app keeps, so `src/backup.ts`'s sweep carries them without being told they exist.
  *
  * An entry is kept by its `entryName` rather than by anything the map numbers it with: those numbers follow the order
  * the files load in and move whenever one gains an entry, where the name is what PGSharp itself knows a favourite by.
@@ -41,9 +41,9 @@ function load(key: string): ReadonlySet<string> {
 export const loadHidden = (): Hidden => ({ routes: load(HIDDEN_KEYS.routes), waypoints: load(HIDDEN_KEYS.waypoints) });
 
 /**
- * What is hidden once `name` is hidden if it was shown, or shown again if it was hidden — or null when storage refused
- * the write. Not applied regardless, as `event-prefs.ts` applies a filter it could not save: the backup reads this from
- * storage, so a hide held only by the page would leave the map and the backup disagreeing.
+ * What is hidden once `name` is hidden if it was not, or put back if it was — or null when storage refused the write.
+ * Not applied regardless, as `event-prefs.ts` applies a filter it could not save: the backup reads this from storage,
+ * so a hide held only by the page would leave the Map page's rows and the backup disagreeing.
  *
  * Read from storage here rather than handed the page's copy, so a toggle after an import from Settings builds on the
  * list the import wrote instead of writing back the one the page opened with.

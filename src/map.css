@@ -75,9 +75,7 @@ body[data-page='map'] {
     border-bottom: 1px solid var(--border);
   }
 
-  /* The box alone, not the checkbox under it, which a full width would set adrift from its label. */
-
-  .search input[type='search'] {
+  .search input {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--border);
@@ -87,25 +85,9 @@ body[data-page='map'] {
     font-size: 13px;
   }
 
-  .search input[type='search']:focus {
+  .search input:focus {
     outline: 2px solid var(--track);
     outline-offset: -1px;
-  }
-
-  .search .toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-  }
-
-  .search .toggle input {
-    margin: 0;
-    accent-color: var(--accent);
-    cursor: pointer;
   }
 
   #list {
@@ -280,7 +262,7 @@ body[data-page='map'] {
     color: var(--muted);
   }
 
-  /* The eye that hides an entry is a button of the same kind as Copy, so it wears the same and appears with it. */
+  /* The eye that hides an entry from the backup is a button of the same kind as Copy, so it wears the same. */
 
   .route :is(.copy, .eye) {
     border: 1px solid var(--border);
@@ -330,7 +312,10 @@ body[data-page='map'] {
     color: var(--accent);
   }
 
-  /* A hidden entry, listed only while the hidden ones are shown, faded as its line or dot is on the map. */
+  /**
+   * An entry hidden from the PGSharp backup. Still listed and drawn, as hiding is for the backup alone, but faded, and
+   * with its struck-through eye always showing so it can be put back.
+   */
 
   .route.faded {
     opacity: 0.6;

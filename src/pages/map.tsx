@@ -23,7 +23,7 @@ import { eventStore } from '../event-store.js';
 import { fetchOk } from '../fetch-ok.js';
 import { GPX_PATHS } from '../generated.js';
 import { loadManifest, parseGpxDocument } from '../gpx.js';
-import { loadHidden, toggleHidden, type Hidden, type Kind } from '../hidden-entries.js';
+import { loadHidden, toggleHidden, type Kind } from '../hidden-entries.js';
 import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
 import { said } from '../errors.js';
 import { toHash } from '../router.js';
@@ -94,38 +94,13 @@ async function loadEventNames(): Promise<ReadonlyMap<string, string>> {
  * How an unselected line and dot are drawn. Both the layer's creation and the deselect that returns it here read these,
  * so the two cannot disagree about what "not selected" looks like — which matters because the colour is a decision
  * rather than a constant: an entry added for an event is drawn in `--event`, and the sidebar row mirrors it.
- *
- * `faded` is an entry the reader hid, drawn only while the hidden ones are shown: dashed and fainter, as its row is.
- * The dash is cleared by `undefined`, which Leaflet reads as no dash, so restyling an entry shown again drops it.
  */
-function routeStyle(route: Route, faded: boolean): L.PolylineOptions {
-  return {
-    color: cssVar(route.event ? '--event' : '--track'),
-    weight: 2,
-    opacity: faded ? 0.35 : 0.55,
-    dashArray: faded ? '4 6' : undefined,
-  };
+function routeStyle(route: Route): L.PolylineOptions {
+  return { color: cssVar(route.event ? '--event' : '--track'), weight: 2, opacity: 0.55 };
 }
 
-function cityStyle(place: Waypoint, faded: boolean): L.CircleMarkerOptions {
-  const opacity = faded ? 0.35 : 1;
-
-  return {
-    radius: 5,
-    color: '#fff',
-    weight: 2,
-    opacity,
-    fillColor: cssVar(place.event ? '--event' : '--city'),
-    fillOpacity: opacity,
-  };
-}
-
-/** How many of the page's entries are hidden, so a name hidden before its entry left the files counts for none. */
-function countHidden(held: Loaded | null, hidden: Hidden): number {
-  const routes = held?.routes.filter((route) => hidden.routes.has(route.fullName)) ?? [];
-  const cities = held?.cities.filter((city) => hidden.waypoints.has(city.fullName)) ?? [];
-
-  return routes.length + cities.length;
+function cityStyle(place: Waypoint): L.CircleMarkerOptions {
+  return { radius: 5, color: '#fff', weight: 2, fillColor: cssVar(place.event ? '--event' : '--city'), fillOpacity: 1 };
 }
 
 /**
@@ -206,10 +181,7 @@ function CopyButton({ text, title, onCopied }: { text: string; title: string; on
   );
 }
 
-/**
- * One row in the sidebar, before it knows which group will hold it. `hit` is whether it is listed: it matches the
- * filter, and it is not hidden or the hidden rows are shown.
- */
+/** One row in the sidebar, before it knows which group will hold it. */
 interface Row {
   id: string;
   kind: Kind;
@@ -254,11 +226,11 @@ export default function MapPage({ query: fragment }: { query: string }) {
 
   const [toast, setToast] = useState<string | null>(null);
 
-  /** What the reader has hidden, as storage had it when the page opened or as the last toggle left it. */
+  /**
+   * What the reader has hidden from the PGSharp backup, as storage had it when the page opened or as the last toggle
+   * left it. Only the rows say so: the map draws every entry either way, hiding being for the backup.
+   */
   const [hidden, setHidden] = useState(loadHidden);
-
-  /** Whether the hidden entries are drawn, faded, to be shown again. Not stored, as the Search page's is not. */
-  const [showHidden, setShowHidden] = useState(false);
 
   const mapNode = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -389,30 +361,17 @@ export default function MapPage({ query: fragment }: { query: string }) {
           continue;
         }
 
-        // A hidden entry's layer is made but left off the map, where the selection effect puts it while the hidden
-        // ones are shown. Read from the state this render opened with, which nothing can have changed yet: no row to
-        // hide anything from has been drawn.
         for (const route of gpx.routes) {
-          const faded = hidden.routes.has(route.fullName);
-          const line = L.polyline(route.latlngs, routeStyle(route, faded));
+          const line = L.polyline(route.latlngs, routeStyle(route)).addTo(map);
           const entry: RouteEntry = { ...route, id: `r${routes.length}`, line, distance: routeDistance(route.latlngs) };
-
-          if (!faded) {
-            line.addTo(map);
-          }
 
           line.on('click', () => select([entry.id], { pan: false }));
           routes.push(entry);
         }
 
         for (const place of gpx.waypoints) {
-          const faded = hidden.waypoints.has(place.fullName);
-          const marker = L.circleMarker(place.coords, cityStyle(place, faded));
+          const marker = L.circleMarker(place.coords, cityStyle(place)).addTo(map);
           const entry: CityEntry = { ...place, id: `w${cities.length}`, marker };
-
-          if (!faded) {
-            marker.addTo(map);
-          }
 
           // An element rather than the string: Leaflet assigns string content with innerHTML, and the name is read out
           // of a GPX file.
@@ -446,11 +405,7 @@ export default function MapPage({ query: fragment }: { query: string }) {
        * to finish afterwards and restore the world. Ordering cannot fix it.
        */
       if (!focusEvent(read)) {
-        // Fitted to what is drawn, so hiding the one entry on another continent brings the rest in close. Everything
-        // when the reader has hidden it all, since a map fitted to nothing is no view.
-        const layers = [...routes.map((r) => r.line), ...cities.map((c) => c.marker)];
-        const onMap = layers.filter((layer) => map.hasLayer(layer));
-        const world = L.featureGroup(onMap.length > 0 ? onMap : layers);
+        const world = L.featureGroup([...routes.map((r) => r.line), ...cities.map((c) => c.marker)]);
 
         map.fitBounds(world.getBounds(), { padding: [16, 16] });
       }
@@ -464,11 +419,9 @@ export default function MapPage({ query: fragment }: { query: string }) {
   const chosen = new Set(selected);
 
   /**
-   * Tell the layers what is selected and what is hidden. An effect rather than part of the click, selection being state
-   * several entries can hold at once: every layer is either in the set or returned to its resting style, which is also
-   * what deselects whatever the last selection held without anything having to remember it. Hiding works the same way:
-   * a hidden entry's layer is off the map unless the hidden ones are shown, and adding one already there or removing
-   * one already gone does nothing, so no layer has to remember which it was.
+   * Tell the layers what is selected. An effect rather than part of the click, selection being state several entries
+   * can hold at once: every layer is either in the set or returned to its resting style, which is also what deselects
+   * whatever the last selection held without anything having to remember it.
    */
   useEffect(() => {
     const map = mapRef.current;
@@ -485,22 +438,13 @@ export default function MapPage({ query: fragment }: { query: string }) {
         markers.current.delete(route.id);
       }
 
-      const faded = hidden.routes.has(route.fullName);
-
-      if (faded && !showHidden) {
-        route.line.remove();
-        continue;
-      }
-
-      route.line.addTo(map);
-
       if (!chosen.has(route.id)) {
-        route.line.setStyle(routeStyle(route, faded));
+        route.line.setStyle(routeStyle(route));
         route.line.bringToBack();
         continue;
       }
 
-      route.line.setStyle({ ...routeStyle(route, faded), color: cssVar('--accent'), weight: 4, opacity: 1 });
+      route.line.setStyle({ color: cssVar('--accent'), weight: 4, opacity: 1 });
       route.line.bringToFront();
 
       /*
@@ -528,25 +472,16 @@ export default function MapPage({ query: fragment }: { query: string }) {
     }
 
     for (const city of loaded.cities) {
-      const faded = hidden.waypoints.has(city.fullName);
-
-      if (faded && !showHidden) {
-        city.marker.remove();
-        continue;
-      }
-
-      city.marker.addTo(map);
-
       if (!chosen.has(city.id)) {
-        city.marker.setStyle(cityStyle(city, faded));
+        city.marker.setStyle(cityStyle(city));
         continue;
       }
 
-      city.marker.setStyle({ ...cityStyle(city, faded), radius: 8, fillColor: cssVar('--accent') });
+      city.marker.setStyle({ radius: 8, fillColor: cssVar('--accent') });
       city.marker.bringToFront();
       bindCityPopup(city);
     }
-  }, [selected, loaded, hidden, showHidden]);
+  }, [selected, loaded]);
 
   /**
    * An entry's popup, bound by the effect above for every selected entry and by `select` before it opens one: that
@@ -596,16 +531,12 @@ export default function MapPage({ query: fragment }: { query: string }) {
       return;
     }
 
-    /*
-     * Each is put on the map before its popup opens, which Leaflet will not do for a layer with no map: one a link
-     * revealed from among the hidden entries is otherwise drawn only by the selection effect, after this render.
-     */
     const route = held.routes.find((candidate) => candidate.id === first);
 
     if (route) {
       map.fitBounds(route.line.getBounds(), { padding: [24, 24], maxZoom: 17 });
       bindRoutePopup(route);
-      route.line.addTo(map).openPopup();
+      route.line.openPopup();
       return;
     }
 
@@ -614,16 +545,11 @@ export default function MapPage({ query: fragment }: { query: string }) {
     if (city) {
       map.setView(city.coords, Math.max(map.getZoom(), 12));
       bindCityPopup(city);
-      city.marker.addTo(map).openPopup();
+      city.marker.openPopup();
     }
   }
 
-  /**
-   * Hide an entry, or show it again. Hiding one that is selected lets it go as it leaves the map, unless the hidden
-   * entries are shown, where it stays drawn, faded, and selected. Showing the last of them again takes the toggle away
-   * and turns it off, as the Search page does: left on, the next hide would draw faded in place, a press that seemed
-   * to do nothing.
-   */
+  /** Hide an entry from the PGSharp backup, or put it back. */
   function hide(row: Row) {
     const next = toggleHidden(row.kind, row.fullName);
 
@@ -634,14 +560,6 @@ export default function MapPage({ query: fragment }: { query: string }) {
     }
 
     setHidden(next);
-
-    if (!showHidden && next[row.kind].has(row.fullName)) {
-      setSelected((was) => was.filter((id) => id !== row.id));
-    }
-
-    if (countHidden(loaded, next) === 0) {
-      setShowHidden(false);
-    }
   }
 
   /** The continent and country group keys an entry's row sits under, so selecting it can open both. */
@@ -690,15 +608,6 @@ export default function MapPage({ query: fragment }: { query: string }) {
 
     const ids = [...routes.map((route) => route.id), ...places.map((city) => city.id)];
 
-    // The link asked for these entries whether or not the reader hid any, so the hidden ones are shown, faded, rather
-    // than selected off the map and out of the list.
-    if (
-      routes.some((route) => hidden.routes.has(route.fullName)) ||
-      places.some((city) => hidden.waypoints.has(city.fullName))
-    ) {
-      setShowHidden(true);
-    }
-
     // A lone entry is selected exactly as clicking its row would, tight fit and popup included. Only a set needs what
     // follows, where no one of them can own the view or be the one the popup names.
     if (ids.length === 1) {
@@ -742,46 +651,33 @@ export default function MapPage({ query: fragment }: { query: string }) {
    */
   const term = filter.trim().toLowerCase();
 
-  const matches = (entry: Route | Waypoint) =>
-    !term || entry.name.toLowerCase().includes(term) || entry.country.toLowerCase().includes(term);
-
-  const listed = (entry: Route | Waypoint, faded: boolean) => (showHidden || !faded) && matches(entry);
-
   const all: Row[] = [
-    ...(loaded?.routes ?? []).map((route) => {
-      const faded = hidden.routes.has(route.fullName);
-
-      return {
-        id: route.id,
-        kind: 'routes' as const,
-        name: route.name,
-        fullName: route.fullName,
-        country: route.country,
-        dist: route.distance,
-        event: route.event,
-        hidden: faded,
-        hit: listed(route, faded),
-        gpx: route.gpx,
-        coordStr: null,
-      };
-    }),
-    ...(loaded?.cities ?? []).map((city) => {
-      const faded = hidden.waypoints.has(city.fullName);
-
-      return {
-        id: city.id,
-        kind: 'waypoints' as const,
-        name: city.name,
-        fullName: city.fullName,
-        country: city.country,
-        dist: 0,
-        event: city.event,
-        hidden: faded,
-        hit: listed(city, faded),
-        gpx: null,
-        coordStr: city.coordStr,
-      };
-    }),
+    ...(loaded?.routes ?? []).map((route) => ({
+      id: route.id,
+      kind: 'routes' as const,
+      name: route.name,
+      fullName: route.fullName,
+      country: route.country,
+      dist: route.distance,
+      event: route.event,
+      hidden: hidden.routes.has(route.fullName),
+      hit: !term || route.name.toLowerCase().includes(term) || route.country.toLowerCase().includes(term),
+      gpx: route.gpx,
+      coordStr: null,
+    })),
+    ...(loaded?.cities ?? []).map((city) => ({
+      id: city.id,
+      kind: 'waypoints' as const,
+      name: city.name,
+      fullName: city.fullName,
+      country: city.country,
+      dist: 0,
+      event: city.event,
+      hidden: hidden.waypoints.has(city.fullName),
+      hit: !term || city.name.toLowerCase().includes(term) || city.country.toLowerCase().includes(term),
+      gpx: null,
+      coordStr: city.coordStr,
+    })),
   ];
 
   const byCountry = new Map<string, Row[]>();
@@ -851,19 +747,15 @@ export default function MapPage({ query: fragment }: { query: string }) {
       return next;
     });
 
-  // Counted over what is drawn, so a hidden entry leaves the count as it leaves the map.
-  const drawn = all.filter((row) => showHidden || !row.hidden);
-  const drawnRoutes = drawn.filter((row) => row.kind === 'routes');
-  const routeCount = drawnRoutes.length;
-  const cityCount = drawn.length - routeCount;
-  const hiddenCount = countHidden(loaded, hidden);
+  const routeCount = loaded?.routes.length ?? 0;
+  const cityCount = loaded?.cities.length ?? 0;
 
   const count =
     loaded === null
       ? 'Loading routes…'
       : cityCount > 0
         ? `${routeCount} tracks · ${cityCount} waypoints`
-        : `${routeCount} tracks across ${new Set(drawnRoutes.map((row) => row.country)).size} countries`;
+        : `${routeCount} tracks across ${new Set(loaded.routes.map((route) => route.country)).size} countries`;
 
   return (
     <div class="app">
@@ -881,17 +773,6 @@ export default function MapPage({ query: fragment }: { query: string }) {
             value={filter}
             onInput={(event) => setFilter(event.currentTarget.value)}
           />
-
-          {hiddenCount > 0 && (
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={showHidden}
-                onChange={(event) => setShowHidden(event.currentTarget.checked)}
-              />
-              Show {hiddenCount} hidden
-            </label>
-          )}
         </div>
 
         <div id="list">
@@ -962,7 +843,9 @@ export default function MapPage({ query: fragment }: { query: string }) {
                               routeClasses.push('active');
                             }
 
-                            const action = row.hidden ? 'Unhide' : 'Hide';
+                            const action = row.hidden
+                              ? 'Put back in the PGSharp backup'
+                              : 'Hide from the PGSharp backup';
 
                             return (
                               <div
@@ -995,14 +878,15 @@ export default function MapPage({ query: fragment }: { query: string }) {
                                   />
 
                                   {/*
-                                   * The Search page's eye: open while the entry is shown, struck through while it is
-                                   * hidden. Stopped short of the row for the reason Copy is.
+                                   * The Search page's eye: open while the entry goes into the PGSharp backup, struck
+                                   * through while it is hidden from it. The map draws it either way. Stopped short of
+                                   * the row for the reason Copy is.
                                    */}
                                   <button
                                     type="button"
                                     class="eye"
                                     title={action}
-                                    aria-label={`${action} ${row.name}`}
+                                    aria-label={`${row.name}: ${action}`}
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       hide(row);
