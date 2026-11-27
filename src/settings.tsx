@@ -1,9 +1,9 @@
 /**
  * The settings control at the end of the top bar, beside the notifications, on every tab: a gear that opens a panel
  * for what belongs to the browser rather than to any one page. So far that is the backup of everything this app keeps
- * in `localStorage` — export it as a file, or import one back — which lived on the Events page while the events
- * preferences were the only thing stored, and moved here once other tabs had choices of their own worth carrying. The
- * phone held over WebUSB was here too, and has a control of its own in the bar now, in `phone.tsx`.
+ * in `localStorage` and IndexedDB — export it as a file, or import one back — which lived on the Events page while the
+ * events preferences were the only thing stored, and moved here once other tabs had choices of their own worth
+ * carrying. The phone held over WebUSB was here too, and has a control of its own in the bar now, in `phone.tsx`.
  */
 
 import { useRef, useState } from 'preact/hooks';
@@ -12,6 +12,7 @@ import { backupName, restoreBackup, writeBackup } from './backup.js';
 import { download } from './dom.js';
 import { said } from './errors.js';
 import { eventStore } from './event-store.js';
+import { inventoryStore } from './inventory-store.js';
 import { JsonFileButton } from './json-file-button.js';
 import { useDismiss } from './popover.js';
 
@@ -28,13 +29,13 @@ export function Settings() {
   useDismiss(open, () => setOpen(false), root);
 
   /**
-   * Hand the saved preferences over as a file. A storage failure is reported rather than swallowed: `writeBackup` lets
+   * Hand what is saved over as a file. A storage failure is reported rather than swallowed: `writeBackup` lets
    * one through for exactly this reason, a download that quietly did not happen being worse than one that says why. A
    * download that did happen says nothing, the browser showing it already, and clears what an earlier attempt said.
    */
-  function exportPrefs() {
+  async function exportPrefs() {
     try {
-      download(writeBackup(), backupName(new Date()), 'application/json');
+      download(await writeBackup(), backupName(new Date()), 'application/json');
       setStatus(null);
     } catch (e) {
       setStatus(`Could not save a backup: ${said(e)}`);
@@ -48,12 +49,15 @@ export function Settings() {
    */
   async function importPrefs(file: File) {
     try {
-      const written = restoreBackup(await file.text(), () => eventStore.restored());
+      const written = await restoreBackup(await file.text(), () => {
+        eventStore.restored();
+        void inventoryStore.restore();
+      });
 
       setStatus(
         written === null
-          ? 'That backup has no saved preferences, so nothing changed.'
-          : `Restored ${written} saved preference${written === 1 ? '' : 's'}.`,
+          ? 'That backup has nothing saved, so nothing changed.'
+          : `Restored ${written} saved item${written === 1 ? '' : 's'}.`,
       );
     } catch (e) {
       setStatus(`Could not restore that backup: ${said(e)}`);
@@ -81,14 +85,14 @@ export function Settings() {
 
         <section class="menu-section" aria-labelledby="settings-backup">
           <h2 id="settings-backup">Backup</h2>
-          <p class="menu-note">Save this browser’s preferences as a file, or restore one.</p>
+          <p class="menu-note">Save what this browser keeps for this site as a file, or restore one.</p>
 
           <div class="menu-actions">
-            <button type="button" title="Download every saved preference as a file" onClick={exportPrefs}>
+            <button type="button" title="Download everything saved as a file" onClick={() => void exportPrefs()}>
               Export
             </button>
             <JsonFileButton
-              title="Restore a saved file, replacing only the preferences it holds"
+              title="Restore a saved file, replacing only what it holds"
               onFile={(file) => void importPrefs(file)}
             >
               Import
