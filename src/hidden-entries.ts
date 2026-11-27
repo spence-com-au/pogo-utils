@@ -10,6 +10,7 @@
  */
 
 import { KEY_PREFIX } from './storage-namespace.js';
+import { load, store } from './stored-list.js';
 
 export const HIDDEN_KEYS = {
   routes: `${KEY_PREFIX}map:hidden-routes`,
@@ -23,22 +24,13 @@ export type Hidden = Readonly<Record<Kind, ReadonlySet<string>>>;
 
 export const NOTHING_HIDDEN: Hidden = { routes: new Set(), waypoints: new Set() };
 
-/**
- * One kind's list as storage holds it. Storage is a channel anything can write to, an import from a backup someone
- * edited by hand among them, so whatever is not a name is dropped rather than trusted, and storage that will not
- * answer reads as nothing hidden.
- */
-function load(key: string): ReadonlySet<string> {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+/** One kind's list as storage holds it, anything that is not a name dropped. */
+const loadKind = (key: string): ReadonlySet<string> => new Set(load(key, (v): v is string => typeof v === 'string'));
 
-    return new Set(Array.isArray(stored) ? stored.filter((name) => typeof name === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export const loadHidden = (): Hidden => ({ routes: load(HIDDEN_KEYS.routes), waypoints: load(HIDDEN_KEYS.waypoints) });
+export const loadHidden = (): Hidden => ({
+  routes: loadKind(HIDDEN_KEYS.routes),
+  waypoints: loadKind(HIDDEN_KEYS.waypoints),
+});
 
 /**
  * What is hidden once `name` is hidden if it was not, or put back if it was — or null when storage refused the write.
@@ -56,9 +48,7 @@ export function toggleHidden(kind: Kind, name: string): Hidden | null {
     next.add(name);
   }
 
-  try {
-    localStorage.setItem(HIDDEN_KEYS[kind], JSON.stringify([...next]));
-  } catch {
+  if (!store(HIDDEN_KEYS[kind], [...next])) {
     return null;
   }
 
