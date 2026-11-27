@@ -10,10 +10,12 @@
 - **An unresolved conversation can block the merge.** When the rulesets require review threads resolved, green checks
   are not enough, and clearing an open thread falls to the pull request's author: fix what it raises or reply with why
   not, then resolve it.
-- **Leave the test suite to CI.** A local run ties up the machine the user is working on, and CI runs the same suite on
-  every push anyway. So once a change bound for a pull request is committed, push it and open the pull request rather
-  than run `pnpm test` first, in the foreground or the background, and read the result from its checks: `gh pr checks`,
-  then `gh run view <id> --log-failed` for what failed.
+- **Run the tests a change touches before pushing it, and leave the full suite to CI.** The whole of `pnpm test` ties up
+  the machine the user is working on for minutes, and CI runs all of it on every push anyway. So once a change bound for
+  a pull request is committed, run `pnpm test --changed origin/master`, which runs only the test files that import
+  something the branch changed, then push and open the pull request. Leave the rest to its checks rather than a local
+  run of the full suite, in the foreground or the background: `gh pr checks`, then `gh run view <id> --log-failed` for
+  what failed.
 - **Light alone is enough for a pull request's screenshots.** Take a dark set as well only when dark draws the change
   meaningfully differently: a change that only follows the theme's colours gains nothing from a second set.
 - **File an issue for what a change leaves behind.** A defect met on the way to something else, or a follow-up a change
