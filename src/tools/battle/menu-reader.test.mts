@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, type Image } from '../../core/png.mts';
-import { useWasmEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { type Point } from './layout.mts';
 import { MENU_AFTER_MS, MenuReader, type Read } from './menu-reader.mts';
 import { type Menu, type Mode } from './menus.mts';

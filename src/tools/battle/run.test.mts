@@ -8,7 +8,7 @@
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, type Image } from '../../core/png.mts';
 import { useEngine, type Engine } from '../../core/ocr.mts';
-import { wasmEngine } from '../../core/node/test-engine.mts';
+import { wasmEngine } from '../../core/node/test-wasm.mts';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

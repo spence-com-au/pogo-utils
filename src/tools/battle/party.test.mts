@@ -17,7 +17,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng } from '../../core/png.mts';
-import { useWasmEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { readCps, readParty, silhouetteOfIcon } from './party.mts';
 
 const DATA = JSON.parse(readFileSync(new URL('../../../data/game-master.json', import.meta.url), 'utf8')) as GameData;

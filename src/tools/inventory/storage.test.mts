@@ -12,7 +12,8 @@ import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { dialogOpen, storage, unsearchable } from './storage.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
-import { useTestEngine, useWasmEngine } from '../../core/node/test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 

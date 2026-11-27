@@ -10,7 +10,7 @@ import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../../core/game-master.mts';
 import { ocr, type Line } from '../../core/ocr.mts';
 import { decodePng, type Image } from '../../core/png.mts';
-import { useWasmEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { type Point } from './layout.mts';
 import { isSelection, pinkCell, query, readCard, readPanel, searched, type Hands } from './selection.mts';
 
