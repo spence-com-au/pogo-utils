@@ -588,11 +588,9 @@ WebUSB to find out why; it is a hosted app rather than a library, which is why t
 
 The phone is connected with 📱 in the top bar rather than from any one page, and the connection outlives the tab it was
 made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until it is disconnected there or
-unplugged, so `adb` cannot reach the phone until then or until the site is closed. That is what the Search page's
-**Search** button uses. Beside **Copy** while a phone is held, it drives storage through
-[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front, storage opened
-from the map or a detail screen, the string typed into the box, and the game's own count of what matched reported back.
-The OCR it finds its way with is fetched on the first press rather than with the page.
+unplugged, so `adb` cannot reach the phone until then or until the site is closed. The Battle tab plays through it, and
+[`src/inventory-store.ts`](src/inventory-store.ts) reads PGSharp's export off each phone it comes to hold, which the
+Pokédex marks and the Search page judges a search against.
 
 With no phone to hand, **Try the demo phone** beside **Connect** in 📱's panel holds a demo phone instead, which answers
 from recorded screens rather than an account, so each tab can be tried without one; **Disconnect** puts it away. It is

@@ -45,8 +45,8 @@ export const names = (text: string) =>
  * The game takes the spaces as nothing, `249-250 & shadow,purified & research` having been typed into it as it stands.
  * *Shorten* writes them tight, being the toggle that spends no character it can do without.
  *
- * `tight` is the same clauses written tight whatever the toggle, for the phone: each space is a key press there and
- * counts towards the `CLEAR_KEYS` the box is cleared of, so a search that fits tight would be refused spaced.
+ * `tight` is the same clauses written tight whatever the toggle, the length *Shorten* has to beat for its rewrite to be
+ * worth showing (`optimise.js`).
  */
 export function compose(state: State) {
   const { clauses, error, mishandled } = clausesOf(state.tree);

@@ -196,15 +196,14 @@ body[data-page='search'] {
    * for the reason given below it. The width is held rather than left to a label, so a worded button does not shift
    * between its enabled and disabled weights.
    *
-   * *Search*, beside Copy and greyed out until a phone is held, takes the same geometry and the outline: Copy stays the
-   * filled one, being the way out the string has whether or not there is a phone. Copy, Save and Search draw icons
-   * rather than words, and take a square of their own below. The naming dialog's two buttons are the same pair again,
-   * Save the filled one, and the sheet's Done is filled too, being the one way out of it.
+   * *Save*, beside Copy, takes the same geometry and the outline: Copy stays the filled one, being the way out the
+   * string has. Copy and Save draw icons rather than words, and take a square of their own below. The naming dialog's
+   * two buttons are the same pair again, Save the filled one, and the sheet's Done is filled too, being the one way out
+   * of it.
    */
 
   button.use,
   .output button.copy,
-  .output button.send,
   .output button.save,
   .naming button.confirm,
   .sheet button.confirm {
@@ -220,7 +219,6 @@ body[data-page='search'] {
   }
 
   button.use,
-  .output button.send,
   .output button.save {
     background: transparent;
     color: var(--accent);
@@ -228,7 +226,6 @@ body[data-page='search'] {
 
   button.use:hover:not(:disabled),
   .output button.copy:hover:not(:disabled),
-  .output button.send:hover:not(:disabled, [aria-disabled='true']),
   .output button.save:hover:not(:disabled),
   .naming button.confirm:hover:not(:disabled),
   .sheet button.confirm:hover {
@@ -236,8 +233,6 @@ body[data-page='search'] {
   }
 
   button.use:disabled,
-  .output button.send:disabled,
-  .output button.send[aria-disabled='true'],
   .output button.save:disabled {
     border-color: var(--border);
     color: var(--muted);
@@ -246,7 +241,6 @@ body[data-page='search'] {
   }
 
   button.use:focus-visible,
-  .output button.send:focus-visible,
   .output button.save:focus-visible,
   .naming button.confirm:focus-visible,
   .sheet button.confirm:focus-visible {
@@ -278,7 +272,7 @@ body[data-page='search'] {
     background: var(--start);
   }
 
-  /* Copy and Search side by side even in a phone's column, where stacked they would add a row to a card that sticks. */
+  /* Copy and Save side by side even in a phone's column, where stacked they would add a row to a card that sticks. */
 
   .output .buttons {
     display: flex;
@@ -288,22 +282,12 @@ body[data-page='search'] {
   /* A square for an icon, where the hold above is for a word. The clipboard fallback's words still widen Copy. */
 
   .output button.copy,
-  .output button.save,
-  .output button.send {
+  .output button.save {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 40px;
     padding: 0 10px;
-  }
-
-  /* Where a string sent to the phone has got to, said as quietly as the count above it; a failure is `.broken`. */
-
-  .output .sent {
-    margin: 0;
-    font-size: 11.5px;
-    line-height: 1.5;
-    color: var(--muted);
   }
 
   .output .meta {
@@ -1496,7 +1480,6 @@ body[data-page='search'] {
 
     button.use,
     .output button.copy,
-    .output button.send,
     .output button.save {
       padding: 9px 18px;
     }

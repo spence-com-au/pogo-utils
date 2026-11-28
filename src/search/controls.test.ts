@@ -7,12 +7,10 @@
 
 import { expect, test } from 'vitest';
 
-import { compose, emptyState, presetTree } from './query.js';
-import { leafText, spanned } from './tree.js';
-import { GROUPS, PRESETS, RANGES, type Range } from './terms.js';
+import { leafText } from './tree.js';
+import { RANGES, type Range } from './terms.js';
 import { range } from '../testing/search.js';
-import { unsearchable } from '../tools/inventory/storage.mts';
-import { answered, boxText, marked, pickable, rangeTitle, readBound, unmarked, type Sent } from './controls.js';
+import { boxText, marked, pickable, rangeTitle, readBound, unmarked } from './controls.js';
 
 /**
  * A number typed into one of a span pill's boxes, a digit at a time: what the box shows while the caret is in it, what
@@ -339,46 +337,4 @@ test('a bound already set is offered at the end showing it', () => {
     ceilingSet: has('to', which.max, which.max),
     ceilingUnset: has('to', which.max, null),
   }).toEqual({ floorSet: true, floorUnset: false, floorElsewhere: false, ceilingSet: true, ceilingUnset: false });
-});
-
-test('a send is answered for as long as the string on the page is the one sent', () => {
-  const sent = (kind: Sent['kind']): Sent => ({ query: 'shiny', kind, message: kind });
-
-  expect(answered(null, 'shiny', true)).toBeNull();
-  expect(answered(sent('done'), 'shiny', true)).toEqual(sent('done'));
-  expect(answered(sent('failed'), 'shiny', true)).toEqual(sent('failed'));
-  expect(answered(sent('done'), 'shiny&xxl', true)).toBeNull();
-  expect(answered(sent('failed'), 'shiny&xxl', true)).toBeNull();
-});
-
-test('a send in flight is answered for whatever the string has become', () => {
-  const busy: Sent = { query: 'shiny', kind: 'busy', message: 'Searching…' };
-
-  expect(answered(busy, 'shiny&xxl', true)).toEqual(busy);
-});
-
-test('a press with no phone is answered for until a phone is held, and not after, the string unchanged', () => {
-  const unheld: Sent = { query: 'shiny', kind: 'unheld', message: 'No phone is connected.' };
-
-  expect(answered(unheld, 'shiny', false)).toEqual(unheld);
-  expect(answered(unheld, 'shiny', true)).toBeNull();
-  expect(answered(unheld, 'shiny&xxl', false)).toBeNull();
-});
-
-/**
- * The Search button types the string into the phone through `typeable`, so everything the catalogue offers has to pass
- * it: a chip that composed a string the phone cannot be sent would be one the button refuses. The type-effectiveness
- * chips are what need `<` and `>`, and the favourites are composed whole, being the longest strings a single press
- * makes.
- */
-test('every chip, span and favourite the catalogue offers can be sent to the phone', () => {
-  const offered = [
-    ...GROUPS.flatMap((category) => category.terms.map(({ term }) => term)),
-    ...RANGES.map((entry) => spanned(entry, '1-2')),
-    ...PRESETS.map((preset) => compose({ ...emptyState(), tree: presetTree(preset) }).query),
-  ];
-
-  for (const term of offered) {
-    expect(unsearchable(term), term).toBeNull();
-  }
 });
