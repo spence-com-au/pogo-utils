@@ -52,6 +52,12 @@ function launching(pkg: string): string {
   return pkg;
 }
 
+/**
+ * `text` as one word to the phone's shell, whatever it holds: single-quoted, each `'` in it closing the quote, escaped
+ * and reopened. For a path, which comes from the phone or the user and may hold anything a folder name can.
+ */
+const quoted = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
+
 /** The app in front: its package, and the Android user — the profile — whose copy of it that is. */
 export interface Focus {
   package: string;
@@ -192,7 +198,55 @@ export class Device {
    * so there is no terminal to turn a `\n` into `\r\n` on the phones this tool supports.
    */
   async read(path: string): Promise<Uint8Array> {
-    return this.#shell('cat', path);
+    return this.#shell('cat', quoted(path));
+  }
+
+  /**
+   * The newest file called `name` on the phone's shared storage, or null where there is none, for a file an app writes
+   * to a folder the user picks. MediaStore is asked first, which indexes shared storage as it is written and answers in
+   * about a second; where it cannot be asked, or none of the files it lists is still there, the storage is searched
+   * with `find`, which took 3 to 8 seconds over 24 000 files on a Pixel 8 Pro. Every file either lists is checked with
+   * `stat`, the newest winning: MediaStore keeps a row for a deleted file until its next scan on Android 10 and older,
+   * leaves a fresh file's `date_modified` empty until it scans it, and an old copy left in a folder the user moved away
+   * from is the likely second.
+   */
+  async locate(name: string): Promise<string | null> {
+    const text = async (...args: string[]) => new TextDecoder().decode(await this.#shell(...args));
+
+    // `|| true` on `stat` and `find` both, which fail for a file that is gone and a folder they may not read,
+    // `Android/data` among them, after printing what they could.
+    const newest = async (paths: readonly string[]) => {
+      if (paths.length === 0) {
+        return null;
+      }
+
+      const stats = await text('stat', '-c', quoted('%Y %n'), ...paths.map(quoted), '2>/dev/null', '||', 'true');
+      const [found] = [...stats.matchAll(/^(\d+) (.*)$/gm)].sort(([, a], [, b]) => Number(b) - Number(a));
+
+      return found?.[2] ?? null;
+    };
+
+    const indexed = await text(
+      'content',
+      'query',
+      '--uri',
+      'content://media/external/file',
+      '--projection',
+      '_data',
+      '--where',
+      quoted(`_display_name=${quoted(name)}`),
+    )
+      .then((rows) => [...rows.matchAll(/^Row: \d+ _data=(.*)$/gm)].map(([, path]) => path as string))
+      .catch((): string[] => []);
+
+    return (
+      (await newest(indexed)) ??
+      newest(
+        (await text('find', '/sdcard/', '-type', 'f', '-name', quoted(name), '2>/dev/null', '||', 'true'))
+          .split('\n')
+          .filter(Boolean),
+      )
+    );
   }
 
   /**

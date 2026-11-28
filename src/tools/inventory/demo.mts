@@ -17,7 +17,6 @@
 import { DEMO_DETAIL, DEMO_SEARCHED, DEMO_STATS, DEMO_STORAGE } from '../../generated.ts';
 import { KEY, type Transport } from '../../core/adb.mts';
 import { DEFAULTS } from './config.mts';
-import { PGSTATS } from './pgstats.mts';
 import { decodePng, encodePng, screenIn } from '../../core/png.mts';
 
 const PROPS = [
@@ -27,6 +26,9 @@ const PROPS = [
 ];
 
 const encode = (text: string) => new TextEncoder().encode(text);
+
+/** Where the demo phone keeps PGSharp's export: where PGSharp writes it unless told otherwise. */
+const EXPORT = '/storage/emulated/0/Download/PGSharp/PGSStats.json';
 
 /** `read` answers a recording's bytes by its path in the repository, which is where the site publishes it too. */
 export function demoTransport(read: (path: string) => Promise<Uint8Array>): Transport {
@@ -62,9 +64,18 @@ export function demoTransport(read: (path: string) => Promise<Uint8Array>): Tran
         return Promise.resolve(encode(PROPS.join('\n')));
       }
 
-      // The PGSharp export the Pokédex reads: the made-up one, served straight rather than through `screenOf`, which is
-      // for the detail and storage captures it crops to their viewport.
-      if (command === 'cat' && action === PGSTATS) {
+      // The PGSharp export the Pokédex reads: the made-up one, found where PGSharp writes it unless told otherwise, and
+      // served straight rather than through `screenOf`, which is for the detail and storage captures it crops to their
+      // viewport.
+      if (command === 'content') {
+        return Promise.resolve(encode(`Row: 0 _data=${EXPORT}\n`));
+      }
+
+      if (command === 'stat') {
+        return Promise.resolve(encode(`1795785573 ${EXPORT}\n`));
+      }
+
+      if (command === 'cat' && action === `'${EXPORT}'`) {
         return read(DEMO_STATS);
       }
 

@@ -8,7 +8,7 @@ import { DEMO_DETAIL, DEMO_STATS } from '../../generated.ts';
 import { Device } from '../../core/adb.mts';
 import { DEFAULTS, type Config } from './config.mts';
 import { demoTransport } from './demo.mts';
-import { PGSTATS } from './pgstats.mts';
+import { readExport } from './pgstats.mts';
 import { type GameData } from '../../core/game-master.mts';
 import { decodePng, screenIn, type Image } from '../../core/png.mts';
 import { storage } from './storage.mts';
@@ -38,7 +38,7 @@ afterAll(useTestEngine());
 test("a read of PGSharp's export answers the made-up snapshot the Pokédex marks against", async () => {
   const device = new Device(demoTransport(read));
 
-  expect(new TextDecoder().decode(await device.read(PGSTATS))).toBe(readFileSync(new URL(DEMO_STATS, ROOT), 'utf8'));
+  expect(await readExport(device)).toBe(readFileSync(new URL(DEMO_STATS, ROOT), 'utf8'));
 });
 
 test('every screenshot is the one detail screen, one screen rather than the stitch', async () => {

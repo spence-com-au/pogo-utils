@@ -26,9 +26,6 @@ import { useDismiss } from './popover.js';
 import { ticked } from './ticked.js';
 import { PGSTATS } from './tools/inventory/pgstats.mts';
 
-/** The export's file name, which a reader opening a copy of it looks for. */
-const PGSTATS_NAME = PGSTATS.slice(PGSTATS.lastIndexOf('/') + 1);
-
 /** Opens the panel from elsewhere on the page, with the focus on its button; nothing until the panel is drawn. */
 let show = () => {};
 
@@ -60,7 +57,7 @@ function Yours({ held }: { held: Held | null }) {
           `${owned.length.toLocaleString()} Pokémon, read ${ago(readAt)}.`
         ) : (
           <>
-            Connect a phone or open PGSharp’s <code>{PGSTATS_NAME}</code>.
+            Connect a phone or open PGSharp’s <code>{PGSTATS}</code>.
           </>
         )}
       </p>
@@ -71,7 +68,7 @@ function Yours({ held }: { held: Held | null }) {
           </button>
         )}
         <JsonFileButton disabled={reading} onFile={(file) => void inventoryStore.open(file)}>
-          Open {PGSTATS_NAME}
+          Open {PGSTATS}
         </JsonFileButton>
         {/* On a failure too: a kept export that no longer parses fails as the page loads, with no rows to show. */}
         {(owned !== null || status.state === 'failed') && (

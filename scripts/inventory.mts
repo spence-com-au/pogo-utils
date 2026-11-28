@@ -8,12 +8,12 @@
  * over in the time it takes to pull and parse. `dex` still reads the screen with Tesseract, to walk the Pokédex, which
  * the export does not carry.
  *
- * The export is `/sdcard/Download/PGSharp/PGSStats.json`, read with `cat` over the shell and turned into rows by
- * `src/tools/inventory/snapshot.mts`: the species is the number the game gives it, the form is named off the export's
- * own form name, the level is the exact CP multiplier, and shininess, luckiness, size, shadow, purified, Dynamax,
- * Gigantamax, the moves and the tags come straight off it. Everything the walk used to work out from the screen — the
- * IVs off PGSharp's overlay, the form from the HP, shadow from the stardust a power-up costs — the export states
- * outright.
+ * The export is `PGSStats.json`, found by name wherever PGSharp's settings put it, read with `cat` over the shell and
+ * turned into rows by `src/tools/inventory/snapshot.mts`: the species is the number the game gives it, the form is
+ * named off the export's own form name, the level is the exact CP multiplier, and shininess, luckiness, size, shadow,
+ * purified, Dynamax, Gigantamax, the moves and the tags come straight off it. Everything the walk used to work out from
+ * the screen — the IVs off PGSharp's overlay, the form from the HP, shadow from the stardust a power-up costs — the
+ * export states outright.
  *
  * PGSharp is a modified client, and reading the game's data out of it — like driving the phone for `dex` — breaks
  * Niantic's terms of service. These only read, but the risk to the account is the user's to weigh.
@@ -57,7 +57,7 @@ import { useEngine } from '../src/core/ocr.mts';
 import { encodePng } from '../src/core/png.mts';
 import { LAST_DEX } from '../src/pokemon/generations.ts';
 import { pokedex, TABS, type Entry } from '../src/tools/inventory/pokedex-walk.mts';
-import { PGSTATS } from '../src/tools/inventory/pgstats.mts';
+import { readExport } from '../src/tools/inventory/pgstats.mts';
 import { parseSnapshot, rowsOf } from '../src/tools/inventory/snapshot.mts';
 import { touchscreen } from '../src/core/touchscreen.mts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -165,13 +165,12 @@ async function scan() {
 
   let text: string;
 
-  // `Device.read` runs `cat` over the shell, which carries its exit status back, so a file the phone does not have
-  // fails here rather than reading back as `cat`'s own message — the likely cause, the phone having answered `check`
-  // above. But a slow link timing out or an export too big for the read's buffer fail here too, so the underlying
-  // reason leads and the export hint is only offered, not asserted. A present-but-corrupt export is not caught here:
-  // it reads fine and fails the parse below, a different thing to say than that there is nothing to read.
+  // No export found on the phone is the likely failure here, the phone having answered `check` above. But a slow link
+  // timing out or an export too big for the read's buffer fail here too, so the underlying reason leads and the export
+  // hint is only offered, not asserted. A present-but-corrupt export is not caught here: it reads fine and fails the
+  // parse below, a different thing to say than that there is nothing to read.
   try {
-    text = new TextDecoder().decode(await device.read(PGSTATS));
+    text = await readExport(device);
   } catch (error) {
     const reason = said(error);
 
