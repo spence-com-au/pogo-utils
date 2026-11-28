@@ -136,6 +136,32 @@ test('a species the game master does not know is left null with a note, not file
   expect(byDex(9999)?.notes).toContain('species 9999 is not in the game master');
 });
 
+test('what only the export knows is read off it, and null where an export leaves it out', () => {
+  expect(byDex(105)).toMatchObject({
+    caught: 1600000000000,
+    traded: true,
+    hatched: false,
+    party: true,
+    defender: false,
+    background: true,
+    megaLevel: 0,
+    buddyKm: 4.2,
+  });
+
+  expect(byDex(3)).toMatchObject({ traded: false, hatched: true, defender: true, background: false, megaLevel: 2 });
+
+  expect(byDex(201)).toMatchObject({
+    caught: null,
+    traded: null,
+    hatched: null,
+    party: null,
+    defender: null,
+    background: null,
+    megaLevel: null,
+    buddyKm: null,
+  });
+});
+
 test('the raw game IDs are kept beside the row', () => {
   expect(byDex(105)?.raw).toEqual({
     id: '1000000000000000002',

@@ -213,6 +213,11 @@ export function cpOf(form: Form, iv: IVs, multiplier: number): number {
   return Math.max(10, Math.floor((a * Math.sqrt(d) * Math.sqrt(s) * multiplier * multiplier) / 10));
 }
 
+/** What a move of `type` multiplies its damage by against a Pokémon of the `defender`'s types. */
+export function effectiveness(data: Pick<GameData, 'effectiveness'>, type: string, defender: readonly string[]) {
+  return defender.reduce((product, against) => product * (data.effectiveness[type]?.[against] ?? 1), 1);
+}
+
 /** The CP multiplier for a level, or null where nothing is at that level — the half steps stop at 51. */
 export function multiplierOf(data: GameData, level: number): number | null {
   return data.cpm.find(([l]) => l === level)?.[1] ?? null;
