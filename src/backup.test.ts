@@ -1,18 +1,22 @@
+import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { applyBackup, backupName, ownedKeys, parseBackup, restoreBackup, writeBackup } from './backup.js';
 import { KEYS, loadPrefs, persist, type Prefs } from './event-prefs.js';
+import { databaseNames, inStore, readDatabase, replaceDatabase } from './indexed-db.js';
 import { installFakeStorage, type FakeStorage } from './testing/storage.js';
 
 let storage: FakeStorage;
 
 beforeEach(() => {
   storage = installFakeStorage();
+  vi.stubGlobal('indexedDB', new IDBFactory());
 });
 
 // The zone sweep below installs one, and a zone left behind would silently follow every later test in the file.
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 /**
@@ -20,13 +24,17 @@ afterEach(() => {
  * about, and the property the split exists for — that judging a file touches nothing — gets a test of its own rather
  * than being implied by all of them.
  */
-const restore = (text: string) => applyBackup(parseBackup(text));
+const restore = (text: string) => applyBackup(parseBackup(text).keys);
 
-/** A file as this page writes one, its values keyed by their names within the namespace. */
+/** A version 3 file, its values keyed by their names within the namespace, as readers still hold. */
 const backupOf = (values: unknown) => JSON.stringify({ version: 3, namespace: 'pogo-utils', values });
 
+/** A file as this page writes one, its keys nested as version 3's and the databases beside them. */
+const backup4Of = (keys: unknown, databases: unknown = {}) =>
+  JSON.stringify({ version: 4, namespace: 'pogo-utils', keys, databases });
+
 /** The keys a written file carries, in the order it carries them, which is what it would write back. */
-const carried = (text: string) => parseBackup(text).map(([key]) => key);
+const carried = (text: string) => parseBackup(text).keys.map(([key]) => key);
 
 /** A reader with every kind of value in play: the sets, the per-view object, both scalars and a populated `seen`. */
 function storePrefs(): Prefs {
@@ -51,9 +59,9 @@ function storePrefs(): Prefs {
  * The restore this exists for: a browser cleared, then the file read back. Driven through `persist` and `loadPrefs`
  * rather than against the file's text, because what has to survive is the `Prefs` a reader sees and not a spelling.
  */
-test('a cleared browser restores to the preferences it was exported from', () => {
+test('a cleared browser restores to the preferences it was exported from', async () => {
   const was = storePrefs();
-  const text = writeBackup();
+  const text = await writeBackup();
 
   storage = installFakeStorage();
   expect(loadPrefs().dismissed).toEqual(new Set());
@@ -67,7 +75,7 @@ test('a cleared browser restores to the preferences it was exported from', () =>
  * A file exported before the type sets were keyed by slug carries headings, and can be imported on any day. The load
  * after a restore is what rewrites them, so storage holds slugs from then on and not only what `loadPrefs` answers.
  */
-test('a backup holding headings is stored as slugs once loaded', () => {
+test('a backup holding headings is stored as slugs once loaded', async () => {
   restore(
     JSON.stringify({ version: 1, [KEYS.hiddenTypes]: ['Raid Hour'], [KEYS.hiddenByView]: { cards: ['GO Pass'] } }),
   );
@@ -94,10 +102,10 @@ test.for([
   { seen: 'null', write: () => persist({ ...emptyPrefs(), seen: null }, 'seen'), reads: null },
   { seen: 'empty', write: () => persist({ ...emptyPrefs(), seen: EMPTY_SEEN() }, 'seen'), reads: EMPTY_SEEN() },
   { seen: 'populated', write: () => persist({ ...emptyPrefs(), seen: SOME_SEEN() }, 'seen'), reads: SOME_SEEN() },
-])('a seen record that is $seen round-trips as itself', ({ write, reads }) => {
+])('a seen record that is $seen round-trips as itself', async ({ write, reads }) => {
   write();
 
-  const text = writeBackup();
+  const text = await writeBackup();
   storage = installFakeStorage();
   restore(text);
 
@@ -119,11 +127,11 @@ const emptyPrefs = (): Prefs => ({
  * an export reads holds another site's keys too. They are not this app's to carry, and the assertion is that the file
  * says so in both directions: not exported, and a file naming another namespace refused rather than written back.
  */
-test('a key belonging to another site on this origin is neither carried nor written', () => {
+test('a key belonging to another site on this origin is neither carried nor written', async () => {
   storage.setItem('other-project:token', '"secret"');
   persist({ ...emptyPrefs(), dismissed: new Set(['event-a']) }, 'dismissed');
 
-  expect(carried(writeBackup())).toEqual([KEYS.dismissed]);
+  expect(carried(await writeBackup())).toEqual([KEYS.dismissed]);
 
   storage = installFakeStorage();
   storage.setItem('other-project:token', '"mine"');
@@ -138,7 +146,7 @@ test('a key belonging to another site on this origin is neither carried nor writ
  * Keys the file leaves out are left as they stand. That is what makes a restore faithful only into cleared storage —
  * the browser's own site data — and what stops a file trimmed by hand from clearing what was trimmed.
  */
-test('a key the file omits is left as it was', () => {
+test('a key the file omits is left as it was', async () => {
   storePrefs();
 
   restore(backupOf({ events: { dismissed: ['from-file'] } }));
@@ -155,7 +163,7 @@ test('a key the file omits is left as it was', () => {
  * file into next year's page keeps what that page will be able to use. Dropping it would be a silent loss of exactly
  * the thing a backup is for.
  */
-test('a key in the namespace with no reader yet is written through', () => {
+test('a key in the namespace with no reader yet is written through', async () => {
   restore(backupOf({ map: { selected: ['a-route'] } }));
 
   expect(storage.getItem('pogo-utils:map:selected')).toBe('["a-route"]');
@@ -166,7 +174,7 @@ test('a key in the namespace with no reader yet is written through', () => {
  * its keys in the namespace, and only those: with no `namespace` field to refuse, the prefix is what keeps another
  * site's key or a stray field out of storage.
  */
-test('a version 1 file restores its keys in the namespace and nothing else', () => {
+test('a version 1 file restores its keys in the namespace and nothing else', async () => {
   storage.setItem('other-project:token', '"mine"');
 
   const written = restore(
@@ -187,7 +195,7 @@ test('a version 1 file restores its keys in the namespace and nothing else', () 
 });
 
 /** A version 1 file exported on a first visit holds nothing but its version, and reads back as nothing to write. */
-test('a version 1 file carrying no keys writes nothing and does not throw', () => {
+test('a version 1 file carrying no keys writes nothing and does not throw', async () => {
   storePrefs();
 
   const before = storage.snapshot();
@@ -197,7 +205,7 @@ test('a version 1 file carrying no keys writes nothing and does not throw', () =
 });
 
 /** Enumerated rather than named, which is the same property from the other end: nothing lists the keys to carry. */
-test('ownedKeys answers what is in the namespace and nothing else', () => {
+test('ownedKeys answers what is in the namespace and nothing else', async () => {
   storage.setItem('other-project:token', '"secret"');
   storage.setItem('pogo-utils:map:selected', '[]');
   persist({ ...emptyPrefs(), dismissed: new Set() }, 'dismissed');
@@ -210,11 +218,11 @@ test('ownedKeys answers what is in the namespace and nothing else', () => {
  * answers null for it, so the key reads as absent from either name. The key beside it still travels, which is what
  * says the one value was skipped rather than the export abandoned.
  */
-test('a stored value that is not JSON is left out, and the rest still travel', () => {
+test('a stored value that is not JSON is left out, and the rest still travel', async () => {
   storage.setItem(KEYS.hiddenTypes, '{oh no');
   persist({ ...emptyPrefs(), dismissed: new Set(['event-a']) }, 'dismissed');
 
-  expect(carried(writeBackup())).toEqual([KEYS.dismissed]);
+  expect(carried(await writeBackup())).toEqual([KEYS.dismissed]);
 });
 
 /**
@@ -226,14 +234,14 @@ test('a stored value that is not JSON is left out, and the rest still travel', (
 test.for([
   {
     refusing: 'a version this page cannot read',
-    bad: { version: 4 },
-    matching: /version 4, and this page reads version 1, 2 or 3/,
+    bad: { version: 5 },
+    matching: /version 5, and this page reads version 1, 2, 3 or 4/,
   },
   { refusing: 'a version as a string', bad: { version: '3' }, matching: /version "3"/ },
   { refusing: 'no version at all', bad: { version: undefined }, matching: /version absent/ },
   { refusing: "another site's namespace", bad: { namespace: 'other-project' }, matching: /namespace "other-project"/ },
   { refusing: 'no namespace at all', bad: { namespace: undefined }, matching: /namespace absent/ },
-])('$refusing is refused, where the same file with that field corrected is not', ({ bad, matching }) => {
+])('$refusing is refused, where the same file with that field corrected is not', async ({ bad, matching }) => {
   const good = { version: 3, namespace: 'pogo-utils', values: { x: 1 } };
 
   expect(() => restore(JSON.stringify({ ...good, ...bad }))).toThrow(matching);
@@ -253,15 +261,15 @@ test.for([
   { refusing: 'a JSON array', bad: '[]', matching: /a JSON object/ },
   { refusing: 'JSON null', bad: 'null', matching: /a JSON object/ },
   { refusing: 'a bare string', bad: '"a backup"', matching: /a JSON object/ },
-  { refusing: 'values that are an array', bad: backupOf([]), matching: /values are not a JSON object/ },
-  { refusing: 'no values at all', bad: backupOf(undefined), matching: /values are not a JSON object/ },
+  { refusing: 'values that are an array', bad: backupOf([]), matching: /"values" is not a JSON object/ },
+  { refusing: 'no values at all', bad: backupOf(undefined), matching: /"values" is not a JSON object/ },
   {
     refusing: 'a name holding a colon',
     bad: backupOf({ events: { 'hidden-by-view:cards': [] } }),
     matching: /name "hidden-by-view:cards" holds a colon/,
   },
   { refusing: '$value outside any group', bad: backupOf({ $value: 1 }), matching: /"\$value" outside any group/ },
-])('$refusing is refused as what it is', ({ bad, matching }) => {
+])('$refusing is refused as what it is', async ({ bad, matching }) => {
   expect(() => restore(bad)).toThrow(matching);
 });
 
@@ -269,19 +277,21 @@ test.for([
  * Judging a file touches nothing, which is the whole reason the two halves are separate: a file turned away can never
  * leave storage half-written.
  */
-test('parsing a file writes nothing, acceptable or not', () => {
+test('parsing a file writes nothing, acceptable or not', async () => {
   storePrefs();
 
   const before = storage.snapshot();
 
-  expect(parseBackup(backupOf({ events: { dismissed: ['from-file'] } }))).toEqual([[KEYS.dismissed, ['from-file']]]);
+  expect(parseBackup(backupOf({ events: { dismissed: ['from-file'] } })).keys).toEqual([
+    [KEYS.dismissed, ['from-file']],
+  ]);
   expect(() => parseBackup('{"version":4}')).toThrow();
 
   expect(storage.snapshot()).toEqual(before);
 });
 
 /** A refusal must not be a partial write: a reader who picks the wrong file keeps what they had. */
-test('a refused file leaves storage exactly as it was', () => {
+test('a refused file leaves storage exactly as it was', async () => {
   storePrefs();
 
   const before = storage.snapshot();
@@ -297,7 +307,7 @@ test('a refused file leaves storage exactly as it was', () => {
  * than being turned away — the namespace is what says a file is ours, so a file of ours naming no key is one with
  * nothing to say rather than one to refuse.
  */
-test('a backup carrying no values writes nothing and does not throw', () => {
+test('a backup carrying no values writes nothing and does not throw', async () => {
   storePrefs();
 
   const before = storage.snapshot();
@@ -311,10 +321,10 @@ test('a backup carrying no values writes nothing and does not throw', () => {
  * still works for the rest of the session — but the same silence here would hand a reader an empty backup, or tell
  * them a restore had happened when nothing was written.
  */
-test('storage that will not answer is reported rather than silently empty', () => {
+test('storage that will not answer is reported rather than silently empty', async () => {
   storage.throws = true;
 
-  expect(() => writeBackup()).toThrow();
+  await expect(writeBackup()).rejects.toThrow();
   expect(() => restore(backupOf({ events: { dismissed: [] } }))).toThrow();
 });
 
@@ -322,15 +332,15 @@ test('storage that will not answer is reported rather than silently empty', () =
  * The file is indented, because a lossless backup whose point is to be repairable has to be readable in an editor —
  * and `scripts/prune-events.mts` already writes `data/events.json` the same way.
  */
-test('the file is indented JSON a reader can open', () => {
+test('the file is indented JSON a reader can open', async () => {
   storage.setItem('pogo-utils:coin-bag:acknowledged', '"r9"');
   persist({ ...emptyPrefs(), dismissed: new Set(['event-a']) }, 'dismissed');
   persist({ ...emptyPrefs(), seen: SOME_SEEN() }, 'seen');
 
-  expect(writeBackup()).toBe(`{
-  "version": 3,
+  expect(await writeBackup()).toBe(`{
+  "version": 4,
   "namespace": "pogo-utils",
-  "values": {
+  "keys": {
     "coin-bag": {
       "acknowledged": "r9"
     },
@@ -347,7 +357,8 @@ test('the file is indented JSON a reader can open', () => {
         }
       }
     }
-  }
+  },
+  "databases": {}
 }`);
 });
 
@@ -357,14 +368,14 @@ test('the file is indented JSON a reader can open', () => {
  * that happened to be sorted already would pass without the sort. `events-later` comes after the whole of `events`,
  * which a sort by whole key would have put it ahead of.
  */
-test('every level is in alphabetical order, not the order the keys were stored', () => {
+test('every level is in alphabetical order, not the order the keys were stored', async () => {
   storage.setItem('pogo-utils:map:selected', '[]');
   storage.setItem(KEYS.seen, 'null');
   storage.setItem('pogo-utils:events-later:x', '1');
   storage.setItem(KEYS.dismissed, '[]');
   storage.setItem('pogo-utils:a-later-page', '1');
 
-  expect(carried(writeBackup())).toEqual([
+  expect(carried(await writeBackup())).toEqual([
     'pogo-utils:a-later-page',
     KEYS.dismissed,
     KEYS.seen,
@@ -378,7 +389,7 @@ test('every level is in alphabetical order, not the order the keys were stored',
  * else. Each name is one a split at the colons could get wrong — empty parts, the bare namespace, names every object
  * already answers — and the stored object holding a `$value` of its own is data, unwrapped once and no more.
  */
-test('every key comes back as itself, however its name splits', () => {
+test('every key comes back as itself, however its name splits', async () => {
   const stored = {
     'pogo-utils:a': '1',
     'pogo-utils:a:b': '2',
@@ -396,8 +407,8 @@ test('every key comes back as itself, however its name splits', () => {
     storage.setItem(key, value);
   }
 
-  const text = writeBackup();
-  const { values } = JSON.parse(text) as { values: Record<string, unknown> };
+  const text = await writeBackup();
+  const { keys: values } = JSON.parse(text) as { keys: Record<string, unknown> };
 
   expect(values.a).toEqual({ '$value': 1, '': 3, 'b': 2 });
   expect(values.o).toEqual({ $value: { x: 1 }, b: null });
@@ -410,11 +421,11 @@ test('every key comes back as itself, however its name splits', () => {
 });
 
 /** It would read back as its group's own value, the key `pogo-utils:a`, so it cannot travel as itself. */
-test('a key with a part named $value is left out, and the rest still travel', () => {
+test('a key with a part named $value is left out, and the rest still travel', async () => {
   storage.setItem('pogo-utils:a:$value', '1');
   persist({ ...emptyPrefs(), dismissed: new Set(['event-a']) }, 'dismissed');
 
-  expect(carried(writeBackup())).toEqual([KEYS.dismissed]);
+  expect(carried(await writeBackup())).toEqual([KEYS.dismissed]);
 });
 
 /**
@@ -423,7 +434,7 @@ test('a key with a part named $value is left out, and the rest still travel', ()
  * arrives, and is refused before anything is written: read as version 3, `hidden-by-view` would be a group and its
  * views keys of their own.
  */
-test('a version 2 file restores its keys as named, and relabelled 3 is refused', () => {
+test('a version 2 file restores its keys as named, and relabelled 3 is refused', async () => {
   const values = { 'events:dismissed': ['from-file'], 'events:hidden-by-view': { cards: ['raid-hour'] } };
 
   expect(() => restore(JSON.stringify({ version: 3, namespace: 'pogo-utils', values }))).toThrow(
@@ -439,7 +450,7 @@ test('a version 2 file restores its keys as named, and relabelled 3 is refused',
 });
 
 /** Dated, because a fixed name makes the browser number successive exports and they stop saying which is which. */
-test('an export is named for the day', () => {
+test('an export is named for the day', async () => {
   expect(backupName(new Date('2026-10-09T12:00:00Z'))).toBe('pogo-utils-backup-2026-10-09.json');
 });
 
@@ -455,7 +466,7 @@ test.for([
   { at: '2026-10-09T22:30:00Z', zone: 'Australia/Sydney', dated: '2026-10-10' },
   { at: '2026-10-09T02:30:00Z', zone: 'America/New_York', dated: '2026-10-08' },
   { at: '2026-10-09T12:00:00Z', zone: 'UTC', dated: '2026-10-09' },
-])('an export at $at is dated $dated for a reader in $zone', ({ at, zone, dated }) => {
+])('an export at $at is dated $dated for a reader in $zone', async ({ at, zone, dated }) => {
   vi.stubEnv('TZ', zone);
 
   expect(backupName(new Date(at))).toBe(`pogo-utils-backup-${dated}.json`);
@@ -472,7 +483,7 @@ test.for([
  * value and an absent one are both checked, an absent key put back as empty being a value the file never carried —
  * and for `seen` the difference between the two is a first visit against a reader who has acknowledged nothing.
  */
-test('a write that fails partway puts back what it found', () => {
+test('a write that fails partway puts back what it found', async () => {
   persist({ ...emptyPrefs(), hiddenTypes: new Set(['community-day']) }, 'hiddenTypes');
 
   const before = storage.snapshot();
@@ -487,36 +498,149 @@ test('a write that fails partway puts back what it found', () => {
 });
 
 /** The corrections a restore runs, recorded as they happen. */
-function runRestore(text: string) {
+async function runRestore(text: string) {
   const calls: string[] = [];
-  const result = restoreBackup(text, () => calls.push('restored'));
+  const result = await restoreBackup(text, () => calls.push('restored'));
 
   return { calls, result };
 }
 
-test('a restore writes the file over what is stored and runs the corrections', () => {
+test('a restore writes the file over what is stored and runs the corrections', async () => {
   storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
 
-  const { calls, result } = runRestore(backupOf({ dismissed: ['new'] }));
+  const { calls, result } = await runRestore(backupOf({ dismissed: ['new'] }));
 
   expect(calls).toEqual(['restored']);
   expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['new']));
   expect(result).toBe(1);
 });
 
-test('an empty file changes nothing and runs no corrections', () => {
+test('an empty file changes nothing and runs no corrections', async () => {
   storage.setItem('pogo-utils:dismissed', JSON.stringify(['old']));
 
-  const { calls, result } = runRestore(backupOf({}));
+  const { calls, result } = await runRestore(backupOf({}));
 
   expect(calls).toEqual([]);
   expect(result).toBeNull();
   expect(storage.getItem('pogo-utils:dismissed')).toBe(JSON.stringify(['old']));
 });
 
-test('a refused file runs no corrections', () => {
+test('a refused file runs no corrections', async () => {
   const calls: string[] = [];
 
-  expect(() => restoreBackup('not json', () => calls.push('restored'))).toThrow('not readable JSON');
+  await expect(restoreBackup('not json', () => calls.push('restored'))).rejects.toThrow('not readable JSON');
   expect(calls).toEqual([]);
+});
+
+/** The inventory's database as it keeps it, and a second store beside it, which a database is carried with whole. */
+const INVENTORY = { export: { latest: { text: '{"box":[]}', at: 1_000 } }, other: { b: 2, a: 1 } };
+
+/**
+ * A database in the namespace travels whole, and one outside it — another site's, on the same origin — neither
+ * travels nor is touched. Restored into a browser cleared of both, the namespace's comes back as it was.
+ */
+test('a database in the namespace round-trips, and one outside it is neither carried nor touched', async () => {
+  await replaceDatabase('pogo-utils:inventory', INVENTORY);
+  await replaceDatabase('other-project:db', { s: { k: 'theirs' } });
+
+  const text = await writeBackup();
+  const { databases } = JSON.parse(text) as { databases: Record<string, unknown> };
+
+  expect(Object.keys(databases)).toEqual(['inventory']);
+  expect(Object.keys((databases.inventory as Record<string, Record<string, unknown>>).other ?? {})).toEqual(['a', 'b']);
+
+  vi.stubGlobal('indexedDB', new IDBFactory());
+  storage = installFakeStorage();
+
+  expect(await restoreBackup(text, () => {})).toBe(1);
+  expect(await databaseNames()).toEqual(['pogo-utils:inventory']);
+  expect(await readDatabase('pogo-utils:inventory')).toEqual(INVENTORY);
+});
+
+/**
+ * A database the file names is replaced whole — a store or key it no longer has goes — and one it does not name is
+ * left as it stands, as a key the file omits is.
+ */
+test('a restore replaces the databases the file names and leaves the rest', async () => {
+  await replaceDatabase('pogo-utils:inventory', { export: { latest: 'old', stale: 'gone' }, dropped: { x: 1 } });
+  await replaceDatabase('pogo-utils:other', { s: { k: 1 } });
+
+  await restoreBackup(backup4Of({}, { inventory: { export: { latest: 'new' } } }), () => {});
+
+  expect(await readDatabase('pogo-utils:inventory')).toEqual({ export: { latest: 'new' } });
+  expect(await readDatabase('pogo-utils:other')).toEqual({ s: { k: 1 } });
+});
+
+/** A name in the file is a name within the namespace, so no edit to a file reaches a database outside it. */
+test('a database the file names lands inside the namespace', async () => {
+  await restoreBackup(backup4Of({}, { 'other-project:db': { s: { k: 'theirs' } } }), () => {});
+
+  expect(await databaseNames()).toEqual(['pogo-utils:other-project:db']);
+});
+
+/** None of versions 1 to 3 carries a database, so reading one back needs no IndexedDB and leaves what is there. */
+test('an older file leaves IndexedDB alone, and restores where there is none', async () => {
+  await replaceDatabase('pogo-utils:inventory', INVENTORY);
+
+  await restoreBackup(backupOf({ dismissed: ['new'] }), () => {});
+  expect(await readDatabase('pogo-utils:inventory')).toEqual(INVENTORY);
+
+  vi.stubGlobal('indexedDB', undefined);
+  expect(await restoreBackup(backupOf({ dismissed: ['newer'] }), () => {})).toBe(1);
+  expect(storage.getItem('pogo-utils:dismissed')).toBe('["newer"]');
+});
+
+/** Keys that fail to write put the databases back too, so the failure is the whole of what happened. */
+test('a key write that fails puts the databases back as they were', async () => {
+  await replaceDatabase('pogo-utils:inventory', INVENTORY);
+  storage.refusesWritesTo.add('pogo-utils:dismissed');
+
+  await expect(
+    restoreBackup(
+      backup4Of({ dismissed: ['new'] }, { inventory: { export: { latest: 'new' } }, added: { s: { k: 1 } } }),
+      () => {},
+    ),
+  ).rejects.toThrow(/quota/);
+
+  expect(await databaseNames()).toEqual(['pogo-utils:inventory']);
+  expect(await readDatabase('pogo-utils:inventory')).toEqual(INVENTORY);
+});
+
+/** A version 4 file whose databases are not stores of values, or that has no `databases` at all, is refused whole. */
+test.for([
+  { refusing: 'a database that is not an object', databases: { inventory: [] } },
+  { refusing: 'a store that is not an object', databases: { inventory: { export: 1 } } },
+  { refusing: 'no databases at all', databases: undefined },
+])('$refusing is refused before anything is written', async ({ databases }) => {
+  await expect(
+    restoreBackup(JSON.stringify({ version: 4, namespace: 'pogo-utils', keys: { x: 1 }, databases }), () => {}),
+  ).rejects.toThrow(/not a backup/);
+
+  expect(storage.snapshot()).toEqual({});
+  expect(await databaseNames()).toEqual([]);
+});
+
+/**
+ * A database holding nothing, as Forget leaves the inventory's, is not carried: restored, it would empty the other
+ * browser's, throwing away an export read there.
+ */
+test('an empty database is left out of the file', async () => {
+  await replaceDatabase('pogo-utils:inventory', { export: {} });
+  await replaceDatabase('pogo-utils:other', { s: { k: 1 } });
+
+  const { databases } = JSON.parse(await writeBackup()) as { databases: Record<string, unknown> };
+
+  expect(Object.keys(databases)).toEqual(['other']);
+});
+
+/**
+ * A file can name a database without the store its owner keeps in it, `"inventory": {}` edited down or written by hand.
+ * Restored, the owner's next write still lands: the store is added to the database it finds.
+ */
+test('a restored database without its owner’s store still takes the owner’s writes', async () => {
+  await restoreBackup(backup4Of({}, { inventory: {} }), () => {});
+
+  await inStore('pogo-utils:inventory', 'export', 'readwrite', (store) => store.put('kept', 'latest'));
+
+  expect(await inStore('pogo-utils:inventory', 'export', 'readonly', (store) => store.get('latest'))).toBe('kept');
 });

@@ -12,6 +12,10 @@ import { said } from '../errors.js';
 import { inStore as inDatabase } from '../indexed-db.js';
 import { isStayOn, putStayOn, readStayOn, stayOnUsb, type Shell } from '../tools/battle/stay-on.mts';
 
+/**
+ * Outside `KEY_PREFIX` on purpose, so a backup never carries it: what it keeps belongs to one phone for the length of
+ * one battle, and restored into another browser it would put a stale setting back on that phone's next connect.
+ */
 const DATABASE = 'pogo-utils-battle';
 const STORE = 'stay-on-while-plugged-in';
 

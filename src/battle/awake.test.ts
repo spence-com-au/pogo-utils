@@ -203,3 +203,9 @@ test('puts the setting back and fails where the phone will not stay awake', asyn
   await expect(keepAwake('pixel', pixel.transport, () => {})).rejects.toThrow('svc: not found');
   expect(pixel.ran.at(-1)).toBe('settings put global stay_on_while_plugged_in 1');
 });
+
+test('a phone connected with nothing kept leaves no database behind', async () => {
+  await putBack(phone('pixel'));
+
+  expect(await indexedDB.databases()).toEqual([]);
+});
