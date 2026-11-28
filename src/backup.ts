@@ -13,17 +13,18 @@
  * key is built from, for the same reason: a sweep spelled here could be shortened to one the keys no longer agree with,
  * and a prefix short enough to reach the neighbouring site is exactly the way this goes wrong.
  *
- * The same namespace names the IndexedDB databases a backup carries, under `database`: each by its name within the
+ * The same namespace names the IndexedDB databases a backup carries, under `databases`: each by its name within the
  * namespace, holding its stores and theirs their values by key. A database is carried and restored whole, since what
  * belongs together in one is its owner's to know — the inventory's export beside when it was read — and so is how a
  * value is read back, as for a key.
  *
  * Versions 1 to 3 are still read. Version 1 carries each key whole at the top level, beside `version`, version 2 each
  * key's name within the namespace whole under `values`, and version 3 nests them under `values` as version 4 does under
- * `keyValueStore`. Readers exported each for as long as it was the only layout: a backup exists to be read back long
- * after it was taken, so a page that stopped reading them would strand the very files it asked people to keep. Only
- * the namespace's own keys are taken from version 1, which keeps the allowlist holding for a layout that has no
- * `namespace` field to check. None of them carries a database, so reading one back leaves IndexedDB alone.
+ * `keys`, the name the code reads them by. Readers exported each for as long as it was the only layout: a backup exists
+ * to be read back long after it was taken, so a page that stopped reading them would strand the very files it asked
+ * people to keep. Only the namespace's own keys are taken from version 1, which keeps the allowlist holding for a
+ * layout that has no `namespace` field to check. None of them carries a database, so reading one back leaves IndexedDB
+ * alone.
  */
 
 import { said } from './errors.js';
@@ -113,7 +114,7 @@ export interface Backup {
  * one this app keeps is.
  */
 export async function writeBackup(): Promise<string> {
-  const keyValueStore = groupOf();
+  const keys = groupOf();
 
   for (const path of ownedKeys().map(pathOf).sort(byLevel)) {
     const stored = localStorage.getItem(keyOf(path));
@@ -131,10 +132,10 @@ export async function writeBackup(): Promise<string> {
       continue;
     }
 
-    place(keyValueStore, path, value);
+    place(keys, path, value);
   }
 
-  const database = groupOf();
+  const databases = groupOf();
   const owned = (await databaseNames()).filter((name) => name.startsWith(KEY_PREFIX)).sort();
 
   for (const name of owned) {
@@ -146,12 +147,12 @@ export async function writeBackup(): Promise<string> {
       continue;
     }
 
-    database[name.slice(KEY_PREFIX.length)] = sorted(
+    databases[name.slice(KEY_PREFIX.length)] = sorted(
       Object.fromEntries(Object.entries(stores).map(([store, entries]) => [store, sorted(entries)])),
     );
   }
 
-  return JSON.stringify({ version: VERSION, namespace: NAMESPACE, keyValueStore, database }, null, 2);
+  return JSON.stringify({ version: VERSION, namespace: NAMESPACE, keys, databases }, null, 2);
 }
 
 /** `record` with its names in code-unit order, the order `JSON.stringify` writes them in. */
@@ -251,7 +252,7 @@ export function parseBackup(text: string): Backup {
       return { keys: keysIn(groupIn(parsed, 'values')), databases: none };
 
     case 4:
-      return { keys: keysIn(groupIn(parsed, 'keyValueStore')), databases: databasesIn(groupIn(parsed, 'database')) };
+      return { keys: keysIn(groupIn(parsed, 'keys')), databases: databasesIn(groupIn(parsed, 'databases')) };
 
     // Quoted through `JSON.stringify` rather than interpolated bare: this came out of a file, and a version reading `1`
     // and one reading `"1"` are a refusal a reader has to be able to tell apart.

@@ -30,8 +30,8 @@ const restore = (text: string) => applyBackup(parseBackup(text).keys);
 const backupOf = (values: unknown) => JSON.stringify({ version: 3, namespace: 'pogo-utils', values });
 
 /** A file as this page writes one, its keys nested as version 3's and the databases beside them. */
-const backup4Of = (keyValueStore: unknown, database: unknown = {}) =>
-  JSON.stringify({ version: 4, namespace: 'pogo-utils', keyValueStore, database });
+const backup4Of = (keys: unknown, databases: unknown = {}) =>
+  JSON.stringify({ version: 4, namespace: 'pogo-utils', keys, databases });
 
 /** The keys a written file carries, in the order it carries them, which is what it would write back. */
 const carried = (text: string) => parseBackup(text).keys.map(([key]) => key);
@@ -340,7 +340,7 @@ test('the file is indented JSON a reader can open', async () => {
   expect(await writeBackup()).toBe(`{
   "version": 4,
   "namespace": "pogo-utils",
-  "keyValueStore": {
+  "keys": {
     "coin-bag": {
       "acknowledged": "r9"
     },
@@ -358,7 +358,7 @@ test('the file is indented JSON a reader can open', async () => {
       }
     }
   },
-  "database": {}
+  "databases": {}
 }`);
 });
 
@@ -408,7 +408,7 @@ test('every key comes back as itself, however its name splits', async () => {
   }
 
   const text = await writeBackup();
-  const { keyValueStore: values } = JSON.parse(text) as { keyValueStore: Record<string, unknown> };
+  const { keys: values } = JSON.parse(text) as { keys: Record<string, unknown> };
 
   expect(values.a).toEqual({ '$value': 1, '': 3, 'b': 2 });
   expect(values.o).toEqual({ $value: { x: 1 }, b: null });
@@ -544,10 +544,10 @@ test('a database in the namespace round-trips, and one outside it is neither car
   await replaceDatabase('other-project:db', { s: { k: 'theirs' } });
 
   const text = await writeBackup();
-  const { database } = JSON.parse(text) as { database: Record<string, unknown> };
+  const { databases } = JSON.parse(text) as { databases: Record<string, unknown> };
 
-  expect(Object.keys(database)).toEqual(['inventory']);
-  expect(Object.keys((database.inventory as Record<string, Record<string, unknown>>).other ?? {})).toEqual(['a', 'b']);
+  expect(Object.keys(databases)).toEqual(['inventory']);
+  expect(Object.keys((databases.inventory as Record<string, Record<string, unknown>>).other ?? {})).toEqual(['a', 'b']);
 
   vi.stubGlobal('indexedDB', new IDBFactory());
   storage = installFakeStorage();
@@ -606,14 +606,14 @@ test('a key write that fails puts the databases back as they were', async () => 
   expect(await readDatabase('pogo-utils:inventory')).toEqual(INVENTORY);
 });
 
-/** A version 4 file whose databases are not stores of values, or that has no `database` at all, is refused whole. */
+/** A version 4 file whose databases are not stores of values, or that has no `databases` at all, is refused whole. */
 test.for([
-  { refusing: 'a database that is not an object', database: { inventory: [] } },
-  { refusing: 'a store that is not an object', database: { inventory: { export: 1 } } },
-  { refusing: 'no database at all', database: undefined },
-])('$refusing is refused before anything is written', async ({ database }) => {
+  { refusing: 'a database that is not an object', databases: { inventory: [] } },
+  { refusing: 'a store that is not an object', databases: { inventory: { export: 1 } } },
+  { refusing: 'no databases at all', databases: undefined },
+])('$refusing is refused before anything is written', async ({ databases }) => {
   await expect(
-    restoreBackup(JSON.stringify({ version: 4, namespace: 'pogo-utils', keyValueStore: { x: 1 }, database }), () => {}),
+    restoreBackup(JSON.stringify({ version: 4, namespace: 'pogo-utils', keys: { x: 1 }, databases }), () => {}),
   ).rejects.toThrow(/not a backup/);
 
   expect(storage.snapshot()).toEqual({});
@@ -628,9 +628,9 @@ test('an empty database is left out of the file', async () => {
   await replaceDatabase('pogo-utils:inventory', { export: {} });
   await replaceDatabase('pogo-utils:other', { s: { k: 1 } });
 
-  const { database } = JSON.parse(await writeBackup()) as { database: Record<string, unknown> };
+  const { databases } = JSON.parse(await writeBackup()) as { databases: Record<string, unknown> };
 
-  expect(Object.keys(database)).toEqual(['other']);
+  expect(Object.keys(databases)).toEqual(['other']);
 });
 
 /**
