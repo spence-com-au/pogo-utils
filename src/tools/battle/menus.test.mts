@@ -6,7 +6,7 @@
 
 import { decodePng } from '../../core/png.mts';
 import { fold, ocr } from '../../core/ocr.mts';
-import { useWasmEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, expect, test, vi } from 'vitest';

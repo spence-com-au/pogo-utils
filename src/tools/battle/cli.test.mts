@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { expect, onTestFinished, test } from 'vitest';
 import { reads } from '../../core/node/test-cache.mts';
-import { tessdata } from '../../core/node/test-engine.mts';
+import { tessdata } from '../../core/node/test-wasm.mts';
 
 const SCRIPT = fileURLToPath(new URL('../../../scripts/battle.mts', import.meta.url));
 

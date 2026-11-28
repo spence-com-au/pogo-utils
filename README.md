@@ -612,12 +612,13 @@ Nothing read leaves the page. What it fetches carries nothing about the screen: 
 vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23
 MB it is made from. The screenshot and the count it reads stay in memory.
 
-The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs `pnpm test` as its
-`Tesseract CLI` job and again as `tesseract.js` with `INVENTORY_OCR=wasm`, handed the CLI's own model off disk so it
-reaches no network and checked to be the same file the page fetches. tesseract.js is its own build of Tesseract, so
-where a reading moves under it the fixtures that pin it fail; `storage.test.mts` holds the one difference the search
-walk meets, the `yes` tesseract.js reads into the scenery of `overworld.png` that `dialogOpen` takes for a dialog
-(#935).
+The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs `pnpm test` in three
+shards as its `Tesseract CLI` jobs, and its `tesseract.js` job runs again, with `INVENTORY_OCR=wasm`, the tests whose
+engine that picks, those importing `src/core/node/test-engine.mts`, found with `vitest related`. The WebAssembly build
+is handed the CLI's own model off disk so it reaches no network, and checked to be the same file the page fetches.
+tesseract.js is its own build of Tesseract, so where a reading moves under it the fixtures that pin it fail;
+`storage.test.mts` holds the one difference the search walk meets, the `yes` tesseract.js reads into the scenery of
+`overworld.png` that `dialogOpen` takes for a dialog (#935).
 
 ## Trainer battles
 

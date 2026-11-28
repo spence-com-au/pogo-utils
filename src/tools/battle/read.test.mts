@@ -8,7 +8,7 @@ import { afterAll, expect, test } from 'vitest';
 import { type GameData } from '../../core/game-master.mts';
 import { type Line } from '../../core/ocr.mts';
 import { decodePng } from '../../core/png.mts';
-import { useWasmEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { merge, readBanner, readBattle, readGetReady, unseen } from './read.mts';
 
 afterAll(useWasmEngine());

@@ -8,7 +8,8 @@
  * also the interface a person uses.
  *
  * Nothing here reaches the network or a phone: every test is refused on the flag gate or the usage before `scan` or
- * `dex` opens one. Driving those two to their end, which both need a phone, is `phone.test.mts`'s job against a stand-in.
+ * `dex` opens one. Driving those two to their end, which both need a phone, is the job of `phone.test.mts` and the
+ * `phone-dex-*.test.mts` against a stand-in.
  */
 
 import { execFile } from 'node:child_process';

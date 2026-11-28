@@ -29,11 +29,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: 'Tesseract CLI'
+          # The suite in three, each runner taking a third of the files, since a few of them read for minutes apiece.
+          - name: 'Tesseract CLI (1/3)'
+            test: 'test --shard=1/3'
+          - name: 'Tesseract CLI (2/3)'
+            test: 'test --shard=2/3'
+          - name: 'Tesseract CLI (3/3)'
+            test: 'test --shard=3/3'
 
-          # The pages read with tesseract.js, not the CLI's Tesseract, so the suite is read with it too.
+          # The pages read with tesseract.js, not the CLI's Tesseract, so the tests whose engine `INVENTORY_OCR` picks
+          # are read with it too. Those are the ones importing `test-engine.mts`, the one module that reads it; every
+          # other test reads the same under either and is left to the legs above.
           - name: 'tesseract.js'
             ocr: 'wasm'
+            test: 'exec vitest related --run src/core/node/test-engine.mts'
     steps:
       - uses: 'actions/checkout@v7.0.1'
         with:
@@ -51,4 +60,4 @@ jobs:
       - uses: 'pnpm/setup@v3.2.0'
         with:
           cache: true
-      - run: 'pnpm test'
+      - run: 'pnpm ${{ matrix.test }}'

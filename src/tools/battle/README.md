@@ -314,8 +314,8 @@ nothing measurable. `--no-graphics` rules the picture out when chasing a timing 
 ### Testing
 
 Each reader is tested against committed frames in [`fixtures/`](fixtures/), PNGs and H.264 clips stored with Git LFS,
-from both a Pixel 4 XL and a Pixel 8 Pro. Each threshold in the code is quoted beside the frames it was measured on.
-`run.test.mts` plays whole battles through a scripted phone. New fixtures come from `pnpm battle record`. Before a
+from both a Pixel 4 XL and a Pixel 8 Pro. Each threshold in the code is quoted beside the frames it was measured on. The
+`run-*.test.mts` play whole battles through a scripted phone. New fixtures come from `pnpm battle record`. Before a
 capture is committed, the account's trainer names and the Nearby Battle QR code must be filled in solid (see
 [`CLAUDE.md`](../../../CLAUDE.md)).
 

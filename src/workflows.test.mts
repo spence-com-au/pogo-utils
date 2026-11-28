@@ -6,12 +6,14 @@
  * missing from the matrix is not a failure but a check that never runs. The two readings are independent on purpose, as
  * in `build.test.mts`: the matrix comes out of the workflow's text and the checks out of `package.json`'s keys.
  *
- * `test.yaml` runs `pnpm test` — the whole suite — under each OCR engine its matrix names. The one the pages read with,
- * the WebAssembly build, is the leg a drop would quietly stop covering, since the CLI is the default a bare run takes,
- * so that leg is held here.
+ * `test.yaml` runs the suite in shards under the CLI's Tesseract, which are held to cover it between them: a shard left
+ * out of the matrix drops its files without failing anything. The WebAssembly build the pages read with runs only the
+ * tests `INVENTORY_OCR` changes, those `vitest related` finds importing `test-engine.mts`, which holds only while that
+ * is the one module reading it. That leg is the one a drop would quietly stop covering, since the CLI is the default a
+ * bare run takes, so it is held here too.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, test } from 'vitest';
@@ -32,17 +34,26 @@ function matrix(workflow: string, key: string): string[] {
 }
 
 /**
- * The `ocr` engine each entry in `test.yaml`'s matrix reads under, which it lists under `include` rather than as a plain
- * list so one entry can set `ocr` where the default leaves it the CLI's Tesseract.
+ * The `ocr` engine and the `pnpm` command of each entry in `test.yaml`'s matrix, which it lists under `include` rather
+ * than as a plain list so one entry can set `ocr` where the default leaves it the CLI's Tesseract.
  */
-function enginesRun(): string[] {
+function legs(): { ocr?: string; test?: string }[] {
   const workflow = '.github/workflows/test.yaml';
   const block = /^ +matrix:\n +include:\n([\s\S]*?)\n {4}\w/m.exec(read(workflow))?.[1];
 
   expect(block, `\`include\` matrix in ${workflow}`).toBeDefined();
 
-  return [...(block ?? '').matchAll(/^ +ocr: '([\w-]+)'$/gm)].map(([, name = '']) => name);
+  return (block ?? '')
+    .split(/^ +- /m)
+    .slice(1)
+    .map((entry) => ({
+      ocr: /^ +ocr: '([\w-]+)'$/m.exec(entry)?.[1],
+      test: /^ +test: '(.*)'$/m.exec(entry)?.[1],
+    }));
 }
+
+/** The `i/n` of each `--shard` `test.yaml` runs. */
+const shards = () => [...read('.github/workflows/test.yaml').matchAll(/--shard=(\d+\/\d+)/g)].map(([, shard]) => shard);
 
 /** The `<prefix>:<name>` scripts `package.json` defines, less the `:fix` variants, which rewrite rather than check. */
 const scriptsOf = (prefix: string) =>
@@ -54,6 +65,23 @@ test('`lint.yaml` runs every `lint:*` check `package.json` defines', () => {
   expect(new Set(matrix('.github/workflows/lint.yaml', 'check'))).toStrictEqual(new Set(scriptsOf('lint')));
 });
 
-test('`test.yaml` reads the suite under the WebAssembly engine the pages read with', () => {
-  expect(enginesRun()).toContain('wasm');
+test('`test.yaml` runs the tests that follow `INVENTORY_OCR` under the WebAssembly engine the pages read with', () => {
+  expect(legs().filter(({ ocr }) => ocr === 'wasm')).toStrictEqual([
+    { ocr: 'wasm', test: 'exec vitest related --run src/core/node/test-engine.mts' },
+  ]);
+});
+
+test('`test.yaml` runs every shard of the suite', () => {
+  const ran = shards();
+
+  expect(ran).toStrictEqual(ran.map((_, at) => `${at + 1}/${ran.length}`));
+  expect(ran.length).toBeGreaterThan(0);
+});
+
+test('`test-engine.mts` is the one module reading `INVENTORY_OCR`', () => {
+  const reading = (readdirSync(join(ROOT, 'src'), { recursive: true }) as string[])
+    .filter((path) => /\.m?tsx?$/.test(path))
+    .filter((path) => /env(?:\.|\[')INVENTORY_OCR/.test(read(join('src', path))));
+
+  expect(reading).toStrictEqual([join('core', 'node', 'test-engine.mts')]);
 });

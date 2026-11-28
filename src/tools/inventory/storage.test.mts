@@ -12,7 +12,8 @@ import { useEngine } from '../../core/ocr.mts';
 import { decodePng, encodePng, type Image } from '../../core/png.mts';
 import { dialogOpen, storage, unsearchable } from './storage.mts';
 import { tesseractCli } from '../../core/node/ocr-cli.mts';
-import { useTestEngine, useWasmEngine } from '../../core/node/test-engine.mts';
+import { useTestEngine } from '../../core/node/test-engine.mts';
+import { useWasmEngine } from '../../core/node/test-wasm.mts';
 import { readFileSync } from 'node:fs';
 import { afterEach, expect, test } from 'vitest';
 
@@ -254,9 +255,8 @@ test("a dialog whose button does not read is told by the scrim it draws over the
 
 /**
  * The power-up sheet over a Persian, whose `CANCEL` neither engine reads, so its title is all that says it is open
- * (#967). Read under both engines whatever `INVENTORY_OCR` asks for, since both missed it and CI runs this file with the
- * CLI alone. The phone answers every screenshot with the sheet, so each of the walk's five looks closes it with Back
- * and none taps under it.
+ * (#967). Read under both engines whatever `INVENTORY_OCR` asks for, since both missed it. The phone answers every
+ * screenshot with the sheet, so each of the walk's five looks closes it with Back and none taps under it.
  */
 test.for([
   ['the CLI', () => (useEngine(tesseractCli), () => Promise.resolve())],
