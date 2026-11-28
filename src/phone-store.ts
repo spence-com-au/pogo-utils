@@ -1,6 +1,6 @@
 /**
  * The phone this document holds over WebUSB, shared by every tab rather than owned by any one of them: the phone
- * button connects it, the Search page types its string into storage on it, and the battle tool plays on it.
+ * button connects it, `inventory-store.ts` reads PGSharp's export off it, and the battle tool plays on it.
  *
  * Held until another phone replaces it, the phone button's panel disconnects it, or it is unplugged, so a tab switch
  * costs no reconnection. The phone stays claimed meanwhile, which is the trade: an `adb` server on this computer cannot

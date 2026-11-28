@@ -23,10 +23,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-import { loadChunk } from '../chunks.js';
-import { said } from '../errors.js';
 import { COPY_ICON, DONE_ICON, EYE_ICON, EYE_OFF_ICON, icon } from '../icons.js';
-import { usePhone } from '../phone-store.js';
 import { copyHint } from '../platform.js';
 import { compose, emptyState, fromFragment, names, presetTree, toFragment, type State } from '../search/query.js';
 import {
@@ -47,7 +44,6 @@ import { ticked } from '../ticked.js';
 import { stepped, suggestions, written as speciesTerm, type Offer } from '../search/species.js';
 import { GROUPS, PRESETS, RANGES, RANGES_BY_ID, type Range } from '../search/terms.js';
 import {
-  answered,
   boxText,
   chipTitle,
   marked,
@@ -55,7 +51,6 @@ import {
   rangeTitle,
   readBound,
   type Edge,
-  type Sent,
   type Typed,
 } from '../search/controls.js';
 import { added, afterPress, asCards, cardsOf, holds, pillsOf } from '../search/cards.js';
@@ -74,7 +69,6 @@ import {
 } from '../search/tree.js';
 
 const SAVE_ICON = 'M6 3h12v18l-6-4-6 4z';
-const SEARCH_ICON = 'M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.9-4.9';
 
 /**
  * What a chip in the sheet wears in each of its two states — the glyph, and the words a screen reader is given instead
@@ -295,8 +289,6 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   const [offered, setOffered] = useState<readonly Offer[]>([]);
   const [active, setActive] = useState(-1);
   const [copyLabel, setCopyLabel] = useState('Copy');
-  const phone = usePhone();
-  const [sent, setSent] = useState<Sent | null>(null);
 
   const textRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -307,7 +299,7 @@ export default function SearchPage({ query: fragment }: { query: string }) {
   /** The pause `IDLE` is waiting out in the Advanced box, if one is running. */
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { query, tight, was: before, rewrites, lossy, error, mishandled } = current(state);
+  const { query, was: before, rewrites, lossy, error, mishandled } = current(state);
   const root = cardsOf(state.tree);
 
   /**
@@ -492,47 +484,6 @@ export default function SearchPage({ query: fragment }: { query: string }) {
       namingRef.current?.close();
     }
   }
-
-  /**
-   * The string typed into storage on the phone: from wherever the game is, to the grid and into its box. The OCR it
-   * reads its way there with is fetched only now, so a reader with no phone never downloads it.
-   */
-  async function sendToPhone() {
-    // Said where the answer to a search goes, so a reader pressing the greyed-out button learns why it did nothing.
-    if (phone === null) {
-      setSent({
-        query,
-        kind: 'unheld',
-        message: 'No phone connected. Connect one with 📱 in the top bar.',
-      });
-
-      return;
-    }
-
-    // The answer is kept against the string shown, which is what `answered` matches it to; the phone is sent it tight.
-    const term = query;
-    const say = (kind: Sent['kind'], message: string) => setSent({ query: term, kind, message });
-
-    say('busy', `Searching on ${phone.name}…`);
-
-    try {
-      const { searchStorage } = await loadChunk(() => import('../search/phone.js'));
-      const found = await searchStorage(
-        phone.transport,
-        tight,
-        (fraction) => say('busy', `Downloading the OCR model (first time only), ${Math.round(fraction * 100)}%…`),
-        (message) => say('busy', `${message}, finding storage…`),
-      );
-      const counted = found === null ? '' : found === 0 ? ': nothing matched' : `: ${found} Pokémon matched`;
-
-      say('done', `Searched storage on ${phone.name}${counted}.`);
-    } catch (e) {
-      say('failed', `Could not search on ${phone.name}: ${said(e)}`);
-    }
-  }
-
-  const sending = sent?.kind === 'busy';
-  const answer = answered(sent, query, phone !== null);
 
   useEffect(() => {
     if (copyLabel === 'Copy') {
@@ -888,29 +839,6 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               >
                 {icon(SAVE_ICON)}
               </button>
-
-              {/*
-               * The same string sent the other way out, which only a phone held over WebUSB gives it. Drawn with no
-               * phone as well, greyed out and saying where to connect one, so a reader can find out the page does this.
-               *
-               * `aria-disabled` rather than `disabled` for the missing phone: a disabled button takes no press, and the
-               * press is what says why nothing happened.
-               */}
-              <button
-                type="button"
-                class="send"
-                aria-label="Search on the phone"
-                title={
-                  phone === null
-                    ? 'Connect a phone with 📱 in the top bar to search its storage'
-                    : `Search storage on ${phone.name}`
-                }
-                aria-disabled={phone === null}
-                disabled={!query || error !== null || sending}
-                onClick={() => void sendToPhone()}
-              >
-                {icon(SEARCH_ICON)}
-              </button>
             </span>
           </div>
 
@@ -932,15 +860,6 @@ export default function SearchPage({ query: fragment }: { query: string }) {
               </button>
             </span>
           </div>
-
-          {answer !== null && (
-            <p
-              class={answer.kind === 'failed' || answer.kind === 'unheld' ? 'broken' : 'sent'}
-              role={answer.kind === 'failed' || answer.kind === 'unheld' ? 'alert' : 'status'}
-            >
-              {answer.message}
-            </p>
-          )}
 
           <p class="broken" hidden={error === null}>
             {ticked(error ?? '')}

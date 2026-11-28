@@ -6,8 +6,8 @@ application and reached from a shared top tab bar:
 - **Events** (`#/events`) — a calendar of current and upcoming in-game events, also published as a calendar
   subscription.
 - **Map** (`#/map`) — an interactive map of GPX walking tracks and teleport waypoints.
-- **Search** (`#/search`) — a builder for the strings the game's own Pokémon search box takes, which it can type into
-  that box itself on a phone connected with 📱 in the top bar.
+- **Search** (`#/search`) — a builder for the strings the game's own Pokémon search box takes, which shows the Pokémon
+  of yours a search finds, read from PGSharp's export.
 - **Pokédex** (`#/pokedex`) — every species and its forms: what is in the game, which have a shiny and which hunts still
   want it.
 - **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, a Live
@@ -77,8 +77,8 @@ by a run going red.
 One caveat is local only and stays. The LAN address printed beside the local one is good for viewing the site on a phone
 but not for installing it — a plain-HTTP origin is no secure context, and Chrome will read `manifest.json` for
 installation only from one — so [Installing as an app](#installing-as-an-app) is a flow only `localhost` or Pages can
-exercise. WebUSB is held to a secure context the same way, and so is the Web Crypto hash the Search page checks its OCR
-model against before reading anything, so that page neither reaches a phone nor reads what it drives one to from the LAN
+exercise. WebUSB is held to a secure context the same way, and so is the Web Crypto hash the Battle tab checks its OCR
+model against before reading anything, so that tab neither reaches a phone nor reads what it plays on one from the LAN
 address: `localhost` and Pages can do both, and the browser reaching this machine over the LAN can do neither.
 
 Static hosting cannot list a directory, so the viewer is handed the paths in
@@ -588,11 +588,9 @@ WebUSB to find out why; it is a hosted app rather than a library, which is why t
 
 The phone is connected with 📱 in the top bar rather than from any one page, and the connection outlives the tab it was
 made on: [`src/phone-store.ts`](src/phone-store.ts) holds it for the document until it is disconnected there or
-unplugged, so `adb` cannot reach the phone until then or until the site is closed. That is what the Search page's
-**Search** button uses. Beside **Copy** while a phone is held, it drives storage through
-[`storage`](src/tools/inventory/storage.mts) and its `DEFAULTS`: the game launched if it is not in front, storage opened
-from the map or a detail screen, the string typed into the box, and the game's own count of what matched reported back.
-The OCR it finds its way with is fetched on the first press rather than with the page.
+unplugged, so `adb` cannot reach the phone until then or until the site is closed. The Battle tab plays through it, and
+[`src/inventory-store.ts`](src/inventory-store.ts) reads PGSharp's export off each phone it comes to hold, which the
+Pokédex marks and the Search page judges a search against.
 
 With no phone to hand, **Try the demo phone** beside **Connect** in 📱's panel holds a demo phone instead, which answers
 from recorded screens rather than an account, so each tab can be tried without one; **Disconnect** puts it away. It is
@@ -610,7 +608,7 @@ once from that tag and kept in the browser.
 
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, and the game master — the
 vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23
-MB it is made from. The screenshot and the count it reads stay in memory.
+MB it is made from. The screenshots it reads stay in memory.
 
 The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs `pnpm test` in three
 shards as its `Tesseract CLI` jobs, and its `tesseract.js` job runs again, with `INVENTORY_OCR=wasm`, the tests whose
