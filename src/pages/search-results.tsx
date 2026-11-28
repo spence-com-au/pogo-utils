@@ -88,6 +88,18 @@ interface View {
 }
 
 /**
+ * The rows of cards `[first, last)` to draw of a grid of `lines` rows, `height` apart, whose top is `top` pixels below
+ * the top of a window `tall` pixels high. Never none while the grid has a row: a grid drawing no card has none to
+ * measure, so it is held to at least the row nearest the window, even far above or below it.
+ */
+export function linesInView(top: number, tall: number, height: number, lines: number) {
+  const first = Math.min(Math.max(0, Math.floor(-top / height) - OVERSCAN), Math.max(0, lines - 1));
+  const last = Math.min(lines, Math.max(first + 1, Math.ceil((tall - top) / height) + OVERSCAN));
+
+  return { first, last };
+}
+
+/**
  * A grid of `rows` that draws only the rows of cards near the window. It measures a card rather than knowing its size,
  * since the stylesheet sizes cards to the column, and measures again whenever the window scrolls or resizes or the
  * rows change, which is when the cards near the window can.
@@ -116,15 +128,13 @@ function Grid({
 
     const measure = () => {
       const card = list.querySelector('li');
+      const height = card === null ? view.height : card.offsetHeight + (parseFloat(getComputedStyle(list).rowGap) || 0);
 
-      if (card === null) {
+      if (height === 0) {
         return;
       }
 
-      const height = card.offsetHeight + (parseFloat(getComputedStyle(list).rowGap) || 0);
-      const top = list.getBoundingClientRect().top;
-      const first = Math.max(0, Math.floor(-top / height) - OVERSCAN);
-      const last = Math.min(lines, Math.ceil((innerHeight - top) / height) + OVERSCAN);
+      const { first, last } = linesInView(list.getBoundingClientRect().top, innerHeight, height, lines);
 
       setView((was) =>
         was.first === first && was.last === last && was.height === height ? was : { first, last, height },
@@ -145,10 +155,10 @@ function Grid({
       removeEventListener('scroll', later);
       removeEventListener('resize', later);
     };
-  }, [rows, lines]);
+  }, [rows, lines, view.height]);
 
-  const start = Math.min(view.first, lines);
-  const end = Math.max(start, Math.min(view.last, lines));
+  const start = Math.min(view.first, Math.max(0, lines - 1));
+  const end = Math.min(lines, Math.max(start + 1, view.last));
   const shown = rows.slice(start * COLUMNS, end * COLUMNS);
 
   /*
