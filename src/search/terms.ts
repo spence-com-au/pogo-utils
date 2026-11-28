@@ -596,9 +596,9 @@ export const LEGACY_MOVES: readonly (readonly [Pokemon, string])[] = [
  *
  * Neighbours in dex order that share a move share a clause, `!88-110,@1acid` standing for Grimer, Muk, Koffing and
  * Weezing. Every species between them is already ruled out by the first clause, so a span reaching over them asks
- * nothing more, and it is what brings the search under the 300 characters `CLEAR_KEYS` clears from the phone's search
- * box: a clause a species came to 347. Only rows that are neighbours, because a span reaching over a species with
- * another move would ask that species for this move too.
+ * nothing more, and it keeps a string the reader pastes short: a clause a species came to 347 characters. Only rows
+ * that are neighbours, because a span reaching over a species with another move would ask that species for this move
+ * too.
  */
 function legacySearch(): string {
   const rows = LEGACY_MOVES.toSorted(([one], [two]) => one.dex - two.dex);

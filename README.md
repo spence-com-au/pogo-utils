@@ -6,8 +6,8 @@ application and reached from a shared top tab bar:
 - **Events** (`#/events`) — a calendar of current and upcoming in-game events, also published as a calendar
   subscription.
 - **Map** (`#/map`) — an interactive map of GPX walking tracks and teleport waypoints.
-- **Search** (`#/search`) — a builder for the strings the game's own Pokémon search box takes, which it can type into
-  that box itself on a phone connected with 📱 in the top bar.
+- **Search** (`#/search`) — a builder for the strings the game's own Pokémon search box takes, which shows the Pokémon
+  of yours a search finds, read from PGSharp's export.
 - **Pokédex** (`#/pokedex`) — every species and its forms: what is in the game, which have a shiny and which hunts still
   want it.
 - **Integrations** (`#/integrations`) — a PGSharp backup builder that loads those routes in as favourites, a Live
@@ -608,7 +608,7 @@ once from that tag and kept in the browser.
 
 Nothing read leaves the page. What it fetches carries nothing about the screen: the model, and the game master — the
 vended [`data/game-master.json`](data/game-master.json), which the build publishes rather than the page fetching the 23
-MB it is made from. The screenshot and the count it reads stay in memory.
+MB it is made from. The screenshots it reads stay in memory.
 
 The suite reads the captures under both engines so the page cannot drift from the CLI: CI runs `pnpm test` in three
 shards as its `Tesseract CLI` jobs, and its `tesseract.js` job runs again, with `INVENTORY_OCR=wasm`, the tests whose
