@@ -1202,7 +1202,270 @@ body[data-page='search'] {
     font-size: 11px;
   }
 
+  /**
+   * The reader's own Pokémon the search finds, as cards in three columns the way the game's storage screen lays them
+   * out. Every card is the same height, which `search-results.tsx` counts on to draw only the rows near the window: a
+   * name runs to one line and the badges to the height this gives them, cut short past it, since one card taller than
+   * the rest would put every row under it out of place.
+   */
+
+  .results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .results > .empty {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .results-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .results-head h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .sort select {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+  }
+
+  .sort select:focus-visible {
+    outline: 2px solid var(--track);
+    outline-offset: 1px;
+  }
+
+  /* The block padding is the grid's own, standing in for the rows it has not drawn. */
+
+  .mons {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin: 0;
+    padding-inline: 0;
+    list-style: none;
+  }
+
+  .mon {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+  }
+
+  .mon .top {
+    display: flex;
+    align-self: stretch;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .mon .cp small {
+    color: var(--muted);
+    font-size: 0.72em;
+    font-weight: 400;
+  }
+
+  .mon .fav {
+    fill: #f5b301;
+    stroke: #a87400;
+    stroke-width: 1;
+  }
+
+  .mon .portrait {
+    display: grid;
+    width: min(110px, 60%);
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: 50%;
+  }
+
+  .mon .portrait .sprite {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .mon .unknown {
+    color: var(--muted);
+    font-size: 28px;
+  }
+
+  /* The game marks a lucky Pokémon with a gold shimmer behind it rather than with a badge. */
+
+  .mon.lucky .portrait {
+    background: radial-gradient(circle, #fff3c4 0%, #f6cf5a 50%, rgb(246 207 90 / 0%) 71%);
+  }
+
+  .mon .name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mon .hp {
+    display: flex;
+    min-height: 16px;
+    align-self: stretch;
+    gap: 6px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .mon .bar {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: var(--start);
+  }
+
+  .mon .badges {
+    display: flex;
+    height: 18px;
+    flex-wrap: wrap;
+    gap: 4px;
+    place-content: flex-start center;
+    overflow: hidden;
+  }
+
+  .badge {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--badge);
+    color: var(--badge-ink);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+  }
+
+  /* Each badge's pair is stated for light and for dark, as a tint picked for one is unreadable on the other. */
+
+  .badge.shiny {
+    --badge: #fff4c2;
+    --badge-ink: #7a5c00;
+
+    @media (prefers-color-scheme: dark) {
+      --badge: #4a3c00;
+      --badge-ink: #ffd84d;
+    }
+  }
+
+  .badge.lucky {
+    --badge: #fdeec0;
+    --badge-ink: #7a5600;
+
+    @media (prefers-color-scheme: dark) {
+      --badge: #4a3a10;
+      --badge-ink: #f6cf5a;
+    }
+  }
+
+  .badge.shadow {
+    --badge: #efe2fb;
+    --badge-ink: #5b1f91;
+
+    @media (prefers-color-scheme: dark) {
+      --badge: #3a1d55;
+      --badge-ink: #d6a8ff;
+    }
+  }
+
+  .badge.purified {
+    --badge: #e1f2ff;
+    --badge-ink: #1d5d94;
+
+    @media (prefers-color-scheme: dark) {
+      --badge: #14334d;
+      --badge-ink: #9fd4ff;
+    }
+  }
+
+  .badge.max {
+    --badge: #fde3ee;
+    --badge-ink: #9c1249;
+
+    @media (prefers-color-scheme: dark) {
+      --badge: #4d1028;
+      --badge-ink: #ff8fbd;
+    }
+  }
+
+  .unsure {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .unsure h3 {
+    margin: 0;
+    font-size: 15px;
+  }
+
+  .unsure .help {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  /* Dimmed and dashed, so a Pokémon that might match is never read as one that does. */
+
+  .unsure .mon {
+    border-style: dashed;
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.55;
+  }
+
   @media (width <= 560px) {
+    /* Three columns of a phone's width leave a card some 110px, too narrow for two badges side by side. */
+
+    .mons {
+      gap: 8px;
+    }
+
+    .mon {
+      padding: 8px 6px;
+    }
+
+    .mon .top {
+      font-size: 13px;
+    }
+
+    .mon .name {
+      font-size: 13px;
+    }
+
+    .mon .badges {
+      height: 40px;
+    }
+
     .output {
       border-radius: 0;
       margin-inline: -22px;
