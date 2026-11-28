@@ -60,6 +60,7 @@ import {
 } from '../search/controls.js';
 import { added, afterPress, asCards, cardsOf, holds, pillsOf } from '../search/cards.js';
 import { clausesOf } from '../search/clauses.js';
+import { Results } from './search-results.js';
 import {
   isGroup,
   leafLabel,
@@ -1031,6 +1032,8 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             </p>
           </section>
 
+          {pane === 'builder' && <Results tree={state.tree} />}
+
           <section class="panel" aria-labelledby="presetsLabel">
             <h2 class="label" id="presetsLabel">
               <span class="ico" aria-hidden="true">
@@ -1184,6 +1187,9 @@ export default function SearchPage({ query: fragment }: { query: string }) {
             The game has no brackets, so when you stop typing, the search is rewritten as cards in Builder without them.
           </p>
         </div>
+
+        {/* Under the pane's card rather than in it, the results being cards of their own. */}
+        {pane === 'advanced' && <Results tree={state.tree} />}
       </main>
 
       {/*
