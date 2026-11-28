@@ -140,8 +140,8 @@ export async function writeBackup(): Promise<string> {
   for (const name of owned) {
     const stores = await readDatabase(name);
 
-    // A database holding nothing is left out, as a battle that ended leaves the stay-awake store: restored, it would
-    // only empty the same database in the browser it lands in.
+    // A database holding nothing is left out, as Forget leaves the inventory's: restored, it would empty the same
+    // database in the browser it lands in, throwing away an export read there.
     if (Object.values(stores).every((entries) => Object.keys(entries).length === 0)) {
       continue;
     }

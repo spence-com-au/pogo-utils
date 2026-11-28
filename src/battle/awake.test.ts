@@ -48,10 +48,10 @@ function phone(serial: string, before = '1') {
 /**
  * Stores `value` for `serial` where `keepAwake` keeps what it found, as anything else on the origin might have. The
  * database and store are named as `awake.ts` names them, which a test storing a number with this and finding it put
- * back fails to do if they drift. `name` takes the old name in its place, for the test of the move.
+ * back fails to do if they drift.
  */
-async function store(serial: string, value: unknown, name = 'pogo-utils:battle') {
-  const opening = indexedDB.open(name, 1);
+async function store(serial: string, value: unknown) {
+  const opening = indexedDB.open('pogo-utils-battle', 1);
   opening.onupgradeneeded = () => opening.result.createObjectStore('stay-on-while-plugged-in');
 
   const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -202,19 +202,6 @@ test('puts the setting back and fails where the phone will not stay awake', asyn
 
   await expect(keepAwake('pixel', pixel.transport, () => {})).rejects.toThrow('svc: not found');
   expect(pixel.ran.at(-1)).toBe('settings put global stay_on_while_plugged_in 1');
-});
-
-test('a value kept under the name from before the namespace is moved in and put back', async () => {
-  // A fresh module, since the move is made once a realm and an earlier test has made it already.
-  vi.resetModules();
-  const fresh = await import('./awake.js');
-
-  await store('pixel', '3', 'pogo-utils-battle');
-  const connected = phone('pixel', '2');
-  await fresh.putBack(connected);
-
-  expect(connected.ran).toEqual(['settings put global stay_on_while_plugged_in 3']);
-  expect((await indexedDB.databases()).map(({ name }) => name)).toEqual(['pogo-utils:battle']);
 });
 
 test('a phone connected with nothing kept leaves no database behind', async () => {

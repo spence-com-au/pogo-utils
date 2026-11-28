@@ -563,12 +563,12 @@ test('a database in the namespace round-trips, and one outside it is neither car
  */
 test('a restore replaces the databases the file names and leaves the rest', async () => {
   await replaceDatabase('pogo-utils:inventory', { export: { latest: 'old', stale: 'gone' }, dropped: { x: 1 } });
-  await replaceDatabase('pogo-utils:battle', { 'stay-on-while-plugged-in': { pixel: '1' } });
+  await replaceDatabase('pogo-utils:other', { s: { k: 1 } });
 
   await restoreBackup(backup4Of({}, { inventory: { export: { latest: 'new' } } }), () => {});
 
   expect(await readDatabase('pogo-utils:inventory')).toEqual({ export: { latest: 'new' } });
-  expect(await readDatabase('pogo-utils:battle')).toEqual({ 'stay-on-while-plugged-in': { pixel: '1' } });
+  expect(await readDatabase('pogo-utils:other')).toEqual({ s: { k: 1 } });
 });
 
 /** A name in the file is a name within the namespace, so no edit to a file reaches a database outside it. */
@@ -620,14 +620,17 @@ test.for([
   expect(await databaseNames()).toEqual([]);
 });
 
-/** A database holding nothing, as a battle that ended leaves its stay-awake store, is not carried. */
+/**
+ * A database holding nothing, as Forget leaves the inventory's, is not carried: restored, it would empty the other
+ * browser's, throwing away an export read there.
+ */
 test('an empty database is left out of the file', async () => {
-  await replaceDatabase('pogo-utils:battle', { 'stay-on-while-plugged-in': {} });
-  await replaceDatabase('pogo-utils:inventory', INVENTORY);
+  await replaceDatabase('pogo-utils:inventory', { export: {} });
+  await replaceDatabase('pogo-utils:other', { s: { k: 1 } });
 
   const { database } = JSON.parse(await writeBackup()) as { database: Record<string, unknown> };
 
-  expect(Object.keys(database)).toEqual(['inventory']);
+  expect(Object.keys(database)).toEqual(['other']);
 });
 
 /**
