@@ -97,3 +97,12 @@ footer a {
   opacity: 0.5;
   cursor: default;
 }
+
+/**
+ * A Pokémon picture that failed to load, from `src/sprite.tsx`: hidden rather than gone, so the slot it held keeps its
+ * size, and the browser's broken-image glyph is never drawn. Here rather than in a page's sheet, as two pages draw one.
+ */
+
+.sprite.missing {
+  visibility: hidden;
+}

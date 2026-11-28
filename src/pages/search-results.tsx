@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { gameData } from '../core/browser/fetch.js';
 import type { GameData } from '../core/game-master.mts';
 import { said } from '../errors.js';
+import { Sprite } from '../sprite.js';
 import { useInventory } from '../inventory-store.js';
 import { judging } from '../search/judge.js';
 import { loadSort, resultsOf, shownName, SORTS, sorted, sprites, storeSort, type Sort } from '../search/results.js';
@@ -54,13 +55,13 @@ function Card({ row, sprite, place, of }: { row: Row; sprite: string | null; pla
         </span>
         {row.favourite && STAR}
       </span>
-      <span class="sprite">
+      <span class="portrait">
         {sprite === null ? (
           <span class="unknown" aria-hidden="true">
             ?
           </span>
         ) : (
-          <img src={sprite} alt="" width={256} height={256} loading="lazy" decoding="async" />
+          <Sprite src={sprite} size={256} />
         )}
       </span>
       <span class="name">{shownName(row)}</span>
@@ -195,7 +196,7 @@ export function Results({ tree }: { tree: Node }) {
   }, [held]);
 
   const judge = useMemo(() => (rows && data ? judging({ rows, data, now: Date.now() }) : null), [rows, data]);
-  const spriteOf = useMemo(() => (data ? sprites(data.forms) : null), [data]);
+  const spriteOf = useMemo(() => (data ? sprites(data) : null), [data]);
   const found = useMemo(() => (rows && judge ? resultsOf(tree, rows, judge) : null), [tree, rows, judge]);
   const sure = useMemo(() => (found ? sorted(found.sure, sort) : []), [found, sort]);
   const unsure = useMemo(() => (found ? sorted(found.unsure, sort) : []), [found, sort]);

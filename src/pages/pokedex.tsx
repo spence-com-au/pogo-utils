@@ -34,6 +34,7 @@ import { GENERATIONS, regionOf, regionsOf } from '../pokemon/generations.js';
 import { replaceQuery, toHash } from '../router.js';
 import { useInventory } from '../inventory-store.js';
 import { openPhonePanel } from '../phone.js';
+import { Sprite } from '../sprite.js';
 import { nameFragment } from '../search/query.js';
 
 const HUNT_LABELS = new Map<string, string>(HUNTS.map(({ id, label }) => [id, label]));
@@ -41,34 +42,6 @@ const CATEGORY_LABELS = new Map(CATEGORIES.map(({ id, label }) => [id, label]));
 
 /** The whole dex, as the header names it and the region list draws it: under Pikachu, Eevee and Mew, as in the game. */
 const ALL_REGIONS = { name: 'All regions', starters: [25, 133, 151] } as const;
-
-/**
- * A sprite that says nothing when it fails. The number under it is the tile; a hotlinked picture that does not arrive
- * — offline, or blocked — should leave it looking like an empty slot rather than the browser's broken-image glyph.
- *
- * What failed is remembered as the URL rather than as a boolean, because a fresh `src` deserves a fresh chance to load
- * and a flag would deny it one. `key` on the `<img>` cannot do that job: it replaces the child node while this
- * component's own instance — same type, same position — is reused, so a hook on it survives. The icon table landing is
- * exactly that case, changing the `src` of the 113 species it holds a row for after the derived name has 404d; and a
- * 404 that resolves late calls back into a live component whichever way the two race, so only comparing against the
- * `src` in hand can tell a stale failure from this one's.
- */
-function Sprite({ src, size, eager }: { src: string; size: number; eager?: boolean }) {
-  const [failed, setFailed] = useState<string | null>(null);
-
-  return (
-    <img
-      class={failed === src ? 'sprite missing' : 'sprite'}
-      src={src}
-      alt=""
-      width={size}
-      height={size}
-      loading={eager ? 'eager' : 'lazy'}
-      decoding="async"
-      onError={() => setFailed(src)}
-    />
-  );
-}
 
 /**
  * One of the tables `build:sprites` writes, empty until it arrives.

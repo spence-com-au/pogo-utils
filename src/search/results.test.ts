@@ -69,7 +69,12 @@ test('the order picked is kept, Recent standing in where storage holds none or w
   storeSort('cp');
   expect(loadSort()).toBe('cp');
 
-  storage.setItem(SORT_KEY, 'sideways');
+  // JSON, as the backup carries only what parses, and writes it back through `JSON.stringify`.
+  expect(storage.getItem(SORT_KEY)).toBe('"cp"');
+
+  storage.setItem(SORT_KEY, '"sideways"');
+  expect(loadSort()).toBe('recent');
+  storage.setItem(SORT_KEY, 'cp');
   expect(loadSort()).toBe('recent');
 
   storage.throws = true;
@@ -78,7 +83,7 @@ test('the order picked is kept, Recent standing in where storage holds none or w
 });
 
 test('a Pokémon is drawn in its own form, costume and colouring, else as its species', () => {
-  const spriteOf = sprites(DATA.forms);
+  const spriteOf = sprites(DATA);
 
   const byName = (name: string) => {
     const row = ROWS.find((one) => shownName(one) === name);
@@ -97,6 +102,9 @@ test('a Pokémon is drawn in its own form, costume and colouring, else as its sp
   expect(spriteOf(byName('Sparky'))).toBe(`${ICON_BASE}pm386.fATTACK.icon.png`);
   expect(spriteOf(pikachu)).toBe(`${ICON_BASE}pm25.icon.png`);
   expect(spriteOf(hat)).toBe(`${ICON_BASE}${DATA.forms.find((form) => form.form === 'Adventure Hat 2020')?.icon}`);
+  expect(spriteOf({ ...pikachu, dex: 104, species: 'Cubone', costume: ['Fall 2023'], shiny: true })).toBe(
+    `${ICON_BASE}pm104.cFALL_2023.s.icon.png`,
+  );
   expect(spriteOf({ ...pikachu, form: 'Nowhere' })).toBe(`${ICON_BASE}pm25.icon.png`);
   expect(spriteOf(byName('Unknown'))).toBeNull();
 });

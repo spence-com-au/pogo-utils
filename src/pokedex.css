@@ -304,10 +304,6 @@ body[data-page='pokedex'] {
     min-height: 0;
   }
 
-  .sprite.missing {
-    visibility: hidden;
-  }
-
   .tile .num {
     flex: 0 0 auto;
     margin-top: 4px;

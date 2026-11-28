@@ -31,10 +31,13 @@ export const SORT_KEY = `${KEY_PREFIX}search:sort`;
 
 const isSort = (value: unknown): value is Sort => SORTS.some(({ id }) => id === value);
 
-/** The order last picked, or Recent, the game's own default, where storage holds none or will not answer. */
+/**
+ * The order last picked, or Recent, the game's own default, where storage holds none or will not answer. Kept as JSON,
+ * as every value under `KEY_PREFIX` is, since `src/backup.ts` parses each one it carries and skips what does not parse.
+ */
 export function loadSort(): Sort {
   try {
-    const stored = localStorage.getItem(SORT_KEY);
+    const stored: unknown = JSON.parse(localStorage.getItem(SORT_KEY) ?? 'null');
 
     return isSort(stored) ? stored : 'recent';
   } catch {
@@ -45,7 +48,7 @@ export function loadSort(): Sort {
 /** Keeps the order for the next visit. A refusal costs only that, so it is not reported. */
 export function storeSort(sort: Sort): void {
   try {
-    localStorage.setItem(SORT_KEY, sort);
+    localStorage.setItem(SORT_KEY, JSON.stringify(sort));
   } catch {
     // Nothing to tell: the page sorts by it either way, and only the next visit goes back to Recent.
   }
@@ -120,10 +123,12 @@ export function resultsOf(tree: Node, rows: readonly Row[], judge: (node: Node, 
 
 /**
  * Each Pokémon's picture: its own form's, or its costume's, in its shiny colouring where it is shiny and the game has
- * one, and the species' where the game data has no such form. Null for a species the game data does not know.
+ * one, and the species' where the game data has no such form. A costume is looked for among the forms first, where the
+ * newer ones are, then among the costumes the game data keeps apart from them, such as Cubone's `Fall 2023`. Null for a
+ * species the game data does not know.
  */
-export function sprites(forms: GameData['forms']): (row: Row) => string | null {
-  const byName = new Map<string, GameData['forms'][number]>();
+export function sprites({ forms, costumes }: Pick<GameData, 'forms' | 'costumes'>): (row: Row) => string | null {
+  const byName = new Map<string, { icon: string | null; shiny: string | null }>();
 
   for (const form of forms) {
     const key = `${form.dex} ${form.form ?? ''}`;
@@ -133,24 +138,32 @@ export function sprites(forms: GameData['forms']): (row: Row) => string | null {
     }
   }
 
+  for (const costume of costumes) {
+    const key = `${costume.dex} ${costume.name}`;
+
+    if (!byName.has(key)) {
+      byName.set(key, costume);
+    }
+  }
+
   return (row) => {
     if (row.dex === null) {
       return null;
     }
 
     const costume = row.costume?.length === 1 ? row.costume[0] : undefined;
-    const form =
+    const art =
       (costume === undefined ? undefined : byName.get(`${row.dex} ${costume}`)) ??
       byName.get(`${row.dex} ${row.form ?? ''}`);
 
-    if (form === undefined) {
+    if (art === undefined) {
       return spriteOf(row.dex, row.shiny, {});
     }
 
-    if (form.icon === null) {
+    if (art.icon === null) {
       return spriteOf(row.dex, row.shiny, { [row.dex]: null });
     }
 
-    return ICON_BASE + (row.shiny && form.shiny !== null ? form.shiny : form.icon);
+    return ICON_BASE + (row.shiny && art.shiny !== null ? art.shiny : art.icon);
   };
 }

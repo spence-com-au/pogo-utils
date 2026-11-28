@@ -1295,7 +1295,7 @@ body[data-page='search'] {
     stroke-width: 1;
   }
 
-  .mon .sprite {
+  .mon .portrait {
     display: grid;
     width: min(110px, 60%);
     aspect-ratio: 1;
@@ -1303,7 +1303,7 @@ body[data-page='search'] {
     border-radius: 50%;
   }
 
-  .mon .sprite img {
+  .mon .portrait .sprite {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -1316,7 +1316,7 @@ body[data-page='search'] {
 
   /* The game marks a lucky Pokémon with a gold shimmer behind it rather than with a badge. */
 
-  .mon.lucky .sprite {
+  .mon.lucky .portrait {
     background: radial-gradient(circle, #fff3c4 0%, #f6cf5a 50%, rgb(246 207 90 / 0%) 71%);
   }
 
